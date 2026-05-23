@@ -12,6 +12,7 @@ const enemyGoldEl = document.querySelector("#enemyGold");
 const statusEl = document.querySelector("#gameStatus");
 const playerHpBar = document.querySelector("#playerHpBar");
 const enemyHpBar = document.querySelector("#enemyHpBar");
+const fullscreenBtn = document.querySelector("#fullscreenBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const statsBtn = document.querySelector("#statsBtn");
 const closeStatsBtn = document.querySelector("#closeStatsBtn");
@@ -3534,6 +3535,41 @@ function drawEndOverlay() {
   ctx.fillText("点击右上角重新开始", FIELD.width / 2, 328);
 }
 
+function isFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function updateFullscreenButton() {
+  fullscreenBtn.textContent = isFullscreen() ? "退出" : "全屏";
+  fullscreenBtn.title = isFullscreen() ? "退出全屏" : "进入全屏";
+}
+
+async function enterFullscreen() {
+  const target = document.documentElement;
+  try {
+    if (target.requestFullscreen) await target.requestFullscreen();
+    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+  } catch {
+    statusEl.textContent = "当前浏览器需要手动允许全屏";
+  }
+  updateFullscreenButton();
+}
+
+async function exitFullscreen() {
+  try {
+    if (document.exitFullscreen) await document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } catch {
+    statusEl.textContent = "当前浏览器暂不支持退出全屏";
+  }
+  updateFullscreenButton();
+}
+
+function toggleFullscreen() {
+  if (isFullscreen()) exitFullscreen();
+  else enterFullscreen();
+}
+
 function updateHud() {
   goldEl.textContent = Math.floor(state.gold);
   enemyGoldEl.textContent = Math.floor(state.enemyGold);
@@ -3773,6 +3809,10 @@ pauseBtn.addEventListener("click", () => {
   statusEl.textContent = state.paused ? "战斗已暂停" : "战斗继续";
 });
 
+fullscreenBtn.addEventListener("click", toggleFullscreen);
+document.addEventListener("fullscreenchange", updateFullscreenButton);
+document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+
 statsBtn.addEventListener("click", () => {
   renderStatsTable();
   statsOverlay.classList.remove("hidden");
@@ -3788,6 +3828,7 @@ statsOverlay.addEventListener("click", (event) => {
 
 factionButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    enterFullscreen();
     selectedFaction = button.dataset.faction;
     factionSelect.classList.add("hidden");
     newGame();

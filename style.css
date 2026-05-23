@@ -244,7 +244,8 @@ button {
 }
 
 .pause-btn,
-.stats-btn {
+.stats-btn,
+.fullscreen-btn {
   position: absolute;
   height: 40px;
   padding: 0 14px;
@@ -252,6 +253,10 @@ button {
   background: rgba(230, 184, 74, 0.18);
   border: 1px solid rgba(230, 184, 74, 0.48);
   font-weight: 800;
+}
+
+.fullscreen-btn {
+  right: 172px;
 }
 
 .pause-btn {
