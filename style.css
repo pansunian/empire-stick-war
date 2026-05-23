@@ -14,10 +14,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
+  height: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow: hidden;
   font-family:
     Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   color: var(--ink);
@@ -43,6 +50,7 @@ body {
     radial-gradient(circle at 25% 30%, rgba(79, 140, 255, 0.18), transparent 28%),
     radial-gradient(circle at 78% 32%, rgba(217, 77, 67, 0.18), transparent 28%),
     #111515;
+  overflow: auto;
 }
 
 .faction-select.hidden {
@@ -1283,5 +1291,191 @@ canvas {
   .unit-shop {
     grid-template-rows: repeat(2, 56px);
     grid-auto-columns: minmax(98px, 110px);
+  }
+}
+
+@media (pointer: coarse) and (min-width: 700px) {
+  .game-shell {
+    padding: 8px;
+    gap: 6px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.75fr) minmax(300px, 1.5fr) minmax(150px, 0.75fr);
+    gap: 6px;
+  }
+
+  .empire-card,
+  .status-panel {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 8px;
+  }
+
+  .banner {
+    width: 22px;
+    height: 34px;
+  }
+
+  .empire-card strong {
+    font-size: 13px;
+  }
+
+  .empire-card small {
+    font-size: 11px;
+  }
+
+  .status-panel {
+    font-size: 13px;
+    padding-right: 214px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    height: 34px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .fullscreen-btn {
+    right: 166px;
+  }
+
+  .pause-btn {
+    right: 110px;
+  }
+
+  .stats-btn {
+    right: 56px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    right: 10px;
+    font-size: 21px;
+  }
+
+  .battlefield-wrap {
+    min-height: 0;
+  }
+
+  canvas {
+    min-height: 0;
+  }
+
+  .health-bars {
+    top: 8px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .health-bars label {
+    font-size: 11px;
+  }
+
+  .bar {
+    height: 9px;
+    margin-top: 3px;
+  }
+
+  .control-deck {
+    display: grid;
+    grid-template-columns: minmax(210px, 230px) minmax(0, 1fr);
+    gap: 8px;
+    padding: 6px;
+    align-items: stretch;
+  }
+
+  .command-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .unit-shop {
+    display: grid;
+    grid-template-rows: repeat(2, 52px);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(96px, 108px);
+    gap: 6px;
+    padding-bottom: 0;
+  }
+
+  .command-btn,
+  .train-btn {
+    min-width: 0;
+    min-height: 52px;
+    gap: 1px;
+  }
+
+  .command-btn small,
+  .train-btn small {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .train-btn strong {
+    font-size: 12px;
+  }
+
+  .unit-icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (pointer: coarse) and (min-width: 700px) and (max-height: 780px) {
+  .game-shell {
+    padding: 6px;
+    gap: 5px;
+  }
+
+  .empire-card,
+  .status-panel {
+    min-height: 42px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .banner {
+    width: 18px;
+    height: 28px;
+  }
+
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    height: 30px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .control-deck {
+    grid-template-columns: minmax(190px, 210px) minmax(0, 1fr);
+    padding: 5px;
+    gap: 6px;
+  }
+
+  .unit-shop {
+    grid-template-rows: repeat(2, 46px);
+    grid-auto-columns: minmax(88px, 100px);
+  }
+
+  .command-btn,
+  .train-btn {
+    min-height: 46px;
+  }
+
+  .unit-icon {
+    width: 18px;
+    height: 18px;
   }
 }
