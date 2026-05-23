@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>帝国火柴人战争</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <section id="factionSelect" class="faction-select" aria-label="选择阵营">
+      <div class="faction-panel">
+        <p class="kicker">选择你的帝国</p>
+        <h1>中世纪帝国战争</h1>
+        <div class="faction-options three">
+          <button class="faction-card order" data-faction="order">
+            <span class="crest"></span>
+            <strong>秩序帝国</strong>
+            <small>矿工、剑士、长矛兵、弓箭手、大剑兵、斯巴达、修道士、弩手、火枪手、法师、奴役巨人</small>
+          </button>
+          <button class="faction-card chaos" data-faction="chaos">
+            <span class="crest"></span>
+            <strong>混沌帝国</strong>
+            <small>矿工、爬行者、亡灵、砍刀兵、死尸、毒尸、炸弹客、恶魔弓手、黑骑士、亡灵法师、巨人</small>
+          </button>
+          <button class="faction-card element" data-faction="element">
+            <span class="crest"></span>
+            <strong>元素帝国</strong>
+            <small>土元素、水元素、火元素、风元素、树精、罗格、厄火、飓风、烫水击、电门、V</small>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <main class="game-shell">
+      <section class="top-bar">
+        <div class="empire-card player">
+          <span class="banner"></span>
+          <div>
+            <strong id="playerName">秩序帝国</strong>
+            <small>金币 <span id="gold">120</span></small>
+          </div>
+        </div>
+
+        <div class="status-panel">
+          <span id="gameStatus">集结军队，摧毁敌方雕像</span>
+          <button id="pauseBtn" class="pause-btn" title="暂停战斗">暂停</button>
+          <button id="statsBtn" class="stats-btn" title="查看单位数值">数值</button>
+          <button id="restartBtn" class="icon-btn" title="重新开始">↻</button>
+        </div>
+
+        <div class="empire-card enemy">
+          <div>
+            <strong id="enemyName">混沌帝国</strong>
+            <small>金币 <span id="enemyGold">120</span></small>
+          </div>
+          <span class="banner"></span>
+        </div>
+      </section>
+
+      <section class="battlefield-wrap">
+        <canvas id="battlefield" width="2600" height="620" aria-label="中世纪帝国战场"></canvas>
+        <div class="health-bars">
+          <label>
+            我方雕像
+            <span class="bar"><span id="playerHpBar"></span></span>
+          </label>
+          <label>
+            敌方雕像
+            <span class="bar"><span id="enemyHpBar"></span></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="control-deck">
+        <div class="command-group" aria-label="军令">
+          <button class="command-btn" data-command="retreat">
+            <span>撤退</span>
+            <small>回到城堡内</small>
+          </button>
+          <button class="command-btn active" data-command="guard">
+            <span>防守</span>
+            <small>驻守城堡前</small>
+          </button>
+          <button class="command-btn" data-command="attack">
+            <span>进攻</span>
+            <small>冲击敌方雕像</small>
+          </button>
+        </div>
+
+        <div class="unit-shop" aria-label="训练单位">
+          <button class="train-btn" data-unit="miner">
+            <span class="unit-icon miner"></span>
+            <strong>矿工</strong>
+            <small>50 金币</small>
+          </button>
+          <button class="train-btn" data-unit="swordsman">
+            <span class="unit-icon sword"></span>
+            <strong>剑士</strong>
+            <small>80 金币</small>
+          </button>
+          <button class="train-btn" data-unit="archer">
+            <span class="unit-icon bow"></span>
+            <strong>弓箭手</strong>
+            <small>100 金币</small>
+          </button>
+          <button class="train-btn" data-unit="greatsword">
+            <span class="unit-icon greatsword"></span>
+            <strong>大剑兵</strong>
+            <small>140 金币</small>
+          </button>
+          <button class="train-btn" data-unit="monk">
+            <span class="unit-icon monk"></span>
+            <strong>修道士</strong>
+            <small>120 金币</small>
+          </button>
+          <button class="train-btn" data-unit="crossbow">
+            <span class="unit-icon crossbow"></span>
+            <strong>弩手</strong>
+            <small>130 金币</small>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <section id="statsOverlay" class="stats-overlay hidden" aria-label="单位数值">
+      <div class="stats-panel">
+        <div class="stats-head">
+          <div>
+            <p class="kicker">单位图鉴</p>
+            <h2>所有单位数值</h2>
+          </div>
+          <button id="closeStatsBtn" class="icon-btn" title="关闭">×</button>
+        </div>
+        <div id="statsTable" class="stats-table"></div>
+      </div>
+    </section>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
