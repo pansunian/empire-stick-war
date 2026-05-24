@@ -4,6 +4,11 @@ const ctx = canvas.getContext("2d");
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
 const modeButtons = [...document.querySelectorAll(".mode-card")];
+const campaignMap = document.querySelector("#campaignMap");
+const campaignTitle = document.querySelector("#campaignTitle");
+const campaignProgress = document.querySelector("#campaignProgress");
+const campaignPath = document.querySelector("#campaignPath");
+const campaignBackBtn = document.querySelector("#campaignBackBtn");
 const playerCard = document.querySelector(".empire-card.player");
 const enemyCard = document.querySelector(".empire-card.enemy");
 const playerNameEl = document.querySelector("#playerName");
@@ -534,6 +539,16 @@ const MODE_START_GOLD = {
   versus: 120,
   brawl: 5000,
 };
+const CAMPAIGN_UNLOCKS = {
+  order: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
+  chaos: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
+};
+const campaignProgressByFaction = {
+  order: 1,
+  chaos: 1,
+  element: 1,
+};
 
 function opponentFaction() {
   return enemyFaction;
@@ -669,6 +684,47 @@ function newGame() {
 function chooseEnemyFaction() {
   const factions = Object.keys(FACTIONS);
   return factions[Math.floor(Math.random() * factions.length)];
+}
+
+function openCampaignMap() {
+  renderFactionUi();
+  renderCampaignMap();
+  factionSelect.classList.add("hidden");
+  campaignMap.classList.remove("hidden");
+}
+
+function renderCampaignMap() {
+  const faction = selectedFaction;
+  const progress = campaignProgressByFaction[faction] ?? 1;
+  const unlocks = CAMPAIGN_UNLOCKS[faction];
+
+  campaignTitle.textContent = `${FACTIONS[faction].name}战役`;
+  campaignProgress.textContent = `第 ${progress} 关可挑战，共 12 关`;
+  campaignPath.innerHTML = Array.from({ length: 12 }, (_, index) => {
+    const level = index + 1;
+    const unitType = unlocks[index];
+    const unitName = UNIT[unitType]?.name ?? "终章军团";
+    const available = level <= progress;
+    return `
+      <button class="campaign-node ${available ? "available" : "locked"}" data-level="${level}" ${available ? "" : "disabled"}>
+        <span class="level-tag">第 ${level} 关</span>
+        <strong>${available ? "可挑战" : "未解锁"}</strong>
+        <small>通关后解锁：${unitName}</small>
+        <small>${available ? "关卡暂未设计" : `完成第 ${level - 1} 关后开启`}</small>
+      </button>
+    `;
+  }).join("");
+
+  [...campaignPath.querySelectorAll(".campaign-node.available")].forEach((button) => {
+    button.addEventListener("click", () => {
+      statusEl.textContent = `战役第 ${button.dataset.level} 关暂未开放`;
+    });
+  });
+}
+
+function closeCampaignMap() {
+  campaignMap.classList.add("hidden");
+  factionSelect.classList.remove("hidden");
 }
 
 function renderFactionUi() {
@@ -3918,6 +3974,8 @@ statsOverlay.addEventListener("click", (event) => {
   if (event.target === statsOverlay) statsOverlay.classList.add("hidden");
 });
 
+campaignBackBtn.addEventListener("click", closeCampaignMap);
+
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedMode = button.dataset.mode;
@@ -3931,6 +3989,10 @@ factionButtons.forEach((button) => {
   button.addEventListener("click", () => {
     enterFullscreen();
     selectedFaction = button.dataset.faction;
+    if (selectedMode === "campaign") {
+      openCampaignMap();
+      return;
+    }
     factionSelect.classList.add("hidden");
     newGame();
   });

@@ -20,6 +20,10 @@
             <strong>大乱斗模式</strong>
             <small>人机对战，双方开局 5000 金币</small>
           </button>
+          <button class="mode-card" data-mode="campaign">
+            <strong>战役模式</strong>
+            <small>选择阵营，进入 12 关战役地图</small>
+          </button>
         </div>
         <div class="faction-options three">
           <button class="faction-card order" data-faction="order">
@@ -38,6 +42,20 @@
             <small>土元素、水元素、火元素、风元素、树精、罗格、厄火、飓风、烫水击、电门、V</small>
           </button>
         </div>
+      </div>
+    </section>
+
+    <section id="campaignMap" class="campaign-map hidden" aria-label="战役地图">
+      <div class="campaign-panel">
+        <div class="campaign-head">
+          <div>
+            <p class="kicker">战役地图</p>
+            <h2 id="campaignTitle">秩序帝国战役</h2>
+            <small id="campaignProgress">第 1 关可挑战</small>
+          </div>
+          <button id="campaignBackBtn" class="icon-btn" title="返回主界面">×</button>
+        </div>
+        <div id="campaignPath" class="campaign-path"></div>
       </div>
     </section>
 

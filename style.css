@@ -79,7 +79,7 @@ body {
 
 .mode-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 0 0 18px;
 }
@@ -112,6 +112,95 @@ body {
 
 .mode-card small {
   color: rgba(245, 240, 223, 0.76);
+}
+
+.campaign-map {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(11, 13, 13, 0.66), rgba(11, 13, 13, 0.9)),
+    #101414;
+  overflow: auto;
+}
+
+.campaign-map.hidden {
+  display: none;
+}
+
+.campaign-panel {
+  width: min(1040px, 100%);
+  padding: 30px;
+  border: 1px solid var(--line);
+  background: rgba(20, 23, 25, 0.94);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+}
+
+.campaign-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.campaign-head h2 {
+  margin: 0 0 8px;
+  font-size: clamp(32px, 4vw, 54px);
+  line-height: 1;
+}
+
+.campaign-head small {
+  color: var(--muted);
+}
+
+.campaign-path {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.campaign-node {
+  min-height: 136px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.campaign-node.available {
+  border-color: rgba(230, 184, 74, 0.8);
+  background: rgba(96, 78, 38, 0.55);
+}
+
+.campaign-node.locked {
+  opacity: 0.58;
+}
+
+.campaign-node strong {
+  font-size: 18px;
+}
+
+.campaign-node small {
+  color: rgba(245, 240, 223, 0.74);
+  line-height: 1.45;
+}
+
+.campaign-node .level-tag {
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #16140f;
+  background: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .faction-options {
@@ -1228,6 +1317,10 @@ canvas {
   }
 
   .mode-options {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-path {
     grid-template-columns: 1fr;
   }
 
