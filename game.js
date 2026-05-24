@@ -678,6 +678,20 @@ const CAMPAIGN_LEVELS = {
       undeadMineWave: { every: 10, baseCount: 1, increaseEvery: 60 },
       objective: "保护美杜莎，在亡灵矿潮中击败敌军",
     },
+    3: {
+      title: "第三关：日食降临",
+      playerRoster: ["miner", "machete", "darkKnight"],
+      playerStart: ["miner", "machete", "darkKnight", "medusa"],
+      enemyRoster: ["miner", "creeper", "bomber", "demonArcher"],
+      enemyStart: ["miner", "creeper", "bomber", "demonArcher"],
+      enemyFaction: "chaos",
+      failOnDeath: "medusa",
+      startGold: 150,
+      enemyGold: 170,
+      darkeningSky: { tick: 5, duration: 300, maxAlpha: 0.82 },
+      rewardText: "日食与炸弹客",
+      objective: "在逐渐降临的黑暗中保护美杜莎，击败日食军团",
+    },
   },
   element: {
     1: {
@@ -910,6 +924,7 @@ function newGame() {
     goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
     goldRushMinerSpeedMultiplier: 1,
     campaignPhase: 1,
+    campaignDarknessElapsed: 0,
     nextId: 1,
   };
 
@@ -1571,6 +1586,12 @@ function updateCampaignRules(dt) {
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
   updateCampaignGoldRush(dt);
+  updateCampaignDarkness(dt);
+}
+
+function updateCampaignDarkness(dt) {
+  if (!activeCampaign?.darkeningSky) return;
+  state.campaignDarknessElapsed = Math.min(activeCampaign.darkeningSky.duration, state.campaignDarknessElapsed + dt);
 }
 
 function createGoldRushMines(config) {
@@ -3519,9 +3540,25 @@ function draw() {
   state.spikes.forEach(drawSpike);
   state.blasts.forEach(drawBlast);
   state.lightning.forEach(drawLightning);
+  drawCampaignDarkness();
   state.floaters.forEach(drawFloater);
 
   if (state.over) drawEndOverlay();
+}
+
+function drawCampaignDarkness() {
+  const darkness = activeCampaign?.darkeningSky;
+  if (!darkness) return;
+  const step = darkness.tick ?? 5;
+  const duration = darkness.duration ?? 300;
+  const maxAlpha = darkness.maxAlpha ?? 0.82;
+  const elapsed = Math.min(duration, Math.floor((state.campaignDarknessElapsed ?? 0) / step) * step);
+  const alpha = Math.min(maxAlpha, (elapsed / duration) * maxAlpha);
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.fillStyle = `rgba(2, 6, 16, ${alpha})`;
+  ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+  ctx.restore();
 }
 
 function drawSky() {
