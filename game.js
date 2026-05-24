@@ -663,6 +663,7 @@ const CAMPAIGN_LEVELS = {
         enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete", "darkKnight"],
         enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete", "darkKnight"],
         enemyGold: 200,
+        killPlayerArmy: true,
         message: "混沌帝国参战，摧毁混沌雕像才可胜利",
       },
       rewardText: "火枪手",
@@ -738,6 +739,7 @@ const CAMPAIGN_LEVELS = {
         enemyRoster: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan"],
         enemyStart: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan"],
         enemyGold: 230,
+        killPlayerArmy: true,
         message: "秩序帝国参战，再次摧毁秩序雕像才可胜利",
       },
       rewardText: "爬行者",
@@ -3678,6 +3680,14 @@ function startCampaignSecondPhase() {
   state.enemyCommand = "guard";
   state.enemyCommandTimer = 0;
   state.enemyLineX = getEnemyRallyBaseX();
+  if (phase.killPlayerArmy) {
+    state.units.forEach((unit) => {
+      if (unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit)) {
+        popText(unit.x, unit.y - 80, "秒杀", "#f5f0df");
+      }
+    });
+    state.units = state.units.filter((unit) => unit.side !== "player");
+  }
   state.units = state.units.filter((unit) => unit.side !== "enemy");
   state.arrows = [];
   state.delayedSpells = [];
