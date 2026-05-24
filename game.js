@@ -3291,17 +3291,17 @@ function drawMedusaUnit(unit) {
   ctx.strokeStyle = "#4d6f48";
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(-27, -45);
-  ctx.lineTo(27, -45);
-  ctx.lineTo(36, 0);
-  ctx.lineTo(-36, 0);
+  ctx.moveTo(-20, -45);
+  ctx.lineTo(20, -45);
+  ctx.lineTo(28, 0);
+  ctx.lineTo(-28, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(147, 217, 107, 0.28)";
+  ctx.fillStyle = "rgba(147, 217, 107, 0.24)";
   ctx.beginPath();
-  ctx.ellipse(0, -16, 32, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -16, 22, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = "#405c36";
@@ -3342,11 +3342,6 @@ function drawMedusaUnit(unit) {
   ctx.strokeStyle = "#6f5520";
   ctx.lineWidth = 2;
   ctx.stroke();
-
-  ctx.fillStyle = "#93d96b";
-  ctx.beginPath();
-  ctx.arc(43, -53, 6, 0, Math.PI * 2);
-  ctx.fill();
 
   drawUnitHp(unit);
 }
