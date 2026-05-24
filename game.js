@@ -2463,7 +2463,7 @@ function findTarget(unit) {
     if (other.side === unit.side || other.hp <= 0) continue;
     if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
-    if (unit.type === "demonArcher" && !isAheadOf(unit, other)) continue;
+    if (!isAheadOf(unit, other)) continue;
     if (unit.type === "waterElement" && other.frozenBy) continue;
 
     const searchRange = Math.max(260, getUnitRange(unit));
@@ -2496,6 +2496,7 @@ function nearestEnemy(unit, range) {
     if (other.side === unit.side || other.hp <= 0) continue;
     if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
+    if (!isAheadOf(unit, other)) continue;
 
     const distance = Math.abs(other.x - unit.x);
     if (distance <= nearestDistance) {
