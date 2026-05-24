@@ -773,6 +773,21 @@ const CAMPAIGN_LEVELS = {
       rewardText: "水元素、火元素与罗格",
       objective: "以土元素开采与作战，在巨大陨石下守住矿脉",
     },
+    3: {
+      title: "第三关：冰道异变",
+      playerRoster: ["earthElement", "fireElement", "rog"],
+      playerStart: ["earthElement", "fireElement", "rog", "vUnit"],
+      enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete"],
+      enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete"],
+      enemyFaction: "chaos",
+      startGold: 130,
+      enemyGold: 180,
+      godV: true,
+      iceRoad: { slowDuration: 5, slowFactor: 0.5, fastFactor: 1.5 },
+      enemyDeathsBecomeWaterScorpion: true,
+      rewardText: "水元素、树精与烫水击",
+      objective: "在冰道上掌握移动节奏，利用敌军死亡后的水蝎子反击",
+    },
   },
 };
 let activeCampaign = null;
@@ -2043,6 +2058,7 @@ function launchBaseBoulder(side, target) {
 function updateUnits(dt) {
   for (const unit of state.units) {
     const data = UNIT[unit.type];
+    const beforeX = unit.x;
     if (isUnitHidden(unit)) {
       if (unit.side === "player" && state.command === "retreat") continue;
       unit.inCastle = false;
@@ -2054,19 +2070,30 @@ function updateUnits(dt) {
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
     unit.anim += dt * 8;
 
-    if (unit.stunTimer > 0 || unit.frozenBy) continue;
+    if (unit.stunTimer > 0 || unit.frozenBy) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
     if (shouldEnterPlayerCastle(unit)) {
-      if (moveTowardCastle(unit, dt)) continue;
+      if (moveTowardCastle(unit, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, dt);
+        continue;
+      }
     }
 
-    if (unit.type === "waterElement" && unit.boundTargetId) continue;
+    if (unit.type === "waterElement" && unit.boundTargetId) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
 
     if (unit.type === "treeEnt") {
       updateTreeEnt(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
     if (unit.type === "rog") {
@@ -2074,10 +2101,14 @@ function updateUnits(dt) {
     }
     if (unit.type === "monk") {
       updateMonk(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
     if (unit.type === "vUnit") {
-      if (updateV(unit, dt)) continue;
+      if (updateV(unit, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, dt);
+        continue;
+      }
     }
     if (unit.type === "medusa") {
       updateMedusa(unit, dt);
@@ -2087,11 +2118,13 @@ function updateUnits(dt) {
   }
   if (unit.type === "electricGate") {
     updateElectricGate(unit, dt);
+    updateIceRoadMoveTimer(unit, beforeX, dt);
     continue;
   }
 
   if (unit.type === "miner") {
       updateMiner(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
 
@@ -2108,6 +2141,7 @@ function updateUnits(dt) {
     } else if (distance > 4) {
       unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
     }
+    updateIceRoadMoveTimer(unit, beforeX, dt);
   }
 }
 
@@ -2689,7 +2723,20 @@ function getMoveFactor(unit) {
     if (field.side === unit.side) continue;
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
   }
+  if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   return factor;
+}
+
+function getIceRoadMoveFactor(unit) {
+  const road = activeCampaign?.iceRoad;
+  if (!road) return 1;
+  return (unit.iceRoadMoveTimer ?? 0) >= road.slowDuration ? road.fastFactor : road.slowFactor;
+}
+
+function updateIceRoadMoveTimer(unit, beforeX, dt) {
+  if (!activeCampaign?.iceRoad) return;
+  if (Math.abs(unit.x - beforeX) > 0.1) unit.iceRoadMoveTimer = (unit.iceRoadMoveTimer ?? 0) + dt;
+  else unit.iceRoadMoveTimer = 0;
 }
 
 function getAttackSpeedFactor(unit) {
@@ -3481,6 +3528,11 @@ function removeDead() {
       spearman.y = unit.y;
       popText(unit.x, unit.y - 95, "转化为长矛兵", "#ffb0a3");
     }
+    if (activeCampaign?.enemyDeathsBecomeWaterScorpion && unit.side === "enemy" && unit.type !== "waterScorpion") {
+      const scorpion = spawnUnit("waterScorpion", "player", unit.x);
+      scorpion.y = unit.y;
+      popText(unit.x, unit.y - 95, "化为水蝎子", "#8ee0cf");
+    }
     if (unit.type === "electricGate" && unit.expired) {
       const earth = spawnUnit(UNIT.electricGate.respawnType, unit.side, unit.x);
       earth.y = unit.y;
@@ -3612,6 +3664,7 @@ function draw() {
   ctx.clearRect(0, 0, FIELD.width, FIELD.height);
   drawSky();
   drawGround();
+  drawIceRoadGround();
   if (isGoldRushActive()) {
     drawGoldRushMines();
   } else {
@@ -3649,6 +3702,25 @@ function drawCampaignDarkness() {
   ctx.save();
   ctx.fillStyle = `rgba(2, 6, 16, ${alpha})`;
   ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+  ctx.restore();
+}
+
+function drawIceRoadGround() {
+  if (!activeCampaign?.iceRoad) return;
+  ctx.save();
+  const gradient = ctx.createLinearGradient(0, FIELD.ground - 12, 0, FIELD.ground + 72);
+  gradient.addColorStop(0, "rgba(198, 239, 255, 0.38)");
+  gradient.addColorStop(1, "rgba(118, 194, 230, 0.22)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, FIELD.ground - 8, FIELD.width, 92);
+  ctx.strokeStyle = "rgba(235, 252, 255, 0.55)";
+  ctx.lineWidth = 2;
+  for (let x = -80; x < FIELD.width; x += 120) {
+    ctx.beginPath();
+    ctx.moveTo(x, FIELD.ground + 18);
+    ctx.lineTo(x + 88, FIELD.ground + 4);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
