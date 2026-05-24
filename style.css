@@ -527,6 +527,28 @@ canvas {
   text-shadow: 0 2px 3px #000;
 }
 
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  min-width: 180px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(230, 184, 74, 0.72);
+  background: rgba(230, 184, 74, 0.22);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+  color: #fff1c8;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.home-btn.hidden {
+  display: none;
+}
+
 .bar {
   display: block;
   height: 12px;

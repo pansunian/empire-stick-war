@@ -21,6 +21,7 @@ const enemyHpBar = document.querySelector("#enemyHpBar");
 const fullscreenBtn = document.querySelector("#fullscreenBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const statsBtn = document.querySelector("#statsBtn");
+const homeBtn = document.querySelector("#homeBtn");
 const closeStatsBtn = document.querySelector("#closeStatsBtn");
 const statsOverlay = document.querySelector("#statsOverlay");
 const statsTable = document.querySelector("#statsTable");
@@ -748,6 +749,7 @@ function newGame() {
   enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
   renderFactionUi();
   renderShop();
+  homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
   const startGold = activeCampaign?.startGold ?? MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus;
@@ -3105,10 +3107,12 @@ function checkWin() {
       if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
       const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
       statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
+      homeBtn.classList.remove("hidden");
       return;
     }
     statusEl.textContent =
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}雕像已被摧毁` : "失败，我方雕像倒塌";
+    homeBtn.classList.remove("hidden");
   }
 }
 
@@ -4172,7 +4176,19 @@ function drawEndOverlay() {
   const winnerName = state.winner === "player" ? FACTIONS[selectedFaction].name : FACTIONS[opponentFaction()].name;
   ctx.fillText(`${winnerName}胜利`, FIELD.width / 2, 285);
   ctx.font = "500 22px system-ui, sans-serif";
-  ctx.fillText("点击右上角重新开始", FIELD.width / 2, 328);
+  ctx.fillText("可重新开始，或回到主界面", FIELD.width / 2, 328);
+}
+
+function returnToMainMenu() {
+  activeCampaign = null;
+  selectedMode = "versus";
+  modeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === selectedMode);
+  });
+  campaignMap.classList.add("hidden");
+  factionSelect.classList.remove("hidden");
+  homeBtn.classList.add("hidden");
+  statusEl.textContent = "选择模式与阵营，开始下一场战斗";
 }
 
 function isFullscreen() {
@@ -4502,6 +4518,7 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 restartBtn.addEventListener("click", newGame);
+homeBtn.addEventListener("click", returnToMainMenu);
 
 pauseBtn.addEventListener("click", () => {
   if (state.over) return;
