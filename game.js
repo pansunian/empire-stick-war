@@ -577,6 +577,7 @@ const campaignAbilities = {
     earthMiner: false,
   },
 };
+const CAMPAIGN_SAVE_KEY = "empireStickWarCampaignSave";
 const CAMPAIGN_LEVELS = {
   order: {
     1: {
@@ -600,7 +601,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 150,
-      arrowRain: { every: 20, total: 100, perSecond: 25, damage: 4, radius: 24 },
+      arrowRain: { every: 20, total: 300, perSecond: 75, damage: 4, radius: 24 },
       objective: "借助唯一的斯巴达，穿过周期性箭雨击败敌军",
     },
   },
@@ -654,6 +655,38 @@ function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
+}
+
+function loadCampaignSave() {
+  try {
+    const raw = localStorage.getItem(CAMPAIGN_SAVE_KEY);
+    if (!raw) return;
+    const save = JSON.parse(raw);
+    Object.entries(save.progress ?? {}).forEach(([faction, level]) => {
+      if (campaignProgressByFaction[faction]) {
+        campaignProgressByFaction[faction] = Math.max(campaignProgressByFaction[faction], Number(level) || 1);
+      }
+    });
+    if (save.abilities?.element) {
+      campaignAbilities.element.earthMiner = Boolean(save.abilities.element.earthMiner);
+    }
+  } catch {
+    localStorage.removeItem(CAMPAIGN_SAVE_KEY);
+  }
+}
+
+function saveCampaignProgress() {
+  try {
+    localStorage.setItem(
+      CAMPAIGN_SAVE_KEY,
+      JSON.stringify({
+        progress: campaignProgressByFaction,
+        abilities: campaignAbilities,
+      }),
+    );
+  } catch {
+    statusEl.textContent = "浏览器暂时无法保存战役进度";
+  }
 }
 
 function getCampaignUnitLimit(type) {
@@ -3106,6 +3139,7 @@ function checkWin() {
     if (state.winner === "player" && activeCampaign) {
       campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
       if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
+      saveCampaignProgress();
       const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
       statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
       homeBtn.classList.remove("hidden");
@@ -4618,5 +4652,6 @@ factionButtons.forEach((button) => {
   });
 });
 
+loadCampaignSave();
 newGame();
 requestAnimationFrame(loop);
