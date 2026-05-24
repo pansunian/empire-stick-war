@@ -175,16 +175,15 @@ const UNIT = {
     iceDps: 3,
   },
   enslavedGiant: {
-    name: "奴役巨人",
+    name: "投石车",
     cost: 750,
-    hp: 950,
+    hp: 500,
     damage: 40,
-    range: 260,
-    speed: 20,
+    range: 600,
+    speed: 18,
     train: 8,
     cooldown: 1,
-    giant: true,
-    freezeImmune: true,
+    stunDuration: 2,
   },
   creeper: {
     name: "爬行者",
@@ -347,6 +346,7 @@ const UNIT = {
     giant: true,
     antiAir: true,
     freezeImmune: true,
+    stunDuration: 2,
   },
   earthElement: {
     name: "土元素",
@@ -688,6 +688,19 @@ const CAMPAIGN_LEVELS = {
       },
       rewardText: "火枪手",
       objective: "先击破秩序雕像，再迎战混沌帝国并摧毁第二座雕像",
+    },
+    6: {
+      title: "第六关：霜冻之地",
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
+      playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer"],
+      enemyRoster: ["miner", "chaosGiant"],
+      enemyStart: ["miner", "chaosGiant"],
+      enemyFaction: "chaos",
+      startGold: 180,
+      enemyGold: 760,
+      snow: { moveFactor: 0.9, ignoreGiant: true },
+      rewardText: "",
+      objective: "霜冻之地会让普通单位移速下降 10%，巨人不受影响；用已解锁的秩序军团击败巨人矿队",
     },
   },
   chaos: {
@@ -2875,7 +2888,9 @@ function getMoveFactor(unit) {
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
   }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
-  if (activeCampaign?.snow) factor *= activeCampaign.snow.moveFactor ?? 1;
+  if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
+    factor *= activeCampaign.snow.moveFactor ?? 1;
+  }
   return factor;
 }
 
@@ -3364,7 +3379,7 @@ function launchTornado(unit, target) {
 }
 
 function throwBoulder(unit, target) {
-  const data = UNIT.enslavedGiant;
+  const data = UNIT[unit.type];
   state.arrows.push({
     x: unit.x,
     y: unit.y - 95,
@@ -3372,6 +3387,7 @@ function throwBoulder(unit, target) {
     ty: target.y ? target.y - 42 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 115,
     side: unit.side,
     damage: data.damage,
+    stun: data.stunDuration,
     target,
     life: 0.8,
     type: "boulder",
@@ -3471,6 +3487,7 @@ function updateArrows(dt) {
         if (target) applyDamage(target, arrow.damage, arrow.side);
       } else {
         applyDamage(arrow.target, arrow.damage, arrow.side);
+        if (arrow.stun) applyStun(arrow.target, arrow.stun);
       }
     }
   }
@@ -4176,12 +4193,16 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "enslavedGiant") {
+    drawCatapultUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "medusa") {
     drawMedusaUnit(unit);
     ctx.restore();
     return;
   }
-  if (unit.type === "enslavedGiant") drawEnslavedGiantBasket();
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -4237,6 +4258,59 @@ function drawGodVHeadpiece() {
   ctx.quadraticCurveTo(0, -76, 10, -72);
   ctx.stroke();
   ctx.restore();
+}
+
+function drawCatapultUnit(unit) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#2f2418";
+  ctx.fillStyle = "#8b6f46";
+  ctx.lineWidth = 5;
+
+  ctx.beginPath();
+  ctx.moveTo(-34, -16);
+  ctx.lineTo(26, -16);
+  ctx.lineTo(42, -38);
+  ctx.lineTo(-20, -38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#5c3f24";
+  ctx.beginPath();
+  ctx.moveTo(-20, -38);
+  ctx.lineTo(22, -70);
+  ctx.lineTo(38, -48);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#d0a05c";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(17, -68);
+  ctx.lineTo(54, -84);
+  ctx.stroke();
+
+  ctx.fillStyle = "#8b7a58";
+  ctx.beginPath();
+  ctx.arc(58, -86, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#4d4130";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = "#3a2a1b";
+  [-21, 23].forEach((x) => {
+    ctx.beginPath();
+    ctx.arc(x, -5, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d0a05c";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+
+  ctx.restore();
+  drawUnitHp(unit);
 }
 
 function drawEnslavedGiantBasket() {
