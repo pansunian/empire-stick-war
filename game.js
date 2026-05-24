@@ -222,6 +222,7 @@ const UNIT = {
     poisonDps: 6,
     poisonDuration: Infinity,
     corpseReleaseCount: 2,
+    slayCooldown: 15,
     hero: true,
   },
   deadCorpse: {
@@ -562,7 +563,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "enslavedGiant", "enslavedGiant", "enslavedGiant"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "chaosGiant", "chaosGiant"],
-  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
+  element: ["vUnit", "earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate"],
 };
 const campaignProgressByFaction = {
   order: 1,
@@ -596,6 +597,20 @@ const CAMPAIGN_LEVELS = {
       startGold: 120,
       enemyGold: 120,
       objective: "保护美杜莎，击败砍刀兵",
+    },
+  },
+  element: {
+    1: {
+      title: "第一关：亡灵毒潮",
+      playerRoster: [],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "vUnit"],
+      enemyRoster: ["undead", "poisonZombie"],
+      enemyStart: ["miner", "undead", "poisonZombie"],
+      enemyFaction: "chaos",
+      startGold: 0,
+      enemyGold: 120,
+      godV: true,
+      objective: "守护神明 V，击败亡灵与毒尸",
     },
   },
 };
@@ -653,7 +668,7 @@ function formatSpecial(type) {
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
-  if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V单位`);
+  if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V单位，冷却 ${data.slayCooldown}秒`);
   if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
   return notes.join("；") || "无";
@@ -1008,6 +1023,7 @@ function spawnUnit(type, side, x) {
     nextSpell: "blast",
     nextDreadfireSpell: "dragon",
     medusaPoisonTimer: UNIT[type].poisonEvery ?? 0,
+    medusaSlayTimer: 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -1022,7 +1038,22 @@ function spawnUnit(type, side, x) {
   });
 
   const unit = state.units[state.units.length - 1];
+  applyCampaignUnitModifiers(unit);
   return unit;
+}
+
+function applyCampaignUnitModifiers(unit) {
+  if (!activeCampaign?.godV || unit.side !== "player" || unit.type !== "vUnit") return;
+  unit.nameOverride = "神明V";
+  unit.godV = true;
+  unit.maxHp = 1275;
+  unit.hp = 1275;
+  unit.cloneSpawnTimer = 5;
+  unit.cloneLimit = 3;
+  unit.blinkHpThreshold = 350;
+  unit.blinkThreatHp = 1000;
+  unit.blinkDistance = 600;
+  unit.canControlAll = true;
 }
 
 function convertEarthToMiner(side) {
@@ -1196,6 +1227,12 @@ function spawnVClones(v) {
 function spawnVClone(v, offset) {
   const clone = spawnUnit("vClone", v.side, v.x + offset);
   clone.summonerId = v.id;
+  if (v.godV) {
+    clone.godVClone = true;
+    clone.maxHp = 300;
+    clone.hp = 300;
+    clone.damage = 20;
+  }
   return clone;
 }
 
@@ -1616,6 +1653,7 @@ function updateUnits(dt) {
     }
     unit.cooldown = Math.max(0, unit.cooldown - dt * getAttackSpeedFactor(unit));
     unit.spearRecoverTimer = Math.max(0, unit.spearRecoverTimer - dt);
+    unit.medusaSlayTimer = Math.max(0, unit.medusaSlayTimer - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
     unit.anim += dt * 8;
@@ -1868,10 +1906,14 @@ function updateV(unit, dt) {
   updateVClones(unit, dt);
   updateVControlLink(unit);
 
-  if (!unit.blinkUsed && unit.hp <= UNIT.vUnit.blinkHpThreshold && nearbyEnemyHp(unit, 165) >= UNIT.vUnit.blinkThreatHp) {
+  const blinkHpThreshold = unit.blinkHpThreshold ?? UNIT.vUnit.blinkHpThreshold;
+  const blinkThreatHp = unit.blinkThreatHp ?? UNIT.vUnit.blinkThreatHp;
+  const blinkDistance = unit.blinkDistance ?? UNIT.vUnit.blinkDistance;
+
+  if (!unit.blinkUsed && unit.hp <= blinkHpThreshold && nearbyEnemyHp(unit, 165) >= blinkThreatHp) {
     const dir = unit.side === "player" ? -1 : 1;
     const baseLimit = unit.side === "player" ? FIELD.playerGate - 80 : FIELD.enemyGate + 80;
-    unit.x += dir * UNIT.vUnit.blinkDistance;
+    unit.x += dir * blinkDistance;
     unit.x = unit.side === "player" ? Math.max(baseLimit, unit.x) : Math.min(baseLimit, unit.x);
     unit.blinkUsed = true;
     popText(unit.x, unit.y - 125, "闪现后撤", "#d7ceff");
@@ -1899,22 +1941,24 @@ function controlTargetWithV(v, target) {
 
 function updateVClones(unit, dt) {
   unit.cloneSpawnTimer = Math.max(0, unit.cloneSpawnTimer - dt);
+  const cloneLimit = unit.cloneLimit ?? UNIT.vUnit.cloneLimit;
+  const cloneRespawnDelay = unit.cloneRespawnDelay ?? UNIT.vUnit.cloneRespawnDelay;
   const activeClones = state.units.filter(
     (candidate) => candidate.type === "vClone" && candidate.summonerId === unit.id && candidate.hp > 0,
   ).length;
 
-  if (unit.cloneSpawnTimer > 0 || activeClones >= UNIT.vUnit.cloneLimit) return;
+  if (unit.cloneSpawnTimer > 0 || activeClones >= cloneLimit) return;
 
   if (!unit.initialClonesReleased) {
     spawnVClones(unit);
     unit.initialClonesReleased = true;
-    unit.cloneSpawnTimer = UNIT.vUnit.cloneRespawnDelay;
+    unit.cloneSpawnTimer = cloneRespawnDelay;
     return;
   }
 
   const dir = unit.side === "player" ? -1 : 1;
   spawnVClone(unit, dir * (34 + activeClones * 24));
-  unit.cloneSpawnTimer = UNIT.vUnit.cloneRespawnDelay;
+  unit.cloneSpawnTimer = cloneRespawnDelay;
   popText(unit.x, unit.y - 120, "补充分身", "#d7ceff");
 }
 
@@ -2881,7 +2925,10 @@ function removeDead() {
     }
     if (unit.type === "vClone" && unit.summonerId) {
       const summoner = state.units.find((candidate) => candidate.id === unit.summonerId && candidate.hp > 0);
-      if (summoner) summoner.cloneSpawnTimer = Math.max(summoner.cloneSpawnTimer, UNIT.vUnit.cloneRespawnDelay);
+      if (summoner) {
+        const cloneRespawnDelay = summoner.cloneRespawnDelay ?? UNIT.vUnit.cloneRespawnDelay;
+        summoner.cloneSpawnTimer = Math.max(summoner.cloneSpawnTimer, cloneRespawnDelay);
+      }
     }
     if (unit.controlledBy) {
       const controller = state.units.find((candidate) => candidate.id === unit.controlledBy && candidate.hp > 0);
@@ -3291,10 +3338,10 @@ function drawMedusaUnit(unit) {
   ctx.strokeStyle = "#4d6f48";
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(-20, -45);
-  ctx.lineTo(20, -45);
-  ctx.lineTo(28, 0);
-  ctx.lineTo(-28, 0);
+  ctx.moveTo(-14, -45);
+  ctx.lineTo(14, -45);
+  ctx.lineTo(20, 0);
+  ctx.lineTo(-20, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -4118,12 +4165,17 @@ function canMedusaSlay(medusa, target) {
 function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
   if (target.side === v.side) return false;
+  if (v.canControlAll) return true;
   if (target.type === "vUnit" || target.type === "vClone") return false;
   if (UNIT[target.type]?.giant) return false;
   return true;
 }
 
 function beginMedusaSlay(medusa) {
+  if (medusa.medusaSlayTimer > 0) {
+    popText(medusa.x, medusa.y - 125, `石化冷却 ${Math.ceil(medusa.medusaSlayTimer)}秒`, "#93d96b");
+    return;
+  }
   state.pendingMedusaSlayId = medusa.id;
   state.pendingVControlId = null;
   popText(medusa.x, medusa.y - 125, "选择石化目标", "#93d96b");
@@ -4159,6 +4211,7 @@ function tryMedusaSlay(point) {
 
   target.hp = 0;
   target.combatTimer = 3;
+  medusa.medusaSlayTimer = UNIT.medusa.slayCooldown;
   state.pendingMedusaSlayId = null;
   state.lightning.push({ x1: medusa.x, y1: medusa.y - 78, x2: target.x, y2: target.y - 64, life: 0.28, duration: 0.28 });
   popText(target.x, target.y - 92, "石化秒杀", "#93d96b");
