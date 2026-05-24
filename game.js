@@ -618,6 +618,20 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 120,
       objective: "保护美杜莎，击败砍刀兵",
     },
+    2: {
+      title: "第二关：亡灵矿潮",
+      playerRoster: ["miner", "machete", "darkKnight"],
+      playerStart: ["miner", "machete", "darkKnight", "medusa"],
+      enemyRoster: ["miner", "undead", "poisonZombie", "deadCorpse"],
+      enemyStart: ["miner", "undead", "poisonZombie", "deadCorpse"],
+      enemyFaction: "chaos",
+      failOnDeath: "medusa",
+      startGold: 140,
+      enemyGold: 150,
+      chaosRegenPerSecond: 4,
+      undeadMineWave: { every: 10, baseCount: 1, increaseEvery: 60 },
+      objective: "保护美杜莎，在亡灵矿潮中击败敌军",
+    },
   },
   element: {
     1: {
@@ -826,6 +840,8 @@ function newGame() {
     arrowRainTimer: activeCampaign?.arrowRain?.every ?? 0,
     arrowRainRemaining: 0,
     arrowRainDropCarry: 0,
+    undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
+    undeadMineWaveElapsed: 0,
     nextId: 1,
   };
 
@@ -1484,6 +1500,7 @@ function updateQueue(dt) {
 function updateCampaignRules(dt) {
   updateCampaignReinforcements(dt);
   updateCampaignArrowRain(dt);
+  updateCampaignUndeadMineWave(dt);
 }
 
 function updateCampaignReinforcements(dt) {
@@ -1538,6 +1555,25 @@ function spawnCampaignRainArrow(rain) {
     life: 0.9,
     type: "campaignRain",
   });
+}
+
+function updateCampaignUndeadMineWave(dt) {
+  const wave = activeCampaign?.undeadMineWave;
+  if (!wave) return;
+
+  state.undeadMineWaveElapsed += dt;
+  state.undeadMineWaveTimer -= dt;
+  if (state.undeadMineWaveTimer > 0) return;
+
+  state.undeadMineWaveTimer += wave.every;
+  const bonus = Math.floor(state.undeadMineWaveElapsed / wave.increaseEvery);
+  const count = wave.baseCount + bonus;
+  for (let i = 0; i < count; i += 1) {
+    const x = FIELD.width / 2 + Math.random() * (FIELD.enemyMineX - FIELD.width / 2);
+    const undead = spawnUnit("undead", "enemy", x);
+    undead.forceCharge = true;
+  }
+  popText((FIELD.enemyMineX + FIELD.width / 2) / 2, FIELD.ground - 130, `亡灵涌出 x${count}`, "#b8b0a5");
 }
 
 function updateEnemyAi(dt) {
@@ -2941,6 +2977,7 @@ function updateBurn(dt) {
 }
 
 function updateChaosRecovery(dt) {
+  const regenPerSecond = activeCampaign?.chaosRegenPerSecond ?? 14;
   state.units.forEach((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
@@ -2948,7 +2985,7 @@ function updateChaosRecovery(dt) {
 
     if (unit.chaosRegenTick >= 1) {
       unit.chaosRegenTick = 0;
-      const healed = Math.min(14, unit.maxHp - unit.hp);
+      const healed = Math.min(regenPerSecond, unit.maxHp - unit.hp);
       if (healed > 0) {
         unit.hp += healed;
         popText(unit.x, unit.y - 96, `恢复 +${healed}`, "#b7f56e");
