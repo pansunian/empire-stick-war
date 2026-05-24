@@ -604,6 +604,19 @@ const CAMPAIGN_LEVELS = {
       arrowRain: { every: 20, total: 300, perSecond: 75, damage: 10, radius: 24 },
       objective: "借助唯一的斯巴达，穿过周期性箭雨击败敌军",
     },
+    3: {
+      title: "第三关：反叛矛阵",
+      playerRoster: ["miner", "swordsman", "spearman", "archer"],
+      playerStart: ["miner", "miner", "swordsman", "swordsman", "archer", "spearman"],
+      enemyRoster: ["miner", "spearman", "spartan", "crossbow"],
+      enemyStart: ["miner", "miner", "spartan", "spearman", "spearman"],
+      enemyFaction: "order",
+      startGold: 140,
+      enemyGold: 160,
+      playerDeathsBecomeEnemySpearman: true,
+      enemySpartanDamageReduction: 0.2,
+      objective: "谨慎推进，阵亡的我方单位会被敌军转化为长矛兵",
+    },
   },
   chaos: {
     1: {
@@ -3144,7 +3157,11 @@ function applyDamage(target, amount, attackerSide) {
 
 function getModifiedDamage(target, amount) {
   if (target.kind === "statue") return amount;
-  return isPoisoned(target) ? amount * 2 : amount;
+  let damage = isPoisoned(target) ? amount * 2 : amount;
+  if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
+    damage *= 1 - activeCampaign.enemySpartanDamageReduction;
+  }
+  return Math.max(1, Math.round(damage));
 }
 
 function isPoisoned(unit) {
@@ -3178,6 +3195,11 @@ function removeDead() {
     if (unit.type === "waterElement") {
       releaseFrozenTarget(unit);
       healNearbyAllies(unit);
+    }
+    if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
+      const spearman = spawnUnit("spearman", "enemy", unit.x);
+      spearman.y = unit.y;
+      popText(unit.x, unit.y - 95, "转化为长矛兵", "#ffb0a3");
     }
     if (unit.type === "electricGate" && unit.expired) {
       const earth = spawnUnit(UNIT.electricGate.respawnType, unit.side, unit.x);
