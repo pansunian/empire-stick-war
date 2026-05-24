@@ -608,7 +608,7 @@ const CAMPAIGN_LEVELS = {
     1: {
       title: "第一关：亡灵毒潮",
       playerRoster: [],
-      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "vUnit"],
+      playerStart: ["earthElement", "earthElement", "waterElement", "waterElement", "fireElement", "fireElement", "windElement", "windElement", "vUnit"],
       enemyRoster: ["undead", "poisonZombie"],
       enemyStart: ["miner", "undead", "poisonZombie"],
       enemyFaction: "chaos",
