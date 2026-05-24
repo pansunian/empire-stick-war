@@ -601,7 +601,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 150,
-      arrowRain: { every: 20, total: 300, perSecond: 75, damage: 4, radius: 24 },
+      arrowRain: { every: 20, total: 300, perSecond: 75, damage: 10, radius: 24 },
       objective: "借助唯一的斯巴达，穿过周期性箭雨击败敌军",
     },
   },
