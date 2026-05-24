@@ -781,6 +781,11 @@ function renderShop() {
 
 function setCommand(command) {
   state.command = command;
+  if (command !== "retreat") {
+    state.units.forEach((unit) => {
+      if (unit.side === "player" && unit.inCastle) unit.inCastle = false;
+    });
+  }
   commandButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.command === command);
   });
@@ -842,6 +847,7 @@ function spawnUnit(type, side, x) {
     forceCharge: false,
     earthMiner: false,
     rooted: type === "treeEnt" ? false : null,
+    inCastle: false,
     combatTimer: 0,
     chaosRegenTick: 0,
     chaosCleanseTimer: 10,
@@ -854,7 +860,7 @@ function spawnUnit(type, side, x) {
 }
 
 function convertEarthToMiner(side) {
-  const unit = state.units.find((candidate) => candidate.side === side && candidate.type === "earthElement" && candidate.hp > 0);
+  const unit = state.units.find((candidate) => candidate.side === side && candidate.type === "earthElement" && candidate.hp > 0 && !isUnitHidden(candidate));
   if (!unit) {
     const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
     popText(x, FIELD.ground - 100, "没有可转化的土元素", "#e8c66a");
@@ -1029,43 +1035,43 @@ function spawnVClone(v, offset) {
 
 function getTreeEntMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0),
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !unit.boundTargetId),
+    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
   };
 }
 
 function getRogMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0),
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0),
+    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
   };
 }
 
 function getDreadfireMaterials(side) {
   return {
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0),
+    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
   };
 }
 
 function getHurricaneMaterials(side) {
   return {
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !unit.boundTargetId),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0),
+    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
+    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
   };
 }
 
 function getScaldStrikeMaterials(side) {
   return {
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !unit.boundTargetId),
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0),
+    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
+    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
   };
 }
 
 function getElectricGateMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0),
+    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
   };
 }
 
@@ -1075,7 +1081,7 @@ function getVMaterials(side) {
 
   for (const type of required) {
     const unit = state.units.find((candidate) => {
-      if (candidate.side !== side || candidate.type !== type || candidate.hp <= 0 || picked.includes(candidate)) return false;
+      if (candidate.side !== side || candidate.type !== type || candidate.hp <= 0 || isUnitHidden(candidate) || picked.includes(candidate)) return false;
       if (candidate.type === "waterElement" && candidate.boundTargetId) return false;
       return true;
     });
@@ -1245,7 +1251,7 @@ function updateEnemyCommand() {
   const enemyPower = getArmyPower("enemy");
   const playerPower = getArmyPower("player");
   const enemyFighters = countFighters("enemy");
-  const playerPressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && unit.x > FIELD.enemyGate - 430).length;
+  const playerPressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 430).length;
   let nextCommand = "guard";
 
   if (state.enemyHp < 360 && enemyPower < playerPower * 0.95) {
@@ -1296,7 +1302,7 @@ function updateEnemyBattleLine(dt) {
 
 function getArmyPower(side) {
   return state.units.reduce((sum, unit) => {
-    if (unit.side !== side || unit.hp <= 0 || unit.type === "miner") return sum;
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || unit.type === "miner") return sum;
     const data = UNIT[unit.type];
     const rangeBonus = (data.range ?? 30) > 80 ? 1.25 : 1;
     const giantBonus = data.giant ? 1.35 : 1;
@@ -1305,11 +1311,11 @@ function getArmyPower(side) {
 }
 
 function countFighters(side) {
-  return state.units.filter((unit) => unit.side === side && unit.hp > 0 && unit.type !== "miner").length;
+  return state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && unit.type !== "miner").length;
 }
 
 function getFrontX(side) {
-  const fighters = state.units.filter((unit) => unit.side === side && unit.hp > 0 && unit.type !== "miner");
+  const fighters = state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && unit.type !== "miner");
   if (!fighters.length) return null;
   return fighters.reduce((front, unit) => {
     if (front === null) return unit.x;
@@ -1401,7 +1407,7 @@ function updateBaseAttacks(dt) {
 function findBaseTarget(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   return state.units
-    .filter((unit) => unit.side !== side && unit.hp > 0 && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - baseX) <= BASE_ATTACK.range)
+    .filter((unit) => unit.side !== side && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - baseX) <= BASE_ATTACK.range)
     .sort((a, b) => Math.abs(a.x - baseX) - Math.abs(b.x - baseX))[0];
 }
 
@@ -1424,6 +1430,10 @@ function launchBaseBoulder(side, target) {
 function updateUnits(dt) {
   for (const unit of state.units) {
     const data = UNIT[unit.type];
+    if (isUnitHidden(unit)) {
+      if (unit.side === "player" && state.command === "retreat") continue;
+      unit.inCastle = false;
+    }
     unit.cooldown = Math.max(0, unit.cooldown - dt);
     unit.spearRecoverTimer = Math.max(0, unit.spearRecoverTimer - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
@@ -1435,6 +1445,10 @@ function updateUnits(dt) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
       continue;
     }
+    if (shouldEnterPlayerCastle(unit)) {
+      if (moveTowardCastle(unit, dt)) continue;
+    }
+
     if (unit.type === "waterElement" && unit.boundTargetId) continue;
 
     if (unit.type === "treeEnt") {
@@ -1464,7 +1478,7 @@ function updateUnits(dt) {
       continue;
     }
 
-    const target = findTarget(unit);
+    const target = isPlayerRetreating(unit) ? null : findTarget(unit);
     const desiredX = getDesiredX(unit, target);
     const distance = Math.abs(unit.x - desiredX);
 
@@ -1595,6 +1609,7 @@ function findWoundedAlly(unit) {
 
   state.units.forEach((target) => {
     if (target.side !== unit.side || target === unit || target.hp <= 0) return;
+    if (isUnitHidden(target)) return;
     if (target.hp >= target.maxHp && !isPoisoned(target)) return;
     if (Math.abs(target.x - unit.x) > UNIT.monk.healRange) return;
     const missingHp = target.maxHp - target.hp;
@@ -1622,7 +1637,7 @@ function getMonkDesiredX(unit) {
 }
 
 function getFrontAlly(side) {
-  const allies = state.units.filter((unit) => unit.side === side && unit.hp > 0 && unit.type !== "monk" && unit.type !== "miner");
+  const allies = state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && unit.type !== "monk" && unit.type !== "miner");
   if (!allies.length) return null;
   return allies.reduce((front, unit) => {
     if (!front) return unit;
@@ -1694,6 +1709,7 @@ function updateVControlLink(unit) {
 function nearbyEnemyHp(unit, range) {
   return state.units.reduce((sum, target) => {
     if (target.side === unit.side || target.hp <= 0) return sum;
+    if (isUnitHidden(target)) return sum;
     if (Math.abs(target.x - unit.x) > range) return sum;
     return sum + target.hp;
   }, 0);
@@ -1704,7 +1720,7 @@ function findMostThreateningEnemy(unit) {
   let bestScore = -Infinity;
 
   state.units.forEach((target) => {
-    if (target.side === unit.side || target.hp <= 0 || target.type === "vUnit" || target.type === "vClone" || UNIT[target.type]?.giant) return;
+    if (target.side === unit.side || target.hp <= 0 || isUnitHidden(target) || target.type === "vUnit" || target.type === "vClone" || UNIT[target.type]?.giant) return;
     const data = UNIT[target.type];
     const distancePenalty = Math.abs(target.x - unit.x) / 20;
     const score = data.damage * 4 + target.hp * 0.35 + (data.range ?? 0) * 0.08 - distancePenalty;
@@ -1790,6 +1806,11 @@ function updateUndeadMage(unit, dt) {
 }
 
 function updateMiner(unit, dt) {
+  if (shouldEnterPlayerCastle(unit)) {
+    moveTowardCastle(unit, dt);
+    return;
+  }
+
   const danger = nearestEnemy(unit, 42);
   const canFight = unit.side === "enemy" || state.command !== "retreat";
   if (danger && canFight) {
@@ -1828,6 +1849,55 @@ function updateMiner(unit, dt) {
   }
 }
 
+function canEnterCastle(unit) {
+  return unit.side === "player" && !UNIT[unit.type]?.giant;
+}
+
+function isUnitHidden(unit) {
+  return unit.inCastle && canEnterCastle(unit);
+}
+
+function shouldEnterPlayerCastle(unit) {
+  return canEnterCastle(unit) && state.command === "retreat";
+}
+
+function isPlayerRetreating(unit) {
+  return unit.side === "player" && state.command === "retreat";
+}
+
+function moveTowardCastle(unit, dt) {
+  const data = UNIT[unit.type];
+  const castleX = FIELD.playerBase + 42;
+
+  if (unit.type === "treeEnt" && unit.rooted) {
+    unit.rooted = false;
+    killTreeScorpions(unit);
+    popText(unit.x, unit.y - 120, "拔根撤退", "#8ee0cf");
+  }
+  if (unit.type === "waterElement" && unit.boundTargetId) releaseFrozenTarget(unit);
+
+  if (Math.abs(unit.x - castleX) > 6) {
+    unit.x += Math.sign(castleX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+    return true;
+  }
+
+  unit.x = castleX;
+  unit.inCastle = true;
+  unit.cooldown = 0;
+  if (unit.carry > 0) {
+    state.gold += unit.carry;
+    popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, "#f5c542");
+    unit.carry = 0;
+    unit.mineTimer = 0;
+  }
+  clearPoison(unit, "进城解毒");
+  unit.burnTimer = 0;
+  unit.burnDps = 0;
+  unit.burnTick = 0;
+  popText(unit.x, unit.y - 78, "进入城堡", "#d9e8ff");
+  return true;
+}
+
 function getMoveFactor(unit) {
   let factor = 1;
   if (isPoisoned(unit)) factor = Math.min(factor, unit.poisonSlow ?? 1);
@@ -1842,7 +1912,7 @@ function getDesiredX(unit, target) {
   const range = getUnitRange(unit);
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
-    if (state.command === "retreat") return FIELD.playerBase + 42;
+    if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
     if (state.command === "guard") return Math.min(FIELD.playerGate + 130 + unit.id * 7, 600);
     if (target) return target.x - range + 8;
     return FIELD.enemyBase;
@@ -1867,11 +1937,13 @@ function getUnitRange(unit) {
 }
 
 function findTarget(unit) {
+  if (isUnitHidden(unit)) return null;
   let nearby = null;
   let nearestDistance = Infinity;
 
   for (const other of state.units) {
     if (other.side === unit.side || other.hp <= 0) continue;
+    if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
     if (unit.type === "demonArcher" && !isAheadOf(unit, other)) continue;
     if (unit.type === "waterElement" && other.frozenBy) continue;
@@ -1898,11 +1970,13 @@ function findTarget(unit) {
 }
 
 function nearestEnemy(unit, range) {
+  if (isUnitHidden(unit)) return null;
   let nearest = null;
   let nearestDistance = range;
 
   for (const other of state.units) {
     if (other.side === unit.side || other.hp <= 0) continue;
+    if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
 
     const distance = Math.abs(other.x - unit.x);
@@ -1916,6 +1990,7 @@ function nearestEnemy(unit, range) {
 }
 
 function canTarget(attacker, target) {
+  if (isUnitHidden(attacker) || isUnitHidden(target)) return false;
   if (UNIT[target.type]?.untargetable) return false;
   return !(UNIT[target.type]?.flying && isMelee(attacker) && !UNIT[attacker.type]?.antiAir);
 }
@@ -1930,6 +2005,7 @@ function isAheadOf(unit, target) {
 
 function attack(unit, target) {
   const data = UNIT[unit.type];
+  if (isUnitHidden(unit) || isUnitHidden(target)) return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
   unit.cooldown = data.cooldown ?? 0.9;
@@ -2094,7 +2170,7 @@ function castTreeRoot(unit, target) {
   const start = Math.min(x1, x2);
   const end = Math.max(x1, x2);
   const targets = state.units
-    .filter((enemy) => enemy.side !== unit.side && enemy.hp > 0 && enemy.x >= start && enemy.x <= end)
+    .filter((enemy) => enemy.side !== unit.side && enemy.hp > 0 && !isUnitHidden(enemy) && enemy.x >= start && enemy.x <= end)
     .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
     .slice(0, AOE_TARGET_LIMIT);
   if (!targets.length && target.kind !== "statue") targets.push(target);
@@ -2259,6 +2335,7 @@ function strikeLightning(unit, target) {
 
 function bindFreeze(water, target) {
   if (target.kind === "statue" || target.frozenBy) return;
+  if (isUnitHidden(target)) return;
   if (UNIT[target.type]?.freezeImmune) {
     popText(target.x, target.y - 92, "免疫冰冻", "#d8f8ff");
     return;
@@ -2272,6 +2349,7 @@ function bindFreeze(water, target) {
 
 function updateFrozenDamage(dt) {
   state.units.forEach((unit) => {
+    if (isUnitHidden(unit)) return;
     if (!unit.frozenBy || unit.hp <= 0) return;
     unit.frozenTick += dt;
     if (unit.frozenTick < 1) return;
@@ -2284,6 +2362,7 @@ function updateFrozenDamage(dt) {
 
 function applyStun(target, duration) {
   if (target.kind === "statue") return;
+  if (isUnitHidden(target)) return;
   target.stunTimer = Math.max(target.stunTimer, duration);
   popText(target.x, target.y - 92, "眩晕", "#d7b978");
 }
@@ -2349,6 +2428,7 @@ function explodeAt(x, y, attackerSide, damage, radius, label, options = {}) {
 }
 
 function applyPoison(target, dps, duration, options = {}) {
+  if (isUnitHidden(target)) return;
   if (target.kind === "statue") {
     popText(target.x, FIELD.ground - 172, "毒雾无效", "#93d96b");
     return;
@@ -2378,6 +2458,7 @@ function clearPoison(unit, label = "解毒") {
 }
 
 function applyBurn(target, dps, duration) {
+  if (isUnitHidden(target)) return;
   if (target.kind === "statue") {
     popText(target.x, FIELD.ground - 172, "灼烧无效", "#ff9b45");
     return;
@@ -2391,6 +2472,7 @@ function applyBurn(target, dps, duration) {
 
 function updatePoison(dt) {
   state.units.forEach((unit) => {
+    if (isUnitHidden(unit)) return;
     if (unit.poisonTimer <= 0 && unit.poisonTimer !== Infinity) return;
     if (unit.poisonTimer !== Infinity) unit.poisonTimer -= dt;
     unit.poisonTick += dt;
@@ -2404,6 +2486,7 @@ function updatePoison(dt) {
 
 function updateBurn(dt) {
   state.units.forEach((unit) => {
+    if (isUnitHidden(unit)) return;
     if (unit.burnTimer <= 0) return;
     unit.burnTimer -= dt;
     unit.burnTick += dt;
@@ -2418,7 +2501,7 @@ function updateBurn(dt) {
 
 function updateChaosRecovery(dt) {
   state.units.forEach((unit) => {
-    if (unit.hp <= 0 || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
+    if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
     unit.chaosCleanseTimer -= dt;
 
@@ -2488,12 +2571,13 @@ function stunUnitsInRadius(x, radius, attackerSide, duration) {
 
 function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null) {
   return state.units
-    .filter((unit) => unit.side !== attackerSide && unit.hp > 0 && unit !== exclude && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
+    .filter((unit) => unit.side !== attackerSide && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
     .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))
     .slice(0, limit);
 }
 
 function applyDamage(target, amount, attackerSide) {
+  if (isUnitHidden(target)) return;
   if (target.kind === "statue") {
     if (target.side === "enemy") state.enemyHp -= amount;
     if (target.side === "player") state.playerHp -= amount;
@@ -2630,7 +2714,7 @@ function draw() {
   drawCastle("player");
   drawCastle("enemy");
 
-  const sortedUnits = [...state.units].sort((a, b) => a.y - b.y);
+  const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
   state.arrows.forEach(drawArrow);
   state.delayedSpells.forEach(drawDelayedSpell);
@@ -3577,18 +3661,18 @@ function updateHud() {
   enemyHpBar.style.width = `${state.enemyHp / 10}%`;
   trainButtons.forEach((button) => {
     if (button.dataset.action === "convertEarth") {
-      button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0);
+      button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       return;
     }
     if (button.dataset.action === "mergeTreeEnt") {
-      const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0);
-      const hasWater = state.units.some((unit) => unit.side === "player" && unit.type === "waterElement" && unit.hp > 0 && !unit.boundTargetId);
+      const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+      const hasWater = state.units.some((unit) => unit.side === "player" && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId);
       button.disabled = state.over || state.gold < MERGE_COST || !hasEarth || !hasWater;
       return;
     }
     if (button.dataset.action === "mergeRog") {
-      const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0);
-      const hasFire = state.units.some((unit) => unit.side === "player" && unit.type === "fireElement" && unit.hp > 0);
+      const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+      const hasFire = state.units.some((unit) => unit.side === "player" && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit));
       button.disabled = state.over || state.gold < MERGE_COST || !hasEarth || !hasFire;
       return;
     }
@@ -3635,14 +3719,14 @@ function canvasPoint(event) {
 
 function findPlayerVAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "vUnit" || unit.hp <= 0) return false;
+    if (unit.side !== "player" || unit.type !== "vUnit" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 42 && Math.abs(unit.y - 48 - point.y) <= 78;
   });
 }
 
 function findUnitAt(point) {
   return state.units.find((unit) => {
-    if (unit.hp <= 0) return false;
+    if (unit.hp <= 0 || isUnitHidden(unit)) return false;
     const height = UNIT[unit.type]?.giant ? 150 : unit.type === "treeEnt" ? 120 : 86;
     const width = UNIT[unit.type]?.giant ? 74 : unit.type === "treeEnt" ? 72 : 48;
     return Math.abs(unit.x - point.x) <= width && Math.abs(unit.y - 48 - point.y) <= height;
@@ -3692,14 +3776,14 @@ function tryManualVControl(point) {
 
 function findPlayerTreeEntAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "treeEnt" || unit.hp <= 0) return false;
+    if (unit.side !== "player" || unit.type !== "treeEnt" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 52 && Math.abs(unit.y - 48 - point.y) <= 92;
   });
 }
 
 function findPlayerWaterElementAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "waterElement" || unit.hp <= 0) return false;
+    if (unit.side !== "player" || unit.type !== "waterElement" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 46 && Math.abs(unit.y - 48 - point.y) <= 86;
   });
 }
