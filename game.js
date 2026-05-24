@@ -788,6 +788,19 @@ const CAMPAIGN_LEVELS = {
       rewardText: "水元素、树精与烫水击",
       objective: "在冰道上掌握移动节奏，利用敌军死亡后的水蝎子反击",
     },
+    4: {
+      title: "第四关：雷云战场",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "treeEnt", "rog", "scaldStrike"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "treeEnt", "rog", "scaldStrike"],
+      enemyRoster: ["miner", "swordsman", "crossbow", "archer", "spearman"],
+      enemyStart: ["miner", "swordsman", "crossbow", "archer", "spearman"],
+      enemyFaction: "order",
+      startGold: 160,
+      enemyGold: 190,
+      stormClouds: { every: 5, bolts: 5, hitChance: 0.7, damage: 15 },
+      rewardText: "电门",
+      objective: "没有神明 V 支援，在雷云随机轰击中击败秩序军团",
+    },
   },
 };
 let activeCampaign = null;
@@ -990,6 +1003,7 @@ function newGame() {
     goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
     goldRushMinerSpeedMultiplier: 1,
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
+    stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
     campaignPhase: 1,
     campaignDarknessElapsed: 0,
     nextId: 1,
@@ -1647,6 +1661,7 @@ function updateCampaignRules(dt) {
   updateCampaignGoldRush(dt);
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
+  updateCampaignStormClouds(dt);
 }
 
 function updateCampaignDarkness(dt) {
@@ -1669,6 +1684,41 @@ function updateCampaignEnemyHealthGrowth(dt) {
       popText(unit.x, unit.y - 92, `生命 +${gain}`, "#b7f56e");
     }
   });
+}
+
+function updateCampaignStormClouds(dt) {
+  const storm = activeCampaign?.stormClouds;
+  if (!storm) return;
+  state.stormCloudTimer -= dt;
+  if (state.stormCloudTimer > 0) return;
+  state.stormCloudTimer += storm.every;
+  for (let i = 0; i < storm.bolts; i += 1) {
+    strikeStormBolt(storm);
+  }
+}
+
+function strikeStormBolt(storm) {
+  const targetSide = Math.random() < 0.5 ? "player" : "enemy";
+  const candidates = state.units.filter((unit) => unit.side === targetSide && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
+  if (!candidates.length) return;
+  const target = candidates[Math.floor(Math.random() * candidates.length)];
+  const hit = Math.random() < storm.hitChance;
+  const x2 = hit ? target.x : target.x + (Math.random() * 130 - 65);
+  const y2 = hit ? target.y - 52 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground + 8;
+  state.lightning.push({
+    x1: x2 + (Math.random() * 120 - 60),
+    y1: 38,
+    x2,
+    y2,
+    life: 0.32,
+    duration: 0.32,
+  });
+  if (!hit) {
+    popText(x2, FIELD.ground - 70, "闪电落空", "#d7f6ff");
+    return;
+  }
+  applyDamage(target, storm.damage, "neutral");
+  popText(target.x, target.y - 105, `雷击 -${storm.damage}`, "#d7f6ff");
 }
 
 function createGoldRushMines(config) {
@@ -3690,6 +3740,7 @@ function popText(x, y, text, color) {
 function draw() {
   ctx.clearRect(0, 0, FIELD.width, FIELD.height);
   drawSky();
+  drawStormClouds();
   drawGround();
   drawIceRoadGround();
   if (isGoldRushActive()) {
@@ -3729,6 +3780,24 @@ function drawCampaignDarkness() {
   ctx.save();
   ctx.fillStyle = `rgba(2, 6, 16, ${alpha})`;
   ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+  ctx.restore();
+}
+
+function drawStormClouds() {
+  if (!activeCampaign?.stormClouds) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(24, 31, 43, 0.72)";
+  ctx.fillRect(0, 0, FIELD.width, 118);
+  ctx.fillStyle = "rgba(10, 14, 24, 0.5)";
+  for (let x = -80; x < FIELD.width + 120; x += 120) {
+    ctx.beginPath();
+    ctx.arc(x, 86, 58, 0, Math.PI * 2);
+    ctx.arc(x + 45, 70, 72, 0, Math.PI * 2);
+    ctx.arc(x + 96, 88, 54, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "rgba(180, 210, 230, 0.14)";
+  ctx.fillRect(0, 112, FIELD.width, 8);
   ctx.restore();
 }
 
