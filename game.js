@@ -629,6 +629,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 120,
       enemyGold: 120,
       goldRush: { mineCount: 10, mineGold: 5000, speedEvery: 30 },
+      rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
   },
@@ -932,7 +933,7 @@ function renderCampaignMap() {
     const unitName = UNIT[unitType]?.name ?? "终章军团";
     const available = level <= progress;
     const config = CAMPAIGN_LEVELS[faction]?.[level];
-    const rewardText = config?.rewardText ?? unitName;
+    const rewardText = config?.rewardText === "" ? "无" : (config?.rewardText ?? unitName);
     return `
       <button class="campaign-node ${available ? "available" : "locked"}" data-level="${level}" ${available ? "" : "disabled"}>
         <span class="level-tag">第 ${level} 关</span>
