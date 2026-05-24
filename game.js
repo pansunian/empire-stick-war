@@ -660,8 +660,8 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 180,
       secondPhase: {
         enemyFaction: "chaos",
-        enemyRoster: ["miner", "undead", "poisonZombie", "darkKnight", "demonArcher"],
-        enemyStart: ["miner", "undead", "poisonZombie", "darkKnight", "demonArcher"],
+        enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete", "darkKnight"],
+        enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete", "darkKnight"],
         enemyGold: 200,
         message: "混沌帝国参战，摧毁混沌雕像才可胜利",
       },
@@ -735,8 +735,8 @@ const CAMPAIGN_LEVELS = {
       enemyReinforcement: { type: "largeCreeper", every: 20, phase: 1 },
       secondPhase: {
         enemyFaction: "order",
-        enemyRoster: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan", "crossbow"],
-        enemyStart: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan", "crossbow"],
+        enemyRoster: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan"],
+        enemyStart: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan"],
         enemyGold: 230,
         message: "秩序帝国参战，再次摧毁秩序雕像才可胜利",
       },
