@@ -18,6 +18,7 @@ const enemyGoldEl = document.querySelector("#enemyGold");
 const statusEl = document.querySelector("#gameStatus");
 const playerHpBar = document.querySelector("#playerHpBar");
 const enemyHpBar = document.querySelector("#enemyHpBar");
+const topHomeBtn = document.querySelector("#topHomeBtn");
 const fullscreenBtn = document.querySelector("#fullscreenBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const statsBtn = document.querySelector("#statsBtn");
@@ -4518,6 +4519,7 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 restartBtn.addEventListener("click", newGame);
+topHomeBtn.addEventListener("click", returnToMainMenu);
 homeBtn.addEventListener("click", returnToMainMenu);
 
 pauseBtn.addEventListener("click", () => {

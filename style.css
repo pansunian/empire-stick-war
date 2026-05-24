@@ -368,6 +368,7 @@ button {
   text-align: center;
   position: relative;
   font-weight: 700;
+  padding-right: 290px;
 }
 
 .icon-btn {
@@ -382,7 +383,8 @@ button {
 
 .pause-btn,
 .stats-btn,
-.fullscreen-btn {
+.fullscreen-btn,
+.top-home-btn {
   position: absolute;
   height: 40px;
   padding: 0 14px;
@@ -390,6 +392,10 @@ button {
   background: rgba(230, 184, 74, 0.18);
   border: 1px solid rgba(230, 184, 74, 0.48);
   font-weight: 800;
+}
+
+.top-home-btn {
+  right: 228px;
 }
 
 .fullscreen-btn {
@@ -1486,11 +1492,12 @@ canvas {
 
   .status-panel {
     font-size: 13px;
-    padding-right: 214px;
+    padding-right: 286px;
     white-space: nowrap;
     overflow: hidden;
   }
 
+  .top-home-btn,
   .fullscreen-btn,
   .pause-btn,
   .stats-btn,
@@ -1498,6 +1505,10 @@ canvas {
     height: 34px;
     top: 50%;
     transform: translateY(-50%);
+  }
+
+  .top-home-btn {
+    right: 218px;
   }
 
   .fullscreen-btn {
@@ -1605,6 +1616,7 @@ canvas {
     height: 28px;
   }
 
+  .top-home-btn,
   .fullscreen-btn,
   .pause-btn,
   .stats-btn,
