@@ -24,7 +24,8 @@ const statsBtn = document.querySelector("#statsBtn");
 const closeStatsBtn = document.querySelector("#closeStatsBtn");
 const statsOverlay = document.querySelector("#statsOverlay");
 const statsTable = document.querySelector("#statsTable");
-const commandButtons = [...document.querySelectorAll(".command-btn")];
+const armyCommandButtons = [...document.querySelectorAll(".command-btn[data-command]")];
+const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")];
 const unitShop = document.querySelector(".unit-shop");
 let trainButtons = [...document.querySelectorAll(".train-btn")];
 const restartBtn = document.querySelector("#restartBtn");
@@ -557,8 +558,8 @@ const MODE_START_GOLD = {
   brawl: 5000,
 };
 const CAMPAIGN_UNLOCKS = {
-  order: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
-  chaos: ["medusa", "miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"],
+  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "enslavedGiant", "enslavedGiant", "enslavedGiant"],
+  chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "chaosGiant", "chaosGiant"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
@@ -702,6 +703,7 @@ function newGame() {
     gold: startGold,
     enemyGold: enemyStartGold,
     command: "guard",
+    minerCommand: "mine",
     paused: false,
     over: false,
     winner: null,
@@ -743,6 +745,7 @@ function newGame() {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
   setCommand("guard");
+  setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：${activeCampaign.objective}`;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
@@ -929,12 +932,29 @@ function setCommand(command) {
       if (unit.side === "player" && unit.inCastle) unit.inCastle = false;
     });
   }
-  commandButtons.forEach((button) => {
+  armyCommandButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.command === command);
   });
 
   if (!state.over) {
     const label = { retreat: "撤退！部队回到城堡内", guard: "防守阵线已展开", attack: "全军进攻，目标敌方雕像" };
+    statusEl.textContent = label[command];
+  }
+}
+
+function setMinerCommand(command) {
+  state.minerCommand = command;
+  if (command !== "retreat" && state.command !== "retreat") {
+    state.units.forEach((unit) => {
+      if (unit.side === "player" && unit.type === "miner" && unit.inCastle) unit.inCastle = false;
+    });
+  }
+  minerCommandButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.minerCommand === command);
+  });
+
+  if (!state.over) {
+    const label = { retreat: "矿工撤退进城", mine: "矿工开始挖矿", attack: "矿工加入进攻" };
     statusEl.textContent = label[command];
   }
 }
@@ -2001,8 +2021,16 @@ function updateUndeadMage(unit, dt) {
 }
 
 function updateMiner(unit, dt) {
-  if (shouldEnterPlayerCastle(unit)) {
+  const isPlayer = unit.side === "player";
+  const minerCommand = isPlayer ? state.minerCommand : "mine";
+
+  if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
     moveTowardCastle(unit, dt);
+    return;
+  }
+
+  if (isPlayer && minerCommand === "attack") {
+    updateAttackingMiner(unit, dt);
     return;
   }
 
@@ -2013,7 +2041,6 @@ function updateMiner(unit, dt) {
     return;
   }
 
-  const isPlayer = unit.side === "player";
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
   const mine = isPlayer ? FIELD.playerMineX : FIELD.enemyMineX;
   const mustDeposit = unit.carry >= UNIT.miner.bagSize;
@@ -2041,6 +2068,25 @@ function updateMiner(unit, dt) {
       unit.carry = Math.min(UNIT.miner.bagSize, unit.carry + UNIT.miner.goldPerSwing);
       popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
     }
+  }
+}
+
+function updateAttackingMiner(unit, dt) {
+  const data = UNIT.miner;
+  const range = getUnitRange(unit);
+  const target = nearestEnemy(unit, 230) ?? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
+  const desiredX = target.kind === "statue" ? target.x - range + 8 : target.x - range + 8;
+
+  if (target && Math.abs(unit.x - target.x) <= range) {
+    attack(unit, target);
+    return;
+  }
+  if (target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
+    attack(unit, target);
+    return;
+  }
+  if (Math.abs(unit.x - desiredX) > 4) {
+    unit.x += Math.sign(desiredX - unit.x) * data.speed * getMoveFactor(unit) * dt;
   }
 }
 
@@ -4104,8 +4150,12 @@ function toggleTreeEntRoot(unit) {
   popText(unit.x, unit.y - 120, "拔根前进", "#8ee0cf");
 }
 
-commandButtons.forEach((button) => {
+armyCommandButtons.forEach((button) => {
   button.addEventListener("click", () => setCommand(button.dataset.command));
+});
+
+minerCommandButtons.forEach((button) => {
+  button.addEventListener("click", () => setMinerCommand(button.dataset.minerCommand));
 });
 
 canvas.addEventListener("dblclick", (event) => {
