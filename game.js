@@ -201,11 +201,10 @@ const UNIT = {
     cost: 0,
     hp: 200,
     damage: 18,
-    range: 34,
-    speed: 58,
+    range: 28,
+    speed: 72,
     train: 0,
     cooldown: 1.2,
-    stunDuration: 1,
     visualScale: 1.3,
   },
   undead: {
