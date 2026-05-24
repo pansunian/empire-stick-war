@@ -657,7 +657,7 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 160,
       godV: true,
       allowEarthMinerConversion: true,
-      campaignMeteor: { every: 15, damage: 80, radius: 96, duration: 2.4, size: 18 },
+      campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18 },
       objective: "以土元素开采与作战，在巨大陨石下守住矿脉",
     },
   },
@@ -1601,19 +1601,24 @@ function updateCampaignMeteor(dt) {
   state.campaignMeteorTimer += meteor.every;
   const minX = Math.min(FIELD.playerMineX, FIELD.enemyMineX);
   const maxX = Math.max(FIELD.playerMineX, FIELD.enemyMineX);
-  const x = minX + Math.random() * (maxX - minX);
-  state.meteors.push({
-    x,
-    y: FIELD.ground - 20,
-    side: "neutral",
-    damage: meteor.damage,
-    radius: meteor.radius,
-    life: meteor.duration,
-    duration: meteor.duration,
-    size: meteor.size,
-    campaign: true,
-  });
-  popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
+  const count = meteor.count ?? 1;
+  const segmentWidth = (maxX - minX) / count;
+  for (let i = 0; i < count; i += 1) {
+    const segmentStart = minX + segmentWidth * i;
+    const x = segmentStart + segmentWidth * (0.22 + Math.random() * 0.56);
+    state.meteors.push({
+      x,
+      y: FIELD.ground - 20,
+      side: "neutral",
+      damage: meteor.damage,
+      radius: meteor.radius,
+      life: meteor.duration + i * 0.18,
+      duration: meteor.duration + i * 0.18,
+      size: meteor.size,
+      campaign: true,
+    });
+    popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
+  }
 }
 
 function updateEnemyAi(dt) {
