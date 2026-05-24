@@ -2707,6 +2707,7 @@ function getDesiredX(unit, target) {
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
+    if (target && target.kind !== "statue") return target.x - range + 8;
     if (state.command === "guard") return getPlayerRallyX(unit);
     if (target) return target.x - range + 8;
     return FIELD.enemyBase;
@@ -2714,6 +2715,7 @@ function getDesiredX(unit, target) {
 
   if (unit.forceCharge) return FIELD.playerBase;
   if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
+  if (target && target.kind !== "statue") return target.x + range - 8;
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
   if (target) return target.x + range - 8;
   return FIELD.playerBase;
