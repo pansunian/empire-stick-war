@@ -563,12 +563,17 @@ const MODE_START_GOLD = {
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "enslavedGiant", "enslavedGiant", "enslavedGiant"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "chaosGiant", "chaosGiant"],
-  element: ["vUnit", "earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
   order: 1,
   chaos: 1,
   element: 1,
+};
+const campaignAbilities = {
+  element: {
+    earthMiner: false,
+  },
 };
 const CAMPAIGN_LEVELS = {
   order: {
@@ -610,6 +615,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 0,
       enemyGold: 120,
       godV: true,
+      rewardText: "土元素与土化矿工能力",
       objective: "守护神明 V，击败亡灵与毒尸",
     },
   },
@@ -634,6 +640,12 @@ function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
+}
+
+function canUseEarthMinerConversion() {
+  if (selectedFaction !== "element") return false;
+  if (!activeCampaign) return true;
+  return campaignAbilities.element.earthMiner || activeCampaign.allowEarthMinerConversion;
 }
 
 function currentEnemyRoster() {
@@ -793,11 +805,12 @@ function renderCampaignMap() {
     const unitName = UNIT[unitType]?.name ?? "终章军团";
     const available = level <= progress;
     const config = CAMPAIGN_LEVELS[faction]?.[level];
+    const rewardText = config?.rewardText ?? unitName;
     return `
       <button class="campaign-node ${available ? "available" : "locked"}" data-level="${level}" ${available ? "" : "disabled"}>
         <span class="level-tag">第 ${level} 关</span>
         <strong>${config?.title ?? (available ? "可挑战" : "未解锁")}</strong>
-        <small>通关后解锁：${unitName}</small>
+        <small>通关后解锁：${rewardText}</small>
         <small>${available ? (config ? "点击开始战斗" : "关卡暂未设计") : `完成第 ${level - 1} 关后开启`}</small>
       </button>
     `;
@@ -841,9 +854,12 @@ function renderFactionUi() {
 }
 
 function renderShop() {
+  const showElementMergeButtons = selectedFaction === "element" && !activeCampaign;
+  const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
   const elementActionButtons =
-    selectedFaction === "element" && !activeCampaign
+    showElementMergeButtons || showElementConvertButton
       ? `
+        ${showElementMergeButtons ? `
         <button class="train-btn" data-action="mergeTreeEnt">
           <span class="unit-icon tree"></span>
           <strong>合成树精</strong>
@@ -879,11 +895,14 @@ function renderShop() {
           <strong>合成 V</strong>
           <small>${MERGE_COST} 金币</small>
         </button>
+        ` : ""}
+        ${showElementConvertButton ? `
         <button class="train-btn" data-action="convertEarth">
           <span class="unit-icon miner"></span>
           <strong>土化矿工</strong>
           <small>选择一名土元素</small>
         </button>
+        ` : ""}
       `
       : "";
   const shopRoster = currentPlayerRoster();
@@ -2998,7 +3017,9 @@ function checkWin() {
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
     if (state.winner === "player" && activeCampaign) {
       campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
-      statusEl.textContent = `胜利！${activeCampaign.title}完成，下一关已开启`;
+      if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
+      const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
+      statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
       return;
     }
     statusEl.textContent =
