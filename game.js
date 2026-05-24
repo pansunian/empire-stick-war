@@ -222,7 +222,7 @@ const UNIT = {
     poisonDps: 6,
     poisonDuration: Infinity,
     corpseReleaseCount: 2,
-    slayCooldown: 15,
+    slayCooldown: 20,
     hero: true,
   },
   deadCorpse: {
