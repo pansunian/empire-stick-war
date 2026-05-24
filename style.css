@@ -46,10 +46,11 @@ body {
   place-items: center;
   padding: 24px;
   background:
-    linear-gradient(rgba(12, 14, 15, 0.58), rgba(12, 14, 15, 0.84)),
-    radial-gradient(circle at 25% 30%, rgba(79, 140, 255, 0.18), transparent 28%),
-    radial-gradient(circle at 78% 32%, rgba(217, 77, 67, 0.18), transparent 28%),
+    linear-gradient(rgba(10, 12, 13, 0.32), rgba(10, 12, 13, 0.82)),
+    url("data:image/svg+xml,%3Csvg width='1600' height='900' viewBox='0 0 1600 900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%236f8790'/%3E%3Cstop offset='0.52' stop-color='%23b9a56f'/%3E%3Cstop offset='1' stop-color='%23282d23'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1600' height='900' fill='url(%23sky)'/%3E%3Ccircle cx='1125' cy='120' r='56' fill='%23ffe3a3' opacity='.72'/%3E%3Cpath d='M0 500 L150 300 L330 520 L520 250 L760 535 L1010 280 L1245 520 L1430 330 L1600 510 L1600 900 L0 900 Z' fill='%233f514a' opacity='.82'/%3E%3Cpath d='M0 585 L245 405 L460 610 L685 380 L935 628 L1175 430 L1600 595 L1600 900 L0 900 Z' fill='%232c3c35' opacity='.92'/%3E%3Cpath d='M0 690 C210 650 350 735 555 682 C770 625 915 712 1120 665 C1320 620 1440 675 1600 642 L1600 900 L0 900 Z' fill='%232d361f'/%3E%3Cpath d='M0 754 C270 720 430 790 690 748 C930 710 1130 780 1600 730 L1600 900 L0 900 Z' fill='%231b2319'/%3E%3Cg fill='%23131616' opacity='.9'%3E%3Cpath d='M185 642 h110 v155 h-110z M210 590 h60 v65 h-60z M162 625 h28 v172 h-28z M290 625 h28 v172 h-28z'/%3E%3Cpath d='M1310 638 h112 v160 h-112z M1334 584 h62 v68 h-62z M1287 621 h30 v177 h-30z M1417 621 h30 v177 h-30z'/%3E%3C/g%3E%3Cg opacity='.85'%3E%3Cpath d='M285 590 v-82' stroke='%23222220' stroke-width='7'/%3E%3Cpath d='M292 510 l84 28 l-84 29z' fill='%234f8cff'/%3E%3Cpath d='M1310 584 v-82' stroke='%23222220' stroke-width='7'/%3E%3Cpath d='M1303 504 l-84 28 l84 29z' fill='%23d94d43'/%3E%3C/g%3E%3Cg stroke='%23e7c36a' stroke-width='3' opacity='.22'%3E%3Cpath d='M250 745 C520 695 960 705 1345 746' fill='none'/%3E%3Cpath d='M385 790 C690 745 1000 750 1250 790' fill='none'/%3E%3C/g%3E%3C/svg%3E"),
     #111515;
+  background-size: cover;
+  background-position: center;
   overflow: auto;
 }
 
@@ -61,7 +62,8 @@ body {
   width: min(920px, 100%);
   padding: 34px;
   border: 1px solid var(--line);
-  background: rgba(20, 23, 25, 0.92);
+  background: rgba(20, 23, 25, 0.88);
+  backdrop-filter: blur(6px);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 }
 
