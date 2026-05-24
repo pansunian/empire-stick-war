@@ -681,7 +681,7 @@ const CAMPAIGN_LEVELS = {
     },
     3: {
       title: "第三关：日食降临",
-      playerRoster: ["miner", "machete", "darkKnight"],
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "darkKnight"],
       playerStart: ["miner", "machete", "darkKnight", "medusa"],
       enemyRoster: ["miner", "creeper", "bomber", "demonArcher"],
       enemyStart: ["miner", "creeper", "bomber", "demonArcher"],
