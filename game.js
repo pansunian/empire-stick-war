@@ -3211,6 +3211,8 @@ function drawUnit(unit) {
   ctx.fill();
   ctx.stroke();
 
+  if (unit.godV) drawGodVHeadpiece();
+
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(0, -50);
@@ -3228,6 +3230,31 @@ function drawUnit(unit) {
   drawWeapon(unit.type);
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawGodVHeadpiece() {
+  ctx.save();
+  ctx.strokeStyle = "#d7dde5";
+  ctx.fillStyle = "#f2f5f7";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-13, -72);
+  ctx.lineTo(-6, -82);
+  ctx.lineTo(0, -73);
+  ctx.lineTo(6, -82);
+  ctx.lineTo(13, -72);
+  ctx.lineTo(7, -69);
+  ctx.lineTo(0, -72);
+  ctx.lineTo(-7, -69);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "#aeb8c2";
+  ctx.beginPath();
+  ctx.moveTo(-10, -72);
+  ctx.quadraticCurveTo(0, -76, 10, -72);
+  ctx.stroke();
   ctx.restore();
 }
 
