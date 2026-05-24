@@ -615,7 +615,20 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 160,
       playerDeathsBecomeEnemySpearman: true,
       enemySpartanDamageReduction: 0.2,
+      rewardText: "弩手与斯巴达",
       objective: "谨慎推进，阵亡的我方单位会被敌军转化为长矛兵",
+    },
+    4: {
+      title: "第四关：淘金热",
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "spartan", "crossbow"],
+      playerStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
+      enemyRoster: ["miner", "swordsman", "spearman", "archer", "spartan", "crossbow"],
+      enemyStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
+      enemyFaction: "order",
+      startGold: 120,
+      enemyGold: 120,
+      goldRush: { mineCount: 10, mineGold: 5000, speedEvery: 30 },
+      objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
   },
   chaos: {
@@ -871,6 +884,9 @@ function newGame() {
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
+    goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
+    goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
+    goldRushMinerSpeedMultiplier: 1,
     nextId: 1,
   };
 
@@ -1531,6 +1547,36 @@ function updateCampaignRules(dt) {
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
+  updateCampaignGoldRush(dt);
+}
+
+function createGoldRushMines(config) {
+  if (!config) return [];
+  const count = config.mineCount ?? 10;
+  const left = FIELD.playerGate + 520;
+  const right = FIELD.enemyGate - 520;
+  const step = count > 1 ? (right - left) / (count - 1) : 0;
+  return Array.from({ length: count }, (_, index) => ({
+    id: `goldRush-${index}`,
+    x: left + step * index,
+    remaining: config.mineGold ?? 5000,
+    capacity: config.mineGold ?? 5000,
+  }));
+}
+
+function isGoldRushActive() {
+  return Boolean(activeCampaign?.goldRush && state.goldRushMines?.length);
+}
+
+function updateCampaignGoldRush(dt) {
+  const rush = activeCampaign?.goldRush;
+  if (!rush) return;
+
+  state.goldRushSpeedTimer -= dt;
+  if (state.goldRushSpeedTimer > 0) return;
+  state.goldRushSpeedTimer += rush.speedEvery;
+  state.goldRushMinerSpeedMultiplier *= 2;
+  popText(FIELD.width / 2, FIELD.ground - 165, `矿工移速 x${state.goldRushMinerSpeedMultiplier}`, "#f5c542");
 }
 
 function updateCampaignReinforcements(dt) {
@@ -2322,6 +2368,11 @@ function updateMiner(unit, dt) {
     return;
   }
 
+  if (isGoldRushActive()) {
+    updateGoldRushMiner(unit, dt);
+    return;
+  }
+
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
   const mine = isPlayer ? FIELD.playerMineX : FIELD.enemyMineX;
   const mustDeposit = unit.carry >= UNIT.miner.bagSize;
@@ -2329,7 +2380,7 @@ function updateMiner(unit, dt) {
   const targetX = forcedHome || mustDeposit ? home : mine;
 
   if (Math.abs(unit.x - targetX) > 5) {
-    unit.x += Math.sign(targetX - unit.x) * UNIT.miner.speed * getMoveFactor(unit) * dt;
+    unit.x += Math.sign(targetX - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
     return;
   }
 
@@ -2352,6 +2403,99 @@ function updateMiner(unit, dt) {
   }
 }
 
+function getMinerMoveSpeed(unit) {
+  const rushMultiplier = isGoldRushActive() ? state.goldRushMinerSpeedMultiplier : 1;
+  return (unit.speed ?? UNIT.miner.speed) * rushMultiplier;
+}
+
+function updateGoldRushMiner(unit, dt) {
+  const isPlayer = unit.side === "player";
+  const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
+  const mustDeposit = unit.carry >= UNIT.miner.bagSize;
+
+  if (mustDeposit) {
+    unit.goldRushMineId = null;
+    if (Math.abs(unit.x - home) > 5) {
+      unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+      return;
+    }
+    if (isPlayer) state.gold += unit.carry;
+    else state.enemyGold += unit.carry;
+    popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, isPlayer ? "#f5c542" : "#b7f56e");
+    unit.carry = 0;
+    unit.mineTimer = 0;
+    updateHud();
+    return;
+  }
+
+  const mine = getGoldRushMineForMiner(unit);
+  if (!mine) {
+    unit.goldRushMineId = null;
+    if (unit.carry > 0) {
+      if (Math.abs(unit.x - home) > 5) {
+        unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+        return;
+      }
+      if (isPlayer) state.gold += unit.carry;
+      else state.enemyGold += unit.carry;
+      popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, isPlayer ? "#f5c542" : "#b7f56e");
+      unit.carry = 0;
+      unit.mineTimer = 0;
+      updateHud();
+    } else if (Math.abs(unit.x - home) > 5) {
+      unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+    }
+    return;
+  }
+
+  if (Math.abs(unit.x - mine.x) > 5) {
+    unit.x += Math.sign(mine.x - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+    return;
+  }
+
+  unit.mineTimer += dt;
+  if (unit.mineTimer < 1) return;
+  unit.mineTimer = 0;
+  const space = UNIT.miner.bagSize - unit.carry;
+  const mined = Math.min(UNIT.miner.goldPerSwing, space, mine.remaining);
+  if (mined <= 0) {
+    unit.goldRushMineId = null;
+    return;
+  }
+  unit.carry += mined;
+  mine.remaining -= mined;
+  popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+}
+
+function getGoldRushMineForMiner(unit) {
+  const current = state.goldRushMines.find((mine) => mine.id === unit.goldRushMineId && canMineGoldRushMine(unit, mine));
+  if (current) return current;
+  const available = state.goldRushMines
+    .filter((mine) => canMineGoldRushMine(unit, mine))
+    .sort((a, b) => Math.abs(unit.x - a.x) - Math.abs(unit.x - b.x));
+  const mine = available[0];
+  unit.goldRushMineId = mine?.id ?? null;
+  return mine;
+}
+
+function canMineGoldRushMine(unit, mine) {
+  if (!mine || mine.remaining <= 0) return false;
+  const occupyingSide = getGoldRushMineOccupyingSide(mine);
+  return !occupyingSide || occupyingSide === unit.side;
+}
+
+function getGoldRushMineOccupyingSide(mine) {
+  const miner = state.units.find((candidate) => (
+    candidate.type === "miner"
+    && candidate.hp > 0
+    && !isUnitHidden(candidate)
+    && candidate.goldRushMineId === mine.id
+    && Math.abs(candidate.x - mine.x) <= 8
+    && candidate.carry < UNIT.miner.bagSize
+  ));
+  return miner?.side ?? null;
+}
+
 function updateAttackingMiner(unit, dt) {
   const data = UNIT.miner;
   const range = getUnitRange(unit);
@@ -2367,7 +2511,7 @@ function updateAttackingMiner(unit, dt) {
     return;
   }
   if (Math.abs(unit.x - desiredX) > 4) {
-    unit.x += Math.sign(desiredX - unit.x) * data.speed * getMoveFactor(unit) * dt;
+    unit.x += Math.sign(desiredX - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
   }
 }
 
@@ -2399,7 +2543,8 @@ function moveTowardCastle(unit, dt) {
   if (unit.type === "waterElement" && unit.boundTargetId) releaseFrozenTarget(unit);
 
   if (Math.abs(unit.x - castleX) > 6) {
-    unit.x += Math.sign(castleX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+    const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed);
+    unit.x += Math.sign(castleX - unit.x) * speed * getMoveFactor(unit) * dt;
     return true;
   }
 
@@ -3300,8 +3445,12 @@ function draw() {
   ctx.clearRect(0, 0, FIELD.width, FIELD.height);
   drawSky();
   drawGround();
-  drawMine(FIELD.playerMineX, "player");
-  drawMine(FIELD.enemyMineX, "enemy");
+  if (isGoldRushActive()) {
+    drawGoldRushMines();
+  } else {
+    drawMine(FIELD.playerMineX, "player");
+    drawMine(FIELD.enemyMineX, "enemy");
+  }
   drawCastle("player");
   drawCastle("enemy");
 
@@ -3378,6 +3527,38 @@ function drawMine(x, side) {
   ctx.arc(x + 7, FIELD.ground - 8, 15, 0, Math.PI * 2);
   ctx.arc(x - 17, FIELD.ground + 8, 10, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawGoldRushMines() {
+  ctx.save();
+  state.goldRushMines.forEach((mine) => {
+    const ratio = mine.capacity > 0 ? mine.remaining / mine.capacity : 0;
+    ctx.fillStyle = mine.remaining > 0 ? "#3b301f" : "#2a2925";
+    ctx.beginPath();
+    ctx.moveTo(mine.x - 42, FIELD.ground + 16);
+    ctx.lineTo(mine.x - 12, FIELD.ground - 42);
+    ctx.lineTo(mine.x + 44, FIELD.ground + 16);
+    ctx.closePath();
+    ctx.fill();
+
+    if (mine.remaining > 0) {
+      ctx.fillStyle = "#f5c542";
+      ctx.beginPath();
+      ctx.arc(mine.x + 3, FIELD.ground - 3, 11, 0, Math.PI * 2);
+      ctx.arc(mine.x - 14, FIELD.ground + 8, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.fillRect(mine.x - 28, FIELD.ground + 24, 56, 6);
+    ctx.fillStyle = "#f5c542";
+    ctx.fillRect(mine.x - 28, FIELD.ground + 24, 56 * ratio, 6);
+    ctx.fillStyle = "#efe6c8";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, FIELD.ground + 44);
+  });
+  ctx.restore();
 }
 
 function drawCastle(side) {
