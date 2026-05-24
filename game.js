@@ -3488,6 +3488,7 @@ function isPoisoned(unit) {
 }
 
 function removeDead() {
+  const deathSpawns = [];
   state.units = state.units.filter((unit) => {
     if (unit.hp > 0) return true;
     if (unit.type === "vUnit") {
@@ -3516,22 +3517,49 @@ function removeDead() {
       healNearbyAllies(unit);
     }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
-      convertToOpponentSpearman(unit, "enemy");
+      deathSpawns.push({
+        type: "spearman",
+        side: "enemy",
+        x: unit.x,
+        y: unit.y,
+        text: "原地转化长矛兵",
+        color: "#ffb0a3",
+        setup: (spearman) => {
+          spearman.cooldown = 0;
+          spearman.spearRecoverTimer = 0;
+          spearman.spearThrown = false;
+        },
+      });
     }
     if (activeCampaign?.enemyDeathsBecomeWaterScorpion && unit.side === "enemy" && unit.type !== "waterScorpion") {
-      const scorpion = spawnUnit("waterScorpion", "player", unit.x);
-      scorpion.y = unit.y;
-      popText(unit.x, unit.y - 95, "化为水蝎子", "#8ee0cf");
+      deathSpawns.push({
+        type: "waterScorpion",
+        side: "player",
+        x: unit.x,
+        y: unit.y,
+        text: "化为水蝎子",
+        color: "#8ee0cf",
+      });
     }
     if (unit.type === "electricGate" && unit.expired) {
-      const earth = spawnUnit(UNIT.electricGate.respawnType, unit.side, unit.x);
-      earth.y = unit.y;
-      popText(unit.x, unit.y - 95, "土元素重生", "#c0a36d");
+      deathSpawns.push({
+        type: UNIT.electricGate.respawnType,
+        side: unit.side,
+        x: unit.x,
+        y: unit.y,
+        text: "土元素重生",
+        color: "#c0a36d",
+      });
     }
     if (unit.poisonRaisesUndead && unit.poisonSourceSide && unit.type !== "undead") {
-      const undead = spawnUnit("undead", unit.poisonSourceSide, unit.x);
-      undead.y = unit.y;
-      popText(unit.x, unit.y - 95, "化为亡灵", "#93d96b");
+      deathSpawns.push({
+        type: "undead",
+        side: unit.poisonSourceSide,
+        x: unit.x,
+        y: unit.y,
+        text: "化为亡灵",
+        color: "#93d96b",
+      });
     }
     if (unit.frozenBy) {
       const water = state.units.find((candidate) => candidate.id === unit.frozenBy);
@@ -3545,16 +3573,15 @@ function removeDead() {
     popText(unit.x, unit.y - 35, "倒下", "#a7a7a7");
     return false;
   });
+  deathSpawns.forEach(spawnDeathUnit);
 }
 
-function convertToOpponentSpearman(unit, opponentSide) {
-  const spearman = spawnUnit("spearman", opponentSide, unit.x);
-  spearman.x = unit.x;
-  spearman.y = unit.y;
-  spearman.cooldown = 0;
-  spearman.spearRecoverTimer = 0;
-  spearman.spearThrown = false;
-  popText(unit.x, unit.y - 95, "原地转化长矛兵", opponentSide === "enemy" ? "#ffb0a3" : "#d9e8ff");
+function spawnDeathUnit(spawn) {
+  const unit = spawnUnit(spawn.type, spawn.side, spawn.x);
+  unit.x = spawn.x;
+  unit.y = spawn.y;
+  if (spawn.setup) spawn.setup(unit);
+  popText(spawn.x, spawn.y - 95, spawn.text, spawn.color);
 }
 
 function releaseFrozenTarget(water) {
