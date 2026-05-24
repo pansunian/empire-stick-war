@@ -205,6 +205,22 @@ const UNIT = {
     train: 3.9,
     cooldown: 0.88,
   },
+  medusa: {
+    name: "美杜莎",
+    cost: 0,
+    hp: 1500,
+    damage: 30,
+    range: 150,
+    speed: 38,
+    train: 0,
+    cooldown: 1.4,
+    poisonEvery: 6,
+    poisonRange: 190,
+    poisonDps: 6,
+    poisonDuration: Infinity,
+    corpseReleaseCount: 2,
+    hero: true,
+  },
   deadCorpse: {
     name: "死尸",
     cost: 70,
@@ -506,6 +522,7 @@ const UNIT_ICON = {
   deadCorpse: "venom",
   poisonZombie: "venom",
   bomber: "bomb",
+  medusa: "venom",
   demonArcher: "wing",
   darkKnight: "axe",
   undeadMage: "skull",
@@ -526,7 +543,7 @@ const UNIT_ICON = {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
@@ -541,7 +558,7 @@ const MODE_START_GOLD = {
 };
 const CAMPAIGN_UNLOCKS = {
   order: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
-  chaos: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"],
+  chaos: ["medusa", "miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
@@ -561,6 +578,21 @@ const CAMPAIGN_LEVELS = {
       enemyReinforcement: { type: "spearman", every: 8 },
       startGold: 120,
       enemyGold: 120,
+      objective: "训练矿工和剑士，击败长矛守军",
+    },
+  },
+  chaos: {
+    1: {
+      title: "第一关：砍刀试炼",
+      playerRoster: ["miner"],
+      playerStart: ["miner", "medusa"],
+      enemyRoster: ["machete"],
+      enemyStart: ["miner", "machete"],
+      enemyFaction: "chaos",
+      failOnDeath: "medusa",
+      startGold: 120,
+      enemyGold: 120,
+      objective: "保护美杜莎，击败砍刀兵",
     },
   },
 };
@@ -618,6 +650,7 @@ function formatSpecial(type) {
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V单位`);
   if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
   return notes.join("；") || "无";
@@ -694,6 +727,7 @@ function newGame() {
     playerBaseAttackTimer: 0,
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
+    pendingMedusaSlayId: null,
     passiveGoldTimer: 2,
     campaignReinforcementTimer: activeCampaign?.enemyReinforcement?.every ?? 0,
     nextId: 1,
@@ -709,7 +743,7 @@ function newGame() {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
   setCommand("guard");
-  if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：训练矿工和剑士，击败长矛守军`;
+  if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：${activeCampaign.objective}`;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
 }
@@ -951,6 +985,7 @@ function spawnUnit(type, side, x) {
     originalSide: null,
     nextSpell: "blast",
     nextDreadfireSpell: "dragon",
+    medusaPoisonTimer: UNIT[type].poisonEvery ?? 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -1587,6 +1622,9 @@ function updateUnits(dt) {
     if (unit.type === "vUnit") {
       if (updateV(unit, dt)) continue;
     }
+    if (unit.type === "medusa") {
+      updateMedusa(unit, dt);
+    }
   if (unit.type === "undeadMage") {
     updateUndeadMage(unit, dt);
   }
@@ -1677,6 +1715,41 @@ function updateRog(unit, dt) {
   });
   state.blasts.push({ x: unit.x, y: unit.y - 22, radius: UNIT.rog.magmaRadius, life: 0.5, duration: 0.5, color: "#ff7a3d" });
   popText(unit.x, unit.y - 115, "岩浆喷发", "#ff7a3d");
+}
+
+function updateMedusa(unit, dt) {
+  unit.medusaPoisonTimer -= dt;
+  if (unit.medusaPoisonTimer > 0) return;
+
+  unit.medusaPoisonTimer = UNIT.medusa.poisonEvery;
+  sprayMedusaPoison(unit);
+  releaseMedusaCorpses(unit);
+}
+
+function sprayMedusaPoison(unit) {
+  const data = UNIT.medusa;
+  const dir = unit.side === "player" ? 1 : -1;
+  const start = Math.min(unit.x, unit.x + dir * data.poisonRange);
+  const end = Math.max(unit.x, unit.x + dir * data.poisonRange);
+  const targets = state.units.filter((target) => {
+    if (target.side === unit.side || target.hp <= 0 || isUnitHidden(target)) return false;
+    return target.x >= start && target.x <= end;
+  });
+
+  targets.forEach((target) => applyPoison(target, data.poisonDps, data.poisonDuration));
+  state.blasts.push({ x: unit.x + dir * data.poisonRange * 0.5, y: unit.y - 42, radius: data.poisonRange * 0.45, life: 0.38, duration: 0.38, color: "#93d96b" });
+  popText(unit.x, unit.y - 112, "石蛇毒雾", "#93d96b");
+}
+
+function releaseMedusaCorpses(unit) {
+  const data = UNIT.medusa;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.corpseReleaseCount; i += 1) {
+    const corpse = spawnUnit("deadCorpse", unit.side, unit.x + dir * (34 + i * 22));
+    corpse.y = unit.y + (i === 0 ? -10 : 10);
+    corpse.summonerId = unit.id;
+  }
+  popText(unit.x, unit.y - 132, "释放死尸", "#93d96b");
 }
 
 function updateElectricGate(unit, dt) {
@@ -2761,6 +2834,11 @@ function removeDead() {
       const water = state.units.find((candidate) => candidate.id === unit.frozenBy);
       if (water) water.boundTargetId = null;
     }
+    if (activeCampaign?.failOnDeath === unit.type && unit.side === "player") {
+      state.over = true;
+      state.winner = "enemy";
+      statusEl.textContent = `${UNIT[unit.type].name}倒下，挑战失败`;
+    }
     popText(unit.x, unit.y - 35, "倒下", "#a7a7a7");
     return false;
   });
@@ -3024,6 +3102,7 @@ function getUnitColor(unit) {
   if (type === "creeper") return "#9ee06b";
   if (type === "undead") return "#b8b0a5";
   if (type === "deadCorpse") return "#72836c";
+  if (type === "medusa") return "#587a5f";
   if (type === "poisonZombie") return "#6bd28f";
   if (type === "bomber") return "#f09a47";
   if (type === "demonArcher") return "#d05b8f";
@@ -3057,6 +3136,7 @@ function getHeadColor(unit) {
   if (unit.type === "creeper") return "#b8b0a5";
   if (unit.type === "undead") return "#9ee06b";
   if (unit.type === "deadCorpse") return "#93d96b";
+  if (unit.type === "medusa") return "#d8f6b8";
   return getUnitColor(unit);
 }
 
@@ -3283,6 +3363,21 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(34, -41, 7, 0, Math.PI * 2);
     ctx.arc(45, -30, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "medusa") {
+    ctx.strokeStyle = "#93d96b";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, -34);
+    ctx.lineTo(46, -48);
+    ctx.moveTo(4, -52);
+    ctx.quadraticCurveTo(20, -78, 40, -66);
+    ctx.moveTo(-4, -52);
+    ctx.quadraticCurveTo(-24, -78, -42, -64);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(147, 217, 107, 0.35)";
+    ctx.beginPath();
+    ctx.arc(48, -48, 8, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "poisonZombie") {
     ctx.strokeStyle = "#8ef076";
@@ -3851,6 +3946,13 @@ function findPlayerVAt(point) {
   });
 }
 
+function findPlayerMedusaAt(point) {
+  return state.units.find((unit) => {
+    if (unit.side !== "player" || unit.type !== "medusa" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    return Math.abs(unit.x - point.x) <= 54 && Math.abs(unit.y - 48 - point.y) <= 92;
+  });
+}
+
 function findUnitAt(point) {
   return state.units.find((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit)) return false;
@@ -3860,12 +3962,26 @@ function findUnitAt(point) {
   });
 }
 
+function canMedusaSlay(medusa, target) {
+  if (!medusa || !target || medusa.hp <= 0 || target.hp <= 0) return false;
+  if (target.side === medusa.side) return false;
+  if (target.type === "vUnit") return false;
+  if (UNIT[target.type]?.giant) return false;
+  return true;
+}
+
 function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
   if (target.side === v.side) return false;
   if (target.type === "vUnit" || target.type === "vClone") return false;
   if (UNIT[target.type]?.giant) return false;
   return true;
+}
+
+function beginMedusaSlay(medusa) {
+  state.pendingMedusaSlayId = medusa.id;
+  state.pendingVControlId = null;
+  popText(medusa.x, medusa.y - 125, "选择石化目标", "#93d96b");
 }
 
 function beginManualVControl(v) {
@@ -3879,6 +3995,29 @@ function beginManualVControl(v) {
   }
   state.pendingVControlId = v.id;
   popText(v.x, v.y - 125, "选择控制目标", "#d7ceff");
+}
+
+function tryMedusaSlay(point) {
+  if (!state.pendingMedusaSlayId) return false;
+  const medusa = state.units.find((unit) => unit.id === state.pendingMedusaSlayId && unit.hp > 0);
+  if (!medusa) {
+    state.pendingMedusaSlayId = null;
+    return false;
+  }
+
+  const target = findUnitAt(point);
+  if (!canMedusaSlay(medusa, target)) {
+    popText(medusa.x, medusa.y - 125, "无法石化", "#93d96b");
+    state.pendingMedusaSlayId = null;
+    return true;
+  }
+
+  target.hp = 0;
+  target.combatTimer = 3;
+  state.pendingMedusaSlayId = null;
+  state.lightning.push({ x1: medusa.x, y1: medusa.y - 78, x2: target.x, y2: target.y - 64, life: 0.28, duration: 0.28 });
+  popText(target.x, target.y - 92, "石化秒杀", "#93d96b");
+  return true;
 }
 
 function tryManualVControl(point) {
@@ -3929,6 +4068,13 @@ function handleSpecialPress(point) {
     return true;
   }
 
+  const medusa = findPlayerMedusaAt(point);
+  if (medusa) {
+    beginMedusaSlay(medusa);
+    updateHud();
+    return true;
+  }
+
   const tree = findPlayerTreeEntAt(point);
   if (tree) {
     toggleTreeEntRoot(tree);
@@ -3973,7 +4119,8 @@ canvas.addEventListener("click", (event) => {
     longPressTriggered = false;
     return;
   }
-  if (tryManualVControl(canvasPoint(event))) updateHud();
+  const point = canvasPoint(event);
+  if (tryMedusaSlay(point) || tryManualVControl(point)) updateHud();
 });
 
 let longPressTimer = null;
