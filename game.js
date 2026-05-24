@@ -589,6 +589,19 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 120,
       objective: "训练矿工和剑士，击败长矛守军",
     },
+    2: {
+      title: "第二关：箭雨阵线",
+      playerRoster: ["miner", "swordsman", "spearman", "spartan"],
+      playerStart: ["miner", "swordsman", "spearman"],
+      enemyRoster: ["miner", "archer", "swordsman"],
+      enemyStart: ["miner", "archer", "swordsman"],
+      enemyFaction: "order",
+      startGold: 120,
+      enemyGold: 150,
+      limitedUnits: { spartan: 1 },
+      arrowRain: { every: 20, total: 100, perSecond: 25, damage: 4, radius: 24 },
+      objective: "借助唯一的斯巴达，穿过周期性箭雨击败敌军",
+    },
   },
   chaos: {
     1: {
@@ -640,6 +653,19 @@ function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
+}
+
+function getCampaignUnitLimit(type) {
+  return activeCampaign?.limitedUnits?.[type] ?? Infinity;
+}
+
+function getCampaignQueuedCount(type) {
+  if (!state?.campaignTrainCounts) return 0;
+  return state.campaignTrainCounts[type] ?? 0;
+}
+
+function canQueueCampaignUnit(type) {
+  return getCampaignQueuedCount(type) < getCampaignUnitLimit(type);
 }
 
 function canUseEarthMinerConversion() {
@@ -761,6 +787,10 @@ function newGame() {
     pendingMedusaSlayId: null,
     passiveGoldTimer: 2,
     campaignReinforcementTimer: activeCampaign?.enemyReinforcement?.every ?? 0,
+    campaignTrainCounts: {},
+    arrowRainTimer: activeCampaign?.arrowRain?.every ?? 0,
+    arrowRainRemaining: 0,
+    arrowRainDropCarry: 0,
     nextId: 1,
   };
 
@@ -915,7 +945,7 @@ function renderShop() {
         <button class="train-btn" data-unit="${type}">
           <span class="unit-icon ${UNIT_ICON[type]}"></span>
           <strong>${data.name}</strong>
-          <small>${getUnitCost(type, selectedFaction)} 金币</small>
+          <small>${getUnitCost(type, selectedFaction)} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
         </button>
       `;
     })
@@ -1351,6 +1381,10 @@ function canMergeV(side) {
 function queueUnit(type) {
   if (state.over) return;
   if (!currentPlayerRoster().includes(type)) return;
+  if (!canQueueCampaignUnit(type)) {
+    popText(FIELD.playerGate, FIELD.ground - 95, "本关数量已满", "#f3c963");
+    return;
+  }
   const data = UNIT[type];
   const cost = getUnitCost(type, selectedFaction);
   if (state.gold < cost) {
@@ -1359,6 +1393,7 @@ function queueUnit(type) {
   }
 
   state.gold -= cost;
+  state.campaignTrainCounts[type] = getCampaignQueuedCount(type) + 1;
   state.spawnQueue.push({ type, timer: data.train });
   popText(FIELD.playerGate, FIELD.ground - 118, `训练 ${data.name}`, "#d9e8ff");
   updateHud();
@@ -1412,14 +1447,62 @@ function updateQueue(dt) {
 }
 
 function updateCampaignRules(dt) {
+  updateCampaignReinforcements(dt);
+  updateCampaignArrowRain(dt);
+}
+
+function updateCampaignReinforcements(dt) {
   if (!activeCampaign?.enemyReinforcement) return;
   state.campaignReinforcementTimer -= dt;
   if (state.campaignReinforcementTimer > 0) return;
-
   const reinforcement = activeCampaign.enemyReinforcement;
   state.campaignReinforcementTimer += reinforcement.every;
   spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12);
   popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援`, "#ffb0a3");
+}
+
+function updateCampaignArrowRain(dt) {
+  const rain = activeCampaign?.arrowRain;
+  if (!rain) return;
+
+  state.arrowRainTimer -= dt;
+  if (state.arrowRainTimer <= 0 && state.arrowRainRemaining <= 0) {
+    state.arrowRainTimer += rain.every;
+    state.arrowRainRemaining = rain.total;
+    state.arrowRainDropCarry = 0;
+    popText(FIELD.width / 2, FIELD.ground - 165, "箭雨来袭", "#f5f0df");
+  }
+
+  if (state.arrowRainRemaining <= 0) return;
+  state.arrowRainDropCarry += rain.perSecond * dt;
+  const drops = Math.min(state.arrowRainRemaining, Math.floor(state.arrowRainDropCarry));
+  if (drops <= 0) return;
+
+  state.arrowRainDropCarry -= drops;
+  for (let i = 0; i < drops; i += 1) {
+    spawnCampaignRainArrow(rain);
+  }
+}
+
+function spawnCampaignRainArrow(rain) {
+  const dropped = rain.total - state.arrowRainRemaining;
+  state.arrowRainRemaining -= 1;
+  const lane = dropped % rain.perSecond;
+  const secondBand = Math.floor(dropped / rain.perSecond);
+  const xStep = FIELD.width / rain.perSecond;
+  const x = lane * xStep + xStep * 0.5 + (Math.random() - 0.5) * xStep * 0.45 + secondBand * 13;
+  const tx = Math.max(40, Math.min(FIELD.width - 40, x % FIELD.width));
+  state.arrows.push({
+    x: tx + (Math.random() - 0.5) * 28,
+    y: -50 - Math.random() * 80,
+    tx,
+    ty: FIELD.ground - 18,
+    side: "enemy",
+    damage: rain.damage,
+    radius: rain.radius,
+    life: 0.9,
+    type: "campaignRain",
+  });
 }
 
 function updateEnemyAi(dt) {
@@ -2699,6 +2782,9 @@ function updateArrows(dt) {
       } else if (arrow.type === "fireElement") {
         applyDamage(arrow.target, arrow.damage, arrow.side);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
+      } else if (arrow.type === "campaignRain") {
+        const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
+        if (target) applyDamage(target, arrow.damage, arrow.side);
       } else {
         applyDamage(arrow.target, arrow.damage, arrow.side);
       }
@@ -3893,10 +3979,10 @@ function drawUnitHp(unit) {
 }
 
 function drawArrow(arrow) {
-  const duration = arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : 0.55;
+  const duration = arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55;
   const t = 1 - arrow.life / duration;
   const x = arrow.x + (arrow.tx - arrow.x) * t;
-  const y = arrow.y + (arrow.ty - arrow.y) * t - Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : 34);
+  const y = arrow.y + (arrow.ty - arrow.y) * t - (arrow.type === "campaignRain" ? 0 : Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : 34));
   if (arrow.type === "boulder") {
     ctx.fillStyle = "#8b6f46";
     ctx.beginPath();
@@ -3904,6 +3990,15 @@ function drawArrow(arrow) {
     ctx.fill();
     ctx.strokeStyle = "#3f3324";
     ctx.lineWidth = 3;
+    ctx.stroke();
+    return;
+  }
+  if (arrow.type === "campaignRain") {
+    ctx.strokeStyle = "#f5f0df";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 16);
+    ctx.lineTo(x, y + 16);
     ctx.stroke();
     return;
   }
@@ -4159,7 +4254,7 @@ function updateHud() {
       return;
     }
     const type = button.dataset.unit;
-    button.disabled = state.gold < getUnitCost(type, selectedFaction) || state.over;
+    button.disabled = state.gold < getUnitCost(type, selectedFaction) || state.over || !canQueueCampaignUnit(type);
   });
 }
 
