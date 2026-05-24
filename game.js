@@ -267,7 +267,7 @@ const UNIT = {
     burnDuration: 8,
   },
   demonArcher: {
-    name: "恶魔弓手",
+    name: "日食",
     cost: 150,
     hp: 125,
     damage: 17,
@@ -632,6 +632,25 @@ const CAMPAIGN_LEVELS = {
       rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
+    5: {
+      title: "第五关：双帝国战线",
+      playerRoster: ["miner", "swordsman", "greatsword", "spearman", "archer", "spartan", "crossbow"],
+      playerStart: ["miner", "swordsman", "greatsword", "spearman", "archer", "spartan", "crossbow"],
+      enemyRoster: ["miner", "swordsman", "greatsword", "musketeer", "crossbow"],
+      enemyStart: ["miner", "swordsman", "greatsword", "musketeer", "crossbow"],
+      enemyFaction: "order",
+      startGold: 160,
+      enemyGold: 180,
+      secondPhase: {
+        enemyFaction: "chaos",
+        enemyRoster: ["miner", "undead", "poisonZombie", "darkKnight", "demonArcher"],
+        enemyStart: ["miner", "undead", "poisonZombie", "darkKnight", "demonArcher"],
+        enemyGold: 200,
+        message: "混沌帝国参战，摧毁混沌雕像才可胜利",
+      },
+      rewardText: "火枪手",
+      objective: "先击破秩序雕像，再迎战混沌帝国并摧毁第二座雕像",
+    },
   },
   chaos: {
     1: {
@@ -765,6 +784,7 @@ function canUseEarthMinerConversion() {
 }
 
 function currentEnemyRoster() {
+  if (activeCampaign?.secondPhase && state?.campaignPhase === 2) return activeCampaign.secondPhase.enemyRoster;
   if (activeCampaign) return activeCampaign.enemyRoster;
   return FACTIONS[opponentFaction()].roster;
 }
@@ -889,6 +909,7 @@ function newGame() {
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
     goldRushMinerSpeedMultiplier: 1,
+    campaignPhase: 1,
     nextId: 1,
   };
 
@@ -3396,6 +3417,11 @@ function checkWin() {
   state.playerHp = Math.max(0, state.playerHp);
   state.enemyHp = Math.max(0, state.enemyHp);
 
+  if (state.enemyHp <= 0 && activeCampaign?.secondPhase && state.campaignPhase === 1 && state.playerHp > 0) {
+    startCampaignSecondPhase();
+    return;
+  }
+
   if (state.enemyHp <= 0 || state.playerHp <= 0) {
     state.over = true;
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
@@ -3412,6 +3438,33 @@ function checkWin() {
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}雕像已被摧毁` : "失败，我方雕像倒塌";
     homeBtn.classList.remove("hidden");
   }
+}
+
+function startCampaignSecondPhase() {
+  const phase = activeCampaign.secondPhase;
+  state.campaignPhase = 2;
+  enemyFaction = phase.enemyFaction;
+  state.enemyHp = 1000;
+  state.enemyGold = phase.enemyGold ?? state.enemyGold;
+  state.enemySpawnTimer = 1.2;
+  state.enemyMinerTimer = 3;
+  state.enemyAttackMood = 12;
+  state.enemyCommand = "guard";
+  state.enemyCommandTimer = 0;
+  state.enemyLineX = FIELD.enemyGate - 150;
+  state.units = state.units.filter((unit) => unit.side !== "enemy");
+  state.arrows = [];
+  state.delayedSpells = [];
+  state.tornadoes = [];
+  state.iceFields = [];
+  state.spikes = [];
+  phase.enemyStart.forEach((type, index) => {
+    spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
+  });
+  renderFactionUi();
+  updateHud();
+  statusEl.textContent = phase.message ?? "第二场战斗开始";
+  popText(FIELD.enemyBase, FIELD.ground - 170, "第二场战斗", "#ffb0a3");
 }
 
 function updateParticles(dt) {
