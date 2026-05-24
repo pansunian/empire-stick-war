@@ -3291,6 +3291,7 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "enslavedGiant") drawEnslavedGiantBasket();
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -3344,6 +3345,50 @@ function drawGodVHeadpiece() {
   ctx.beginPath();
   ctx.moveTo(-10, -72);
   ctx.quadraticCurveTo(0, -76, 10, -72);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEnslavedGiantBasket() {
+  ctx.save();
+  ctx.strokeStyle = "#4e3520";
+  ctx.fillStyle = "#7a4f2d";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-29, -60);
+  ctx.lineTo(-7, -55);
+  ctx.lineTo(-10, -18);
+  ctx.lineTo(-33, -24);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#d0a05c";
+  ctx.lineWidth = 2;
+  for (let y = -50; y <= -29; y += 10) {
+    ctx.beginPath();
+    ctx.moveTo(-29, y);
+    ctx.lineTo(-10, y + 4);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#8b6f46";
+  [
+    [-25, -63, 6],
+    [-18, -66, 7],
+    [-11, -61, 5],
+    [-22, -56, 5],
+  ].forEach(([x, y, radius]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.strokeStyle = "#5d3a22";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-8, -51);
+  ctx.quadraticCurveTo(3, -42, 2, -27);
   ctx.stroke();
   ctx.restore();
 }
