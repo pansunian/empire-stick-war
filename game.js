@@ -628,7 +628,6 @@ const CAMPAIGN_LEVELS = {
       failOnDeath: "medusa",
       startGold: 140,
       enemyGold: 150,
-      chaosRegenPerSecond: 4,
       undeadMineWave: { every: 10, baseCount: 1, increaseEvery: 60 },
       objective: "保护美杜莎，在亡灵矿潮中击败敌军",
     },
@@ -2977,7 +2976,7 @@ function updateBurn(dt) {
 }
 
 function updateChaosRecovery(dt) {
-  const regenPerSecond = activeCampaign?.chaosRegenPerSecond ?? 14;
+  const regenPerSecond = 4;
   state.units.forEach((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
