@@ -1084,49 +1084,37 @@ function renderFactionUi() {
   enemyCard.classList.toggle("element", opponentFaction() === "element");
 }
 
+const ELEMENT_MERGE_ACTIONS = [
+  { type: "treeEnt", action: "mergeTreeEnt" },
+  { type: "rog", action: "mergeRog" },
+  { type: "dreadfire", action: "mergeDreadfire" },
+  { type: "hurricane", action: "mergeHurricane" },
+  { type: "scaldStrike", action: "mergeScaldStrike" },
+  { type: "electricGate", action: "mergeElectricGate" },
+  { type: "vUnit", action: "mergeV" },
+];
+
+function getAvailableElementMerges() {
+  if (selectedFaction !== "element") return [];
+  if (!activeCampaign) return ELEMENT_MERGE_ACTIONS;
+  const roster = currentPlayerRoster();
+  return ELEMENT_MERGE_ACTIONS.filter((merge) => roster.includes(merge.type));
+}
+
 function renderShop() {
-  const showElementMergeButtons = selectedFaction === "element" && !activeCampaign;
   const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
+  const allowedElementMerges = getAvailableElementMerges();
+  const showElementMergeButtons = allowedElementMerges.length > 0;
   const elementActionButtons =
     showElementMergeButtons || showElementConvertButton
       ? `
-        ${showElementMergeButtons ? `
-        <button class="train-btn" data-action="mergeTreeEnt">
-          <span class="unit-icon tree"></span>
-          <strong>合成树精</strong>
+        ${showElementMergeButtons ? allowedElementMerges.map((merge) => `
+        <button class="train-btn" data-action="${merge.action}">
+          <span class="unit-icon ${UNIT_ICON[merge.type]}"></span>
+          <strong>合成${UNIT[merge.type].name}</strong>
           <small>${MERGE_COST} 金币</small>
         </button>
-        <button class="train-btn" data-action="mergeRog">
-          <span class="unit-icon lava"></span>
-          <strong>合成罗格</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        <button class="train-btn" data-action="mergeDreadfire">
-          <span class="unit-icon ${UNIT_ICON.dreadfire}"></span>
-          <strong>合成厄火</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        <button class="train-btn" data-action="mergeHurricane">
-          <span class="unit-icon ${UNIT_ICON.hurricane}"></span>
-          <strong>合成飓风</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        <button class="train-btn" data-action="mergeScaldStrike">
-          <span class="unit-icon ${UNIT_ICON.scaldStrike}"></span>
-          <strong>合成烫水击</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        <button class="train-btn" data-action="mergeElectricGate">
-          <span class="unit-icon ${UNIT_ICON.electricGate}"></span>
-          <strong>合成电门</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        <button class="train-btn" data-action="mergeV">
-          <span class="unit-icon ${UNIT_ICON.vUnit}"></span>
-          <strong>合成 V</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        ` : ""}
+        `).join("") : ""}
         ${showElementConvertButton ? `
         <button class="train-btn" data-action="convertEarth">
           <span class="unit-icon miner"></span>
@@ -1136,7 +1124,7 @@ function renderShop() {
         ` : ""}
       `
       : "";
-  const shopRoster = currentPlayerRoster();
+  const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
 
   unitShop.innerHTML =
     shopRoster
@@ -1581,6 +1569,10 @@ function canMergeV(side) {
 
 function queueUnit(type) {
   if (state.over) return;
+  if (MERGE_UNITS.has(type)) {
+    popText(FIELD.playerGate, FIELD.ground - 95, "进阶单位需要融合", "#f3c963");
+    return;
+  }
   if (!currentPlayerRoster().includes(type)) return;
   if (!canQueueCampaignUnit(type)) {
     popText(FIELD.playerGate, FIELD.ground - 95, "本关数量已满", "#f3c963");
