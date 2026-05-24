@@ -196,6 +196,18 @@ const UNIT = {
     train: 2.7,
     cooldown: 0.72,
   },
+  largeCreeper: {
+    name: "大型爬行者",
+    cost: 0,
+    hp: 200,
+    damage: 18,
+    range: 34,
+    speed: 58,
+    train: 0,
+    cooldown: 1.2,
+    stunDuration: 1,
+    visualScale: 1.3,
+  },
   undead: {
     name: "亡灵",
     cost: 55,
@@ -711,6 +723,26 @@ const CAMPAIGN_LEVELS = {
       enemyHealthGrowth: { every: 2, percent: 0.01 },
       rewardText: "巨人",
       objective: "没有美杜莎支援，击败生命不断增长的巨人军团",
+    },
+    5: {
+      title: "第五关：双王围猎",
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "demonArcher", "bomber", "darkKnight", "chaosGiant"],
+      playerStart: ["miner", "machete", "undead", "poisonZombie", "demonArcher", "bomber", "chaosGiant"],
+      enemyRoster: ["miner", "creeper", "bomber", "machete", "darkKnight"],
+      enemyStart: ["miner", "creeper", "bomber", "machete", "darkKnight"],
+      enemyFaction: "chaos",
+      startGold: 190,
+      enemyGold: 220,
+      enemyReinforcement: { type: "largeCreeper", every: 20, phase: 1 },
+      secondPhase: {
+        enemyFaction: "order",
+        enemyRoster: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan", "crossbow"],
+        enemyStart: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan", "crossbow"],
+        enemyGold: 230,
+        message: "秩序帝国参战，再次摧毁秩序雕像才可胜利",
+      },
+      rewardText: "爬行者",
+      objective: "顶住大型爬行者冲击，击败混沌雕像后再迎战秩序帝国",
     },
   },
   element: {
@@ -1664,9 +1696,10 @@ function updateCampaignGoldRush(dt) {
 
 function updateCampaignReinforcements(dt) {
   if (!activeCampaign?.enemyReinforcement) return;
+  const reinforcement = activeCampaign.enemyReinforcement;
+  if (reinforcement.phase && reinforcement.phase !== state.campaignPhase) return;
   state.campaignReinforcementTimer -= dt;
   if (state.campaignReinforcementTimer > 0) return;
-  const reinforcement = activeCampaign.enemyReinforcement;
   state.campaignReinforcementTimer += reinforcement.every;
   spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12);
   popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援`, "#ffb0a3");
@@ -2877,7 +2910,7 @@ function attack(unit, target) {
   }
 
   applyDamage(target, unit.damage ?? data.damage, unit.side);
-  if (unit.type === "earthElement") applyStun(target, data.stunDuration);
+  if (data.stunDuration) applyStun(target, data.stunDuration);
 }
 
 function explodeDeadCorpse(unit) {
@@ -3747,7 +3780,7 @@ function drawUnit(unit) {
   const dir = unit.side === "player" ? 1 : -1;
   const bob = Math.sin(unit.anim) * 2;
   const flightOffset = UNIT[unit.type]?.flying ? -42 : 0;
-  const size = UNIT[unit.type]?.giant ? 1.55 : 1;
+  const size = UNIT[unit.type]?.visualScale ?? (UNIT[unit.type]?.giant ? 1.55 : 1);
 
   ctx.save();
   ctx.translate(unit.x, unit.y + bob + flightOffset);
@@ -3893,6 +3926,7 @@ function getUnitColor(unit) {
   if (unit.type === "enslavedGiant") return "#8b6f46";
   const type = unit.type;
   if (type === "creeper") return "#9ee06b";
+  if (type === "largeCreeper") return "#6fcf59";
   if (type === "undead") return "#b8b0a5";
   if (type === "deadCorpse") return "#72836c";
   if (type === "medusa") return "#587a5f";
