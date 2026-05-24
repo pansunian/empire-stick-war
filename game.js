@@ -798,7 +798,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 160,
       enemyGold: 190,
       stormClouds: { every: 5, bolts: 5, hitChance: 0.7, damage: 15 },
-      rewardText: "电门",
+      rewardText: "风元素与电门",
       objective: "没有神明 V 支援，在雷云随机轰击中击败秩序军团",
     },
   },
