@@ -161,8 +161,10 @@ const UNIT = {
     cooldown: 6,
     explosionRadius: 76,
     iceRadius: 120,
-    iceDuration: 6,
-    iceSlow: 0.45,
+    iceDuration: 5,
+    iceSlow: 0.1,
+    iceAttackSlow: 0.1,
+    iceDps: 3,
   },
   enslavedGiant: {
     name: "奴役巨人",
@@ -215,7 +217,7 @@ const UNIT = {
     speed: 38,
     train: 0,
     cooldown: 1.4,
-    poisonEvery: 6,
+    poisonEvery: 12,
     poisonRange: 190,
     poisonDps: 6,
     poisonDuration: Infinity,
@@ -646,7 +648,7 @@ function formatSpecial(type) {
   if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
-  if (type === "mage") notes.push("魔爆 50 / 冰地减速，交替施法");
+  if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
@@ -1328,6 +1330,7 @@ function update(dt) {
   updateDelayedSpells(dt);
   updateMeteors(dt);
   updateTornadoes(dt);
+  updateIceFieldEffects(dt);
   updateParticles(dt);
   removeDead();
   checkWin();
@@ -1611,7 +1614,7 @@ function updateUnits(dt) {
       if (unit.side === "player" && state.command === "retreat") continue;
       unit.inCastle = false;
     }
-    unit.cooldown = Math.max(0, unit.cooldown - dt);
+    unit.cooldown = Math.max(0, unit.cooldown - dt * getAttackSpeedFactor(unit));
     unit.spearRecoverTimer = Math.max(0, unit.spearRecoverTimer - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
@@ -1768,6 +1771,7 @@ function releaseMedusaCorpses(unit) {
     const corpse = spawnUnit("deadCorpse", unit.side, unit.x + dir * (34 + i * 22));
     corpse.y = unit.y + (i === 0 ? -10 : 10);
     corpse.summonerId = unit.id;
+    corpse.forceCharge = true;
   }
   popText(unit.x, unit.y - 132, "释放死尸", "#93d96b");
 }
@@ -2011,7 +2015,7 @@ function updateUndeadMage(unit, dt) {
     spawnUnit("undead", unit.side, unit.x - dir * (22 + i * 16));
     const summoned = state.units[state.units.length - 1];
     summoned.forceCharge = true;
-    summoned.speed = 96;
+    summoned.speed = 70;
     summoned.maxHp = 55;
     summoned.hp = 55;
     summoned.damage = 7;
@@ -2145,6 +2149,15 @@ function getMoveFactor(unit) {
   for (const field of state.iceFields) {
     if (field.side === unit.side) continue;
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
+  }
+  return factor;
+}
+
+function getAttackSpeedFactor(unit) {
+  let factor = 1;
+  for (const field of state.iceFields) {
+    if (field.side === unit.side) continue;
+    if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.attackSlow ?? 1);
   }
   return factor;
 }
@@ -2469,6 +2482,9 @@ function castIceField(unit, target) {
     y: FIELD.ground + 8,
     radius: data.iceRadius,
     slow: data.iceSlow,
+    attackSlow: data.iceAttackSlow,
+    damage: data.iceDps,
+    tick: 0,
     side: unit.side,
     life: data.iceDuration,
     duration: data.iceDuration,
@@ -2796,6 +2812,22 @@ function updateTornadoes(dt) {
   state.tornadoes = state.tornadoes.filter((tornado) => tornado.life > 0);
 }
 
+function updateIceFieldEffects(dt) {
+  for (const field of state.iceFields) {
+    field.tick = (field.tick ?? 0) + dt;
+    if (field.tick < 1) continue;
+    field.tick -= 1;
+    state.units.forEach((unit) => {
+      if (unit.side === field.side || unit.hp <= 0 || isUnitHidden(unit)) return;
+      if (Math.abs(unit.x - field.x) > field.radius) return;
+      const damage = getModifiedDamage(unit, field.damage ?? 0);
+      if (damage <= 0) return;
+      unit.hp -= damage;
+      popText(unit.x, unit.y - 98, `冰 -${damage}`, "#9ee8ff");
+    });
+  }
+}
+
 function damageUnitsInRadius(x, radius, attackerSide, amount, label) {
   getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
     const damage = getModifiedDamage(unit, amount);
@@ -3096,6 +3128,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "medusa") {
+    drawMedusaUnit(unit);
+    ctx.restore();
+    return;
+  }
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -3244,6 +3281,73 @@ function drawHurricaneUnit(unit) {
   ctx.quadraticCurveTo(-6, 4, -18, -9);
   ctx.quadraticCurveTo(8, -42, -24, -82);
   ctx.fill();
+  drawUnitHp(unit);
+}
+
+function drawMedusaUnit(unit) {
+  ctx.lineCap = "round";
+
+  ctx.fillStyle = "#b9e6a3";
+  ctx.strokeStyle = "#4d6f48";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-34, -45);
+  ctx.lineTo(34, -45);
+  ctx.lineTo(48, 0);
+  ctx.lineTo(-48, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(147, 217, 107, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0, -16, 32, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#405c36";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-12, -46);
+  ctx.quadraticCurveTo(-24, -70, -38, -61);
+  ctx.moveTo(12, -46);
+  ctx.quadraticCurveTo(24, -70, 38, -61);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#93d96b";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-6, -68);
+  ctx.quadraticCurveTo(-24, -88, -35, -75);
+  ctx.moveTo(6, -68);
+  ctx.quadraticCurveTo(24, -88, 35, -75);
+  ctx.stroke();
+
+  ctx.fillStyle = "#d8f6b8";
+  ctx.strokeStyle = "#1d241b";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, -66, 13, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#f0c94a";
+  ctx.beginPath();
+  ctx.moveTo(-13, -78);
+  ctx.lineTo(-7, -94);
+  ctx.lineTo(0, -80);
+  ctx.lineTo(8, -94);
+  ctx.lineTo(14, -78);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#6f5520";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "#93d96b";
+  ctx.beginPath();
+  ctx.arc(43, -53, 6, 0, Math.PI * 2);
+  ctx.fill();
+
   drawUnitHp(unit);
 }
 
