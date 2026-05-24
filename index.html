@@ -9,8 +9,18 @@
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
       <div class="faction-panel">
-        <p class="kicker">选择你的帝国</p>
+        <p class="kicker">选择模式与帝国</p>
         <h1>中世纪帝国战争</h1>
+        <div class="mode-options" aria-label="选择游戏模式">
+          <button class="mode-card active" data-mode="versus">
+            <strong>对战模式</strong>
+            <small>人机对战，正常开局金币</small>
+          </button>
+          <button class="mode-card" data-mode="brawl">
+            <strong>大乱斗模式</strong>
+            <small>人机对战，双方开局 5000 金币</small>
+          </button>
+        </div>
         <div class="faction-options three">
           <button class="faction-card order" data-faction="order">
             <span class="crest"></span>

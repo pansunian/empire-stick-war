@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
+const modeButtons = [...document.querySelectorAll(".mode-card")];
 const playerCard = document.querySelector(".empire-card.player");
 const enemyCard = document.querySelector(".empire-card.enemy");
 const playerNameEl = document.querySelector("#playerName");
@@ -528,6 +529,11 @@ let state;
 let lastTime = performance.now();
 let selectedFaction = "order";
 let enemyFaction = "chaos";
+let selectedMode = "versus";
+const MODE_START_GOLD = {
+  versus: 120,
+  brawl: 5000,
+};
 
 function opponentFaction() {
   return enemyFaction;
@@ -614,10 +620,11 @@ function newGame() {
   renderShop();
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
+  const startGold = MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus;
 
   state = {
-    gold: 120,
-    enemyGold: 120,
+    gold: startGold,
+    enemyGold: startGold,
     command: "guard",
     paused: false,
     over: false,
@@ -655,6 +662,7 @@ function newGame() {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
   setCommand("guard");
+  if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
 }
 
@@ -3908,6 +3916,15 @@ closeStatsBtn.addEventListener("click", () => {
 
 statsOverlay.addEventListener("click", (event) => {
   if (event.target === statsOverlay) statsOverlay.classList.add("hidden");
+});
+
+modeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedMode = button.dataset.mode;
+    modeButtons.forEach((candidate) => {
+      candidate.classList.toggle("active", candidate === button);
+    });
+  });
 });
 
 factionButtons.forEach((button) => {
