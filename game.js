@@ -645,7 +645,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 120,
-      goldRush: { mineCount: 10, mineGold: 5000, speedEvery: 30 },
+      goldRush: { mineCount: 10, mineGold: 5000 },
       rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
@@ -1000,8 +1000,6 @@ function newGame() {
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
-    goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
-    goldRushMinerSpeedMultiplier: 1,
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
     campaignPhase: 1,
@@ -1658,7 +1656,6 @@ function updateCampaignRules(dt) {
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
-  updateCampaignGoldRush(dt);
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
   updateCampaignStormClouds(dt);
@@ -1737,17 +1734,6 @@ function createGoldRushMines(config) {
 
 function isGoldRushActive() {
   return Boolean(activeCampaign?.goldRush && state.goldRushMines?.length);
-}
-
-function updateCampaignGoldRush(dt) {
-  const rush = activeCampaign?.goldRush;
-  if (!rush) return;
-
-  state.goldRushSpeedTimer -= dt;
-  if (state.goldRushSpeedTimer > 0) return;
-  state.goldRushSpeedTimer += rush.speedEvery;
-  state.goldRushMinerSpeedMultiplier *= 2;
-  popText(FIELD.width / 2, FIELD.ground - 165, `矿工移速 x${state.goldRushMinerSpeedMultiplier}`, "#f5c542");
 }
 
 function updateCampaignReinforcements(dt) {
@@ -2597,8 +2583,7 @@ function updateMiner(unit, dt) {
 }
 
 function getMinerMoveSpeed(unit) {
-  const rushMultiplier = isGoldRushActive() ? state.goldRushMinerSpeedMultiplier : 1;
-  return (unit.speed ?? UNIT.miner.speed) * rushMultiplier;
+  return unit.speed ?? UNIT.miner.speed;
 }
 
 function updateGoldRushMiner(unit, dt) {
