@@ -40,7 +40,7 @@ const FIELD = {
   enemyBase: 2505,
   playerGate: 185,
   enemyGate: 2415,
-  playerMineX: 345,
+  playerMineX: 425,
   enemyMineX: 2175,
 };
 
@@ -236,7 +236,7 @@ const UNIT = {
     speed: 70,
     train: 3.4,
     cooldown: 1.15,
-    poisonDps: 10,
+    poisonDps: 8,
     poisonDuration: Infinity,
     poisonRadius: 84,
     poisonSlow: 0.65,
@@ -263,8 +263,8 @@ const UNIT = {
     train: 3.4,
     cooldown: 1.1,
     splash: 78,
-    burnDps: 6,
-    burnDuration: 10,
+    burnDps: 3,
+    burnDuration: 8,
   },
   demonArcher: {
     name: "恶魔弓手",
