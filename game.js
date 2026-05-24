@@ -676,6 +676,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 140,
       enemyGold: 150,
       undeadMineWave: { every: 10, baseCount: 1, increaseEvery: 60 },
+      rewardText: "亡灵与毒尸",
       objective: "保护美杜莎，在亡灵矿潮中击败敌军",
     },
     3: {
