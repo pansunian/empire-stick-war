@@ -3211,7 +3211,7 @@ function drawUnit(unit) {
   ctx.fill();
   ctx.stroke();
 
-  if (unit.godV) drawGodVHeadpiece();
+  if (unit.godV || unit.godVClone) drawGodVHeadpiece();
 
   ctx.fillStyle = color;
   ctx.beginPath();
