@@ -646,6 +646,20 @@ const CAMPAIGN_LEVELS = {
       rewardText: "土元素与土化矿工能力",
       objective: "守护神明 V，击败亡灵与毒尸",
     },
+    2: {
+      title: "第二关：天火矿脉",
+      playerRoster: ["earthElement"],
+      playerStart: ["vUnit", "waterElement", "waterElement", "waterElement"],
+      enemyRoster: ["miner", "creeper", "machete"],
+      enemyStart: ["miner", "miner", "darkKnight", "darkKnight", "creeper"],
+      enemyFaction: "chaos",
+      startGold: 120,
+      enemyGold: 160,
+      godV: true,
+      allowEarthMinerConversion: true,
+      campaignMeteor: { every: 15, damage: 80, radius: 96, duration: 2.4, size: 18 },
+      objective: "以土元素开采与作战，在巨大陨石下守住矿脉",
+    },
   },
 };
 let activeCampaign = null;
@@ -841,6 +855,7 @@ function newGame() {
     arrowRainDropCarry: 0,
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
+    campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
     nextId: 1,
   };
 
@@ -1500,6 +1515,7 @@ function updateCampaignRules(dt) {
   updateCampaignReinforcements(dt);
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
+  updateCampaignMeteor(dt);
 }
 
 function updateCampaignReinforcements(dt) {
@@ -1573,6 +1589,31 @@ function updateCampaignUndeadMineWave(dt) {
     undead.forceCharge = true;
   }
   popText((FIELD.enemyMineX + FIELD.width / 2) / 2, FIELD.ground - 130, `亡灵涌出 x${count}`, "#b8b0a5");
+}
+
+function updateCampaignMeteor(dt) {
+  const meteor = activeCampaign?.campaignMeteor;
+  if (!meteor) return;
+
+  state.campaignMeteorTimer -= dt;
+  if (state.campaignMeteorTimer > 0) return;
+
+  state.campaignMeteorTimer += meteor.every;
+  const minX = Math.min(FIELD.playerMineX, FIELD.enemyMineX);
+  const maxX = Math.max(FIELD.playerMineX, FIELD.enemyMineX);
+  const x = minX + Math.random() * (maxX - minX);
+  state.meteors.push({
+    x,
+    y: FIELD.ground - 20,
+    side: "neutral",
+    damage: meteor.damage,
+    radius: meteor.radius,
+    life: meteor.duration,
+    duration: meteor.duration,
+    size: meteor.size,
+    campaign: true,
+  });
+  popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
 }
 
 function updateEnemyAi(dt) {
@@ -3015,8 +3056,9 @@ function updateMeteors(dt) {
   for (const meteor of state.meteors) {
     meteor.life -= dt;
     if (meteor.life > 0) continue;
-    damageUnitsInRadius(meteor.x, 18, meteor.side, meteor.damage, "流星");
-    state.blasts.push({ x: meteor.x, y: meteor.y, radius: 22, life: 0.24, duration: 0.24, color: "#ffb45e" });
+    const radius = meteor.radius ?? 18;
+    damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.campaign ? "陨石" : "流星");
+    state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: "#ffb45e" });
   }
   state.meteors = state.meteors.filter((meteor) => meteor.life > 0);
 }
@@ -3064,7 +3106,7 @@ function stunUnitsInRadius(x, radius, attackerSide, duration) {
 
 function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null) {
   return state.units
-    .filter((unit) => unit.side !== attackerSide && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
+    .filter((unit) => (attackerSide === "neutral" || unit.side !== attackerSide) && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
     .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))
     .slice(0, limit);
 }
@@ -4167,15 +4209,20 @@ function drawMeteor(meteor) {
   const y = FIELD.ground - 260 + progress * 230;
   ctx.globalAlpha = 0.85;
   ctx.strokeStyle = "#ffb45e";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = meteor.campaign ? 8 : 3;
   ctx.beginPath();
-  ctx.moveTo(meteor.x - 28, y - 24);
+  ctx.moveTo(meteor.x - (meteor.campaign ? 78 : 28), y - (meteor.campaign ? 72 : 24));
   ctx.lineTo(meteor.x, y);
   ctx.stroke();
   ctx.fillStyle = "#ff6a3a";
   ctx.beginPath();
-  ctx.arc(meteor.x, y, 5, 0, Math.PI * 2);
+  ctx.arc(meteor.x, y, meteor.size ?? 5, 0, Math.PI * 2);
   ctx.fill();
+  if (meteor.campaign) {
+    ctx.strokeStyle = "#7f2f1d";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
 }
 
