@@ -658,6 +658,7 @@ const CAMPAIGN_LEVELS = {
       godV: true,
       allowEarthMinerConversion: true,
       campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18 },
+      rewardText: "水元素、火元素与罗格",
       objective: "以土元素开采与作战，在巨大陨石下守住矿脉",
     },
   },

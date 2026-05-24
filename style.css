@@ -124,8 +124,11 @@ body {
   place-items: center;
   padding: 24px;
   background:
-    linear-gradient(rgba(11, 13, 13, 0.66), rgba(11, 13, 13, 0.9)),
-    #101414;
+    linear-gradient(rgba(18, 16, 11, 0.18), rgba(18, 16, 11, 0.58)),
+    url("data:image/svg+xml,%3Csvg width='1600' height='900' viewBox='0 0 1600 900' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1600' height='900' fill='%23b98f55'/%3E%3Cpath d='M0 0 h1600 v900 H0z' fill='%23d6b879' opacity='.84'/%3E%3Cg fill='none' stroke='%237d5a31' stroke-width='5' opacity='.42'%3E%3Cpath d='M135 710 C290 610 355 708 485 590 S725 515 842 410 S1112 355 1234 250 S1410 210 1510 135'/%3E%3Cpath d='M210 200 C350 245 410 175 552 235 S745 355 920 285 S1130 198 1310 315' stroke-width='3'/%3E%3C/g%3E%3Cg fill='%23724d2a' opacity='.34'%3E%3Cpath d='M80 430 l100 -145 l118 145z'/%3E%3Cpath d='M210 440 l130 -190 l150 190z'/%3E%3Cpath d='M1050 540 l130 -205 l158 205z'/%3E%3Cpath d='M1225 560 l165 -250 l190 250z'/%3E%3C/g%3E%3Cg fill='%234d3822' opacity='.7'%3E%3Ccircle cx='160' cy='695' r='16'/%3E%3Ccircle cx='485' cy='590' r='18'/%3E%3Ccircle cx='842' cy='410' r='18'/%3E%3Ccircle cx='1234' cy='250' r='18'/%3E%3Ccircle cx='1510' cy='135' r='16'/%3E%3C/g%3E%3Cg stroke='%238f6a3c' stroke-width='2' opacity='.28'%3E%3Cpath d='M0 760 C260 705 435 795 690 745 C950 695 1110 780 1600 710'/%3E%3Cpath d='M0 115 C270 75 470 140 680 95 C950 40 1150 120 1600 75'/%3E%3C/g%3E%3Cg fill='%23483a25' opacity='.45'%3E%3Cpath d='M280 760 h56 v-82 h-56z M292 638 h32 v42 h-32z'/%3E%3Cpath d='M1320 235 h62 v-92 h-62z M1332 100 h38 v46 h-38z'/%3E%3C/g%3E%3C/svg%3E"),
+    #b98f55;
+  background-size: cover;
+  background-position: center;
   overflow: auto;
 }
 
@@ -136,9 +139,10 @@ body {
 .campaign-panel {
   width: min(1040px, 100%);
   padding: 30px;
-  border: 1px solid var(--line);
-  background: rgba(20, 23, 25, 0.94);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.62);
 }
 
 .campaign-head {
