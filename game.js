@@ -3291,10 +3291,10 @@ function drawMedusaUnit(unit) {
   ctx.strokeStyle = "#4d6f48";
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(-34, -45);
-  ctx.lineTo(34, -45);
-  ctx.lineTo(48, 0);
-  ctx.lineTo(-48, 0);
+  ctx.moveTo(-27, -45);
+  ctx.lineTo(27, -45);
+  ctx.lineTo(36, 0);
+  ctx.lineTo(-36, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
