@@ -549,6 +549,22 @@ const campaignProgressByFaction = {
   chaos: 1,
   element: 1,
 };
+const CAMPAIGN_LEVELS = {
+  order: {
+    1: {
+      title: "第一关：长矛守军",
+      playerRoster: ["miner", "swordsman"],
+      playerStart: ["miner", "swordsman", "swordsman"],
+      enemyRoster: ["spearman"],
+      enemyStart: ["miner", "spearman"],
+      enemyFaction: "order",
+      enemyReinforcement: { type: "spearman", every: 8 },
+      startGold: 120,
+      enemyGold: 120,
+    },
+  },
+};
+let activeCampaign = null;
 
 function opponentFaction() {
   return enemyFaction;
@@ -562,6 +578,17 @@ function getUnitCost(type, faction) {
   if (type === "miner" && (faction === "order" || faction === "chaos")) return 65;
   if (faction === "element" && MERGE_UNITS.has(type)) return MERGE_COST;
   return UNIT[type].cost;
+}
+
+function currentPlayerRoster() {
+  if (activeCampaign) return activeCampaign.playerRoster;
+  if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
+  return FACTIONS[selectedFaction].roster;
+}
+
+function currentEnemyRoster() {
+  if (activeCampaign) return activeCampaign.enemyRoster;
+  return FACTIONS[opponentFaction()].roster;
 }
 
 function formatSpecial(type) {
@@ -630,16 +657,17 @@ function renderStatsTable() {
 }
 
 function newGame() {
-  enemyFaction = chooseEnemyFaction();
+  enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
   renderFactionUi();
   renderShop();
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
-  const startGold = MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus;
+  const startGold = activeCampaign?.startGold ?? MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus;
+  const enemyStartGold = activeCampaign?.enemyGold ?? startGold;
 
   state = {
     gold: startGold,
-    enemyGold: startGold,
+    enemyGold: enemyStartGold,
     command: "guard",
     paused: false,
     over: false,
@@ -667,16 +695,21 @@ function newGame() {
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
     passiveGoldTimer: 2,
+    campaignReinforcementTimer: activeCampaign?.enemyReinforcement?.every ?? 0,
     nextId: 1,
   };
 
-  FACTIONS[selectedFaction].startingUnits.forEach((type, index) => {
+  const playerStart = activeCampaign?.playerStart ?? FACTIONS[selectedFaction].startingUnits;
+  const enemyStart = activeCampaign?.enemyStart ?? FACTIONS[opponentFaction()].startingUnits;
+
+  playerStart.forEach((type, index) => {
     spawnUnit(type, "player", FIELD.playerGate - 28 + index * 32);
   });
-  FACTIONS[opponentFaction()].startingUnits.forEach((type, index) => {
+  enemyStart.forEach((type, index) => {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
   setCommand("guard");
+  if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：训练矿工和剑士，击败长矛守军`;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
 }
@@ -705,19 +738,20 @@ function renderCampaignMap() {
     const unitType = unlocks[index];
     const unitName = UNIT[unitType]?.name ?? "终章军团";
     const available = level <= progress;
+    const config = CAMPAIGN_LEVELS[faction]?.[level];
     return `
       <button class="campaign-node ${available ? "available" : "locked"}" data-level="${level}" ${available ? "" : "disabled"}>
         <span class="level-tag">第 ${level} 关</span>
-        <strong>${available ? "可挑战" : "未解锁"}</strong>
+        <strong>${config?.title ?? (available ? "可挑战" : "未解锁")}</strong>
         <small>通关后解锁：${unitName}</small>
-        <small>${available ? "关卡暂未设计" : `完成第 ${level - 1} 关后开启`}</small>
+        <small>${available ? (config ? "点击开始战斗" : "关卡暂未设计") : `完成第 ${level - 1} 关后开启`}</small>
       </button>
     `;
   }).join("");
 
   [...campaignPath.querySelectorAll(".campaign-node.available")].forEach((button) => {
     button.addEventListener("click", () => {
-      statusEl.textContent = `战役第 ${button.dataset.level} 关暂未开放`;
+      startCampaignLevel(faction, Number(button.dataset.level));
     });
   });
 }
@@ -725,6 +759,20 @@ function renderCampaignMap() {
 function closeCampaignMap() {
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
+}
+
+function startCampaignLevel(faction, level) {
+  const config = CAMPAIGN_LEVELS[faction]?.[level];
+  if (!config) {
+    statusEl.textContent = `战役第 ${level} 关暂未开放`;
+    return;
+  }
+
+  selectedMode = "campaign";
+  selectedFaction = faction;
+  activeCampaign = { faction, level, ...config };
+  campaignMap.classList.add("hidden");
+  newGame();
 }
 
 function renderFactionUi() {
@@ -740,7 +788,7 @@ function renderFactionUi() {
 
 function renderShop() {
   const elementActionButtons =
-    selectedFaction === "element"
+    selectedFaction === "element" && !activeCampaign
       ? `
         <button class="train-btn" data-action="mergeTreeEnt">
           <span class="unit-icon tree"></span>
@@ -784,10 +832,7 @@ function renderShop() {
         </button>
       `
       : "";
-  const shopRoster =
-    selectedFaction === "element"
-      ? ["earthElement", "waterElement", "fireElement", "windElement"]
-      : FACTIONS[selectedFaction].roster;
+  const shopRoster = currentPlayerRoster();
 
   unitShop.innerHTML =
     shopRoster
@@ -1192,6 +1237,7 @@ function canMergeV(side) {
 
 function queueUnit(type) {
   if (state.over) return;
+  if (!currentPlayerRoster().includes(type)) return;
   const data = UNIT[type];
   const cost = getUnitCost(type, selectedFaction);
   if (state.gold < cost) {
@@ -1215,6 +1261,7 @@ function update(dt) {
 
   updateQueue(dt);
   updatePassiveGold(dt);
+  updateCampaignRules(dt);
   updateEnemyAi(dt);
   updateUnits(dt);
   updateBaseAttacks(dt);
@@ -1248,6 +1295,17 @@ function updateQueue(dt) {
   ready.forEach((item, index) => {
     spawnUnit(item.type, "player", FIELD.playerGate - 20 + index * 12);
   });
+}
+
+function updateCampaignRules(dt) {
+  if (!activeCampaign?.enemyReinforcement) return;
+  state.campaignReinforcementTimer -= dt;
+  if (state.campaignReinforcementTimer > 0) return;
+
+  const reinforcement = activeCampaign.enemyReinforcement;
+  state.campaignReinforcementTimer += reinforcement.every;
+  spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12);
+  popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援`, "#ffb0a3");
 }
 
 function updateEnemyAi(dt) {
@@ -1295,7 +1353,7 @@ function updateEnemyAi(dt) {
   }
 
   if (state.enemySpawnTimer <= 0) {
-    const enemyRoster = FACTIONS[opponentFaction()].roster.filter((type) => type !== "miner");
+    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner");
     const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction()) <= state.enemyGold);
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
@@ -2735,6 +2793,11 @@ function checkWin() {
   if (state.enemyHp <= 0 || state.playerHp <= 0) {
     state.over = true;
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
+    if (state.winner === "player" && activeCampaign) {
+      campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
+      statusEl.textContent = `胜利！${activeCampaign.title}完成，下一关已开启`;
+      return;
+    }
     statusEl.textContent =
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}雕像已被摧毁` : "失败，我方雕像倒塌";
   }
@@ -3979,6 +4042,7 @@ campaignBackBtn.addEventListener("click", closeCampaignMap);
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedMode = button.dataset.mode;
+    if (selectedMode !== "campaign") activeCampaign = null;
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
@@ -3993,6 +4057,7 @@ factionButtons.forEach((button) => {
       openCampaignMap();
       return;
     }
+    activeCampaign = null;
     factionSelect.classList.add("hidden");
     newGame();
   });
