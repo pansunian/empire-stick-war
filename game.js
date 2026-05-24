@@ -3524,9 +3524,7 @@ function removeDead() {
       healNearbyAllies(unit);
     }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
-      const spearman = spawnUnit("spearman", "enemy", unit.x);
-      spearman.y = unit.y;
-      popText(unit.x, unit.y - 95, "转化为长矛兵", "#ffb0a3");
+      convertToOpponentSpearman(unit, "enemy");
     }
     if (activeCampaign?.enemyDeathsBecomeWaterScorpion && unit.side === "enemy" && unit.type !== "waterScorpion") {
       const scorpion = spawnUnit("waterScorpion", "player", unit.x);
@@ -3555,6 +3553,16 @@ function removeDead() {
     popText(unit.x, unit.y - 35, "倒下", "#a7a7a7");
     return false;
   });
+}
+
+function convertToOpponentSpearman(unit, opponentSide) {
+  const spearman = spawnUnit("spearman", opponentSide, unit.x);
+  spearman.x = unit.x;
+  spearman.y = unit.y;
+  spearman.cooldown = 0;
+  spearman.spearRecoverTimer = 0;
+  spearman.spearThrown = false;
+  popText(unit.x, unit.y - 95, "原地转化长矛兵", opponentSide === "enemy" ? "#ffb0a3" : "#d9e8ff");
 }
 
 function releaseFrozenTarget(water) {
