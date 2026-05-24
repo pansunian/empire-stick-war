@@ -61,10 +61,10 @@ body {
 .faction-panel {
   width: min(920px, 100%);
   padding: 34px;
-  border: 1px solid var(--line);
-  background: rgba(20, 23, 25, 0.88);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.72);
 }
 
 .kicker {
