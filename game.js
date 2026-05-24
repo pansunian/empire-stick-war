@@ -273,7 +273,7 @@ const UNIT = {
     burnDuration: 8,
   },
   demonArcher: {
-    name: "日食",
+    name: "日蚀",
     cost: 150,
     hp: 125,
     damage: 17,
@@ -686,7 +686,7 @@ const CAMPAIGN_LEVELS = {
       objective: "保护美杜莎，在亡灵矿潮中击败敌军",
     },
     3: {
-      title: "第三关：日食降临",
+      title: "第三关：日蚀降临",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "darkKnight"],
       playerStart: ["miner", "machete", "darkKnight", "medusa"],
       enemyRoster: ["miner", "creeper", "bomber", "demonArcher"],
@@ -696,8 +696,21 @@ const CAMPAIGN_LEVELS = {
       startGold: 150,
       enemyGold: 170,
       darkeningSky: { tick: 5, duration: 300, maxAlpha: 0.82 },
-      rewardText: "日食与炸弹客",
-      objective: "在逐渐降临的黑暗中保护美杜莎，击败日食军团",
+      rewardText: "日蚀与炸弹客",
+      objective: "在逐渐降临的黑暗中保护美杜莎，击败日蚀军团",
+    },
+    4: {
+      title: "第四关：巨人血潮",
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "demonArcher", "bomber"],
+      playerStart: ["miner", "machete", "undead", "poisonZombie", "demonArcher", "bomber"],
+      enemyRoster: ["miner", "creeper", "bomber", "chaosGiant"],
+      enemyStart: ["miner", "creeper", "bomber", "chaosGiant"],
+      enemyFaction: "chaos",
+      startGold: 180,
+      enemyGold: 220,
+      enemyHealthGrowth: { every: 2, percent: 0.01 },
+      rewardText: "巨人",
+      objective: "没有美杜莎支援，击败生命不断增长的巨人军团",
     },
   },
   element: {
@@ -930,6 +943,7 @@ function newGame() {
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     goldRushSpeedTimer: activeCampaign?.goldRush?.speedEvery ?? 0,
     goldRushMinerSpeedMultiplier: 1,
+    enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     campaignPhase: 1,
     campaignDarknessElapsed: 0,
     nextId: 1,
@@ -1594,11 +1608,29 @@ function updateCampaignRules(dt) {
   updateCampaignMeteor(dt);
   updateCampaignGoldRush(dt);
   updateCampaignDarkness(dt);
+  updateCampaignEnemyHealthGrowth(dt);
 }
 
 function updateCampaignDarkness(dt) {
   if (!activeCampaign?.darkeningSky) return;
   state.campaignDarknessElapsed = Math.min(activeCampaign.darkeningSky.duration, state.campaignDarknessElapsed + dt);
+}
+
+function updateCampaignEnemyHealthGrowth(dt) {
+  const growth = activeCampaign?.enemyHealthGrowth;
+  if (!growth) return;
+  state.enemyHealthGrowthTimer -= dt;
+  if (state.enemyHealthGrowthTimer > 0) return;
+  state.enemyHealthGrowthTimer += growth.every;
+  state.units.forEach((unit) => {
+    if (unit.side !== "enemy" || unit.hp <= 0 || isUnitHidden(unit)) return;
+    const gain = Math.max(1, Math.round(unit.maxHp * growth.percent));
+    unit.maxHp += gain;
+    unit.hp += gain;
+    if (unit.type === "chaosGiant" || unit.x < FIELD.enemyGate - 260) {
+      popText(unit.x, unit.y - 92, `生命 +${gain}`, "#b7f56e");
+    }
+  });
 }
 
 function createGoldRushMines(config) {
