@@ -43,6 +43,12 @@ const FIELD = {
   playerMineX: 425,
   enemyMineX: 2175,
 };
+const RALLY = {
+  playerOffset: 150,
+  enemyOffset: 150,
+  spacing: 9,
+  maxSpread: 180,
+};
 
 const MERGE_COST = 30;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"]);
@@ -907,7 +913,7 @@ function newGame() {
     enemyAttackMood: 4,
     enemyCommand: "guard",
     enemyCommandTimer: 0,
-    enemyLineX: FIELD.enemyGate - 130,
+    enemyLineX: getEnemyRallyBaseX(),
     playerBaseAttackTimer: 0,
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
@@ -1822,7 +1828,7 @@ function updateEnemyBattleLine(dt) {
   const playerPower = getArmyPower("player");
   const enemyFighters = countFighters("enemy");
   const playerFront = getFrontX("player");
-  let targetLine = FIELD.enemyGate - 150;
+  let targetLine = getEnemyRallyBaseX();
 
   if (state.enemyCommand === "retreat") {
     targetLine = FIELD.enemyGate - 55;
@@ -1831,10 +1837,12 @@ function updateEnemyBattleLine(dt) {
   } else if (enemyFighters >= 4 && enemyPower >= playerPower * 0.85) {
     targetLine = Math.max(FIELD.playerGate + 340, playerFront ? playerFront + 300 : FIELD.enemyGate - 620);
   } else {
-    targetLine = FIELD.enemyGate - 190;
+    targetLine = getEnemyRallyBaseX();
   }
 
-  targetLine = Math.min(FIELD.enemyGate - 80, Math.max(FIELD.playerGate + 220, targetLine));
+  if (state.enemyCommand !== "retreat") {
+    targetLine = Math.min(getEnemyRallyBaseX(), Math.max(FIELD.playerGate + 220, targetLine));
+  }
   const lineSpeed = state.enemyCommand === "retreat" ? 210 : state.enemyCommand === "attack" ? 92 : 56;
   const step = Math.sign(targetLine - state.enemyLineX) * lineSpeed * dt;
   if (Math.abs(targetLine - state.enemyLineX) <= Math.abs(step)) state.enemyLineX = targetLine;
@@ -2207,14 +2215,14 @@ function findWoundedAlly(unit) {
 function getMonkDesiredX(unit) {
   if (unit.side === "player") {
     if (state.command === "retreat") return FIELD.playerBase + 44;
-    if (state.command === "guard") return FIELD.playerGate + 95;
+    if (state.command === "guard") return getPlayerRallyX(unit);
     const front = getFrontAlly(unit.side);
-    return front ? Math.max(FIELD.playerGate + 70, front.x - 85) : FIELD.playerGate + 95;
+    return front ? Math.max(getPlayerRallyBaseX() - 40, front.x - 85) : getPlayerRallyX(unit);
   }
 
-  if (state.enemyAttackMood < 16) return FIELD.enemyGate - 95;
+  if (state.enemyAttackMood < 16) return getEnemyRallyX(unit);
   const front = getFrontAlly(unit.side);
-  return front ? Math.min(FIELD.enemyGate - 70, front.x + 85) : FIELD.enemyGate - 95;
+  return front ? Math.min(getEnemyRallyBaseX() + 40, front.x + 85) : getEnemyRallyX(unit);
 }
 
 function getFrontAlly(side) {
@@ -2634,7 +2642,7 @@ function getDesiredX(unit, target) {
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
-    if (state.command === "guard") return Math.min(FIELD.playerGate + 130 + unit.id * 7, 600);
+    if (state.command === "guard") return getPlayerRallyX(unit);
     if (target) return target.x - range + 8;
     return FIELD.enemyBase;
   }
@@ -2649,7 +2657,23 @@ function getDesiredX(unit, target) {
 function getEnemyFormationX(unit) {
   const slot = (unit.id % 9) * 24;
   const jitter = unit.type === "miner" ? 120 : slot;
-  return Math.min(FIELD.enemyGate - 70, Math.max(FIELD.playerGate + 220, state.enemyLineX + jitter));
+  return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, Math.max(FIELD.playerGate + 220, state.enemyLineX + jitter));
+}
+
+function getPlayerRallyBaseX() {
+  return FIELD.playerMineX + RALLY.playerOffset;
+}
+
+function getEnemyRallyBaseX() {
+  return FIELD.enemyMineX - RALLY.enemyOffset;
+}
+
+function getPlayerRallyX(unit) {
+  return Math.min(getPlayerRallyBaseX() + RALLY.maxSpread, getPlayerRallyBaseX() + (unit.id % 18) * RALLY.spacing);
+}
+
+function getEnemyRallyX(unit) {
+  return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, getEnemyRallyBaseX() + (unit.id % 18) * RALLY.spacing);
 }
 
 function getUnitRange(unit) {
@@ -3473,7 +3497,7 @@ function startCampaignSecondPhase() {
   state.enemyAttackMood = 12;
   state.enemyCommand = "guard";
   state.enemyCommandTimer = 0;
-  state.enemyLineX = FIELD.enemyGate - 150;
+  state.enemyLineX = getEnemyRallyBaseX();
   state.units = state.units.filter((unit) => unit.side !== "enemy");
   state.arrows = [];
   state.delayedSpells = [];
