@@ -316,6 +316,25 @@ const UNIT = {
     summonEvery: 15,
     summonCount: 5,
   },
+  suikai: {
+    name: "隋凯",
+    cost: 0,
+    hp: 1200,
+    damage: 55,
+    range: 250,
+    speed: 28,
+    train: 0,
+    cooldown: 2.4,
+    summonCount: 5,
+    summonHp: 55,
+    summonDamage: 6,
+    summonPoisonDps: 2,
+    corpseEvery: 15,
+    corpseCount: 5,
+    hookEvery: 15,
+    hookDamage: 150,
+    hero: true,
+  },
   chaosGiant: {
     name: "巨人",
     cost: 750,
@@ -549,6 +568,7 @@ const UNIT_ICON = {
   demonArcher: "wing",
   darkKnight: "axe",
   undeadMage: "skull",
+  suikai: "skull",
   chaosGiant: "axe",
   earthElement: "earth",
   waterElement: "water",
@@ -566,7 +586,7 @@ const UNIT_ICON = {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
@@ -803,6 +823,30 @@ const CAMPAIGN_LEVELS = {
       rewardText: "风元素与电门",
       objective: "没有神明 V 支援，在雷云随机轰击中击败秩序军团",
     },
+    5: {
+      title: "第五关：雪中电门",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "scaldStrike", "electricGate"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "scaldStrike", "vUnit"],
+      enemyRoster: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage", "demonArcher"],
+      enemyStart: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage", "demonArcher"],
+      enemyFaction: "chaos",
+      startGold: 180,
+      enemyGold: 220,
+      godV: true,
+      centerElectricGate: true,
+      snow: { moveFactor: 0.9 },
+      secondPhase: {
+        enemyFaction: "order",
+        enemyRoster: ["miner", "swordsman", "greatsword", "crossbow", "mage", "monk"],
+        enemyStart: ["miner", "swordsman", "greatsword", "crossbow", "mage", "monk"],
+        enemyGold: 240,
+        killPlayerArmy: true,
+        spareGodV: true,
+        message: "秩序帝国雕像出现，神明 V 躲过秒杀，继续摧毁秩序雕像",
+      },
+      rewardText: "飓风与厄火",
+      objective: "雪中守护神明 V，先破混沌雕像，再击破秩序雕像",
+    },
   },
 };
 let activeCampaign = null;
@@ -912,6 +956,7 @@ function formatSpecial(type) {
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
   if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V单位，冷却 ${data.slayCooldown}秒`);
   if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
@@ -1018,11 +1063,22 @@ function newGame() {
   enemyStart.forEach((type, index) => {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
+  spawnCampaignCenterElectricGate();
   setCommand("guard");
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：${activeCampaign.objective}`;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
+}
+
+function spawnCampaignCenterElectricGate() {
+  if (!activeCampaign?.centerElectricGate) return;
+  const gate = spawnUnit("electricGate", "player", FIELD.width / 2);
+  gate.maxHp = 999999;
+  gate.hp = gate.maxHp;
+  gate.electricGateTimer = Infinity;
+  gate.campaignCenterGate = true;
+  popText(gate.x, gate.y - 120, "无敌电门", "#9ee8ff");
 }
 
 function chooseEnemyFaction() {
@@ -1276,6 +1332,8 @@ function spawnUnit(type, side, x) {
     nextDreadfireSpell: "dragon",
     medusaPoisonTimer: UNIT[type].poisonEvery ?? 0,
     medusaSlayTimer: 0,
+    suikaiCorpseTimer: UNIT[type].corpseEvery ?? 0,
+    suikaiHookTimer: UNIT[type].hookEvery ?? 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -1887,7 +1945,7 @@ function updateEnemyAi(dt) {
   }
 
   if (state.enemySpawnTimer <= 0) {
-    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner");
+    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner" && !UNIT[type]?.hero);
     const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction()) <= state.enemyGold);
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
@@ -2143,14 +2201,17 @@ function updateUnits(dt) {
     if (unit.type === "medusa") {
       updateMedusa(unit, dt);
     }
-  if (unit.type === "undeadMage") {
-    updateUndeadMage(unit, dt);
-  }
-  if (unit.type === "electricGate") {
-    updateElectricGate(unit, dt);
-    updateIceRoadMoveTimer(unit, beforeX, dt);
-    continue;
-  }
+    if (unit.type === "undeadMage") {
+      updateUndeadMage(unit, dt);
+    }
+    if (unit.type === "suikai") {
+      updateSuikai(unit, dt);
+    }
+    if (unit.type === "electricGate") {
+      updateElectricGate(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
 
   if (unit.type === "miner") {
       updateMiner(unit, dt);
@@ -2443,7 +2504,7 @@ function findMostThreateningEnemy(unit) {
   let bestScore = -Infinity;
 
   state.units.forEach((target) => {
-    if (target.side === unit.side || target.hp <= 0 || isUnitHidden(target) || target.type === "vUnit" || target.type === "vClone" || UNIT[target.type]?.giant) return;
+    if (target.side === unit.side || target.hp <= 0 || isUnitHidden(target) || isControlImmune(target)) return;
     const data = UNIT[target.type];
     const distancePenalty = Math.abs(target.x - unit.x) / 20;
     const score = data.damage * 4 + target.hp * 0.35 + (data.range ?? 0) * 0.08 - distancePenalty;
@@ -2454,6 +2515,35 @@ function findMostThreateningEnemy(unit) {
   });
 
   return best;
+}
+
+function findSuikaiHookTarget(unit) {
+  let best = null;
+  let bestScore = -Infinity;
+  const range = UNIT.suikai.range + 180;
+
+  state.units.forEach((target) => {
+    if (!canSuikaiHook(unit, target)) return;
+    if (Math.abs(target.x - unit.x) > range) return;
+    const data = UNIT[target.type];
+    const distancePenalty = Math.abs(target.x - unit.x) / 35;
+    const score = (data.damage ?? 0) * 6 + target.hp * 0.25 + (data.range ?? 0) * 0.12 - distancePenalty;
+    if (score > bestScore) {
+      best = target;
+      bestScore = score;
+    }
+  });
+
+  return best;
+}
+
+function canSuikaiHook(unit, target) {
+  if (!unit || !target || unit.hp <= 0 || target.hp <= 0) return false;
+  if (target.side === unit.side || isUnitHidden(target)) return false;
+  if (!isAheadOf(unit, target)) return false;
+  if (UNIT[target.type]?.untargetable) return false;
+  if (isHeroUnit(target) || UNIT[target.type]?.giant || target.type === "vClone") return false;
+  return true;
 }
 
 function convertUnitSide(unit, side, controllerId = null) {
@@ -2526,6 +2616,38 @@ function updateUndeadMage(unit, dt) {
     summoned.summonerId = unit.id;
   }
   popText(unit.x, unit.y - 112, "亡灵冲锋", "#b8b0a5");
+}
+
+function updateSuikai(unit, dt) {
+  const data = UNIT.suikai;
+  unit.suikaiCorpseTimer -= dt;
+  unit.suikaiHookTimer -= dt;
+
+  if (unit.suikaiCorpseTimer <= 0) {
+    unit.suikaiCorpseTimer += data.corpseEvery;
+    summonSuikaiCorpses(unit);
+  }
+
+  if (unit.suikaiHookTimer <= 0) {
+    const target = findSuikaiHookTarget(unit);
+    if (target) {
+      unit.suikaiHookTimer += data.hookEvery;
+      hookTargetWithSuikai(unit, target);
+    } else {
+      unit.suikaiHookTimer = Math.min(unit.suikaiHookTimer + 1.2, data.hookEvery);
+    }
+  }
+}
+
+function summonSuikaiCorpses(unit) {
+  const data = UNIT.suikai;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.corpseCount; i += 1) {
+    const corpse = spawnUnit("deadCorpse", unit.side, unit.x - dir * (24 + i * 16));
+    corpse.forceCharge = true;
+    corpse.summonerId = unit.id;
+  }
+  popText(unit.x, unit.y - 118, "死尸出笼", "#93d96b");
 }
 
 function updateMiner(unit, dt) {
@@ -2753,6 +2875,7 @@ function getMoveFactor(unit) {
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
   }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
+  if (activeCampaign?.snow) factor *= activeCampaign.snow.moveFactor ?? 1;
   return factor;
 }
 
@@ -2949,6 +3072,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "suikai") {
+    castSuikaiPierce(unit, target);
+    return;
+  }
+
   if (unit.type === "scaldStrike") {
     explodeScaldStrike(unit);
     return;
@@ -2987,6 +3115,9 @@ function attack(unit, target) {
   }
 
   applyDamage(target, unit.damage ?? data.damage, unit.side);
+  if (unit.poisonOnHit && target.kind !== "statue") {
+    applyPoison(target, unit.poisonHitDps ?? 2, Infinity, { sourceSide: unit.side });
+  }
   if (data.stunDuration) applyStun(target, data.stunDuration);
 }
 
@@ -3138,6 +3269,71 @@ function castUndeadPierce(unit, target) {
     duration: 0.34,
   });
   popText(target.x, target.y ? target.y - 80 : FIELD.ground - 130, `穿刺 -${data.damage}`, "#b8b0a5");
+}
+
+function castSuikaiPierce(unit, target) {
+  const data = UNIT.suikai;
+  const dir = unit.side === "player" ? 1 : -1;
+  const x1 = unit.x;
+  const targetX = target.kind === "statue" ? target.x : target.x;
+  const minX = Math.min(unit.x, unit.x + dir * data.range);
+  const maxX = Math.max(unit.x, unit.x + dir * data.range);
+  const x2 = Math.max(minX, Math.min(maxX, targetX));
+  applyDamage(target, data.damage, unit.side);
+  state.spikes.push({
+    x1,
+    x2,
+    y: FIELD.ground - 12,
+    side: unit.side,
+    life: 0.42,
+    duration: 0.42,
+  });
+  popText(target.x, target.y ? target.y - 86 : FIELD.ground - 132, `骨刺 -${data.damage}`, "#d8c8e8");
+  summonSuikaiUndead(unit);
+}
+
+function summonSuikaiUndead(unit) {
+  const data = UNIT.suikai;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.summonCount; i += 1) {
+    const undead = spawnUnit("undead", unit.side, unit.x - dir * (22 + i * 15));
+    undead.maxHp = data.summonHp;
+    undead.hp = data.summonHp;
+    undead.damage = data.summonDamage;
+    undead.poisonOnHit = true;
+    undead.poisonHitDps = data.summonPoisonDps;
+    undead.summonerId = unit.id;
+    undead.forceCharge = true;
+  }
+  popText(unit.x, unit.y - 128, "毒亡灵 x5", "#93d96b");
+}
+
+function hookTargetWithSuikai(unit, target) {
+  const data = UNIT.suikai;
+  const dir = unit.side === "player" ? 1 : -1;
+  const originalX = target.x;
+  const frontX = unit.x + dir * 44;
+  target.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, frontX));
+  target.y = unit.y + (Math.random() * 22 - 11);
+  applyDamage(target, data.hookDamage, unit.side);
+  target.combatTimer = 3;
+  state.lightning.push({
+    x1: unit.x,
+    y1: unit.y - 70,
+    x2: originalX,
+    y2: target.y - 45,
+    life: 0.28,
+    duration: 0.28,
+  });
+  state.spikes.push({
+    x1: unit.x,
+    x2: originalX,
+    y: FIELD.ground - 28,
+    side: unit.side,
+    life: 0.3,
+    duration: 0.3,
+  });
+  popText(target.x, target.y - 96, "镰钩 -150", "#d8c8e8");
 }
 
 function castDreadfireSpell(unit, target) {
@@ -3683,10 +3879,10 @@ function startCampaignSecondPhase() {
   if (phase.killPlayerArmy) {
     state.units.forEach((unit) => {
       if (unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit)) {
-        popText(unit.x, unit.y - 80, "秒杀", "#f5f0df");
+        popText(unit.x, unit.y - 80, isHeroUnit(unit) || unit.campaignCenterGate ? "免疫秒杀" : "秒杀", "#f5f0df");
       }
     });
-    state.units = state.units.filter((unit) => unit.side !== "player");
+    state.units = state.units.filter((unit) => unit.side !== "player" || isHeroUnit(unit) || unit.campaignCenterGate);
   }
   state.units = state.units.filter((unit) => unit.side !== "enemy");
   state.arrows = [];
@@ -3757,10 +3953,27 @@ function draw() {
   state.spikes.forEach(drawSpike);
   state.blasts.forEach(drawBlast);
   state.lightning.forEach(drawLightning);
+  drawSnow();
   drawCampaignDarkness();
   state.floaters.forEach(drawFloater);
 
   if (state.over) drawEndOverlay();
+}
+
+function drawSnow() {
+  if (!activeCampaign?.snow) return;
+  const time = performance.now() / 1000;
+  ctx.save();
+  ctx.fillStyle = "rgba(245, 252, 255, 0.75)";
+  for (let i = 0; i < 110; i += 1) {
+    const x = (i * 97 + time * 18 * ((i % 5) + 1)) % FIELD.width;
+    const y = (i * 53 + time * 34 * ((i % 3) + 1)) % FIELD.height;
+    const radius = 1.2 + (i % 3) * 0.45;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawCampaignDarkness() {
@@ -4100,6 +4313,7 @@ function getUnitColor(unit) {
   if (type === "darkKnight") return "#55505f";
   if (type === "chaosGiant") return "#493b4e";
   if (type === "undeadMage") return "#766487";
+  if (type === "suikai") return "#4c4058";
   return "#e2675d";
 }
 
@@ -4122,6 +4336,7 @@ function getHeadColor(unit) {
   if (unit.type === "monk") return "#fff4d0";
   if (unit.type === "enslavedGiant") return "#c0a36d";
   if (unit.type === "undeadMage") return "#d8c8e8";
+  if (unit.type === "suikai") return "#ece1ff";
   if (unit.type === "chaosGiant") return "#c7b0d8";
   if (factionForSide(unit.side) !== "chaos") return getUnitColor(unit);
   if (unit.type === "creeper") return "#b8b0a5";
@@ -4469,6 +4684,23 @@ function drawWeapon(type) {
     ctx.fillStyle = "rgba(184, 176, 165, 0.45)";
     ctx.beginPath();
     ctx.arc(50, -48, 7, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "suikai") {
+    ctx.strokeStyle = "#2d2135";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -23);
+    ctx.lineTo(36, -64);
+    ctx.stroke();
+    ctx.strokeStyle = "#ece1ff";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(34, -64);
+    ctx.quadraticCurveTo(59, -70, 57, -42);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(216, 200, 232, 0.45)";
+    ctx.beginPath();
+    ctx.arc(57, -42, 6, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "chaosGiant") {
     ctx.strokeStyle = "#1f1a24";
@@ -5044,7 +5276,7 @@ function findUnitAt(point) {
 function canMedusaSlay(medusa, target) {
   if (!medusa || !target || medusa.hp <= 0 || target.hp <= 0) return false;
   if (target.side === medusa.side) return false;
-  if (target.type === "vUnit") return false;
+  if (isHeroUnit(target)) return false;
   if (UNIT[target.type]?.giant) return false;
   return true;
 }
@@ -5052,10 +5284,17 @@ function canMedusaSlay(medusa, target) {
 function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
   if (target.side === v.side) return false;
+  if (isControlImmune(target)) return false;
   if (v.canControlAll) return true;
-  if (target.type === "vUnit" || target.type === "vClone") return false;
-  if (UNIT[target.type]?.giant) return false;
   return true;
+}
+
+function isHeroUnit(unit) {
+  return !!unit && (UNIT[unit.type]?.hero || unit.type === "vUnit");
+}
+
+function isControlImmune(unit) {
+  return isHeroUnit(unit) || unit.type === "vClone" || UNIT[unit.type]?.giant;
 }
 
 function beginMedusaSlay(medusa) {
