@@ -4212,7 +4212,7 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(49, -57, 12, 0, Math.PI * 2);
     ctx.fill();
-  } else if (type === "creeper") {
+  } else if (type === "creeper" || type === "largeCreeper") {
     ctx.strokeStyle = "#c7b08f";
     ctx.beginPath();
     ctx.moveTo(12, -29);
