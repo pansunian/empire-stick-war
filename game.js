@@ -753,6 +753,7 @@ function formatSpecial(type) {
   if (data.antiAir) notes.push("近战可攻击空中");
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
+  if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
   if (data.burnDps) notes.push(`灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (data.stunDuration) notes.push(`眩晕 ${data.stunDuration}秒`);
@@ -2956,6 +2957,10 @@ function applyPoison(target, dps, duration, options = {}) {
     popText(target.x, FIELD.ground - 172, "毒雾无效", "#93d96b");
     return;
   }
+  if (isPoisonImmune(target)) {
+    popText(target.x, target.y - 88, "免疫中毒", "#93d96b");
+    return;
+  }
 
   target.poisonTimer = Math.max(target.poisonTimer, duration);
   target.poisonDps = Math.max(target.poisonDps, dps);
@@ -2966,6 +2971,10 @@ function applyPoison(target, dps, duration, options = {}) {
   }
   target.poisonTick = 0;
   popText(target.x, target.y - 88, "中毒", "#93d96b");
+}
+
+function isPoisonImmune(unit) {
+  return unit.type === "undead" || unit.type === "poisonZombie" || unit.type === "deadCorpse";
 }
 
 function clearPoison(unit, label = "解毒") {
