@@ -627,7 +627,7 @@ const CAMPAIGN_LEVELS = {
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword"],
       playerStart: ["miner", "miner", "swordsman", "swordsman", "archer", "spearman"],
       enemyRoster: ["miner", "spearman", "spartan", "crossbow"],
-      enemyStart: ["miner", "miner", "spartan", "spearman", "spearman"],
+      enemyStart: ["spearman", "spearman"],
       enemyFaction: "order",
       startGold: 140,
       enemyGold: 160,
