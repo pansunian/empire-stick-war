@@ -177,13 +177,27 @@ const UNIT = {
   enslavedGiant: {
     name: "投石车",
     cost: 750,
-    hp: 500,
-    damage: 40,
+    hp: 550,
+    damage: 60,
     range: 600,
-    speed: 18,
+    speed: 40,
     train: 8,
-    cooldown: 1,
-    stunDuration: 2,
+    cooldown: 1.5,
+    stunDuration: 1,
+  },
+  rocketCart: {
+    name: "火箭车",
+    cost: 650,
+    hp: 500,
+    damage: 5,
+    range: 400,
+    speed: 35,
+    train: 8,
+    cooldown: 4,
+    volleyCount: 40,
+    volleyRadius: 50,
+    splash: 24,
+    arrowLife: 1.35,
   },
   creeper: {
     name: "爬行者",
@@ -528,7 +542,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart"],
     startingUnits: ["miner", "swordsman"],
     mineColor: "#e2b64e",
   },
@@ -558,6 +572,7 @@ const UNIT_ICON = {
   musketeer: "gun",
   mage: "wizard-hat",
   enslavedGiant: "earth",
+  rocketCart: "bomb-crossbow",
   creeper: "claws",
   undead: "zombie-head",
   machete: "machete",
@@ -585,7 +600,7 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
@@ -600,7 +615,7 @@ const MODE_START_GOLD = {
   brawl: 5000,
 };
 const CAMPAIGN_UNLOCKS = {
-  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "enslavedGiant", "enslavedGiant", "enslavedGiant"],
+  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "chaosGiant", "chaosGiant"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
@@ -965,6 +980,7 @@ function formatSpecial(type) {
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (type === "rocketCart") notes.push(`每 ${data.cooldown}秒齐射 ${data.volleyCount} 支慢速爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
@@ -1064,6 +1080,7 @@ function newGame() {
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
     campaignPhase: 1,
     campaignDarknessElapsed: 0,
+    screenShake: 0,
     nextId: 1,
   };
 
@@ -2070,6 +2087,7 @@ function chooseEnemyUnit(affordable) {
     crossbow: 0.75,
     musketeer: 0.65,
     mage: 0.6,
+    rocketCart: 0.32,
     earthElement: 1,
     waterElement: 0.9,
     fireElement: 0.9,
@@ -3082,6 +3100,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "rocketCart") {
+    launchRocketVolley(unit, target);
+    return;
+  }
+
   if (unit.type === "undeadMage") {
     castUndeadPierce(unit, target);
     return;
@@ -3395,6 +3418,33 @@ function throwBoulder(unit, target) {
   popText(unit.x, unit.y - 138, "投石", "#c0a36d");
 }
 
+function launchRocketVolley(unit, target) {
+  const data = UNIT.rocketCart;
+  const centerX = target.kind === "statue" ? target.x : target.x;
+  const centerY = target.y ? target.y - 28 : FIELD.ground - 110;
+  const startY = unit.y - 82;
+  for (let i = 0; i < data.volleyCount; i += 1) {
+    const ratio = data.volleyCount <= 1 ? 0.5 : i / (data.volleyCount - 1);
+    const wave = Math.sin(i * 2.399963);
+    const offset = (ratio - 0.5) * data.volleyRadius * 2 + wave * 8;
+    state.arrows.push({
+      x: unit.x + (Math.random() - 0.5) * 20,
+      y: startY - Math.random() * 18,
+      tx: centerX + offset,
+      ty: centerY + Math.cos(i * 1.7) * 16,
+      side: unit.side,
+      damage: data.damage,
+      splash: data.splash,
+      target,
+      life: data.arrowLife + (i % 8) * 0.035,
+      duration: data.arrowLife + (i % 8) * 0.035,
+      type: "rocketVolley",
+    });
+  }
+  state.screenShake = Math.max(state.screenShake ?? 0, 0.35);
+  popText(unit.x, unit.y - 118, "火箭齐射", "#ffce7a");
+}
+
 function castFireDragon(unit, target) {
   const data = UNIT.dreadfire;
   damageUnitsInRadius(target.x, data.dragonRadius, unit.side, data.dragonMarkDamage, "标记");
@@ -3485,6 +3535,8 @@ function updateArrows(dt) {
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side);
+      } else if (arrow.type === "rocketVolley") {
+        explodeRocketArrow(arrow);
       } else {
         applyDamage(arrow.target, arrow.damage, arrow.side);
         if (arrow.stun) applyStun(arrow.target, arrow.stun);
@@ -3492,6 +3544,17 @@ function updateArrows(dt) {
     }
   }
   state.arrows = state.arrows.filter((arrow) => arrow.life > 0);
+}
+
+function explodeRocketArrow(arrow) {
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, 3);
+  targets.forEach((target) => {
+    applyDamage(target, arrow.damage, arrow.side);
+  });
+  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= arrow.splash + 28) {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.22, duration: 0.22, color: "#ffce7a" });
 }
 
 function explodeBolt(arrow) {
@@ -3938,6 +4001,7 @@ function updateParticles(dt) {
     spike.life -= dt;
   });
   state.spikes = state.spikes.filter((spike) => spike.life > 0);
+  state.screenShake = Math.max(0, (state.screenShake ?? 0) - dt);
 }
 
 function popText(x, y, text, color) {
@@ -3947,6 +4011,11 @@ function popText(x, y, text, color) {
 
 function draw() {
   ctx.clearRect(0, 0, FIELD.width, FIELD.height);
+  ctx.save();
+  if ((state.screenShake ?? 0) > 0) {
+    const shake = state.screenShake * 7;
+    ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+  }
   drawSky();
   drawStormClouds();
   drawGround();
@@ -3975,6 +4044,7 @@ function draw() {
   state.floaters.forEach(drawFloater);
 
   if (state.over) drawEndOverlay();
+  ctx.restore();
 }
 
 function drawSnow() {
@@ -4198,6 +4268,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "rocketCart") {
+    drawRocketCartUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "medusa") {
     drawMedusaUnit(unit);
     ctx.restore();
@@ -4306,6 +4381,47 @@ function drawCatapultUnit(unit) {
     ctx.fill();
     ctx.strokeStyle = "#d0a05c";
     ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+
+  ctx.restore();
+  drawUnitHp(unit);
+}
+
+function drawRocketCartUnit(unit) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "#5b6f82";
+  ctx.strokeStyle = "#1f2b35";
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(-34, -16);
+  ctx.lineTo(34, -16);
+  ctx.lineTo(24, -42);
+  ctx.lineTo(-26, -42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#ffce7a";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 5; i += 1) {
+    const y = -53 - i * 5;
+    ctx.beginPath();
+    ctx.moveTo(-15 + i * 4, y);
+    ctx.lineTo(34 + i * 3, y - 13);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#2c3440";
+  [-20, 22].forEach((x) => {
+    ctx.beginPath();
+    ctx.arc(x, -5, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d0d9e8";
+    ctx.lineWidth = 2.5;
     ctx.stroke();
   });
 
@@ -5012,10 +5128,10 @@ function drawUnitHp(unit) {
 }
 
 function drawArrow(arrow) {
-  const duration = arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55;
+  const duration = arrow.duration ?? (arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55);
   const t = 1 - arrow.life / duration;
   const x = arrow.x + (arrow.tx - arrow.x) * t;
-  const y = arrow.y + (arrow.ty - arrow.y) * t - (arrow.type === "campaignRain" ? 0 : Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : 34));
+  const y = arrow.y + (arrow.ty - arrow.y) * t - (arrow.type === "campaignRain" ? 0 : Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : arrow.type === "rocketVolley" ? 52 : 34));
   if (arrow.type === "boulder") {
     ctx.fillStyle = "#8b6f46";
     ctx.beginPath();
@@ -5033,6 +5149,19 @@ function drawArrow(arrow) {
     ctx.moveTo(x, y - 16);
     ctx.lineTo(x, y + 16);
     ctx.stroke();
+    return;
+  }
+  if (arrow.type === "rocketVolley") {
+    ctx.strokeStyle = "#ffce7a";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(x - 13, y + 5);
+    ctx.lineTo(x + 14, y - 6);
+    ctx.stroke();
+    ctx.fillStyle = "#ff7a3d";
+    ctx.beginPath();
+    ctx.arc(x + 15, y - 6, 3.5, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
   ctx.strokeStyle =
