@@ -53,6 +53,7 @@ const RALLY = {
 const MERGE_COST = 30;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"]);
 const AOE_TARGET_LIMIT = 5;
+const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
   range: 420,
   damage: 20,
@@ -422,7 +423,7 @@ const UNIT = {
     name: "超级巨人",
     cost: 0,
     hp: 12000,
-    damage: 150,
+    damage: 300,
     range: 58,
     speed: 20,
     train: 0,
@@ -430,6 +431,9 @@ const UNIT = {
     giant: true,
     antiAir: true,
     freezeImmune: true,
+    stunImmune: true,
+    slayImmune: true,
+    controlImmune: true,
     statueOnly: true,
     hero: true,
   },
@@ -1062,6 +1066,9 @@ function formatSpecial(type) {
   if (data.flying) notes.push("飞行");
   if (data.giant) notes.push("巨大体型");
   if (data.freezeImmune) notes.push("无法被冰冻");
+  if (data.stunImmune) notes.push("免疫眩晕");
+  if (data.slayImmune) notes.push("免疫秒杀");
+  if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
@@ -1144,8 +1151,8 @@ function newGame() {
     paused: false,
     over: false,
     winner: null,
-    playerHp: 1000,
-    enemyHp: 1000,
+    playerHp: STATUE_MAX_HP,
+    enemyHp: STATUE_MAX_HP,
     units: [],
     arrows: [],
     blasts: [],
@@ -3779,6 +3786,10 @@ function updateFrozenDamage(dt) {
 function applyStun(target, duration) {
   if (target.kind === "statue") return;
   if (isUnitHidden(target)) return;
+  if (UNIT[target.type]?.stunImmune) {
+    popText(target.x, target.y - 92, "免疫眩晕", "#d7b978");
+    return;
+  }
   target.stunTimer = Math.max(target.stunTimer, duration);
   popText(target.x, target.y - 92, "眩晕", "#d7b978");
 }
@@ -4245,7 +4256,7 @@ function startCampaignSecondPhase() {
   const phase = activeCampaign.secondPhase;
   state.campaignPhase = 2;
   enemyFaction = phase.enemyFaction;
-  state.enemyHp = 1000;
+  state.enemyHp = STATUE_MAX_HP;
   state.enemyGold = phase.enemyGold ?? state.enemyGold;
   state.enemySpawnTimer = 1.2;
   state.enemyMinerTimer = 3;
@@ -4262,7 +4273,6 @@ function startCampaignSecondPhase() {
     state.units = state.units.filter((unit) => unit.side !== "player" || isHeroUnit(unit) || unit.campaignCenterGate);
   }
   state.units = state.units.filter((unit) => unit.side !== "enemy");
-  state.enemyHp = phase.winByKillingType ? 1 : state.enemyHp;
   state.arrows = [];
   state.delayedSpells = [];
   state.tornadoes = [];
@@ -5719,8 +5729,8 @@ function toggleFullscreen() {
 function updateHud() {
   goldEl.textContent = Math.floor(state.gold);
   enemyGoldEl.textContent = Math.floor(state.enemyGold);
-  playerHpBar.style.width = `${state.playerHp / 10}%`;
-  enemyHpBar.style.width = `${state.enemyHp / 10}%`;
+  playerHpBar.style.width = `${(state.playerHp / STATUE_MAX_HP) * 100}%`;
+  enemyHpBar.style.width = `${(state.enemyHp / STATUE_MAX_HP) * 100}%`;
   trainButtons.forEach((button) => {
     if (button.dataset.action === "convertEarth") {
       button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
@@ -5805,6 +5815,7 @@ function findUnitAt(point) {
 function canMedusaSlay(medusa, target) {
   if (!medusa || !target || medusa.hp <= 0 || target.hp <= 0) return false;
   if (target.side === medusa.side) return false;
+  if (UNIT[target.type]?.slayImmune) return false;
   if (isHeroUnit(target)) return false;
   if (UNIT[target.type]?.giant) return false;
   return true;
@@ -5823,7 +5834,7 @@ function isHeroUnit(unit) {
 }
 
 function isControlImmune(unit) {
-  return isHeroUnit(unit) || unit.type === "vClone" || UNIT[unit.type]?.giant;
+  return isHeroUnit(unit) || unit.type === "vClone" || UNIT[unit.type]?.giant || UNIT[unit.type]?.controlImmune;
 }
 
 function beginMedusaSlay(medusa) {
