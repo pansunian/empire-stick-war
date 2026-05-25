@@ -184,6 +184,7 @@ const UNIT = {
     train: 8,
     cooldown: 1.5,
     stunDuration: 1,
+    blindSpot: 120,
   },
   rocketCart: {
     name: "火箭车",
@@ -198,6 +199,7 @@ const UNIT = {
     volleyRadius: 50,
     splash: 24,
     arrowLife: 1.35,
+    blindSpot: 100,
   },
   creeper: {
     name: "爬行者",
@@ -980,6 +982,7 @@ function formatSpecial(type) {
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`每 ${data.cooldown}秒齐射 ${data.volleyCount} 支慢速爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
@@ -2256,7 +2259,7 @@ function updateUnits(dt) {
 
     const range = getUnitRange(unit);
 
-    if (target && Math.abs(unit.x - target.x) <= range) {
+    if (target && canAttackFromDistance(unit, target, range)) {
       attack(unit, target);
     } else if (target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
       attack(unit, target);
@@ -2935,6 +2938,11 @@ function getAttackSpeedFactor(unit) {
 
 function getDesiredX(unit, target) {
   const range = getUnitRange(unit);
+  if (target && target.kind !== "statue" && isInsideBlindSpot(unit, target)) {
+    const dir = unit.side === "player" ? -1 : 1;
+    const retreatX = target.x + dir * (UNIT[unit.type].blindSpot + 18);
+    return Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, retreatX));
+  }
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
@@ -2977,6 +2985,18 @@ function getEnemyRallyX(unit) {
 function getUnitRange(unit) {
   if (unit.type === "spearman" && !unit.spearThrown) return UNIT.spearman.throwRange;
   return UNIT[unit.type]?.range ?? 0;
+}
+
+function isInsideBlindSpot(unit, target) {
+  const blindSpot = UNIT[unit.type]?.blindSpot;
+  if (!blindSpot || !target || target.kind === "statue") return false;
+  return Math.abs(unit.x - target.x) <= blindSpot;
+}
+
+function canAttackFromDistance(unit, target, range) {
+  if (!target) return false;
+  if (isInsideBlindSpot(unit, target)) return false;
+  return Math.abs(unit.x - target.x) <= range;
 }
 
 function findTarget(unit) {
