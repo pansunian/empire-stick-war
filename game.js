@@ -174,6 +174,21 @@ const UNIT = {
     iceAttackSlow: 0.1,
     iceDps: 3,
   },
+  berserker: {
+    name: "狂战士",
+    cost: 0,
+    hp: 1000,
+    damage: 65,
+    range: 42,
+    speed: 52,
+    train: 0,
+    cooldown: 2,
+    rageEvery: 15,
+    rageDuration: 8,
+    rageRange: 220,
+    rageLimit: 10,
+    hero: true,
+  },
   archmage: {
     name: "大法师",
     cost: 0,
@@ -403,6 +418,21 @@ const UNIT = {
     freezeImmune: true,
     stunDuration: 2,
   },
+  superGiant: {
+    name: "超级巨人",
+    cost: 0,
+    hp: 12000,
+    damage: 150,
+    range: 58,
+    speed: 20,
+    train: 0,
+    cooldown: 4,
+    giant: true,
+    antiAir: true,
+    freezeImmune: true,
+    statueOnly: true,
+    hero: true,
+  },
   earthElement: {
     name: "土元素",
     cost: 65,
@@ -612,6 +642,7 @@ const UNIT_ICON = {
   crossbow: "bomb-crossbow",
   musketeer: "gun",
   mage: "wizard-hat",
+  berserker: "greatsword",
   archmage: "wizard-hat",
   catapult: "earth",
   enslavedGiant: "earth",
@@ -628,6 +659,7 @@ const UNIT_ICON = {
   undeadMage: "skull",
   suikai: "skull",
   chaosGiant: "axe",
+  superGiant: "axe",
   earthElement: "earth",
   waterElement: "water",
   fireElement: "fire",
@@ -643,8 +675,8 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
@@ -750,15 +782,24 @@ const CAMPAIGN_LEVELS = {
     6: {
       title: "第六关：霜冻之地",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage"],
-      playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer"],
+      playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer", "berserker"],
       enemyRoster: ["miner", "chaosGiant", "enslavedGiant", "bomber"],
       enemyStart: ["miner", "miner", "bomber", "bomber", "bomber"],
       enemyFaction: "chaos",
       startGold: 180,
       enemyGold: 760,
       snow: { moveFactor: 0.9, ignoreGiant: true },
+      secondPhase: {
+        enemyFaction: "chaos",
+        enemyRoster: [],
+        enemyStart: ["superGiant"],
+        enemyGold: 0,
+        disableEnemyTraining: true,
+        winByKillingType: "superGiant",
+        message: "超级巨人出现，击杀它才可通关",
+      },
       rewardText: "投石车",
-      objective: "霜冻之地会让普通单位移速下降 10%，巨人不受影响；击败巨人、投石巨人与炸弹客组成的混沌军团",
+      objective: "霜冻之地会让普通单位移速下降 10%，巨人不受影响；摧毁雕像后击杀超级巨人",
     },
   },
   chaos: {
@@ -1036,7 +1077,9 @@ function formatSpecial(type) {
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
+  if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`每 ${data.cooldown}秒齐射 ${data.volleyCount} 支慢速爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
@@ -1424,6 +1467,8 @@ function spawnUnit(type, side, x) {
     suikaiHookTimer: UNIT[type].hookEvery ?? 0,
     archmageFireballTimer: UNIT[type].fireballEvery ?? 0,
     archmageAttackCount: 0,
+    berserkerRageTimer: UNIT[type].rageEvery ?? 0,
+    rageTimer: 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -1997,6 +2042,7 @@ function updateEnemyAi(dt) {
   state.enemyCommandTimer -= dt;
   updateEnemyCommand();
   updateEnemyBattleLine(dt);
+  if (activeCampaign?.secondPhase?.disableEnemyTraining && state.campaignPhase === 2) return;
 
   const enemyMiners = state.units.filter((unit) => unit.side === "enemy" && unit.type === "miner").length;
   const savingForV = shouldEnemySaveForV();
@@ -2248,6 +2294,7 @@ function updateUnits(dt) {
     unit.medusaSlayTimer = Math.max(0, unit.medusaSlayTimer - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
+    unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.anim += dt * 8;
 
     if (unit.stunTimer > 0 || unit.frozenBy) {
@@ -2301,6 +2348,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "archmage") {
       updateArchmage(unit, dt);
+    }
+    if (unit.type === "berserker") {
+      updateBerserker(unit, dt);
     }
     if (unit.type === "electricGate") {
       updateElectricGate(unit, dt);
@@ -2775,6 +2825,22 @@ function updateHeroBlink(unit, data) {
   popText(unit.x, unit.y - 125, "闪现后撤", "#d7ceff");
 }
 
+function updateBerserker(unit, dt) {
+  const data = UNIT.berserker;
+  unit.berserkerRageTimer -= dt;
+  if (unit.berserkerRageTimer > 0) return;
+  unit.berserkerRageTimer += data.rageEvery;
+  const candidates = state.units
+    .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally))
+    .filter((ally) => ally === unit || ally.type === "swordsman" || ally.type === "greatsword")
+    .filter((ally) => Math.abs(ally.x - unit.x) <= data.rageRange)
+    .sort((a, b) => (a === unit ? -1 : b === unit ? 1 : Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x)));
+  candidates.slice(0, data.rageLimit + 1).forEach((ally) => {
+    ally.rageTimer = data.rageDuration;
+  });
+  popText(unit.x, unit.y - 130, "狂暴", "#ff5a45");
+}
+
 function updateMiner(unit, dt) {
   const isPlayer = unit.side === "player";
   const minerCommand = isPlayer ? state.minerCommand : "mine";
@@ -3003,6 +3069,7 @@ function getMoveFactor(unit) {
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
   }
+  if (unit.rageTimer > 0) factor *= 2;
   return factor;
 }
 
@@ -3024,6 +3091,7 @@ function getAttackSpeedFactor(unit) {
     if (field.side === unit.side) continue;
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.attackSlow ?? 1);
   }
+  if (unit.rageTimer > 0) factor *= 2;
   return factor;
 }
 
@@ -3092,6 +3160,14 @@ function canAttackFromDistance(unit, target, range) {
 
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
+  if (UNIT[unit.type]?.statueOnly) {
+    return {
+      kind: "statue",
+      side: unit.side === "player" ? "enemy" : "player",
+      x: unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase,
+      y: FIELD.ground - 80,
+    };
+  }
   let nearby = null;
   let nearestDistance = Infinity;
 
@@ -4121,6 +4197,21 @@ function checkWin() {
   state.playerHp = Math.max(0, state.playerHp);
   state.enemyHp = Math.max(0, state.enemyHp);
 
+  if (activeCampaign?.secondPhase?.winByKillingType && state.campaignPhase === 2) {
+    if (state.playerHp <= 0) {
+      state.over = true;
+      state.winner = "enemy";
+      statusEl.textContent = "失败，我方雕像倒塌";
+      homeBtn.classList.remove("hidden");
+      return;
+    }
+    const bossAlive = state.units.some((unit) => unit.side === "enemy" && unit.type === activeCampaign.secondPhase.winByKillingType && unit.hp > 0);
+    if (!bossAlive) {
+      completeCampaignVictory();
+    }
+    return;
+  }
+
   if (state.enemyHp <= 0 && activeCampaign?.secondPhase && state.campaignPhase === 1 && state.playerHp > 0) {
     startCampaignSecondPhase();
     return;
@@ -4130,18 +4221,24 @@ function checkWin() {
     state.over = true;
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
     if (state.winner === "player" && activeCampaign) {
-      campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
-      if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
-      saveCampaignProgress();
-      const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
-      statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
-      homeBtn.classList.remove("hidden");
+      completeCampaignVictory();
       return;
     }
     statusEl.textContent =
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}雕像已被摧毁` : "失败，我方雕像倒塌";
     homeBtn.classList.remove("hidden");
   }
+}
+
+function completeCampaignVictory() {
+  state.over = true;
+  state.winner = "player";
+  campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
+  if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
+  saveCampaignProgress();
+  const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
+  statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
+  homeBtn.classList.remove("hidden");
 }
 
 function startCampaignSecondPhase() {
@@ -4165,6 +4262,7 @@ function startCampaignSecondPhase() {
     state.units = state.units.filter((unit) => unit.side !== "player" || isHeroUnit(unit) || unit.campaignCenterGate);
   }
   state.units = state.units.filter((unit) => unit.side !== "enemy");
+  state.enemyHp = phase.winByKillingType ? 1 : state.enemyHp;
   state.arrows = [];
   state.delayedSpells = [];
   state.tornadoes = [];
@@ -4453,6 +4551,10 @@ function drawUnit(unit) {
     ctx.shadowColor = "#78ff9a";
     ctx.shadowBlur = 18;
   }
+  if (unit.rageTimer > 0) {
+    ctx.shadowColor = "#ff4f3d";
+    ctx.shadowBlur = 18;
+  }
   if (unit.type === "treeEnt") {
     drawTreeEntUnit(unit);
     ctx.restore();
@@ -4689,6 +4791,7 @@ function getUnitColor(unit) {
   if (unit.type === "vUnit") return "#f7f7f2";
   if (unit.type === "vClone") return "#7369c8";
   if (unit.type === "mage") return "#786bd8";
+  if (unit.type === "berserker") return "#a84032";
   if (unit.type === "archmage") return "#4c55b8";
   if (unit.type === "monk") return "#d8d0b2";
   if (unit.type === "catapult") return "#8b6f46";
@@ -4704,6 +4807,7 @@ function getUnitColor(unit) {
   if (type === "demonArcher") return "#d05b8f";
   if (type === "darkKnight") return "#55505f";
   if (type === "chaosGiant") return "#493b4e";
+  if (type === "superGiant") return "#2f2634";
   if (type === "undeadMage") return "#766487";
   if (type === "suikai") return "#4c4058";
   return "#e2675d";
@@ -4725,6 +4829,7 @@ function getHeadColor(unit) {
   if (unit.type === "vUnit") return "#ffffff";
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "mage") return "#d7ceff";
+  if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "monk") return "#fff4d0";
   if (unit.type === "catapult") return "#c0a36d";
@@ -4732,6 +4837,7 @@ function getHeadColor(unit) {
   if (unit.type === "undeadMage") return "#d8c8e8";
   if (unit.type === "suikai") return "#ece1ff";
   if (unit.type === "chaosGiant") return "#c7b0d8";
+  if (unit.type === "superGiant") return "#e0c8ff";
   if (factionForSide(unit.side) !== "chaos") return getUnitColor(unit);
   if (unit.type === "creeper") return "#b8b0a5";
   if (unit.type === "undead") return "#9ee06b";
@@ -5112,15 +5218,15 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(57, -42, 6, 0, Math.PI * 2);
     ctx.fill();
-  } else if (type === "chaosGiant") {
+  } else if (type === "chaosGiant" || type === "superGiant") {
     ctx.strokeStyle = "#1f1a24";
-    ctx.lineWidth = 6;
+    ctx.lineWidth = type === "superGiant" ? 8 : 6;
     ctx.beginPath();
     ctx.moveTo(16, -31);
-    ctx.lineTo(47, -55);
+    ctx.lineTo(type === "superGiant" ? 58 : 47, type === "superGiant" ? -62 : -55);
     ctx.stroke();
-    ctx.fillStyle = "#493b4e";
-    ctx.fillRect(39, -65, 18, 18);
+    ctx.fillStyle = type === "superGiant" ? "#2f2634" : "#493b4e";
+    ctx.fillRect(39, -65, type === "superGiant" ? 24 : 18, type === "superGiant" ? 24 : 18);
   } else if (type === "earthElement") {
     ctx.fillStyle = "#8a7348";
     ctx.beginPath();
