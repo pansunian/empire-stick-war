@@ -175,16 +175,18 @@ const UNIT = {
     iceDps: 3,
   },
   enslavedGiant: {
-    name: "投石车",
+    name: "投石巨人",
     cost: 750,
-    hp: 550,
-    damage: 60,
+    hp: 1000,
+    damage: 50,
     range: 600,
     speed: 40,
     train: 8,
     cooldown: 1.5,
     stunDuration: 1,
     blindSpot: 120,
+    giant: true,
+    freezeImmune: true,
   },
   rocketCart: {
     name: "火箭车",
@@ -354,7 +356,7 @@ const UNIT = {
     name: "巨人",
     cost: 750,
     hp: 1200,
-    damage: 55,
+    damage: 65,
     range: 48,
     speed: 18,
     train: 8.5,
@@ -544,13 +546,13 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart"],
     startingUnits: ["miner", "swordsman"],
     mineColor: "#e2b64e",
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant"],
+    roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "undead", "creeper"],
     mineColor: "#b7f56e",
   },
@@ -602,8 +604,8 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
@@ -617,8 +619,8 @@ const MODE_START_GOLD = {
   brawl: 5000,
 };
 const CAMPAIGN_UNLOCKS = {
-  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant", "rocketCart", "rocketCart", "rocketCart"],
-  chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "chaosGiant", "chaosGiant"],
+  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart", "rocketCart", "rocketCart", "rocketCart"],
+  chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
@@ -708,7 +710,7 @@ const CAMPAIGN_LEVELS = {
     },
     6: {
       title: "第六关：霜冻之地",
-      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "enslavedGiant"],
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage"],
       playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer"],
       enemyRoster: ["miner", "chaosGiant"],
       enemyStart: ["miner", "chaosGiant"],
@@ -4280,11 +4282,6 @@ function drawUnit(unit) {
   }
   if (unit.type === "hurricane") {
     drawHurricaneUnit(unit);
-    ctx.restore();
-    return;
-  }
-  if (unit.type === "enslavedGiant") {
-    drawCatapultUnit(unit);
     ctx.restore();
     return;
   }
