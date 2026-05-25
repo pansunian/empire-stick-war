@@ -202,7 +202,7 @@ const UNIT = {
   },
   rocketCart: {
     name: "火箭车",
-    cost: 650,
+    cost: 850,
     hp: 500,
     damage: 8,
     range: 350,
