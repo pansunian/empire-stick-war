@@ -174,6 +174,18 @@ const UNIT = {
     iceAttackSlow: 0.1,
     iceDps: 3,
   },
+  catapult: {
+    name: "投石车",
+    cost: 750,
+    hp: 550,
+    damage: 60,
+    range: 600,
+    speed: 40,
+    train: 8,
+    cooldown: 1.5,
+    stunDuration: 1,
+    blindSpot: 120,
+  },
   enslavedGiant: {
     name: "投石巨人",
     cost: 750,
@@ -546,7 +558,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman"],
     mineColor: "#e2b64e",
   },
@@ -575,6 +587,7 @@ const UNIT_ICON = {
   crossbow: "bomb-crossbow",
   musketeer: "gun",
   mage: "wizard-hat",
+  catapult: "earth",
   enslavedGiant: "earth",
   rocketCart: "bomb-crossbow",
   creeper: "claws",
@@ -604,7 +617,7 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
@@ -619,7 +632,7 @@ const MODE_START_GOLD = {
   brawl: 5000,
 };
 const CAMPAIGN_UNLOCKS = {
-  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "rocketCart", "rocketCart", "rocketCart", "rocketCart"],
+  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
 };
@@ -2092,6 +2105,7 @@ function chooseEnemyUnit(affordable) {
     crossbow: 0.75,
     musketeer: 0.65,
     mage: 0.6,
+    catapult: 0.28,
     rocketCart: 0.32,
     earthElement: 1,
     waterElement: 0.9,
@@ -3117,7 +3131,7 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "enslavedGiant") {
+  if (unit.type === "catapult" || unit.type === "enslavedGiant") {
     throwBoulder(unit, target);
     return;
   }
@@ -4285,6 +4299,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "catapult") {
+    drawCatapultUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "rocketCart") {
     drawRocketCartUnit(unit);
     ctx.restore();
@@ -4507,6 +4526,7 @@ function getUnitColor(unit) {
   if (unit.type === "vClone") return "#7369c8";
   if (unit.type === "mage") return "#786bd8";
   if (unit.type === "monk") return "#d8d0b2";
+  if (unit.type === "catapult") return "#8b6f46";
   if (unit.type === "enslavedGiant") return "#8b6f46";
   const type = unit.type;
   if (type === "creeper") return "#9ee06b";
@@ -4541,6 +4561,7 @@ function getHeadColor(unit) {
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "mage") return "#d7ceff";
   if (unit.type === "monk") return "#fff4d0";
+  if (unit.type === "catapult") return "#c0a36d";
   if (unit.type === "enslavedGiant") return "#c0a36d";
   if (unit.type === "undeadMage") return "#d8c8e8";
   if (unit.type === "suikai") return "#ece1ff";
