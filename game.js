@@ -799,6 +799,12 @@ const CAMPAIGN_LEVELS = {
         enemyStart: ["superGiant"],
         enemyGold: 0,
         disableEnemyTraining: true,
+        stunPlayerArmy: 5,
+        reinforcements: [
+          { type: "creeper", every: 5 },
+          { type: "bomber", every: 6 },
+          { type: "miner", every: 10, count: 2 },
+        ],
         winByKillingType: "superGiant",
         message: "超级巨人出现，击杀它才可通关",
       },
@@ -1187,6 +1193,7 @@ function newGame() {
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
     campaignPhase: 1,
+    secondPhaseReinforcementTimers: [],
     campaignDarknessElapsed: 0,
     screenShake: 0,
     nextId: 1,
@@ -1855,6 +1862,7 @@ function updateQueue(dt) {
 
 function updateCampaignRules(dt) {
   updateCampaignReinforcements(dt);
+  updateSecondPhaseReinforcements(dt);
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
@@ -1947,6 +1955,24 @@ function updateCampaignReinforcements(dt) {
   state.campaignReinforcementTimer += reinforcement.every;
   spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12);
   popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援`, "#ffb0a3");
+}
+
+function updateSecondPhaseReinforcements(dt) {
+  const reinforcements = activeCampaign?.secondPhase?.reinforcements;
+  if (!reinforcements || state.campaignPhase !== 2) return;
+
+  reinforcements.forEach((reinforcement, index) => {
+    state.secondPhaseReinforcementTimers[index] -= dt;
+    if (state.secondPhaseReinforcementTimers[index] > 0) return;
+
+    state.secondPhaseReinforcementTimers[index] += reinforcement.every;
+    const count = reinforcement.count ?? 1;
+    for (let i = 0; i < count; i += 1) {
+      const unit = spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 18 + i * 26);
+      unit.forceCharge = true;
+    }
+    popText(FIELD.enemyGate - 70, FIELD.ground - 112, `${UNIT[reinforcement.type].name}进攻`, "#ffb0a3");
+  });
 }
 
 function updateCampaignArrowRain(dt) {
@@ -2857,7 +2883,7 @@ function updateMiner(unit, dt) {
     return;
   }
 
-  if (isPlayer && minerCommand === "attack") {
+  if (unit.forceCharge || (isPlayer && minerCommand === "attack")) {
     updateAttackingMiner(unit, dt);
     return;
   }
@@ -2999,8 +3025,11 @@ function getGoldRushMineOccupyingSide(mine) {
 function updateAttackingMiner(unit, dt) {
   const data = UNIT.miner;
   const range = getUnitRange(unit);
-  const target = nearestEnemy(unit, 230) ?? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
-  const desiredX = target.kind === "statue" ? target.x - range + 8 : target.x - range + 8;
+  const statue = unit.side === "player"
+    ? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 }
+    : { kind: "statue", side: "player", x: FIELD.playerBase, y: FIELD.ground - 80 };
+  const target = nearestEnemy(unit, 230) ?? statue;
+  const desiredX = unit.side === "player" ? target.x - range + 8 : target.x + range - 8;
 
   if (target && Math.abs(unit.x - target.x) <= range) {
     attack(unit, target);
@@ -4264,6 +4293,7 @@ function startCampaignSecondPhase() {
   state.enemyCommand = "guard";
   state.enemyCommandTimer = 0;
   state.enemyLineX = getEnemyRallyBaseX();
+  state.secondPhaseReinforcementTimers = (phase.reinforcements ?? []).map((reinforcement) => reinforcement.every);
   if (phase.killPlayerArmy) {
     state.units.forEach((unit) => {
       if (unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit)) {
@@ -4272,6 +4302,7 @@ function startCampaignSecondPhase() {
     });
     state.units = state.units.filter((unit) => unit.side !== "player" || isHeroUnit(unit) || unit.campaignCenterGate);
   }
+  if (phase.stunPlayerArmy) stunPlayerArmy(phase.stunPlayerArmy);
   state.units = state.units.filter((unit) => unit.side !== "enemy");
   state.arrows = [];
   state.delayedSpells = [];
@@ -4285,6 +4316,14 @@ function startCampaignSecondPhase() {
   updateHud();
   statusEl.textContent = phase.message ?? "第二场战斗开始";
   popText(FIELD.enemyBase, FIELD.ground - 170, "第二场战斗", "#ffb0a3");
+}
+
+function stunPlayerArmy(duration) {
+  state.units.forEach((unit) => {
+    if (unit.side !== "player" || unit.hp <= 0 || isUnitHidden(unit)) return;
+    unit.stunTimer = Math.max(unit.stunTimer, duration);
+    popText(unit.x, unit.y - 92, `眩晕 ${duration}秒`, "#d7b978");
+  });
 }
 
 function updateParticles(dt) {
