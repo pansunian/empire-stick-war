@@ -726,7 +726,7 @@ const CAMPAIGN_LEVELS = {
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage"],
       playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer"],
       enemyRoster: ["miner", "chaosGiant", "enslavedGiant", "bomber"],
-      enemyStart: ["miner", "chaosGiant", "enslavedGiant", "bomber"],
+      enemyStart: ["miner", "miner", "bomber", "bomber", "bomber"],
       enemyFaction: "chaos",
       startGold: 180,
       enemyGold: 760,
