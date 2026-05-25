@@ -174,6 +174,31 @@ const UNIT = {
     iceAttackSlow: 0.1,
     iceDps: 3,
   },
+  archmage: {
+    name: "大法师",
+    cost: 0,
+    hp: 800,
+    damage: 50,
+    range: 260,
+    speed: 32,
+    train: 0,
+    cooldown: 1.9,
+    chainDamages: [50, 30, 18],
+    chainRange: 170,
+    fireballEvery: 15,
+    fireballCount: 5,
+    fireballDamage: 70,
+    fireballRadius: 34,
+    arcaneEvery: 5,
+    arcaneDamage: 100,
+    arcaneRadius: 150,
+    arcaneStun: 3,
+    arcaneTriggerRange: 200,
+    blinkHpThreshold: 100,
+    blinkThreatHp: 600,
+    blinkDistance: 500,
+    hero: true,
+  },
   catapult: {
     name: "投石车",
     cost: 750,
@@ -587,6 +612,7 @@ const UNIT_ICON = {
   crossbow: "bomb-crossbow",
   musketeer: "gun",
   mage: "wizard-hat",
+  archmage: "wizard-hat",
   catapult: "earth",
   enslavedGiant: "earth",
   rocketCart: "bomb-crossbow",
@@ -617,7 +643,7 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
@@ -810,6 +836,19 @@ const CAMPAIGN_LEVELS = {
       rewardText: "爬行者",
       objective: "顶住大型爬行者冲击，击败混沌雕像后再迎战秩序帝国",
     },
+    6: {
+      title: "第六关：大法师围城",
+      playerRoster: ["miner", "undead", "poisonZombie", "deadCorpse", "undeadMage"],
+      playerStart: ["miner", "undead", "poisonZombie", "deadCorpse", "undeadMage", "suikai"],
+      enemyRoster: ["miner", "archer", "greatsword", "crossbow", "monk", "mage", "archmage"],
+      enemyStart: ["miner", "archer", "greatsword", "crossbow", "monk", "mage", "archmage"],
+      enemyFaction: "order",
+      startGold: 170,
+      enemyGold: 210,
+      enemyDeathsBecomePlayerUndead: true,
+      rewardText: "亡灵法师",
+      objective: "敌军阵亡会在原地转化为我方亡灵，击败拥有连锁闪电与火球雨的大法师",
+    },
   },
   element: {
     1: {
@@ -997,6 +1036,7 @@ function formatSpecial(type) {
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`每 ${data.cooldown}秒齐射 ${data.volleyCount} 支慢速爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
@@ -1382,6 +1422,8 @@ function spawnUnit(type, side, x) {
     medusaSlayTimer: 0,
     suikaiCorpseTimer: UNIT[type].corpseEvery ?? 0,
     suikaiHookTimer: UNIT[type].hookEvery ?? 0,
+    archmageFireballTimer: UNIT[type].fireballEvery ?? 0,
+    archmageAttackCount: 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -2257,6 +2299,9 @@ function updateUnits(dt) {
     if (unit.type === "suikai") {
       updateSuikai(unit, dt);
     }
+    if (unit.type === "archmage") {
+      updateArchmage(unit, dt);
+    }
     if (unit.type === "electricGate") {
       updateElectricGate(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -2700,6 +2745,36 @@ function summonSuikaiCorpses(unit) {
   popText(unit.x, unit.y - 118, "死尸出笼", "#93d96b");
 }
 
+function updateArchmage(unit, dt) {
+  const data = UNIT.archmage;
+  updateHeroBlink(unit, data);
+  unit.archmageFireballTimer -= dt;
+  if (unit.archmageFireballTimer <= 0) {
+    unit.archmageFireballTimer += data.fireballEvery;
+    castArchmageFireballs(unit);
+  }
+
+  if ((unit.archmageAttackCount ?? 0) >= data.arcaneEvery) {
+    const target = nearestEnemy(unit, data.arcaneTriggerRange);
+    if (target) {
+      unit.archmageAttackCount = 0;
+      castArcaneExplosion(unit);
+    }
+  }
+}
+
+function updateHeroBlink(unit, data) {
+  if (unit.blinkUsed) return;
+  if (unit.hp > (data.blinkHpThreshold ?? UNIT.vUnit.blinkHpThreshold)) return;
+  if (nearbyEnemyHp(unit, 165) < (data.blinkThreatHp ?? UNIT.vUnit.blinkThreatHp)) return;
+  const dir = unit.side === "player" ? -1 : 1;
+  const baseLimit = unit.side === "player" ? FIELD.playerGate - 80 : FIELD.enemyGate + 80;
+  unit.x += dir * (data.blinkDistance ?? UNIT.vUnit.blinkDistance);
+  unit.x = unit.side === "player" ? Math.max(baseLimit, unit.x) : Math.min(baseLimit, unit.x);
+  unit.blinkUsed = true;
+  popText(unit.x, unit.y - 125, "闪现后撤", "#d7ceff");
+}
+
 function updateMiner(unit, dt) {
   const isPlayer = unit.side === "player";
   const minerCommand = isPlayer ? state.minerCommand : "mine";
@@ -3116,6 +3191,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "archmage") {
+    castChainLightning(unit, target);
+    return;
+  }
+
   if (unit.type === "mage") {
     castMageSpell(unit, target);
     return;
@@ -3522,6 +3602,77 @@ function strikeLightning(unit, target) {
   state.lightning.push({ x1: unit.x, y1: startY, x2: target.x, y2: endY, life: 0.22, duration: 0.22 });
 }
 
+function castChainLightning(unit, target) {
+  const data = UNIT.archmage;
+  if (target.kind === "statue") {
+    applyDamage(target, data.chainDamages[0], unit.side);
+    unit.archmageAttackCount = (unit.archmageAttackCount ?? 0) + 1;
+    return;
+  }
+
+  const hits = [target];
+  while (hits.length < data.chainDamages.length) {
+    const previous = hits[hits.length - 1];
+    const next = state.units
+      .filter((candidate) => candidate.side !== unit.side && candidate.hp > 0 && !isUnitHidden(candidate) && !hits.includes(candidate) && canTarget(unit, candidate))
+      .filter((candidate) => Math.abs(candidate.x - previous.x) <= data.chainRange)
+      .sort((a, b) => Math.abs(a.x - previous.x) - Math.abs(b.x - previous.x))[0];
+    if (!next) break;
+    hits.push(next);
+  }
+
+  let fromX = unit.x;
+  let fromY = unit.y - 92;
+  hits.forEach((enemy, index) => {
+    const damage = data.chainDamages[index];
+    applyDamage(enemy, damage, unit.side);
+    state.lightning.push({
+      x1: fromX,
+      y1: fromY,
+      x2: enemy.x,
+      y2: enemy.y - 46 + (UNIT[enemy.type]?.flying ? -42 : 0),
+      life: 0.26,
+      duration: 0.26,
+    });
+    fromX = enemy.x;
+    fromY = enemy.y - 46;
+  });
+  unit.archmageAttackCount = (unit.archmageAttackCount ?? 0) + 1;
+  popText(unit.x, unit.y - 122, "连锁闪电", "#d7ceff");
+}
+
+function castArchmageFireballs(unit) {
+  const data = UNIT.archmage;
+  const minX = Math.min(FIELD.playerMineX, FIELD.enemyMineX);
+  const maxX = Math.max(FIELD.playerMineX, FIELD.enemyMineX);
+  for (let i = 0; i < data.fireballCount; i += 1) {
+    state.meteors.push({
+      x: minX + Math.random() * (maxX - minX),
+      y: FIELD.ground - 20,
+      side: unit.side,
+      damage: data.fireballDamage,
+      radius: data.fireballRadius,
+      life: 1.15 + i * 0.16,
+      duration: 1.15 + i * 0.16,
+      size: 11,
+      color: "#ff7a3d",
+      label: "大火球",
+    });
+  }
+  popText(unit.x, unit.y - 132, "大火球雨", "#ff9b45");
+}
+
+function castArcaneExplosion(unit) {
+  const data = UNIT.archmage;
+  const targets = getUnitsInRadius(unit.x, data.arcaneRadius, unit.side, Infinity);
+  targets.forEach((target) => {
+    applyDamage(target, data.arcaneDamage, unit.side);
+    applyStun(target, data.arcaneStun);
+  });
+  state.blasts.push({ x: unit.x, y: unit.y - 44, radius: data.arcaneRadius, life: 0.45, duration: 0.45, color: "#b88cff" });
+  popText(unit.x, unit.y - 140, "奥术爆炸", "#d7ceff");
+}
+
 function bindFreeze(water, target) {
   if (target.kind === "statue" || target.frozenBy) return;
   if (isUnitHidden(target)) return;
@@ -3754,8 +3905,8 @@ function updateMeteors(dt) {
     meteor.life -= dt;
     if (meteor.life > 0) continue;
     const radius = meteor.radius ?? 18;
-    damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.campaign ? "陨石" : "流星");
-    state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: "#ffb45e" });
+    damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.label ?? (meteor.campaign ? "陨石" : "流星"));
+    state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: meteor.color ?? "#ffb45e" });
   }
   state.meteors = state.meteors.filter((meteor) => meteor.life > 0);
 }
@@ -3888,6 +4039,19 @@ function removeDead() {
         y: unit.y,
         text: "化为水蝎子",
         color: "#8ee0cf",
+      });
+    }
+    if (activeCampaign?.enemyDeathsBecomePlayerUndead && unit.side === "enemy" && unit.type !== "undead" && !UNIT[unit.type]?.hero) {
+      deathSpawns.push({
+        type: "undead",
+        side: "player",
+        x: unit.x,
+        y: unit.y,
+        text: "原地转化亡灵",
+        color: "#b8b0a5",
+        setup: (undead) => {
+          undead.forceCharge = true;
+        },
       });
     }
     if (unit.type === "electricGate" && unit.expired) {
@@ -4525,6 +4689,7 @@ function getUnitColor(unit) {
   if (unit.type === "vUnit") return "#f7f7f2";
   if (unit.type === "vClone") return "#7369c8";
   if (unit.type === "mage") return "#786bd8";
+  if (unit.type === "archmage") return "#4c55b8";
   if (unit.type === "monk") return "#d8d0b2";
   if (unit.type === "catapult") return "#8b6f46";
   if (unit.type === "enslavedGiant") return "#8b6f46";
@@ -4560,6 +4725,7 @@ function getHeadColor(unit) {
   if (unit.type === "vUnit") return "#ffffff";
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "mage") return "#d7ceff";
+  if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "monk") return "#fff4d0";
   if (unit.type === "catapult") return "#c0a36d";
   if (unit.type === "enslavedGiant") return "#c0a36d";
@@ -4807,6 +4973,22 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(36, -66, 7, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "archmage") {
+    ctx.strokeStyle = "#d7ceff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -22);
+    ctx.lineTo(34, -68);
+    ctx.stroke();
+    ctx.fillStyle = "#9ee8ff";
+    ctx.beginPath();
+    ctx.arc(37, -72, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#b88cff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(37, -72, 15, 0, Math.PI * 1.55);
+    ctx.stroke();
   } else if (type === "enslavedGiant") {
     ctx.strokeStyle = "#c0a36d";
     ctx.lineWidth = 6;
