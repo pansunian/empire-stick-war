@@ -2316,12 +2316,12 @@ canvas {
   .game-shell {
     padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     gap: 6px;
-    grid-template-rows: 42px minmax(240px, 1fr) 104px;
+    grid-template-rows: 42px minmax(250px, 1fr) 92px;
   }
 
   .top-bar {
     display: grid;
-    grid-template-columns: minmax(124px, 0.7fr) minmax(360px, 1.7fr) minmax(124px, 0.7fr);
+    grid-template-columns: minmax(132px, 0.72fr) minmax(380px, 1.75fr) minmax(132px, 0.72fr);
     gap: 6px;
     min-height: 0;
   }
@@ -2355,7 +2355,7 @@ canvas {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 6px;
     padding-right: 7px;
     font-size: 12px;
@@ -2364,9 +2364,11 @@ canvas {
 
   #gameStatus {
     flex: 1;
-    min-width: 96px;
+    min-width: 0;
+    max-width: none;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: left;
   }
 
   .top-home-btn,
@@ -2383,7 +2385,7 @@ canvas {
     font-size: 11px;
   }
 
-  .ios-device .fullscreen-btn {
+  .fullscreen-btn {
     display: none;
   }
 
@@ -2422,25 +2424,29 @@ canvas {
 
   .control-deck {
     display: grid;
-    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
-    gap: 6px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 40px 40px;
+    gap: 5px;
     min-height: 0;
-    height: 104px;
+    height: 92px;
     padding: 6px;
   }
 
   .command-group {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(62px, 1fr));
     gap: 5px;
     min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .unit-shop {
     display: grid;
-    grid-template-rows: repeat(2, 43px);
+    grid-template-rows: 40px;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(86px, 100px);
+    grid-auto-columns: minmax(82px, 96px);
     gap: 5px;
     min-height: 0;
     padding-bottom: 0;
@@ -2450,7 +2456,7 @@ canvas {
   .train-btn {
     min-width: 0;
     min-height: 0;
-    height: 43px;
+    height: 40px;
     gap: 1px;
   }
 
@@ -2460,12 +2466,12 @@ canvas {
   }
 
   .train-btn strong {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .unit-icon {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   .faction-select,
