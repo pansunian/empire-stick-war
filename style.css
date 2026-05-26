@@ -2263,3 +2263,263 @@ canvas {
     line-height: 1.35;
   }
 }
+
+.rotate-notice {
+  display: none;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .rotate-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    background:
+      linear-gradient(rgba(15, 17, 17, 0.82), rgba(15, 17, 17, 0.92)),
+      #121616;
+    text-align: center;
+  }
+
+  .rotate-notice div {
+    width: min(320px, 100%);
+    padding: 24px;
+    border: 1px solid rgba(230, 184, 74, 0.34);
+    border-radius: 8px;
+    background: rgba(24, 28, 32, 0.92);
+  }
+
+  .rotate-notice strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff1c8;
+    font-size: 26px;
+  }
+
+  .rotate-notice span {
+    display: block;
+    color: rgba(245, 240, 223, 0.78);
+    line-height: 1.55;
+  }
+}
+
+@media (max-width: 932px) and (orientation: landscape) {
+  html,
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .game-shell {
+    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    gap: 6px;
+    grid-template-rows: 42px minmax(240px, 1fr) 104px;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: minmax(124px, 0.7fr) minmax(360px, 1.7fr) minmax(124px, 0.7fr);
+    gap: 6px;
+    min-height: 0;
+  }
+
+  .empire-card,
+  .status-panel {
+    min-width: 0;
+    min-height: 0;
+    height: 42px;
+    padding: 5px 7px;
+  }
+
+  .empire-card {
+    gap: 7px;
+  }
+
+  .empire-card strong {
+    font-size: 12px;
+  }
+
+  .empire-card small {
+    font-size: 10px;
+  }
+
+  .banner {
+    width: 18px;
+    height: 28px;
+  }
+
+  .status-panel {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding-right: 7px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  #gameStatus {
+    flex: 1;
+    min-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-home-btn,
+  .install-btn,
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    position: static;
+    transform: none;
+    height: 30px;
+    min-width: 42px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .ios-device .fullscreen-btn {
+    display: none;
+  }
+
+  .icon-btn {
+    width: 32px;
+    font-size: 18px;
+  }
+
+  .battlefield-wrap {
+    min-height: 0;
+    height: 100%;
+  }
+
+  canvas {
+    width: auto;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: 2600 / 620;
+  }
+
+  .health-bars {
+    top: 7px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .health-bars label {
+    font-size: 10px;
+  }
+
+  .bar {
+    height: 8px;
+    margin-top: 2px;
+  }
+
+  .control-deck {
+    display: grid;
+    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+    gap: 6px;
+    min-height: 0;
+    height: 104px;
+    padding: 6px;
+  }
+
+  .command-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 0;
+  }
+
+  .unit-shop {
+    display: grid;
+    grid-template-rows: repeat(2, 43px);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(86px, 100px);
+    gap: 5px;
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .command-btn,
+  .train-btn {
+    min-width: 0;
+    min-height: 0;
+    height: 43px;
+    gap: 1px;
+  }
+
+  .command-btn small,
+  .train-btn small {
+    display: none;
+  }
+
+  .train-btn strong {
+    font-size: 11px;
+  }
+
+  .unit-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .faction-select,
+  .campaign-map {
+    padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .faction-panel,
+  .campaign-panel {
+    width: min(820px, 100%);
+    padding: 8px 0;
+  }
+
+  .faction-panel h1,
+  .campaign-head h2 {
+    margin-bottom: 14px;
+    font-size: 34px;
+  }
+
+  .mode-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mode-card {
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  .mode-card strong {
+    font-size: 16px;
+  }
+
+  .mode-card small {
+    font-size: 10px;
+  }
+
+  .faction-options.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .faction-card {
+    min-height: 132px;
+    padding: 14px;
+  }
+
+  .faction-card strong {
+    font-size: 20px;
+  }
+
+  .faction-card small {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+}
