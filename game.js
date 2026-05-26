@@ -37,6 +37,10 @@ let trainButtons = [...document.querySelectorAll(".train-btn")];
 const restartBtn = document.querySelector("#restartBtn");
 let deferredInstallPrompt = null;
 
+if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
+  document.documentElement.classList.add("ios-device");
+}
+
 const FIELD = {
   width: 2600,
   height: 620,

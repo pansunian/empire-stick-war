@@ -1876,3 +1876,390 @@ canvas {
     height: 18px;
   }
 }
+
+@media (max-width: 480px) {
+  html,
+  body {
+    position: fixed;
+    width: 100%;
+  }
+
+  .game-shell {
+    padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    gap: 6px;
+    grid-template-rows: auto minmax(180px, 1fr) auto;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .status-panel {
+    grid-column: 1 / -1;
+    order: -1;
+    min-height: 76px;
+    padding: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  #gameStatus {
+    width: 100%;
+    min-height: 16px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-home-btn,
+  .install-btn,
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    position: static;
+    transform: none;
+    height: 30px;
+    min-width: 42px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .ios-device .fullscreen-btn {
+    display: none;
+  }
+
+  .icon-btn {
+    width: 34px;
+    font-size: 18px;
+  }
+
+  .empire-card {
+    min-width: 0;
+    min-height: 46px;
+    padding: 6px;
+    gap: 7px;
+  }
+
+  .empire-card strong {
+    font-size: 12px;
+  }
+
+  .empire-card small,
+  .command-btn small,
+  .train-btn small {
+    font-size: 9px;
+  }
+
+  .banner {
+    width: 17px;
+    height: 27px;
+  }
+
+  .battlefield-wrap {
+    min-height: 180px;
+  }
+
+  canvas {
+    min-height: 180px;
+  }
+
+  .health-bars {
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    gap: 8px;
+  }
+
+  .health-bars label {
+    width: 48%;
+    font-size: 9px;
+  }
+
+  .bar {
+    height: 8px;
+    margin-top: 2px;
+  }
+
+  .control-deck {
+    display: grid;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .command-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .unit-shop {
+    grid-template-rows: repeat(2, 46px);
+    grid-auto-columns: minmax(82px, 92px);
+    gap: 5px;
+    padding-bottom: 0;
+  }
+
+  .command-btn,
+  .train-btn {
+    min-height: 42px;
+    gap: 0;
+  }
+
+  .train-btn strong {
+    font-size: 11px;
+  }
+
+  .unit-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .faction-select,
+  .campaign-map {
+    align-items: start;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .faction-panel,
+  .campaign-panel {
+    padding: 6px 0;
+  }
+
+  .faction-panel h1,
+  .campaign-head h2 {
+    font-size: 28px;
+  }
+
+  .mode-options,
+  .faction-options,
+  .faction-options.three {
+    gap: 8px;
+  }
+
+  .mode-card {
+    min-height: 62px;
+    padding: 11px 12px;
+  }
+
+  .mode-card strong {
+    font-size: 17px;
+  }
+
+  .faction-card {
+    min-height: 118px;
+    padding: 14px;
+  }
+
+  .faction-card strong {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 932px) and (max-height: 480px) {
+  html,
+  body {
+    position: fixed;
+    width: 100%;
+  }
+
+  .game-shell {
+    padding: max(5px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    gap: 5px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: minmax(112px, 0.62fr) minmax(330px, 1.8fr) minmax(112px, 0.62fr);
+    gap: 5px;
+  }
+
+  .empire-card,
+  .status-panel {
+    min-width: 0;
+    min-height: 36px;
+    padding: 4px 6px;
+  }
+
+  .status-panel {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    padding-right: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  #gameStatus {
+    flex: 1;
+    min-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-home-btn,
+  .install-btn,
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    position: static;
+    transform: none;
+    height: 28px;
+    min-width: 38px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .ios-device .fullscreen-btn {
+    display: none;
+  }
+
+  .icon-btn {
+    width: 30px;
+    font-size: 17px;
+  }
+
+  .empire-card {
+    gap: 6px;
+  }
+
+  .empire-card strong {
+    font-size: 11px;
+  }
+
+  .empire-card small {
+    font-size: 9px;
+  }
+
+  .banner {
+    width: 15px;
+    height: 24px;
+  }
+
+  .battlefield-wrap,
+  canvas {
+    min-height: 0;
+  }
+
+  .health-bars {
+    top: 5px;
+    left: 8px;
+    right: 8px;
+  }
+
+  .health-bars label {
+    font-size: 9px;
+  }
+
+  .bar {
+    height: 7px;
+    margin-top: 2px;
+  }
+
+  .control-deck {
+    display: grid;
+    grid-template-columns: minmax(168px, 188px) minmax(0, 1fr);
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .command-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .unit-shop {
+    display: grid;
+    grid-template-rows: repeat(2, 39px);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(76px, 88px);
+    gap: 4px;
+    padding-bottom: 0;
+  }
+
+  .command-btn,
+  .train-btn {
+    min-width: 0;
+    min-height: 39px;
+    gap: 0;
+  }
+
+  .command-btn small,
+  .train-btn small {
+    display: none;
+  }
+
+  .train-btn strong {
+    font-size: 10px;
+  }
+
+  .unit-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .faction-select,
+  .campaign-map {
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+
+  .faction-panel,
+  .campaign-panel {
+    padding: 6px 0;
+    width: min(760px, 100%);
+  }
+
+  .faction-panel h1,
+  .campaign-head h2 {
+    margin-bottom: 12px;
+    font-size: 30px;
+  }
+
+  .mode-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mode-card {
+    min-height: 58px;
+    padding: 9px 10px;
+  }
+
+  .mode-card strong {
+    font-size: 15px;
+  }
+
+  .mode-card small {
+    font-size: 10px;
+  }
+
+  .faction-options.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .faction-card {
+    min-height: 118px;
+    padding: 12px;
+  }
+
+  .faction-card strong {
+    font-size: 18px;
+  }
+
+  .faction-card small {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+}
