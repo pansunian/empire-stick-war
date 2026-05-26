@@ -60,7 +60,7 @@ const RALLY = {
 };
 
 const MERGE_COST = 30;
-const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"]);
+const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "vUnit"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
@@ -590,6 +590,20 @@ const UNIT = {
     shieldReduction: 0.8,
     flying: true,
   },
+  hill: {
+    name: "山丘",
+    cost: 0,
+    hp: 300,
+    damage: 20,
+    range: 40,
+    speed: 34,
+    train: 0,
+    cooldown: 1.5,
+    jumpEvery: 10,
+    jumpRadius: 80,
+    jumpDamage: 15,
+    jumpStun: 3,
+  },
   scaldStrike: {
     name: "烫水击",
     cost: 0,
@@ -710,6 +724,7 @@ const UNIT_ICON = {
   rog: "lava",
   dreadfire: "fire-dragon",
   hurricane: "tornado",
+  hill: "earth",
   scaldStrike: "water",
   electricGate: "lightning",
   vUnit: "white-orb",
@@ -718,7 +733,7 @@ const UNIT_ICON = {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
 let state;
@@ -733,7 +748,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "electricGate", "vUnit"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
   order: 1,
@@ -1124,6 +1139,7 @@ function formatSpecial(type) {
   if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
+  if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
@@ -1342,6 +1358,7 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "rog", action: "mergeRog" },
   { type: "dreadfire", action: "mergeDreadfire" },
   { type: "hurricane", action: "mergeHurricane" },
+  { type: "hill", action: "mergeHill" },
   { type: "scaldStrike", action: "mergeScaldStrike" },
   { type: "electricGate", action: "mergeElectricGate" },
   { type: "vUnit", action: "mergeV" },
@@ -1414,6 +1431,10 @@ function renderShop() {
       }
       if (button.dataset.action === "mergeHurricane") {
         mergeHurricane("player");
+        return;
+      }
+      if (button.dataset.action === "mergeHill") {
+        mergeHill("player");
         return;
       }
       if (button.dataset.action === "mergeScaldStrike") {
@@ -1522,6 +1543,7 @@ function spawnUnit(type, side, x) {
     archmageFireballTimer: UNIT[type].fireballEvery ?? 0,
     archmageAttackCount: 0,
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
+    hillJumpTimer: UNIT[type].jumpEvery ?? 0,
     rageTimer: 0,
     rocketAmmo: UNIT[type].ammoPerReload ?? 0,
     rocketReloadTimer: 0,
@@ -1650,6 +1672,24 @@ function mergeHurricane(side) {
   state.units = state.units.filter((unit) => unit !== water && unit !== wind);
   spawnUnit("hurricane", side, (water.x + wind.x) / 2);
   popText((water.x + wind.x) / 2, FIELD.ground - 95, "合成飓风", "#9ee8ff");
+  return true;
+}
+
+function mergeHill(side) {
+  const materials = getHillMaterials(side);
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+
+  if (!payMergeCost(side, x, "#c0a36d")) return false;
+  if (!materials) {
+    popText(x, FIELD.ground - 100, "需要 2 个土元素", "#c0a36d");
+    refundMergeCost(side);
+    return false;
+  }
+
+  state.units = state.units.filter((unit) => !materials.includes(unit));
+  const spawnX = (materials[0].x + materials[1].x) / 2;
+  spawnUnit("hill", side, spawnX);
+  popText(spawnX, FIELD.ground - 95, "合成山丘", "#c0a36d");
   return true;
 }
 
@@ -1783,6 +1823,13 @@ function getElectricGateMaterials(side) {
   };
 }
 
+function getHillMaterials(side) {
+  const materials = state.units
+    .filter((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .slice(0, 2);
+  return materials.length === 2 ? materials : null;
+}
+
 function getVMaterials(side) {
   const required = ["earthElement", "earthElement", "waterElement", "waterElement", "fireElement", "fireElement", "windElement", "windElement"];
   const picked = [];
@@ -1828,6 +1875,10 @@ function canMergeScaldStrike(side) {
 function canMergeElectricGate(side) {
   const { earth, wind } = getElectricGateMaterials(side);
   return Boolean(earth && wind);
+}
+
+function canMergeHill(side) {
+  return Boolean(getHillMaterials(side));
 }
 
 function canMergeV(side) {
@@ -2141,6 +2192,9 @@ function updateEnemyAi(dt) {
   if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && canSpendVMaterials(["waterElement", "windElement"], savingForV) && mergeHurricane("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
+  if (opponentFaction() === "element" && state.enemyAttackMood > 20 && canMergeHill("enemy") && canSpendVMaterials(["earthElement", "earthElement"], savingForV) && mergeHill("enemy")) {
+    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
+  }
   if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeScaldStrike("enemy") && canSpendVMaterials(["waterElement", "fireElement"], savingForV) && mergeScaldStrike("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
@@ -2435,6 +2489,9 @@ function updateUnits(dt) {
     if (unit.type === "hurricane") {
       updateHurricane(unit, dt);
     }
+    if (unit.type === "hill") {
+      updateHill(unit, dt);
+    }
     if (unit.type === "electricGate") {
       updateElectricGate(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -2519,6 +2576,23 @@ function updateRocketCart(unit, target, range, dt) {
   unit.rocketFireTimer = data.fireInterval;
   unit.combatTimer = 3;
   return true;
+}
+
+function updateHill(unit, dt) {
+  const data = UNIT.hill;
+  unit.hillJumpTimer = Math.max(0, (unit.hillJumpTimer ?? data.jumpEvery) - dt);
+  if (unit.hillJumpTimer > 0) return;
+
+  const enemies = getUnitsInRadius(unit.x, data.jumpRadius, unit.side, AOE_TARGET_LIMIT);
+  if (!enemies.length) return;
+
+  unit.hillJumpTimer = data.jumpEvery;
+  enemies.forEach((enemy) => {
+    applyDamage(enemy, data.jumpDamage, unit.side);
+    applyStun(enemy, data.jumpStun);
+  });
+  state.blasts.push({ x: unit.x, y: unit.y - 26, radius: data.jumpRadius, life: 0.42, duration: 0.42, color: "#c0a36d" });
+  popText(unit.x, unit.y - 118, "大跳", "#c0a36d");
 }
 
 function moveRocketCartToward(unit, desiredX, dt) {
@@ -4963,6 +5037,7 @@ function getUnitColor(unit) {
   if (unit.type === "rog") return "#7f4a34";
   if (unit.type === "dreadfire") return "#8e2f32";
   if (unit.type === "hurricane") return "#92d8d0";
+  if (unit.type === "hill") return "#8f7a54";
   if (unit.type === "scaldStrike") return "#c7795a";
   if (unit.type === "electricGate") return "#4f79a7";
   if (unit.type === "vUnit") return "#f7f7f2";
@@ -5002,6 +5077,7 @@ function getHeadColor(unit) {
   if (unit.type === "rog") return "#ffb35f";
   if (unit.type === "dreadfire") return "#ff8963";
   if (unit.type === "hurricane") return "#ffffff";
+  if (unit.type === "hill") return "#d6c090";
   if (unit.type === "scaldStrike") return "#ffd08a";
   if (unit.type === "electricGate") return "#d7f6ee";
   if (unit.type === "vUnit") return "#ffffff";
@@ -5429,6 +5505,17 @@ function drawWeapon(type) {
     ctx.stroke();
     ctx.fillStyle = type === "superGiant" ? "#2f2634" : "#493b4e";
     ctx.fillRect(39, -65, type === "superGiant" ? 24 : 18, type === "superGiant" ? 24 : 18);
+  } else if (type === "hill") {
+    ctx.fillStyle = "#8a7348";
+    ctx.beginPath();
+    ctx.moveTo(13, -27);
+    ctx.lineTo(28, -64);
+    ctx.lineTo(53, -27);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#4c3e28";
+    ctx.lineWidth = 4;
+    ctx.stroke();
   } else if (type === "earthElement") {
     ctx.fillStyle = "#8a7348";
     ctx.beginPath();
@@ -6005,6 +6092,10 @@ function updateHud() {
     }
     if (button.dataset.action === "mergeHurricane") {
       button.disabled = state.over || state.gold < MERGE_COST || !canMergeHurricane("player");
+      return;
+    }
+    if (button.dataset.action === "mergeHill") {
+      button.disabled = state.over || state.gold < MERGE_COST || !canMergeHill("player");
       return;
     }
     if (button.dataset.action === "mergeScaldStrike") {
