@@ -2433,7 +2433,7 @@ function updateUnits(dt) {
         continue;
       }
       if (distance > 4) {
-        unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+        moveRocketCartToward(unit, desiredX, dt);
       }
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
@@ -2493,6 +2493,16 @@ function updateRocketCart(unit, target, range, dt) {
   unit.rocketFireTimer = data.fireInterval;
   unit.combatTimer = 3;
   return true;
+}
+
+function moveRocketCartToward(unit, desiredX, dt) {
+  const data = UNIT.rocketCart;
+  const minX = FIELD.playerBase + 18;
+  const maxX = FIELD.enemyBase - 18;
+  const targetX = Math.max(minX, Math.min(maxX, desiredX));
+  if (Math.abs(unit.x - targetX) <= 4) return;
+  unit.x += Math.sign(targetX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+  unit.x = Math.max(minX, Math.min(maxX, unit.x));
 }
 
 function updateTreeEnt(unit, dt) {
