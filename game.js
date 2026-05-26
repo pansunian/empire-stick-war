@@ -60,7 +60,7 @@ const RALLY = {
 };
 
 const MERGE_COST = 30;
-const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "vUnit"]);
+const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
@@ -604,6 +604,24 @@ const UNIT = {
     jumpDamage: 15,
     jumpStun: 3,
   },
+  linghan: {
+    name: "凌寒",
+    cost: 0,
+    hp: 250,
+    damage: 0,
+    range: 160,
+    speed: 36,
+    train: 0,
+    cooldown: 1,
+    freezeCount: 5,
+    freezeDuration: 10,
+    freezeCooldown: 6,
+    freezeDps: 4,
+    healRadius: 150,
+    deathIceRadius: 200,
+    deathIceDuration: 12,
+    deathIceSlow: 0.3,
+  },
   scaldStrike: {
     name: "烫水击",
     cost: 0,
@@ -725,6 +743,7 @@ const UNIT_ICON = {
   dreadfire: "fire-dragon",
   hurricane: "tornado",
   hill: "earth",
+  linghan: "water",
   scaldStrike: "water",
   electricGate: "lightning",
   vUnit: "white-orb",
@@ -733,7 +752,7 @@ const UNIT_ICON = {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
 let state;
@@ -748,7 +767,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "hill", "scaldStrike", "electricGate", "vUnit"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"],
 };
 const campaignProgressByFaction = {
   order: 1,
@@ -1140,6 +1159,7 @@ function formatSpecial(type) {
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
   if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
+  if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
@@ -1359,6 +1379,7 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "dreadfire", action: "mergeDreadfire" },
   { type: "hurricane", action: "mergeHurricane" },
   { type: "hill", action: "mergeHill" },
+  { type: "linghan", action: "mergeLinghan" },
   { type: "scaldStrike", action: "mergeScaldStrike" },
   { type: "electricGate", action: "mergeElectricGate" },
   { type: "vUnit", action: "mergeV" },
@@ -1435,6 +1456,10 @@ function renderShop() {
       }
       if (button.dataset.action === "mergeHill") {
         mergeHill("player");
+        return;
+      }
+      if (button.dataset.action === "mergeLinghan") {
+        mergeLinghan("player");
         return;
       }
       if (button.dataset.action === "mergeScaldStrike") {
@@ -1516,7 +1541,9 @@ function spawnUnit(type, side, x) {
     healTimer: UNIT[type].healEvery ?? 0,
     stunTimer: 0,
     frozenBy: null,
+    frozenTimer: 0,
     frozenTick: 0,
+    freezeDps: 0,
     boundTargetId: null,
     summonTimer: UNIT[type].summonEvery ?? 0,
     magmaTimer: UNIT[type].magmaEvery ?? 0,
@@ -1544,6 +1571,7 @@ function spawnUnit(type, side, x) {
     archmageAttackCount: 0,
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
     hillJumpTimer: UNIT[type].jumpEvery ?? 0,
+    linghanFreezeTimer: 0,
     rageTimer: 0,
     rocketAmmo: UNIT[type].ammoPerReload ?? 0,
     rocketReloadTimer: 0,
@@ -1693,6 +1721,25 @@ function mergeHill(side) {
   return true;
 }
 
+function mergeLinghan(side) {
+  const materials = getLinghanMaterials(side);
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+
+  if (!payMergeCost(side, x, "#9ee8ff")) return false;
+  if (!materials) {
+    popText(x, FIELD.ground - 100, "需要 2 个空闲水元素", "#9ee8ff");
+    refundMergeCost(side);
+    return false;
+  }
+
+  materials.forEach(releaseFrozenTarget);
+  state.units = state.units.filter((unit) => !materials.includes(unit));
+  const spawnX = (materials[0].x + materials[1].x) / 2;
+  spawnUnit("linghan", side, spawnX);
+  popText(spawnX, FIELD.ground - 95, "合成凌寒", "#9ee8ff");
+  return true;
+}
+
 function mergeScaldStrike(side) {
   const { water, fire } = getScaldStrikeMaterials(side);
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
@@ -1830,6 +1877,13 @@ function getHillMaterials(side) {
   return materials.length === 2 ? materials : null;
 }
 
+function getLinghanMaterials(side) {
+  const materials = state.units
+    .filter((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId)
+    .slice(0, 2);
+  return materials.length === 2 ? materials : null;
+}
+
 function getVMaterials(side) {
   const required = ["earthElement", "earthElement", "waterElement", "waterElement", "fireElement", "fireElement", "windElement", "windElement"];
   const picked = [];
@@ -1879,6 +1933,10 @@ function canMergeElectricGate(side) {
 
 function canMergeHill(side) {
   return Boolean(getHillMaterials(side));
+}
+
+function canMergeLinghan(side) {
+  return Boolean(getLinghanMaterials(side));
 }
 
 function canMergeV(side) {
@@ -2486,6 +2544,9 @@ function updateUnits(dt) {
     if (unit.type === "berserker") {
       updateBerserker(unit, dt);
     }
+    if (unit.type === "linghan") {
+      updateLinghan(unit, dt);
+    }
     if (unit.type === "hurricane") {
       updateHurricane(unit, dt);
     }
@@ -2551,6 +2612,62 @@ function updateHurricane(unit, dt) {
   target.shieldReduction = data.shieldReduction;
   unit.shieldCastTimer = data.shieldEvery;
   popText(target.x, target.y - 105, "风盾", "#9ee8ff");
+}
+
+function updateLinghan(unit, dt) {
+  const data = UNIT.linghan;
+  unit.linghanFreezeTimer = Math.max(0, (unit.linghanFreezeTimer ?? 0) - dt);
+  if (unit.linghanFreezeTimer > 0) return;
+
+  const targets = state.units
+    .filter((enemy) => canLinghanFreeze(unit, enemy))
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
+    .slice(0, data.freezeCount);
+  if (!targets.length) return;
+
+  targets.forEach((target) => applyTimedFreeze(unit, target, data.freezeDuration, data.freezeDps));
+  unit.linghanFreezeTimer = data.freezeDuration + data.freezeCooldown;
+  popText(unit.x, unit.y - 116, `凌寒冰封 x${targets.length}`, "#9ee8ff");
+}
+
+function canLinghanFreeze(unit, target) {
+  if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || isUnitHidden(target)) return false;
+  const data = UNIT[target.type];
+  if (!data || target.frozenBy || data.freezeImmune || data.giant || data.hero) return false;
+  if (target.type === "catapult" || target.type === "rocketCart" || target.type === "electricGate") return false;
+  if (!isAheadOf(unit, target)) return false;
+  return Math.abs(target.x - unit.x) <= UNIT.linghan.range;
+}
+
+function applyTimedFreeze(source, target, duration, dps) {
+  target.frozenBy = source.id;
+  target.frozenTimer = duration;
+  target.frozenTick = 0;
+  target.freezeDps = dps;
+  popText(target.x, target.y - 92, "远程冰冻", "#9ee8ff");
+}
+
+function healLinghanFromDamage(source, damage) {
+  const data = UNIT.linghan;
+  let remaining = damage;
+  if (source.hp < source.maxHp) {
+    const healed = Math.min(remaining, source.maxHp - source.hp);
+    source.hp += healed;
+    remaining -= healed;
+    if (healed > 0) popText(source.x, source.y - 110, `寒愈 +${healed}`, "#9ee8ff");
+  }
+  if (remaining <= 0) return;
+
+  const allies = state.units
+    .filter((ally) => ally.side === source.side && ally !== source && ally.hp > 0 && ally.hp < ally.maxHp && !isUnitHidden(ally) && Math.abs(ally.x - source.x) <= data.healRadius)
+    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+  for (const ally of allies) {
+    if (remaining <= 0) break;
+    const healed = Math.min(remaining, ally.maxHp - ally.hp);
+    ally.hp += healed;
+    remaining -= healed;
+    if (healed > 0) popText(ally.x, ally.y - 94, `寒愈 +${healed}`, "#9ee8ff");
+  }
 }
 
 function updateRocketCart(unit, target, range, dt) {
@@ -3464,6 +3581,7 @@ function isAheadOf(unit, target) {
 function attack(unit, target) {
   const data = UNIT[unit.type];
   if (isUnitHidden(unit) || isUnitHidden(target)) return;
+  if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
   unit.cooldown = data.cooldown ?? 0.9;
@@ -3980,7 +4098,9 @@ function bindFreeze(water, target) {
   }
   water.boundTargetId = target.id;
   target.frozenBy = water.id;
+  target.frozenTimer = Infinity;
   target.frozenTick = 0;
+  target.freezeDps = UNIT.waterElement.freezeDps;
   water.cooldown = 999;
   popText(target.x, target.y - 92, "冰冻", "#9ee8ff");
 }
@@ -3989,10 +4109,19 @@ function updateFrozenDamage(dt) {
   state.units.forEach((unit) => {
     if (isUnitHidden(unit)) return;
     if (!unit.frozenBy || unit.hp <= 0) return;
+    if (unit.frozenTimer !== Infinity) {
+      unit.frozenTimer = Math.max(0, (unit.frozenTimer ?? 0) - dt);
+      if (unit.frozenTimer <= 0) {
+        releaseFrozenUnit(unit);
+        return;
+      }
+    }
     unit.frozenTick += dt;
     if (unit.frozenTick < 1) return;
     unit.frozenTick = 0;
-    applyUnitDamage(unit, UNIT.waterElement.freezeDps, { label: "冻", color: "#9ee8ff", yOffset: -100 });
+    const source = state.units.find((candidate) => candidate.id === unit.frozenBy && candidate.hp > 0);
+    const damage = applyUnitDamage(unit, unit.freezeDps ?? UNIT.waterElement.freezeDps, { label: "冻", color: "#9ee8ff", yOffset: -100 });
+    if (source?.type === "linghan") healLinghanFromDamage(source, damage);
   });
 }
 
@@ -4286,6 +4415,7 @@ function absorbShieldDamage(target, damage) {
 
 function getModifiedDamage(target, amount) {
   if (target.kind === "statue") return amount;
+  if (amount <= 0) return 0;
   let damage = isPoisoned(target) ? amount * 2 : amount;
   if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
     damage *= 1 - activeCampaign.enemySpartanDamageReduction;
@@ -4328,6 +4458,10 @@ function removeDead() {
     if (unit.type === "waterElement") {
       releaseFrozenTarget(unit);
       healNearbyAllies(unit);
+    }
+    if (unit.type === "linghan") {
+      releaseFrozenTargetsFor(unit);
+      createLinghanDeathIce(unit);
     }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
       deathSpawns.push({
@@ -4413,9 +4547,40 @@ function spawnDeathUnit(spawn) {
 function releaseFrozenTarget(water) {
   const target = state.units.find((unit) => unit.id === water.boundTargetId);
   if (!target) return;
-  target.frozenBy = null;
-  target.frozenTick = 0;
-  popText(target.x, target.y - 88, "解冻", "#d8f8ff");
+  releaseFrozenUnit(target);
+}
+
+function releaseFrozenUnit(unit) {
+  const source = state.units.find((candidate) => candidate.id === unit.frozenBy);
+  if (source?.boundTargetId === unit.id) source.boundTargetId = null;
+  unit.frozenBy = null;
+  unit.frozenTimer = 0;
+  unit.frozenTick = 0;
+  unit.freezeDps = 0;
+  popText(unit.x, unit.y - 88, "解冻", "#d8f8ff");
+}
+
+function releaseFrozenTargetsFor(source) {
+  state.units.forEach((unit) => {
+    if (unit.frozenBy === source.id) releaseFrozenUnit(unit);
+  });
+}
+
+function createLinghanDeathIce(unit) {
+  const data = UNIT.linghan;
+  state.iceFields.push({
+    x: unit.x,
+    y: FIELD.ground + 8,
+    radius: data.deathIceRadius,
+    slow: data.deathIceSlow,
+    attackSlow: 1,
+    damage: 0,
+    tick: 0,
+    side: unit.side,
+    life: data.deathIceDuration,
+    duration: data.deathIceDuration,
+  });
+  popText(unit.x, FIELD.ground - 70, "凌寒冰地", "#9ee8ff");
 }
 
 function healNearbyAllies(water) {
@@ -5038,6 +5203,7 @@ function getUnitColor(unit) {
   if (unit.type === "dreadfire") return "#8e2f32";
   if (unit.type === "hurricane") return "#92d8d0";
   if (unit.type === "hill") return "#8f7a54";
+  if (unit.type === "linghan") return "#5ca8d8";
   if (unit.type === "scaldStrike") return "#c7795a";
   if (unit.type === "electricGate") return "#4f79a7";
   if (unit.type === "vUnit") return "#f7f7f2";
@@ -5078,6 +5244,7 @@ function getHeadColor(unit) {
   if (unit.type === "dreadfire") return "#ff8963";
   if (unit.type === "hurricane") return "#ffffff";
   if (unit.type === "hill") return "#d6c090";
+  if (unit.type === "linghan") return "#d8f8ff";
   if (unit.type === "scaldStrike") return "#ffd08a";
   if (unit.type === "electricGate") return "#d7f6ee";
   if (unit.type === "vUnit") return "#ffffff";
@@ -5515,6 +5682,22 @@ function drawWeapon(type) {
     ctx.fill();
     ctx.strokeStyle = "#4c3e28";
     ctx.lineWidth = 4;
+    ctx.stroke();
+  } else if (type === "linghan") {
+    ctx.strokeStyle = "#d8f8ff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(12, -28);
+    ctx.lineTo(42, -64);
+    ctx.stroke();
+    ctx.fillStyle = "#9ee8ff";
+    ctx.beginPath();
+    ctx.arc(45, -68, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#5ca8d8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(45, -68, 17, 0, Math.PI * 1.7);
     ctx.stroke();
   } else if (type === "earthElement") {
     ctx.fillStyle = "#8a7348";
@@ -6096,6 +6279,10 @@ function updateHud() {
     }
     if (button.dataset.action === "mergeHill") {
       button.disabled = state.over || state.gold < MERGE_COST || !canMergeHill("player");
+      return;
+    }
+    if (button.dataset.action === "mergeLinghan") {
+      button.disabled = state.over || state.gold < MERGE_COST || !canMergeLinghan("player");
       return;
     }
     if (button.dataset.action === "mergeScaldStrike") {
