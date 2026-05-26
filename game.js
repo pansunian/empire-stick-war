@@ -60,7 +60,7 @@ const RALLY = {
 };
 
 const MERGE_COST = 30;
-const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
@@ -416,7 +416,7 @@ const UNIT = {
     train: 5.6,
     cooldown: 2,
     summonEvery: 15,
-    summonCount: 5,
+    summonCount: 4,
   },
   suikai: {
     name: "隋凯",
@@ -577,7 +577,7 @@ const UNIT = {
   redflame: {
     name: "赤炎",
     cost: 0,
-    hp: 200,
+    hp: 300,
     damage: 0,
     range: 260,
     speed: 32,
@@ -585,13 +585,33 @@ const UNIT = {
     cooldown: 7,
     fireballDamage: 80,
     fireballRadius: 95,
-    fireballBurnDps: 7,
+    fireballBurnDps: 6,
     fireballBurnDuration: 10,
-    pillarDamage: 65,
+    pillarDamage: 55,
     pillarCount: 5,
     pillarRadius: 52,
     pillarSpacing: 54,
     pillarStun: 2,
+  },
+  stormLich: {
+    name: "风暴巫妖",
+    cost: 0,
+    hp: 200,
+    damage: 0,
+    range: 270,
+    speed: 38,
+    train: 0,
+    cooldown: 5,
+    cloudRadius: 100,
+    cloudDuration: 9.6,
+    boltEvery: 0.8,
+    boltCount: 12,
+    boltDamage: 18,
+    boltSlow: 0.75,
+    boltSlowDuration: 4,
+    deathRainRadius: 400,
+    deathRainDrops: 100,
+    rainHeal: 5,
   },
   hurricane: {
     name: "飓风",
@@ -645,7 +665,7 @@ const UNIT = {
     name: "烫水击",
     cost: 0,
     hp: 120,
-    damage: 60,
+    damage: 100,
     range: 42,
     speed: 55,
     train: 0,
@@ -761,6 +781,7 @@ const UNIT_ICON = {
   rog: "lava",
   dreadfire: "fire-dragon",
   redflame: "fire",
+  stormLich: "lightning",
   hurricane: "tornado",
   hill: "earth",
   linghan: "water",
@@ -772,7 +793,7 @@ const UNIT_ICON = {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
 let state;
@@ -1178,6 +1199,7 @@ function formatSpecial(type) {
   if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "redflame") notes.push(`2 个火元素融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
+  if (type === "stormLich") notes.push(`2 个风元素融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
   if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
   if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
@@ -1262,6 +1284,7 @@ function newGame() {
     spikes: [],
     delayedSpells: [],
     meteors: [],
+    stormClouds: [],
     tornadoes: [],
     floaters: [],
     spawnQueue: [],
@@ -1399,6 +1422,7 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "rog", action: "mergeRog" },
   { type: "dreadfire", action: "mergeDreadfire" },
   { type: "redflame", action: "mergeRedflame" },
+  { type: "stormLich", action: "mergeStormLich" },
   { type: "hurricane", action: "mergeHurricane" },
   { type: "hill", action: "mergeHill" },
   { type: "linghan", action: "mergeLinghan" },
@@ -1474,6 +1498,10 @@ function renderShop() {
       }
       if (button.dataset.action === "mergeRedflame") {
         mergeRedflame("player");
+        return;
+      }
+      if (button.dataset.action === "mergeStormLich") {
+        mergeStormLich("player");
         return;
       }
       if (button.dataset.action === "mergeHurricane") {
@@ -1561,6 +1589,8 @@ function spawnUnit(type, side, x) {
     poisonSlow: 1,
     poisonRaisesUndead: false,
     poisonSourceSide: null,
+    stormSlowTimer: 0,
+    stormSlowFactor: 1,
     burnTimer: 0,
     burnDps: 0,
     burnTick: 0,
@@ -1727,6 +1757,24 @@ function mergeRedflame(side) {
   const spawnX = (materials[0].x + materials[1].x) / 2;
   spawnUnit("redflame", side, spawnX);
   popText(spawnX, FIELD.ground - 95, "合成赤炎", "#ff6a3d");
+  return true;
+}
+
+function mergeStormLich(side) {
+  const materials = getStormLichMaterials(side);
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+
+  if (!payMergeCost(side, x, "#9ee8ff")) return false;
+  if (!materials) {
+    popText(x, FIELD.ground - 100, "需要 2 个风元素", "#9ee8ff");
+    refundMergeCost(side);
+    return false;
+  }
+
+  state.units = state.units.filter((unit) => !materials.includes(unit));
+  const spawnX = (materials[0].x + materials[1].x) / 2;
+  spawnUnit("stormLich", side, spawnX);
+  popText(spawnX, FIELD.ground - 95, "合成风暴巫妖", "#9ee8ff");
   return true;
 }
 
@@ -1901,6 +1949,13 @@ function getRedflameMaterials(side) {
   return materials.length === 2 ? materials : null;
 }
 
+function getStormLichMaterials(side) {
+  const materials = state.units
+    .filter((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .slice(0, 2);
+  return materials.length === 2 ? materials : null;
+}
+
 function getHurricaneMaterials(side) {
   return {
     water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
@@ -1970,6 +2025,10 @@ function canMergeDreadfire(side) {
 
 function canMergeRedflame(side) {
   return Boolean(getRedflameMaterials(side));
+}
+
+function canMergeStormLich(side) {
+  return Boolean(getStormLichMaterials(side));
 }
 
 function canMergeHurricane(side) {
@@ -2045,6 +2104,7 @@ function update(dt) {
   updateBurn(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
+  updateStormClouds(dt);
   updateTornadoes(dt);
   updateIceFieldEffects(dt);
   updateParticles(dt);
@@ -2306,6 +2366,9 @@ function updateEnemyAi(dt) {
   if (opponentFaction() === "element" && state.enemyAttackMood > 26 && canMergeRedflame("enemy") && canSpendVMaterials(["fireElement", "fireElement"], savingForV) && mergeRedflame("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
+  if (opponentFaction() === "element" && state.enemyAttackMood > 27 && canMergeStormLich("enemy") && canSpendVMaterials(["windElement", "windElement"], savingForV) && mergeStormLich("enemy")) {
+    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
+  }
   if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && canSpendVMaterials(["waterElement", "windElement"], savingForV) && mergeHurricane("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
@@ -2546,6 +2609,8 @@ function updateUnits(dt) {
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
+    unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
+    if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
     unit.anim += dt * 8;
 
     if (unit.stunTimer > 0 || unit.frozenBy) {
@@ -3464,6 +3529,7 @@ function moveTowardCastle(unit, dt) {
 function getMoveFactor(unit) {
   let factor = 1;
   if (isPoisoned(unit)) factor = Math.min(factor, unit.poisonSlow ?? 1);
+  if (unit.stormSlowTimer > 0) factor = Math.min(factor, unit.stormSlowFactor ?? 1);
   for (const field of state.iceFields) {
     if (field.side === unit.side) continue;
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
@@ -3688,6 +3754,11 @@ function attack(unit, target) {
 
   if (unit.type === "redflame") {
     castRedflameSpell(unit, target);
+    return;
+  }
+
+  if (unit.type === "stormLich") {
+    summonStormCloud(unit, target);
     return;
   }
 
@@ -4033,6 +4104,26 @@ function castRedflamePillars(unit, target) {
     });
   }
   popText(unit.x, unit.y - 112, "熔岩柱", "#ff6a3d");
+}
+
+function summonStormCloud(unit, target) {
+  const data = UNIT.stormLich;
+  state.stormClouds.push({
+    type: "attack",
+    x: target.x,
+    y: FIELD.ground - 230,
+    side: unit.side,
+    radius: data.cloudRadius,
+    life: data.cloudDuration,
+    duration: data.cloudDuration,
+    boltTimer: 0,
+    boltsLeft: data.boltCount,
+    boltEvery: data.boltEvery,
+    damage: data.boltDamage,
+    slow: data.boltSlow,
+    slowDuration: data.boltSlowDuration,
+  });
+  popText(target.x, FIELD.ground - 130, "乌云", "#9ee8ff");
 }
 
 function launchTornado(unit, target) {
@@ -4467,6 +4558,62 @@ function updateMeteors(dt) {
   state.meteors = state.meteors.filter((meteor) => meteor.life > 0);
 }
 
+function updateStormClouds(dt) {
+  for (const cloud of state.stormClouds) {
+    cloud.life -= dt;
+    if (cloud.type === "attack") updateAttackStormCloud(cloud, dt);
+    if (cloud.type === "rain") updateHealingRainCloud(cloud, dt);
+  }
+  state.stormClouds = state.stormClouds.filter((cloud) => cloud.life > 0 && (cloud.type !== "rain" || cloud.dropsLeft > 0));
+}
+
+function updateAttackStormCloud(cloud, dt) {
+  if (cloud.boltsLeft <= 0) return;
+  cloud.boltTimer -= dt;
+  while (cloud.boltsLeft > 0 && cloud.boltTimer <= 0) {
+    cloud.boltTimer += cloud.boltEvery;
+    cloud.boltsLeft -= 1;
+    strikeStormLichBolt(cloud);
+  }
+}
+
+function strikeStormLichBolt(cloud) {
+  const targets = getUnitsInRadius(cloud.x, cloud.radius, cloud.side, Infinity);
+  if (!targets.length) return;
+  const target = targets[Math.floor(Math.random() * targets.length)];
+  applyDamage(target, cloud.damage, cloud.side);
+  target.stormSlowTimer = cloud.slowDuration;
+  target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, cloud.slow);
+  state.lightning.push({
+    x1: target.x + (Math.random() * 70 - 35),
+    y1: cloud.y,
+    x2: target.x,
+    y2: target.y - 48 + (UNIT[target.type]?.flying ? -42 : 0),
+    life: 0.24,
+    duration: 0.24,
+  });
+  popText(target.x, target.y - 105, `雷 -${cloud.damage}`, "#d7f6ff");
+}
+
+function updateHealingRainCloud(cloud, dt) {
+  cloud.dropTimer -= dt;
+  const dropsPerSecond = cloud.totalDrops / cloud.duration;
+  while (cloud.dropsLeft > 0 && cloud.dropTimer <= 0) {
+    cloud.dropTimer += 1 / dropsPerSecond;
+    cloud.dropsLeft -= 1;
+    healRainDrop(cloud);
+  }
+}
+
+function healRainDrop(cloud) {
+  const allies = state.units.filter((unit) => unit.side === cloud.side && unit.hp > 0 && !isUnitHidden(unit) && Math.abs(unit.x - cloud.x) <= cloud.radius && unit.hp < unit.maxHp);
+  if (!allies.length) return;
+  const target = allies[Math.floor(Math.random() * allies.length)];
+  const healed = Math.min(cloud.heal, target.maxHp - target.hp);
+  target.hp += healed;
+  state.floaters.push({ x: target.x + (Math.random() * 34 - 17), y: target.y - 82, text: `雨 +${healed}`, color: "#9ee8ff", life: 0.75 });
+}
+
 function updateTornadoes(dt) {
   for (const tornado of state.tornadoes) {
     tornado.life -= dt;
@@ -4597,6 +4744,9 @@ function removeDead() {
       releaseFrozenTargetsFor(unit);
       createLinghanDeathIce(unit);
     }
+    if (unit.type === "stormLich") {
+      createStormLichDeathRain(unit);
+    }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
       deathSpawns.push({
         type: "spearman",
@@ -4715,6 +4865,24 @@ function createLinghanDeathIce(unit) {
     duration: data.deathIceDuration,
   });
   popText(unit.x, FIELD.ground - 70, "凌寒冰地", "#9ee8ff");
+}
+
+function createStormLichDeathRain(unit) {
+  const data = UNIT.stormLich;
+  state.stormClouds.push({
+    type: "rain",
+    x: unit.x,
+    y: FIELD.ground - 240,
+    side: unit.side,
+    radius: data.deathRainRadius,
+    life: data.cloudDuration,
+    duration: data.cloudDuration,
+    dropsLeft: data.deathRainDrops,
+    totalDrops: data.deathRainDrops,
+    dropTimer: 0,
+    heal: data.rainHeal,
+  });
+  popText(unit.x, unit.y - 118, "治疗雨", "#9ee8ff");
 }
 
 function healNearbyAllies(water) {
@@ -4877,6 +5045,7 @@ function draw() {
   state.arrows.forEach(drawArrow);
   state.delayedSpells.forEach(drawDelayedSpell);
   state.meteors.forEach(drawMeteor);
+  state.stormClouds.forEach(drawStormCloud);
   state.tornadoes.forEach(drawTornado);
   state.iceFields.forEach(drawIceField);
   state.spikes.forEach(drawSpike);
@@ -5336,6 +5505,7 @@ function getUnitColor(unit) {
   if (unit.type === "rog") return "#7f4a34";
   if (unit.type === "dreadfire") return "#8e2f32";
   if (unit.type === "redflame") return "#c63a25";
+  if (unit.type === "stormLich") return "#566582";
   if (unit.type === "hurricane") return "#92d8d0";
   if (unit.type === "hill") return "#8f7a54";
   if (unit.type === "linghan") return "#5ca8d8";
@@ -5378,6 +5548,7 @@ function getHeadColor(unit) {
   if (unit.type === "rog") return "#ffb35f";
   if (unit.type === "dreadfire") return "#ff8963";
   if (unit.type === "redflame") return "#ffd08a";
+  if (unit.type === "stormLich") return "#d7f6ff";
   if (unit.type === "hurricane") return "#ffffff";
   if (unit.type === "hill") return "#d6c090";
   if (unit.type === "linghan") return "#d8f8ff";
@@ -6163,6 +6334,31 @@ function drawMeteor(meteor) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+}
+
+function drawStormCloud(cloud) {
+  const alpha = Math.max(0.18, Math.min(0.72, cloud.life / cloud.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = cloud.type === "rain" ? "#9ee8ff" : "#44546b";
+  for (let i = 0; i < 5; i += 1) {
+    const offset = (i - 2) * cloud.radius * 0.28;
+    ctx.beginPath();
+    ctx.ellipse(cloud.x + offset, cloud.y + Math.sin(i) * 6, cloud.radius * 0.24, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (cloud.type === "rain") {
+    ctx.strokeStyle = "#9ee8ff";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 10; i += 1) {
+      const x = cloud.x - cloud.radius + ((i + (cloud.life * 9) % 1) / 9) * cloud.radius * 2;
+      ctx.beginPath();
+      ctx.moveTo(x, cloud.y + 28);
+      ctx.lineTo(x - 8, cloud.y + 58);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 function drawDelayedSpell(spell) {
