@@ -587,7 +587,7 @@ const UNIT = {
     fireballRadius: 95,
     fireballBurnDps: 6,
     fireballBurnDuration: 10,
-    pillarDamage: 55,
+    pillarDamage: 50,
     pillarCount: 5,
     pillarRadius: 52,
     pillarSpacing: 54,
