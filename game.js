@@ -60,7 +60,7 @@ const RALLY = {
 };
 
 const MERGE_COST = 30;
-const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
@@ -574,6 +574,25 @@ const UNIT = {
     meteorDamage: 4,
     meteorRadius: 130,
   },
+  redflame: {
+    name: "赤炎",
+    cost: 0,
+    hp: 200,
+    damage: 0,
+    range: 260,
+    speed: 32,
+    train: 0,
+    cooldown: 7,
+    fireballDamage: 80,
+    fireballRadius: 95,
+    fireballBurnDps: 7,
+    fireballBurnDuration: 10,
+    pillarDamage: 65,
+    pillarCount: 5,
+    pillarRadius: 52,
+    pillarSpacing: 54,
+    pillarStun: 2,
+  },
   hurricane: {
     name: "飓风",
     cost: 0,
@@ -741,6 +760,7 @@ const UNIT_ICON = {
   waterScorpion: "spear",
   rog: "lava",
   dreadfire: "fire-dragon",
+  redflame: "fire",
   hurricane: "tornado",
   hill: "earth",
   linghan: "water",
@@ -752,7 +772,7 @@ const UNIT_ICON = {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
 let state;
@@ -1157,6 +1177,7 @@ function formatSpecial(type) {
   if (type === "waterElement") notes.push(`冰冻敌人 ${data.freezeDps}/秒`);
   if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
+  if (type === "redflame") notes.push(`2 个火元素融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
   if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
   if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
@@ -1377,6 +1398,7 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "treeEnt", action: "mergeTreeEnt" },
   { type: "rog", action: "mergeRog" },
   { type: "dreadfire", action: "mergeDreadfire" },
+  { type: "redflame", action: "mergeRedflame" },
   { type: "hurricane", action: "mergeHurricane" },
   { type: "hill", action: "mergeHill" },
   { type: "linghan", action: "mergeLinghan" },
@@ -1448,6 +1470,10 @@ function renderShop() {
       }
       if (button.dataset.action === "mergeDreadfire") {
         mergeDreadfire("player");
+        return;
+      }
+      if (button.dataset.action === "mergeRedflame") {
+        mergeRedflame("player");
         return;
       }
       if (button.dataset.action === "mergeHurricane") {
@@ -1563,6 +1589,7 @@ function spawnUnit(type, side, x) {
     originalSide: null,
     nextSpell: "blast",
     nextDreadfireSpell: "dragon",
+    nextRedflameSpell: "fireball",
     medusaPoisonTimer: UNIT[type].poisonEvery ?? 0,
     medusaSlayTimer: 0,
     suikaiCorpseTimer: UNIT[type].corpseEvery ?? 0,
@@ -1682,6 +1709,24 @@ function mergeDreadfire(side) {
   state.units = state.units.filter((unit) => unit !== fire && unit !== wind);
   spawnUnit("dreadfire", side, (fire.x + wind.x) / 2);
   popText((fire.x + wind.x) / 2, FIELD.ground - 95, "合成厄火", "#ff7a3d");
+  return true;
+}
+
+function mergeRedflame(side) {
+  const materials = getRedflameMaterials(side);
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+
+  if (!payMergeCost(side, x, "#ff6a3d")) return false;
+  if (!materials) {
+    popText(x, FIELD.ground - 100, "需要 2 个火元素", "#ff6a3d");
+    refundMergeCost(side);
+    return false;
+  }
+
+  state.units = state.units.filter((unit) => !materials.includes(unit));
+  const spawnX = (materials[0].x + materials[1].x) / 2;
+  spawnUnit("redflame", side, spawnX);
+  popText(spawnX, FIELD.ground - 95, "合成赤炎", "#ff6a3d");
   return true;
 }
 
@@ -1849,6 +1894,13 @@ function getDreadfireMaterials(side) {
   };
 }
 
+function getRedflameMaterials(side) {
+  const materials = state.units
+    .filter((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .slice(0, 2);
+  return materials.length === 2 ? materials : null;
+}
+
 function getHurricaneMaterials(side) {
   return {
     water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
@@ -1914,6 +1966,10 @@ function canMergeRog(side) {
 function canMergeDreadfire(side) {
   const { fire, wind } = getDreadfireMaterials(side);
   return Boolean(fire && wind);
+}
+
+function canMergeRedflame(side) {
+  return Boolean(getRedflameMaterials(side));
 }
 
 function canMergeHurricane(side) {
@@ -2245,6 +2301,9 @@ function updateEnemyAi(dt) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
   if (opponentFaction() === "element" && state.enemyAttackMood > 28 && canMergeDreadfire("enemy") && canSpendVMaterials(["fireElement", "windElement"], savingForV) && mergeDreadfire("enemy")) {
+    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
+  }
+  if (opponentFaction() === "element" && state.enemyAttackMood > 26 && canMergeRedflame("enemy") && canSpendVMaterials(["fireElement", "fireElement"], savingForV) && mergeRedflame("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
   if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && canSpendVMaterials(["waterElement", "windElement"], savingForV) && mergeHurricane("enemy")) {
@@ -3627,6 +3686,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "redflame") {
+    castRedflameSpell(unit, target);
+    return;
+  }
+
   if (unit.type === "hurricane") {
     launchTornado(unit, target);
     return;
@@ -3916,6 +3980,59 @@ function castDreadfireSpell(unit, target) {
 
   castMeteorRain(unit, target);
   unit.nextDreadfireSpell = "dragon";
+}
+
+function castRedflameSpell(unit, target) {
+  if (unit.nextRedflameSpell === "fireball") {
+    castRedflameFireball(unit, target);
+    unit.nextRedflameSpell = "pillar";
+    return;
+  }
+
+  castRedflamePillars(unit, target);
+  unit.nextRedflameSpell = "fireball";
+}
+
+function castRedflameFireball(unit, target) {
+  const data = UNIT.redflame;
+  state.meteors.push({
+    x: target.x,
+    y: FIELD.ground - 30,
+    side: unit.side,
+    damage: data.fireballDamage,
+    radius: data.fireballRadius,
+    burnDps: data.fireballBurnDps,
+    burnDuration: data.fireballBurnDuration,
+    life: 0.72,
+    duration: 0.72,
+    label: "赤炎火球",
+    color: "#ff4f2e",
+  });
+  popText(target.x, FIELD.ground - 92, "赤炎火球", "#ff6a3d");
+}
+
+function castRedflamePillars(unit, target) {
+  const data = UNIT.redflame;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x + dir * 55;
+  const targetLimit = target.kind === "statue" ? target.x : target.x;
+
+  for (let i = 0; i < data.pillarCount; i += 1) {
+    const rawX = startX + dir * i * data.pillarSpacing;
+    const x = dir > 0 ? Math.min(rawX, targetLimit) : Math.max(rawX, targetLimit);
+    state.delayedSpells.push({
+      type: "redflamePillar",
+      x,
+      y: FIELD.ground - 24,
+      side: unit.side,
+      timer: i * 0.16,
+      duration: Math.max(0.01, i * 0.16),
+      radius: data.pillarRadius,
+      damage: data.pillarDamage,
+      stun: data.pillarStun,
+    });
+  }
+  popText(unit.x, unit.y - 112, "熔岩柱", "#ff6a3d");
 }
 
 function launchTornado(unit, target) {
@@ -4317,6 +4434,18 @@ function updateDelayedSpells(dt) {
       damageUnitsInRadius(spell.x, spell.radius, spell.side, UNIT.dreadfire.dragonDamage, "火龙");
       stunUnitsInRadius(spell.x, spell.radius, spell.side, UNIT.dreadfire.dragonStun);
       state.blasts.push({ x: spell.x, y: spell.y, radius: spell.radius, life: 0.45, duration: 0.45, color: "#ff4f2e" });
+    } else if (spell.type === "redflamePillar") {
+      damageUnitsInRadius(spell.x, spell.radius, spell.side, spell.damage, "熔岩柱");
+      stunUnitsInRadius(spell.x, spell.radius, spell.side, spell.stun);
+      state.spikes.push({
+        x1: spell.x - spell.radius * 0.35,
+        x2: spell.x + spell.radius * 0.35,
+        y: FIELD.ground - 12,
+        side: spell.side,
+        life: 0.34,
+        duration: 0.34,
+      });
+      state.blasts.push({ x: spell.x, y: spell.y, radius: spell.radius, life: 0.28, duration: 0.28, color: "#ff6a3d" });
     }
   }
   state.delayedSpells = state.delayedSpells.filter((spell) => spell.timer > 0);
@@ -4328,6 +4457,11 @@ function updateMeteors(dt) {
     if (meteor.life > 0) continue;
     const radius = meteor.radius ?? 18;
     damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.label ?? (meteor.campaign ? "陨石" : "流星"));
+    if (meteor.burnDps) {
+      getUnitsInRadius(meteor.x, radius, meteor.side, Infinity).forEach((unit) => {
+        applyBurn(unit, meteor.burnDps, meteor.burnDuration);
+      });
+    }
     state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: meteor.color ?? "#ffb45e" });
   }
   state.meteors = state.meteors.filter((meteor) => meteor.life > 0);
@@ -5201,6 +5335,7 @@ function getUnitColor(unit) {
   if (unit.type === "waterScorpion") return "#56a8c8";
   if (unit.type === "rog") return "#7f4a34";
   if (unit.type === "dreadfire") return "#8e2f32";
+  if (unit.type === "redflame") return "#c63a25";
   if (unit.type === "hurricane") return "#92d8d0";
   if (unit.type === "hill") return "#8f7a54";
   if (unit.type === "linghan") return "#5ca8d8";
@@ -5242,6 +5377,7 @@ function getHeadColor(unit) {
   if (unit.type === "waterScorpion") return "#b8f0ff";
   if (unit.type === "rog") return "#ffb35f";
   if (unit.type === "dreadfire") return "#ff8963";
+  if (unit.type === "redflame") return "#ffd08a";
   if (unit.type === "hurricane") return "#ffffff";
   if (unit.type === "hill") return "#d6c090";
   if (unit.type === "linghan") return "#d8f8ff";
@@ -5731,22 +5867,22 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(44, -41, 6, 0, Math.PI * 2);
     ctx.fill();
-  } else if (type === "dreadfire") {
+  } else if (type === "dreadfire" || type === "redflame") {
     ctx.strokeStyle = "#3a1718";
-    ctx.lineWidth = 5;
+    ctx.lineWidth = type === "redflame" ? 7 : 5;
     ctx.beginPath();
     ctx.moveTo(14, -25);
-    ctx.lineTo(31, -63);
+    ctx.lineTo(type === "redflame" ? 37 : 31, type === "redflame" ? -70 : -63);
     ctx.stroke();
     ctx.fillStyle = "#ff6a3a";
     ctx.beginPath();
-    ctx.arc(34, -66, 8, 0, Math.PI * 2);
+    ctx.arc(type === "redflame" ? 42 : 34, type === "redflame" ? -72 : -66, type === "redflame" ? 12 : 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "rgba(255, 122, 61, 0.45)";
     ctx.beginPath();
-    ctx.moveTo(45, -52);
-    ctx.lineTo(60, -40);
-    ctx.lineTo(45, -30);
+    ctx.moveTo(type === "redflame" ? 50 : 45, -52);
+    ctx.lineTo(type === "redflame" ? 68 : 60, -40);
+    ctx.lineTo(type === "redflame" ? 50 : 45, -30);
     ctx.closePath();
     ctx.fill();
   } else if (type === "windElement") {
@@ -6271,6 +6407,10 @@ function updateHud() {
     }
     if (button.dataset.action === "mergeDreadfire") {
       button.disabled = state.over || state.gold < MERGE_COST || !canMergeDreadfire("player");
+      return;
+    }
+    if (button.dataset.action === "mergeRedflame") {
+      button.disabled = state.over || state.gold < MERGE_COST || !canMergeRedflame("player");
       return;
     }
     if (button.dataset.action === "mergeHurricane") {
