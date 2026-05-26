@@ -254,12 +254,14 @@ const UNIT = {
     name: "火箭车",
     cost: 850,
     hp: 500,
-    damage: 8,
+    damage: 7.5,
     range: 350,
     speed: 35,
     train: 8,
-    cooldown: 5,
-    volleyCount: 50,
+    cooldown: 0,
+    reloadEvery: 5,
+    ammoPerReload: 50,
+    fireInterval: 0.05,
     volleyRadius: 50,
     splash: 24,
     arrowLife: 1.35,
@@ -559,9 +561,12 @@ const UNIT = {
     range: 230,
     speed: 42,
     train: 5.8,
-    cooldown: 4,
+    cooldown: 5,
     stunDuration: 2,
     tornadoLife: 0.85,
+    shieldEvery: 15,
+    shieldDuration: 10,
+    shieldReduction: 0.8,
     flying: true,
   },
   scaldStrike: {
@@ -1095,7 +1100,7 @@ function formatSpecial(type) {
   if (type === "waterElement") notes.push(`冰冻敌人 ${data.freezeDps}/秒`);
   if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
-  if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒`);
+  if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
@@ -1103,7 +1108,7 @@ function formatSpecial(type) {
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
-  if (type === "rocketCart") notes.push(`每 ${data.cooldown}秒齐射 ${data.volleyCount} 支慢速爆炸箭`);
+  if (type === "rocketCart") notes.push(`每 ${data.reloadEvery}秒装填 ${data.ammoPerReload} 发箭；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
@@ -1492,6 +1497,12 @@ function spawnUnit(type, side, x) {
     archmageAttackCount: 0,
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
     rageTimer: 0,
+    rocketAmmo: UNIT[type].ammoPerReload ?? 0,
+    rocketReloadTimer: UNIT[type].reloadEvery ?? 0,
+    rocketFireTimer: 0,
+    shieldCastTimer: UNIT[type].shieldEvery ?? 0,
+    shieldTimer: 0,
+    shieldReduction: 0,
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -2337,6 +2348,7 @@ function updateUnits(dt) {
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
+    unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.anim += dt * 8;
 
     if (unit.stunTimer > 0 || unit.frozenBy) {
@@ -2394,6 +2406,9 @@ function updateUnits(dt) {
     if (unit.type === "berserker") {
       updateBerserker(unit, dt);
     }
+    if (unit.type === "hurricane") {
+      updateHurricane(unit, dt);
+    }
     if (unit.type === "electricGate") {
       updateElectricGate(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -2412,6 +2427,18 @@ function updateUnits(dt) {
 
     const range = getUnitRange(unit);
 
+    if (unit.type === "rocketCart") {
+      if (updateRocketCart(unit, target, range, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, dt);
+        continue;
+      }
+      if (distance > 4) {
+        unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+      }
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+
     if (target && canAttackFromDistance(unit, target, range)) {
       attack(unit, target);
     } else if (target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
@@ -2421,6 +2448,45 @@ function updateUnits(dt) {
     }
     updateIceRoadMoveTimer(unit, beforeX, dt);
   }
+}
+
+function updateHurricane(unit, dt) {
+  const data = UNIT.hurricane;
+  unit.shieldCastTimer = Math.max(0, (unit.shieldCastTimer ?? data.shieldEvery) - dt);
+  if (unit.shieldCastTimer > 0) return;
+
+  const candidates = state.units
+    .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally) && !UNIT[ally.type]?.untargetable && ally.shieldTimer <= 0)
+    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+  const target = candidates[0];
+  if (!target) {
+    unit.shieldCastTimer = 1;
+    return;
+  }
+
+  target.shieldTimer = data.shieldDuration;
+  target.shieldReduction = data.shieldReduction;
+  unit.shieldCastTimer = data.shieldEvery;
+  popText(target.x, target.y - 105, "风盾", "#9ee8ff");
+}
+
+function updateRocketCart(unit, target, range, dt) {
+  const data = UNIT.rocketCart;
+  unit.rocketReloadTimer = Math.max(0, (unit.rocketReloadTimer ?? data.reloadEvery) - dt);
+  if (unit.rocketReloadTimer <= 0) {
+    unit.rocketAmmo = Math.min(data.ammoPerReload, (unit.rocketAmmo ?? 0) + data.ammoPerReload);
+    unit.rocketReloadTimer = data.reloadEvery;
+    popText(unit.x, unit.y - 112, `装填 ${unit.rocketAmmo}`, "#ffce7a");
+  }
+
+  unit.rocketFireTimer = Math.max(0, (unit.rocketFireTimer ?? 0) - dt);
+  if (!target || !canAttackFromDistance(unit, target, range) || unit.rocketAmmo <= 0 || unit.rocketFireTimer > 0) return false;
+
+  fireRocketArrow(unit, target);
+  unit.rocketAmmo -= 1;
+  unit.rocketFireTimer = data.fireInterval;
+  unit.combatTimer = 3;
+  return true;
 }
 
 function updateTreeEnt(unit, dt) {
@@ -3657,29 +3723,28 @@ function throwBoulder(unit, target) {
 
 function launchRocketVolley(unit, target) {
   const data = UNIT.rocketCart;
+  fireRocketArrow(unit, target);
+  unit.rocketAmmo = Math.max(0, (unit.rocketAmmo ?? data.ammoPerReload) - 1);
+}
+
+function fireRocketArrow(unit, target) {
+  const data = UNIT.rocketCart;
   const centerX = target.kind === "statue" ? target.x : target.x;
   const centerY = target.y ? target.y - 28 : FIELD.ground - 110;
-  const startY = unit.y - 82;
-  for (let i = 0; i < data.volleyCount; i += 1) {
-    const ratio = data.volleyCount <= 1 ? 0.5 : i / (data.volleyCount - 1);
-    const wave = Math.sin(i * 2.399963);
-    const offset = (ratio - 0.5) * data.volleyRadius * 2 + wave * 8;
-    state.arrows.push({
-      x: unit.x + (Math.random() - 0.5) * 20,
-      y: startY - Math.random() * 18,
-      tx: centerX + offset,
-      ty: centerY + Math.cos(i * 1.7) * 16,
-      side: unit.side,
-      damage: data.damage,
-      splash: data.splash,
-      target,
-      life: data.arrowLife + (i % 8) * 0.035,
-      duration: data.arrowLife + (i % 8) * 0.035,
-      type: "rocketVolley",
-    });
-  }
-  state.screenShake = Math.max(state.screenShake ?? 0, 0.35);
-  popText(unit.x, unit.y - 118, "火箭齐射", "#ffce7a");
+  const drift = (Math.random() - 0.5) * data.volleyRadius;
+  state.arrows.push({
+    x: unit.x + (Math.random() - 0.5) * 14,
+    y: unit.y - 82 - Math.random() * 12,
+    tx: centerX + drift,
+    ty: centerY + (Math.random() - 0.5) * 18,
+    side: unit.side,
+    damage: data.damage,
+    splash: data.splash,
+    target,
+    life: data.arrowLife,
+    duration: data.arrowLife,
+    type: "rocketVolley",
+  });
 }
 
 function castFireDragon(unit, target) {
@@ -4105,7 +4170,10 @@ function getModifiedDamage(target, amount) {
   if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
     damage *= 1 - activeCampaign.enemySpartanDamageReduction;
   }
-  return Math.max(1, Math.round(damage));
+  if (target.shieldTimer > 0) {
+    damage *= 1 - (target.shieldReduction ?? 0.8);
+  }
+  return Math.max(1, Math.round(damage * 10) / 10);
 }
 
 function isPoisoned(unit) {
@@ -4608,6 +4676,10 @@ function drawUnit(unit) {
   if (unit.type === "vClone") {
     ctx.shadowColor = "#78ff9a";
     ctx.shadowBlur = 18;
+  }
+  if (unit.shieldTimer > 0) {
+    ctx.shadowColor = "#9ee8ff";
+    ctx.shadowBlur = 22;
   }
   if (unit.rageTimer > 0) {
     ctx.shadowColor = "#ff4f3d";
