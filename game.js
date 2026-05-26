@@ -254,12 +254,12 @@ const UNIT = {
     name: "火箭车",
     cost: 850,
     hp: 500,
-    damage: 7.5,
+    damage: 6,
     range: 350,
     speed: 35,
     train: 8,
     cooldown: 0,
-    reloadEvery: 6.5,
+    reloadEvery: 4,
     ammoPerReload: 50,
     fireInterval: 0.05,
     volleyRadius: 50,
@@ -1108,7 +1108,7 @@ function formatSpecial(type) {
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
-  if (type === "rocketCart") notes.push(`每 ${data.reloadEvery}秒装填 ${data.ammoPerReload} 发箭；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
+  if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
@@ -1498,7 +1498,7 @@ function spawnUnit(type, side, x) {
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
     rageTimer: 0,
     rocketAmmo: UNIT[type].ammoPerReload ?? 0,
-    rocketReloadTimer: UNIT[type].reloadEvery ?? 0,
+    rocketReloadTimer: 0,
     rocketFireTimer: 0,
     shieldCastTimer: UNIT[type].shieldEvery ?? 0,
     shieldTimer: 0,
@@ -2472,15 +2472,21 @@ function updateHurricane(unit, dt) {
 
 function updateRocketCart(unit, target, range, dt) {
   const data = UNIT.rocketCart;
-  unit.rocketReloadTimer = Math.max(0, (unit.rocketReloadTimer ?? data.reloadEvery) - dt);
-  if (unit.rocketReloadTimer <= 0) {
-    unit.rocketAmmo = Math.min(data.ammoPerReload, (unit.rocketAmmo ?? 0) + data.ammoPerReload);
-    unit.rocketReloadTimer = data.reloadEvery;
-    popText(unit.x, unit.y - 112, `装填 ${unit.rocketAmmo}`, "#ffce7a");
+  if (unit.rocketAmmo <= 0) {
+    if (unit.rocketReloadTimer <= 0) {
+      unit.rocketReloadTimer = data.reloadEvery;
+      popText(unit.x, unit.y - 112, "开始装填", "#ffce7a");
+    }
+    unit.rocketReloadTimer = Math.max(0, unit.rocketReloadTimer - dt);
+    if (unit.rocketReloadTimer <= 0) {
+      unit.rocketAmmo = data.ammoPerReload;
+      popText(unit.x, unit.y - 112, `装填 ${unit.rocketAmmo}`, "#ffce7a");
+    }
+    return false;
   }
 
   unit.rocketFireTimer = Math.max(0, (unit.rocketFireTimer ?? 0) - dt);
-  if (!target || !canAttackFromDistance(unit, target, range) || unit.rocketAmmo <= 0 || unit.rocketFireTimer > 0) return false;
+  if (!target || !canAttackFromDistance(unit, target, range) || unit.rocketFireTimer > 0) return false;
 
   fireRocketArrow(unit, target);
   unit.rocketAmmo -= 1;
