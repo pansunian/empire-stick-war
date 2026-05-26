@@ -259,7 +259,7 @@ const UNIT = {
     speed: 35,
     train: 8,
     cooldown: 0,
-    reloadEvery: 5,
+    reloadEvery: 6.5,
     ammoPerReload: 50,
     fireInterval: 0.05,
     volleyRadius: 50,
