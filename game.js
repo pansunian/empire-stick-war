@@ -133,6 +133,17 @@ const UNIT = {
     train: 6.2,
     cooldown: 1,
   },
+  archon: {
+    name: "执政官",
+    cost: 200,
+    hp: 180,
+    shieldHp: 400,
+    damage: 15,
+    range: 38,
+    speed: 45,
+    train: 5.8,
+    cooldown: 1,
+  },
   monk: {
     name: "修道士",
     cost: 120,
@@ -385,6 +396,16 @@ const UNIT = {
     train: 5.8,
     cooldown: 1.05,
   },
+  executioner: {
+    name: "刽子手",
+    cost: 200,
+    hp: 700,
+    damage: 35,
+    range: 42,
+    speed: 40,
+    train: 6.3,
+    cooldown: 1.8,
+  },
   undeadMage: {
     name: "亡灵法师",
     cost: 250,
@@ -631,13 +652,13 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman"],
     mineColor: "#e2b64e",
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "undead", "creeper"],
     mineColor: "#b7f56e",
   },
@@ -656,6 +677,7 @@ const UNIT_ICON = {
   archer: "bow",
   greatsword: "greatsword",
   spartan: "spartan",
+  archon: "spartan",
   monk: "monk",
   crossbow: "bomb-crossbow",
   musketeer: "gun",
@@ -674,6 +696,7 @@ const UNIT_ICON = {
   medusa: "venom",
   demonArcher: "wing",
   darkKnight: "axe",
+  executioner: "axe",
   undeadMage: "skull",
   suikai: "skull",
   chaosGiant: "axe",
@@ -693,8 +716,8 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "hurricane", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
 ];
 
@@ -1107,6 +1130,7 @@ function formatSpecial(type) {
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
+  if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
@@ -1454,6 +1478,8 @@ function spawnUnit(type, side, x) {
     y: FIELD.ground + lane,
     hp: data.hp,
     maxHp: data.hp,
+    shieldHp: data.shieldHp ?? 0,
+    maxShieldHp: data.shieldHp ?? 0,
     cooldown: 0,
     mineTimer: 0,
     carry: 0,
@@ -3552,10 +3578,8 @@ function castTreeRoot(unit, target) {
   if (!targets.length && target.kind !== "statue") targets.push(target);
   let hitCount = 0;
   targets.forEach((enemy) => {
-    const damage = getModifiedDamage(enemy, data.damage);
-    enemy.hp -= damage;
+    const damage = applyUnitDamage(enemy, data.damage, { label: "树根", color: "#8ee0cf", yOffset: -82 });
     hitCount += 1;
-    popText(enemy.x, enemy.y - 82, `树根 -${damage}`, "#8ee0cf");
   });
   state.spikes.push({
     x1,
@@ -3590,9 +3614,7 @@ function castMagicBlast(unit, target) {
     applyDamage(target, data.damage, unit.side);
   }
   getUnitsInRadius(target.x, data.explosionRadius, unit.side).forEach((other) => {
-    const damage = getModifiedDamage(other, data.damage);
-    other.hp -= damage;
-    popText(other.x, other.y - 82, `魔爆 -${damage}`, "#b88cff");
+    applyUnitDamage(other, data.damage, { label: "魔爆", color: "#b88cff", yOffset: -82 });
   });
   state.blasts.push({ x: target.x, y: target.y ? target.y - 28 : FIELD.ground - 120, radius: data.explosionRadius, life: 0.42, duration: 0.42, color: "#b88cff" });
 }
@@ -3896,9 +3918,7 @@ function updateFrozenDamage(dt) {
     unit.frozenTick += dt;
     if (unit.frozenTick < 1) return;
     unit.frozenTick = 0;
-    const damage = getModifiedDamage(unit, UNIT.waterElement.freezeDps);
-    unit.hp -= damage;
-    popText(unit.x, unit.y - 100, `冻 -${damage}`, "#9ee8ff");
+    applyUnitDamage(unit, UNIT.waterElement.freezeDps, { label: "冻", color: "#9ee8ff", yOffset: -100 });
   });
 }
 
@@ -3960,9 +3980,7 @@ function explodeBolt(arrow) {
   }
 
   getUnitsInRadius(arrow.tx, data.splash, arrow.side, unitLimit, arrow.target).forEach((unit) => {
-    const damage = getModifiedDamage(unit, data.splashDamage);
-    unit.hp -= damage;
-    popText(unit.x, unit.y - 76, `爆 -${damage}`, "#ffce7a");
+    applyUnitDamage(unit, data.splashDamage, { label: "爆", color: "#ffce7a", yOffset: -76 });
   });
 
   if (arrow.target.kind === "statue") {
@@ -3974,10 +3992,8 @@ function explodeBolt(arrow) {
 
 function explodeAt(x, y, attackerSide, damage, radius, label, options = {}) {
   getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
-    const finalDamage = getModifiedDamage(unit, damage);
-    unit.hp -= finalDamage;
+    const finalDamage = applyUnitDamage(unit, damage, { label, color: "#ffb45e", yOffset: -76 });
     if (options.burnDps) applyBurn(unit, options.burnDps, options.burnDuration);
-    popText(unit.x, unit.y - 76, `${label} -${finalDamage}`, "#ffb45e");
   });
 
   if (attackerSide === "enemy" && Math.abs(FIELD.playerBase - x) <= radius + 28) {
@@ -4049,8 +4065,7 @@ function updatePoison(dt) {
     unit.poisonTick += dt;
     if (unit.poisonTick >= 1) {
       unit.poisonTick = 0;
-      unit.hp -= unit.poisonDps;
-      popText(unit.x, unit.y - 92, `毒 -${unit.poisonDps}`, "#93d96b");
+      applyUnitDamage(unit, unit.poisonDps, { label: "毒", color: "#93d96b", yOffset: -92, modified: false });
     }
   });
 }
@@ -4063,9 +4078,7 @@ function updateBurn(dt) {
     unit.burnTick += dt;
     if (unit.burnTick >= 1) {
       unit.burnTick = 0;
-      const damage = getModifiedDamage(unit, unit.burnDps);
-      unit.hp -= damage;
-      popText(unit.x, unit.y - 104, `燃 -${damage}`, "#ff9b45");
+      applyUnitDamage(unit, unit.burnDps, { label: "燃", color: "#ff9b45", yOffset: -104 });
     }
   });
 }
@@ -4138,17 +4151,14 @@ function updateIceFieldEffects(dt) {
       if (Math.abs(unit.x - field.x) > field.radius) return;
       const damage = getModifiedDamage(unit, field.damage ?? 0);
       if (damage <= 0) return;
-      unit.hp -= damage;
-      popText(unit.x, unit.y - 98, `冰 -${damage}`, "#9ee8ff");
+      applyUnitDamage(unit, field.damage ?? 0, { label: "冰", color: "#9ee8ff", yOffset: -98 });
     });
   }
 }
 
 function damageUnitsInRadius(x, radius, attackerSide, amount, label) {
   getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
-    const damage = getModifiedDamage(unit, amount);
-    unit.hp -= damage;
-    popText(unit.x, unit.y - 80, `${label} -${damage}`, "#ffb45e");
+    applyUnitDamage(unit, amount, { label, color: "#ffb45e", yOffset: -80 });
   });
 }
 
@@ -4175,9 +4185,29 @@ function applyDamage(target, amount, attackerSide) {
   }
 
   const damage = getModifiedDamage(target, amount);
-  target.hp -= damage;
+  const hpDamage = absorbShieldDamage(target, damage);
+  target.hp -= hpDamage;
   target.combatTimer = 3;
-  popText(target.x, target.y - 68, `-${damage}`, "#f0a36a");
+  popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
+}
+
+function applyUnitDamage(target, amount, options = {}) {
+  const damage = options.modified === false ? amount : getModifiedDamage(target, amount);
+  const hpDamage = absorbShieldDamage(target, damage);
+  target.hp -= hpDamage;
+  target.combatTimer = 3;
+  const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
+  popText(target.x, target.y + (options.yOffset ?? -68), label, options.color ?? "#f0a36a");
+  return damage;
+}
+
+function absorbShieldDamage(target, damage) {
+  if (!target.maxShieldHp || target.shieldHp <= 0) return damage;
+  const shieldDamage = Math.min(target.shieldHp, damage);
+  target.shieldHp -= shieldDamage;
+  const overflow = Math.max(0, damage - shieldDamage);
+  if (shieldDamage > 0) popText(target.x, target.y - 88, `盾 -${shieldDamage}`, "#9fc0ff");
+  return overflow;
 }
 
 function getModifiedDamage(target, amount) {
@@ -4922,6 +4952,7 @@ function drawEnslavedGiantBasket() {
 }
 
 function getUnitColor(unit) {
+  if (unit.type === "archon") return "#5e89d8";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
@@ -4952,6 +4983,7 @@ function getUnitColor(unit) {
   if (type === "bomber") return "#f09a47";
   if (type === "demonArcher") return "#d05b8f";
   if (type === "darkKnight") return "#55505f";
+  if (type === "executioner") return "#6f4b46";
   if (type === "chaosGiant") return "#493b4e";
   if (type === "superGiant") return "#2f2634";
   if (type === "undeadMage") return "#766487";
@@ -4977,6 +5009,7 @@ function getHeadColor(unit) {
   if (unit.type === "mage") return "#d7ceff";
   if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
+  if (unit.type === "archon") return "#dbe8ff";
   if (unit.type === "monk") return "#fff4d0";
   if (unit.type === "catapult") return "#c0a36d";
   if (unit.type === "enslavedGiant") return "#c0a36d";
@@ -4987,6 +5020,7 @@ function getHeadColor(unit) {
   if (factionForSide(unit.side) !== "chaos") return getUnitColor(unit);
   if (unit.type === "creeper") return "#b8b0a5";
   if (unit.type === "undead") return "#9ee06b";
+  if (unit.type === "executioner") return "#e0beb8";
   if (unit.type === "deadCorpse") return "#93d96b";
   if (unit.type === "medusa") return "#d8f6b8";
   return getUnitColor(unit);
@@ -5166,6 +5200,28 @@ function drawWeapon(type) {
     ctx.lineTo(9, -26);
     ctx.closePath();
     ctx.fill();
+  } else if (type === "archon") {
+    ctx.strokeStyle = "#7e5a35";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -34);
+    ctx.lineTo(38, -48);
+    ctx.stroke();
+    ctx.fillStyle = "#8a6a46";
+    ctx.beginPath();
+    ctx.arc(43, -51, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9fc0ff";
+    ctx.strokeStyle = "#dbe8ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(3, -58);
+    ctx.lineTo(25, -52);
+    ctx.lineTo(23, -18);
+    ctx.lineTo(1, -25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   } else if (type === "spearman") {
     ctx.strokeStyle = "#c8a35a";
     ctx.lineWidth = 4;
@@ -5535,15 +5591,15 @@ function drawWeapon(type) {
     ctx.moveTo(36, -45);
     ctx.lineTo(45, -56);
     ctx.stroke();
-  } else if (type === "darkKnight") {
+  } else if (type === "darkKnight" || type === "executioner") {
     ctx.lineWidth = 5;
-    ctx.strokeStyle = "#1f1f26";
+    ctx.strokeStyle = type === "executioner" ? "#3d2723" : "#1f1f26";
     ctx.beginPath();
     ctx.moveTo(15, -32);
-    ctx.lineTo(45, -55);
+    ctx.lineTo(type === "executioner" ? 52 : 45, -55);
     ctx.stroke();
-    ctx.fillStyle = "#34313d";
-    ctx.fillRect(-11, -49, 22, 22);
+    ctx.fillStyle = type === "executioner" ? "#6f4b46" : "#34313d";
+    ctx.fillRect(type === "executioner" ? 42 : -11, type === "executioner" ? -63 : -49, type === "executioner" ? 22 : 22, type === "executioner" ? 18 : 22);
   } else {
     ctx.strokeStyle = "#7b4b28";
     ctx.beginPath();
@@ -5563,6 +5619,10 @@ function drawUnitHp(unit) {
   ctx.fillRect(-19, -86, 38, 5);
   ctx.fillStyle = "#6ee07c";
   ctx.fillRect(-19, -86, 38 * (unit.hp / unit.maxHp), 5);
+  if (unit.maxShieldHp > 0 && unit.shieldHp > 0) {
+    ctx.fillStyle = "#9fc0ff";
+    ctx.fillRect(-19, -93, 38 * (unit.shieldHp / unit.maxShieldHp), 4);
+  }
 
   if (unit.poisonTimer > 0) {
     ctx.fillStyle = "#93d96b";
