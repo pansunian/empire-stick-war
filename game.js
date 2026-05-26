@@ -404,7 +404,7 @@ const UNIT = {
     range: 42,
     speed: 40,
     train: 6.3,
-    cooldown: 1.8,
+    cooldown: 1.5,
   },
   undeadMage: {
     name: "亡灵法师",
