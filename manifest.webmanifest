@@ -1,0 +1,35 @@
+{
+  "name": "帝国火柴人战争",
+  "short_name": "火柴人战争",
+  "description": "中世纪火柴人帝国战争，支持安装到主屏幕游玩。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#121616",
+  "theme_color": "#121616",
+  "categories": ["games", "entertainment"],
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "开始战斗",
+      "short_name": "战斗",
+      "url": "./index.html",
+      "icons": [
+        {
+          "src": "./assets/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

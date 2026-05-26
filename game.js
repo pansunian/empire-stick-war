@@ -19,6 +19,10 @@ const statusEl = document.querySelector("#gameStatus");
 const playerHpBar = document.querySelector("#playerHpBar");
 const enemyHpBar = document.querySelector("#enemyHpBar");
 const topHomeBtn = document.querySelector("#topHomeBtn");
+const installBtn = document.querySelector("#installBtn");
+const installGuide = document.querySelector("#installGuide");
+const installGuideText = document.querySelector("#installGuideText");
+const closeInstallGuideBtn = document.querySelector("#closeInstallGuideBtn");
 const fullscreenBtn = document.querySelector("#fullscreenBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const statsBtn = document.querySelector("#statsBtn");
@@ -31,6 +35,7 @@ const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")]
 const unitShop = document.querySelector(".unit-shop");
 let trainButtons = [...document.querySelectorAll(".train-btn")];
 const restartBtn = document.querySelector("#restartBtn");
+let deferredInstallPrompt = null;
 
 const FIELD = {
   width: 2600,
@@ -5765,6 +5770,61 @@ function toggleFullscreen() {
   else enterFullscreen();
 }
 
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function showInstallButton() {
+  if (!installBtn || isStandaloneApp()) return;
+  installBtn.classList.remove("hidden");
+}
+
+function hideInstallButton() {
+  if (!installBtn) return;
+  installBtn.classList.add("hidden");
+}
+
+function showInstallGuide(message) {
+  if (!installGuide || !installGuideText) return;
+  installGuideText.textContent = message;
+  installGuide.classList.remove("hidden");
+}
+
+function closeInstallGuide() {
+  if (!installGuide) return;
+  installGuide.classList.add("hidden");
+}
+
+async function handleInstallClick() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    hideInstallButton();
+    return;
+  }
+
+  if (isIosDevice()) {
+    showInstallGuide("在 Safari 中点分享按钮，然后选择“添加到主屏幕”，之后就能从桌面图标直接进入游戏。");
+    return;
+  }
+
+  showInstallGuide("请在浏览器菜单中选择“安装应用”或“添加到主屏幕”。安装后打开会隐藏地址栏，更像一款独立游戏。");
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {
+      statusEl.textContent = "离线缓存暂时不可用，联网游玩不受影响";
+    });
+  });
+}
+
 function updateHud() {
   goldEl.textContent = Math.floor(state.gold);
   enemyGoldEl.textContent = Math.floor(state.enemyGold);
@@ -6064,6 +6124,28 @@ canvas.addEventListener("pointermove", (event) => {
   });
 });
 
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  showInstallButton();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  hideInstallButton();
+  closeInstallGuide();
+});
+
+if (isIosDevice() && !isStandaloneApp()) {
+  showInstallButton();
+}
+
+installBtn?.addEventListener("click", handleInstallClick);
+closeInstallGuideBtn?.addEventListener("click", closeInstallGuide);
+installGuide?.addEventListener("click", (event) => {
+  if (event.target === installGuide) closeInstallGuide();
+});
+
 restartBtn.addEventListener("click", newGame);
 topHomeBtn.addEventListener("click", returnToMainMenu);
 homeBtn.addEventListener("click", returnToMainMenu);
@@ -6120,5 +6202,6 @@ factionButtons.forEach((button) => {
 });
 
 loadCampaignSave();
+registerServiceWorker();
 newGame();
 requestAnimationFrame(loop);

@@ -374,7 +374,7 @@ button {
   text-align: center;
   position: relative;
   font-weight: 700;
-  padding-right: 290px;
+  padding-right: 348px;
 }
 
 .icon-btn {
@@ -390,6 +390,7 @@ button {
 .pause-btn,
 .stats-btn,
 .fullscreen-btn,
+.install-btn,
 .top-home-btn {
   position: absolute;
   height: 40px;
@@ -401,11 +402,19 @@ button {
 }
 
 .top-home-btn {
+  right: 286px;
+}
+
+.install-btn {
   right: 228px;
 }
 
 .fullscreen-btn {
   right: 172px;
+}
+
+.install-btn.hidden {
+  display: none;
 }
 
 .pause-btn {
@@ -433,6 +442,49 @@ button {
 
 .stats-overlay.hidden {
   display: none;
+}
+
+.install-guide {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 10, 10, 0.72);
+}
+
+.install-guide.hidden {
+  display: none;
+}
+
+.install-panel {
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(230, 184, 74, 0.34);
+  border-radius: 8px;
+  background: rgba(20, 23, 25, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.install-panel h2 {
+  margin: 0 0 10px;
+  font-size: 26px;
+}
+
+.install-panel p:not(.kicker) {
+  margin: 0 0 18px;
+  color: rgba(245, 240, 223, 0.8);
+  line-height: 1.6;
+}
+
+.install-close-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 8px;
+  background: rgba(230, 184, 74, 0.22);
+  border: 1px solid rgba(230, 184, 74, 0.58);
+  font-weight: 900;
 }
 
 .stats-panel {
@@ -1372,6 +1424,171 @@ canvas {
   }
 }
 
+@media (pointer: coarse) and (max-width: 699px) {
+  .game-shell {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    gap: 8px;
+    grid-template-rows: auto minmax(250px, 1fr) auto;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .status-panel {
+    grid-column: 1 / -1;
+    order: -1;
+    min-height: 86px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  #gameStatus {
+    width: 100%;
+    min-height: 18px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-home-btn,
+  .install-btn,
+  .fullscreen-btn,
+  .pause-btn,
+  .stats-btn,
+  .icon-btn {
+    position: static;
+    transform: none;
+    height: 34px;
+    min-width: 48px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    font-size: 20px;
+  }
+
+  .empire-card {
+    min-width: 0;
+    min-height: 54px;
+    padding: 8px;
+  }
+
+  .empire-card strong {
+    font-size: 13px;
+  }
+
+  .empire-card small {
+    font-size: 11px;
+  }
+
+  .banner {
+    width: 20px;
+    height: 32px;
+  }
+
+  .battlefield-wrap {
+    min-height: 250px;
+  }
+
+  canvas {
+    min-height: 250px;
+  }
+
+  .health-bars {
+    top: 8px;
+    left: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+
+  .health-bars label {
+    width: 48%;
+    font-size: 10px;
+  }
+
+  .bar {
+    height: 9px;
+    margin-top: 3px;
+  }
+
+  .control-deck {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .command-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .unit-shop {
+    grid-template-rows: repeat(2, 54px);
+    grid-auto-columns: minmax(92px, 104px);
+    gap: 6px;
+    padding-bottom: 0;
+  }
+
+  .command-btn,
+  .train-btn {
+    min-height: 50px;
+    gap: 1px;
+  }
+
+  .command-btn small,
+  .train-btn small {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .train-btn strong {
+    font-size: 12px;
+  }
+
+  .unit-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .faction-select,
+  .campaign-map {
+    align-items: start;
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  }
+
+  .faction-panel,
+  .campaign-panel {
+    padding: 10px 0;
+  }
+
+  .faction-panel h1,
+  .campaign-head h2 {
+    font-size: 34px;
+  }
+
+  .mode-card {
+    min-height: 72px;
+  }
+
+  .faction-card {
+    min-height: 150px;
+  }
+
+  .faction-card strong {
+    font-size: 22px;
+  }
+}
+
 @media (max-height: 820px) {
   .game-shell {
     padding: 8px;
@@ -1498,12 +1715,13 @@ canvas {
 
   .status-panel {
     font-size: 13px;
-    padding-right: 286px;
+    padding-right: 334px;
     white-space: nowrap;
     overflow: hidden;
   }
 
   .top-home-btn,
+  .install-btn,
   .fullscreen-btn,
   .pause-btn,
   .stats-btn,
@@ -1514,6 +1732,10 @@ canvas {
   }
 
   .top-home-btn {
+    right: 270px;
+  }
+
+  .install-btn {
     right: 218px;
   }
 
@@ -1623,6 +1845,7 @@ canvas {
   }
 
   .top-home-btn,
+  .install-btn,
   .fullscreen-btn,
   .pause-btn,
   .stats-btn,
