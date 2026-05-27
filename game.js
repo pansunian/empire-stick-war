@@ -72,6 +72,14 @@ const BASE_ATTACK = {
   damage: 20,
   cooldown: 2,
 };
+const CENTER_TOWER = {
+  x: FIELD.width / 2,
+  y: FIELD.ground - 72,
+  radiusX: 155,
+  radiusY: 150,
+  captureTime: 10,
+  income: 6,
+};
 
 const UNIT = {
   miner: {
@@ -1276,6 +1284,7 @@ function newGame() {
     gold: startGold,
     enemyGold: enemyStartGold,
     command: "guard",
+    attackIntent: "tower",
     minerCommand: "mine",
     paused: false,
     over: false,
@@ -1305,6 +1314,10 @@ function newGame() {
     pendingVControlId: null,
     pendingMedusaSlayId: null,
     passiveGoldTimer: 2,
+    towerOwner: null,
+    towerCaptureSide: null,
+    towerCaptureTimer: 0,
+    towerIncomeTimer: 1,
     campaignReinforcementTimer: activeCampaign?.enemyReinforcement?.every ?? 0,
     campaignTrainCounts: {},
     arrowRainTimer: activeCampaign?.arrowRain?.every ?? 0,
@@ -1541,6 +1554,15 @@ function renderShop() {
 }
 
 function setCommand(command) {
+  if (command === "attack") {
+    if (state.command === "attack" && state.attackIntent === "tower" && state.towerOwner === "player") {
+      state.attackIntent = "statue";
+    } else {
+      state.attackIntent = "tower";
+    }
+  } else {
+    state.attackIntent = "tower";
+  }
   state.command = command;
   if (command !== "retreat") {
     state.units.forEach((unit) => {
@@ -1552,7 +1574,7 @@ function setCommand(command) {
   });
 
   if (!state.over) {
-    const label = { retreat: "撤退！部队回到城堡内", guard: "防守阵线已展开", attack: "全军进攻，目标敌方雕像" };
+    const label = { retreat: "撤退！部队回到城堡内", guard: "防守阵线已展开", attack: state.attackIntent === "statue" ? "全军进攻，目标敌方雕像" : "部队前往中心塔，占领据点" };
     statusEl.textContent = label[command];
   }
 }
@@ -2102,6 +2124,7 @@ function update(dt) {
 
   updateQueue(dt);
   updatePassiveGold(dt);
+  updateCenterTower(dt);
   updateCampaignRules(dt);
   updateEnemyAi(dt);
   updateUnits(dt);
@@ -2130,6 +2153,66 @@ function updatePassiveGold(dt) {
   state.passiveGoldTimer += 2;
   state.gold += 10;
   state.enemyGold += 10;
+}
+
+function updateCenterTower(dt) {
+  state.towerIncomeTimer -= dt;
+  if (state.towerIncomeTimer <= 0) {
+    state.towerIncomeTimer += 1;
+    if (state.towerOwner === "player") state.gold += CENTER_TOWER.income;
+    if (state.towerOwner === "enemy") state.enemyGold += CENTER_TOWER.income;
+  }
+
+  const playerNearby = getTowerUnits("player").length > 0;
+  const enemyNearby = getTowerUnits("enemy").length > 0;
+  if (state.towerOwner === "player" && enemyNearby) neutralizeCenterTower("enemy");
+  if (state.towerOwner === "enemy" && playerNearby) neutralizeCenterTower("player");
+
+  if (playerNearby === enemyNearby) {
+    state.towerCaptureSide = null;
+    state.towerCaptureTimer = 0;
+    return;
+  }
+
+  const capturingSide = playerNearby ? "player" : "enemy";
+  if (state.towerOwner === capturingSide) {
+    state.towerCaptureSide = null;
+    state.towerCaptureTimer = 0;
+    return;
+  }
+
+  if (state.towerCaptureSide !== capturingSide) {
+    state.towerCaptureSide = capturingSide;
+    state.towerCaptureTimer = 0;
+  }
+  state.towerCaptureTimer += dt;
+  if (state.towerCaptureTimer >= CENTER_TOWER.captureTime) {
+    state.towerOwner = capturingSide;
+    state.towerCaptureSide = null;
+    state.towerCaptureTimer = 0;
+    popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, `${capturingSide === "player" ? "我方" : "敌方"}占领中心塔`, capturingSide === "player" ? "#9fc0ff" : "#ff9b8d");
+    if (capturingSide === "player") statusEl.textContent = "中心塔已占领，每秒 +6 金币；再次点击进攻可冲击敌方雕像";
+  }
+}
+
+function neutralizeCenterTower(contestingSide) {
+  if (!state.towerOwner) return;
+  state.towerOwner = null;
+  state.towerCaptureSide = null;
+  state.towerCaptureTimer = 0;
+  popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, "中心塔被争夺", contestingSide === "player" ? "#9fc0ff" : "#ff9b8d");
+}
+
+function getTowerUnits(side) {
+  return state.units.filter((unit) => (
+    unit.side === side
+    && unit.hp > 0
+    && !isUnitHidden(unit)
+    && unit.type !== "miner"
+    && !UNIT[unit.type]?.untargetable
+    && Math.abs(unit.x - CENTER_TOWER.x) <= CENTER_TOWER.radiusX
+    && Math.abs(unit.y - CENTER_TOWER.y) <= CENTER_TOWER.radiusY
+  ));
 }
 
 function updateQueue(dt) {
@@ -3773,6 +3856,7 @@ function getDesiredX(unit, target) {
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
     if (target && target.kind !== "statue") return target.x - range + 8;
     if (state.command === "guard") return getPlayerRallyX(unit);
+    if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyX(unit, "player");
     if (target) return target.x - range + 8;
     return FIELD.enemyBase;
   }
@@ -3781,6 +3865,7 @@ function getDesiredX(unit, target) {
   if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
   if (target && target.kind !== "statue") return target.x + range - 8;
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
+  if (state.enemyCommand === "attack" && state.towerOwner !== "enemy") return getTowerRallyX(unit, "enemy");
   if (target) return target.x + range - 8;
   return FIELD.playerBase;
 }
@@ -3818,6 +3903,12 @@ function getPlayerRallyX(unit) {
 
 function getEnemyRallyX(unit) {
   return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, getEnemyRallyBaseX() + (unit.id % 18) * RALLY.spacing);
+}
+
+function getTowerRallyX(unit, side) {
+  const direction = side === "player" ? -1 : 1;
+  const slot = (unit.id % 14) * 9;
+  return CENTER_TOWER.x + direction * (42 + slot);
 }
 
 function getUnitRange(unit) {
@@ -3867,11 +3958,11 @@ function findTarget(unit) {
 
   if (nearby) return nearby;
 
-  if (unit.side === "player" && state.command === "attack") {
+  if (unit.side === "player" && state.command === "attack" && state.attackIntent === "statue") {
     return { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
   }
 
-  if (unit.side === "enemy" && state.enemyCommand === "attack") {
+  if (unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner === "enemy") {
     return { kind: "statue", side: "player", x: FIELD.playerBase, y: FIELD.ground - 80 };
   }
 
@@ -5247,6 +5338,7 @@ function draw() {
     getSideMines("player").forEach((mine) => drawMine(mine, "player"));
     getSideMines("enemy").forEach((mine) => drawMine(mine, "enemy"));
   }
+  drawCenterTower();
   drawCastle("player");
   drawCastle("enemy");
 
@@ -5441,6 +5533,61 @@ function drawGoldRushMines() {
     ctx.textAlign = "center";
     ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 38);
   });
+  ctx.restore();
+}
+
+function drawCenterTower() {
+  const owner = state.towerOwner;
+  const captureRatio = state.towerCaptureSide ? Math.min(1, state.towerCaptureTimer / CENTER_TOWER.captureTime) : 0;
+  const bannerColor = owner === "player" ? "#75a7ff" : owner === "enemy" ? "#e2675d" : "#d8c7a0";
+  ctx.save();
+  ctx.translate(CENTER_TOWER.x, CENTER_TOWER.y);
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+  ctx.beginPath();
+  ctx.ellipse(0, 68, CENTER_TOWER.radiusX, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#4d493f";
+  ctx.strokeStyle = "#1f211d";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-34, 58);
+  ctx.lineTo(-24, -70);
+  ctx.lineTo(24, -70);
+  ctx.lineTo(34, 58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#635f53";
+  ctx.fillRect(-42, -82, 84, 22);
+  ctx.strokeRect(-42, -82, 84, 22);
+
+  ctx.fillStyle = bannerColor;
+  ctx.beginPath();
+  ctx.moveTo(0, -112);
+  ctx.lineTo(58, -94);
+  ctx.lineTo(0, -75);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#222220";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -118);
+  ctx.lineTo(0, -48);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.44)";
+  ctx.fillRect(-54, 82, 108, 8);
+  if (captureRatio > 0) {
+    ctx.fillStyle = state.towerCaptureSide === "player" ? "#75a7ff" : "#e2675d";
+    ctx.fillRect(-54, 82, 108 * captureRatio, 8);
+  }
+  ctx.fillStyle = "#efe6c8";
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(owner ? `${owner === "player" ? "我方" : "敌方"}据点 +6/s` : "中心塔", 0, 108);
   ctx.restore();
 }
 
