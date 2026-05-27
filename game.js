@@ -1499,8 +1499,7 @@ function uniqueUnitList(types = []) {
 function formatBriefingLine(label, value) {
   return `
     <div class="briefing-line">
-      <span>${escapeHtml(label)}</span>
-      <p>${escapeHtml(value)}</p>
+      <p><strong>${escapeHtml(label)}：</strong>${escapeHtml(value)}</p>
     </div>
   `;
 }
@@ -1568,23 +1567,21 @@ function renderCampaignBriefing(config) {
   briefingReward.textContent = `通关后解锁：${rewardText}`;
   briefingContent.innerHTML = `
     <section class="briefing-section">
-      <h4>我方</h4>
-      ${formatBriefingLine("可用单位", config.playerRoster?.length ? uniqueUnitList(config.playerRoster) : "本关无法建造单位")}
-      ${formatBriefingLine("开局单位", countUnitList(config.playerStart))}
-      ${formatBriefingLine("初始金币", `${config.startGold ?? 0}`)}
-    </section>
-    <section class="briefing-section">
-      <h4>敌方</h4>
+      <h4>敌方单位</h4>
       ${formatBriefingLine("主要单位", uniqueUnitList([...(config.enemyRoster ?? []), ...(config.enemyStart ?? [])]))}
       ${formatBriefingLine("开局单位", countUnitList(config.enemyStart))}
       ${formatBriefingLine("初始金币", `${config.enemyGold ?? 0}`)}
       ${secondPhaseLine}
     </section>
-    <section class="briefing-section briefing-wide">
+    <section class="briefing-section">
+      <h4>我方单位</h4>
+      ${formatBriefingLine("可用单位", config.playerRoster?.length ? uniqueUnitList(config.playerRoster) : "本关无法建造单位")}
+      ${formatBriefingLine("开局单位", countUnitList(config.playerStart))}
+      ${formatBriefingLine("初始金币", `${config.startGold ?? 0}`)}
+    </section>
+    <section class="briefing-section">
       <h4>特殊机制</h4>
-      <ul>
-        ${mechanics.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-      </ul>
+      ${mechanics.map((item, index) => formatBriefingLine(`机制 ${index + 1}`, item)).join("")}
     </section>
   `;
   campaignBriefing.classList.remove("hidden");
