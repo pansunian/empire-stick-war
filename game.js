@@ -42,18 +42,20 @@ if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
 }
 
 const FIELD = {
-  width: 3300,
+  width: 3600,
   height: 620,
   ground: 470,
   playerBase: 70,
-  enemyBase: 3230,
+  enemyBase: 3530,
   playerGate: 160,
-  enemyGate: 3140,
+  enemyGate: 3440,
   playerMineX: 570,
-  enemyMineX: 2730,
+  enemyMineX: 3030,
   mineDistance: 500,
 };
 const MINE_LANES = [-72, -24, 24, 72];
+const NORMAL_MINE_CAPACITY = 5000;
+const MINE_WORKER_LIMIT = 2;
 const RALLY = {
   playerOffset: 150,
   enemyOffset: 150,
@@ -1311,6 +1313,7 @@ function newGame() {
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
+    sideMines: createSideMines(),
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
@@ -1587,6 +1590,7 @@ function spawnUnit(type, side, x) {
     cooldown: 0,
     mineTimer: 0,
     mineSlotId: null,
+    mineWorkSlot: null,
     carry: 0,
     poisonTimer: 0,
     poisonDps: 0,
@@ -2223,32 +2227,52 @@ function isGoldRushActive() {
   return Boolean(activeCampaign?.goldRush && state.goldRushMines?.length);
 }
 
-function getSideMines(side) {
-  const isPlayer = side === "player";
-  const baseX = isPlayer ? FIELD.playerBase : FIELD.enemyBase;
-  const dir = isPlayer ? 1 : -1;
+function createSideMines() {
+  return {
+    player: createMinesForSide("player"),
+    enemy: createMinesForSide("enemy"),
+  };
+}
+
+function createMinesForSide(side) {
+  const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
+  const dir = side === "player" ? 1 : -1;
   return MINE_LANES.map((laneY, index) => {
     const xOffset = Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2));
     return {
       id: `${side}-mine-${index}`,
       x: baseX + dir * xOffset,
       y: FIELD.ground + laneY,
+      remaining: NORMAL_MINE_CAPACITY,
+      capacity: NORMAL_MINE_CAPACITY,
     };
   });
 }
 
+function getSideMines(side) {
+  return state?.sideMines?.[side] ?? createMinesForSide(side);
+}
+
 function getMineForMiner(unit) {
   const mines = getSideMines(unit.side);
-  const current = mines.find((mine) => mine.id === unit.mineSlotId);
+  const current = mines.find((mine) => mine.id === unit.mineSlotId && canUseNormalMine(unit, mine));
   if (current) return current;
   const mine = mines
+    .filter((candidate) => canUseNormalMine(unit, candidate))
     .map((candidate) => ({
       mine: candidate,
       score: distanceTo(unit.x, unit.y, candidate.x, candidate.y) + getMineOccupancy(unit.side, candidate.id) * 80,
     }))
     .sort((a, b) => a.score - b.score)[0]?.mine;
   unit.mineSlotId = mine?.id ?? null;
+  unit.mineWorkSlot = mine ? getAvailableMineWorkSlot(unit.side, mine.id) : null;
   return mine;
+}
+
+function canUseNormalMine(unit, mine) {
+  if (!mine || mine.remaining <= 0) return false;
+  if (unit.mineSlotId === mine.id && unit.mineWorkSlot !== null && unit.mineWorkSlot !== undefined) return true;
+  return getMineOccupancy(unit.side, mine.id) < MINE_WORKER_LIMIT;
 }
 
 function getMineOccupancy(side, mineId) {
@@ -2260,6 +2284,33 @@ function getMineOccupancy(side, mineId) {
     && unit.mineSlotId === mineId
     && unit.carry < UNIT.miner.bagSize
   )).length;
+}
+
+function getAvailableMineWorkSlot(side, mineId) {
+  for (let slot = 0; slot < MINE_WORKER_LIMIT; slot += 1) {
+    const occupied = state.units.some((unit) => (
+      unit.side === side
+      && unit.type === "miner"
+      && unit.hp > 0
+      && !isUnitHidden(unit)
+      && unit.mineSlotId === mineId
+      && unit.mineWorkSlot === slot
+      && unit.carry < UNIT.miner.bagSize
+    ));
+    if (!occupied) return slot;
+  }
+  return 0;
+}
+
+function getMineWorkPoint(unit, mine) {
+  const dir = unit.side === "player" ? 1 : -1;
+  const slot = unit.mineWorkSlot ?? 0;
+  const xOffset = slot === 0 ? 20 : -22;
+  const yOffset = slot === 0 ? 0 : 18;
+  return {
+    x: mine.x + dir * xOffset,
+    y: mine.y + yOffset,
+  };
 }
 
 function distanceTo(x1, y1, x2, y2) {
@@ -3450,15 +3501,20 @@ function updateMiner(unit, dt) {
   const mine = getMineForMiner(unit);
   const mustDeposit = unit.carry >= UNIT.miner.bagSize;
   const forcedHome = isPlayer && state.command === "retreat";
-  const targetX = forcedHome || mustDeposit || !mine ? home : mine.x;
-  const targetY = forcedHome || mustDeposit || !mine ? FIELD.ground : mine.y;
+  const workPoint = mine ? getMineWorkPoint(unit, mine) : null;
+  const returningHome = forcedHome || mustDeposit || !workPoint;
+  const targetX = returningHome ? home : workPoint.x;
+  const targetY = returningHome ? FIELD.ground : workPoint.y;
 
-  if (forcedHome || mustDeposit) unit.mineSlotId = null;
+  if (returningHome) {
+    unit.mineSlotId = null;
+    unit.mineWorkSlot = null;
+  }
   if (moveUnitTowardPoint(unit, targetX, targetY, getMinerMoveSpeed(unit), dt, 5)) {
     return;
   }
 
-  if ((mustDeposit || forcedHome) && unit.carry > 0) {
+  if (returningHome && unit.carry > 0) {
     if (isPlayer) state.gold += unit.carry;
     else state.enemyGold += unit.carry;
     popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, isPlayer ? "#f5c542" : "#b7f56e");
@@ -3467,12 +3523,25 @@ function updateMiner(unit, dt) {
     return;
   }
 
-  if (!forcedHome) {
+  if (!forcedHome && mine && mine.remaining > 0) {
     unit.mineTimer += dt;
     if (unit.mineTimer >= 1) {
       unit.mineTimer = 0;
-      unit.carry = Math.min(UNIT.miner.bagSize, unit.carry + UNIT.miner.goldPerSwing);
+      const space = UNIT.miner.bagSize - unit.carry;
+      const mined = Math.min(UNIT.miner.goldPerSwing, space, mine.remaining);
+      if (mined <= 0) {
+        unit.mineSlotId = null;
+        unit.mineWorkSlot = null;
+        return;
+      }
+      unit.carry += mined;
+      mine.remaining -= mined;
       popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+      if (mine.remaining <= 0) {
+        popText(mine.x, mine.y - 72, "金矿枯竭", "#d8c7a0");
+        unit.mineSlotId = null;
+        unit.mineWorkSlot = null;
+      }
     }
   }
 }
@@ -5306,19 +5375,28 @@ function drawGround() {
 function drawMine(mine, side) {
   const x = typeof mine === "number" ? mine : mine.x;
   const y = typeof mine === "number" ? FIELD.ground : mine.y;
+  const remaining = typeof mine === "number" ? NORMAL_MINE_CAPACITY : mine.remaining;
+  const capacity = typeof mine === "number" ? NORMAL_MINE_CAPACITY : mine.capacity;
+  const ratio = capacity > 0 ? Math.max(0, remaining / capacity) : 0;
   const faction = factionForSide(side);
-  ctx.fillStyle = "#403421";
+  ctx.fillStyle = remaining > 0 ? "#403421" : "#26231e";
   ctx.beginPath();
   ctx.moveTo(x - 58, y + 18);
   ctx.lineTo(x - 16, y - 52);
   ctx.lineTo(x + 56, y + 18);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = FACTIONS[faction].mineColor;
-  ctx.beginPath();
-  ctx.arc(x + 7, y - 8, 15, 0, Math.PI * 2);
-  ctx.arc(x - 17, y + 8, 10, 0, Math.PI * 2);
-  ctx.fill();
+  if (remaining > 0) {
+    ctx.fillStyle = FACTIONS[faction].mineColor;
+    ctx.beginPath();
+    ctx.arc(x + 7, y - 8, 15, 0, Math.PI * 2);
+    ctx.arc(x - 17, y + 8, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
+  ctx.fillRect(x - 30, y + 24, 60, 5);
+  ctx.fillStyle = remaining > 0 ? "#f5c542" : "#5d574b";
+  ctx.fillRect(x - 30, y + 24, 60 * ratio, 5);
 }
 
 function drawGoldRushMines() {

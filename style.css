@@ -566,7 +566,7 @@ button {
 
 canvas {
   display: block;
-  width: 3300px;
+  width: 3600px;
   max-width: none;
   height: 100%;
   min-height: 360px;
@@ -2404,7 +2404,7 @@ canvas {
     max-width: none;
     height: 100%;
     min-height: 0;
-    aspect-ratio: 3300 / 620;
+    aspect-ratio: 3600 / 620;
   }
 
   .health-bars {
