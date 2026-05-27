@@ -65,6 +65,22 @@
           <button id="campaignBackBtn" class="icon-btn" title="返回主界面">×</button>
         </div>
         <div id="campaignPath" class="campaign-path"></div>
+        <div id="campaignBriefing" class="campaign-briefing hidden" aria-label="关卡简介">
+          <div class="campaign-briefing-card">
+            <div class="campaign-briefing-head">
+              <div>
+                <p class="kicker">关卡简介</p>
+                <h3 id="briefingTitle">第一关</h3>
+                <small id="briefingReward">通关后解锁：无</small>
+              </div>
+              <button id="briefingCloseBtn" class="icon-btn" title="返回地图">×</button>
+            </div>
+            <div id="briefingContent" class="briefing-content"></div>
+            <div class="briefing-actions">
+              <button id="briefingStartBtn" class="briefing-start-btn">开始</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -204,6 +220,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260527-mines-4x2-arc"></script>
+    <script src="./game.js?v=20260527-campaign-briefing"></script>
   </body>
 </html>

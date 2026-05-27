@@ -9,6 +9,12 @@ const campaignTitle = document.querySelector("#campaignTitle");
 const campaignProgress = document.querySelector("#campaignProgress");
 const campaignPath = document.querySelector("#campaignPath");
 const campaignBackBtn = document.querySelector("#campaignBackBtn");
+const campaignBriefing = document.querySelector("#campaignBriefing");
+const briefingTitle = document.querySelector("#briefingTitle");
+const briefingReward = document.querySelector("#briefingReward");
+const briefingContent = document.querySelector("#briefingContent");
+const briefingStartBtn = document.querySelector("#briefingStartBtn");
+const briefingCloseBtn = document.querySelector("#briefingCloseBtn");
 const playerCard = document.querySelector(".empire-card.player");
 const enemyCard = document.querySelector(".empire-card.enemy");
 const playerNameEl = document.querySelector("#playerName");
@@ -1112,6 +1118,7 @@ const CAMPAIGN_LEVELS = {
   },
 };
 let activeCampaign = null;
+let pendingCampaignBriefing = null;
 
 function opponentFaction() {
   return enemyFaction;
@@ -1373,6 +1380,7 @@ function chooseEnemyFaction() {
 function openCampaignMap() {
   renderFactionUi();
   renderCampaignMap();
+  closeCampaignBriefing();
   factionSelect.classList.add("hidden");
   campaignMap.classList.remove("hidden");
 }
@@ -1409,6 +1417,7 @@ function renderCampaignMap() {
 }
 
 function closeCampaignMap() {
+  closeCampaignBriefing();
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
 }
@@ -1422,9 +1431,138 @@ function startCampaignLevel(faction, level) {
 
   selectedMode = "campaign";
   selectedFaction = faction;
-  activeCampaign = { faction, level, ...config };
+  pendingCampaignBriefing = { faction, level, ...config };
+  renderCampaignBriefing(pendingCampaignBriefing);
+}
+
+function launchCampaignBriefing() {
+  if (!pendingCampaignBriefing) return;
+  activeCampaign = pendingCampaignBriefing;
+  pendingCampaignBriefing = null;
+  closeCampaignBriefing();
   campaignMap.classList.add("hidden");
   newGame();
+}
+
+function closeCampaignBriefing() {
+  pendingCampaignBriefing = null;
+  campaignBriefing.classList.add("hidden");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function countUnitList(types = []) {
+  if (!types.length) return "无";
+  const counts = new Map();
+  types.forEach((type) => counts.set(type, (counts.get(type) ?? 0) + 1));
+  return [...counts.entries()]
+    .map(([type, count]) => `${UNIT[type]?.name ?? type}${count > 1 ? ` ×${count}` : ""}`)
+    .join("、");
+}
+
+function uniqueUnitList(types = []) {
+  const unique = [...new Set(types)];
+  return unique.length ? unique.map((type) => UNIT[type]?.name ?? type).join("、") : "无";
+}
+
+function formatBriefingLine(label, value) {
+  return `
+    <div class="briefing-line">
+      <span>${escapeHtml(label)}</span>
+      <p>${escapeHtml(value)}</p>
+    </div>
+  `;
+}
+
+function getCampaignRewardText(config) {
+  const unlocks = CAMPAIGN_UNLOCKS[config.faction] ?? [];
+  const fallbackType = unlocks[config.level - 1];
+  const fallbackName = UNIT[fallbackType]?.name ?? "终章军团";
+  return config.rewardText === "" ? "无" : (config.rewardText ?? fallbackName);
+}
+
+function describeCampaignMechanics(config) {
+  const mechanics = [];
+  if (config.objective) mechanics.push(config.objective);
+  if (config.failOnDeath) mechanics.push(`${UNIT[config.failOnDeath]?.name ?? "英雄"}死亡则挑战失败`);
+  if (config.enemyReinforcement) {
+    const count = config.enemyReinforcement.count ?? 1;
+    mechanics.push(`敌方每 ${config.enemyReinforcement.every} 秒增援 ${count} 个${UNIT[config.enemyReinforcement.type]?.name ?? "单位"}`);
+  }
+  if (config.arrowRain) mechanics.push(`每 ${config.arrowRain.every} 秒落下箭雨，总计 ${config.arrowRain.total} 支，每支 ${config.arrowRain.damage} 点伤害`);
+  if (config.goldRush) mechanics.push(`淘金热：中央共有 ${config.goldRush.columns * config.goldRush.rows} 个金矿，每个最多 ${config.goldRush.mineGold} 金币`);
+  if (config.playerDeathsBecomeEnemySpearman) mechanics.push("我方单位阵亡后会在原地转化为敌方长矛兵");
+  if (config.enemySpartanDamageReduction) mechanics.push(`敌方斯巴达减伤 ${Math.round(config.enemySpartanDamageReduction * 100)}%`);
+  if (config.undeadMineWave) mechanics.push(`每 ${config.undeadMineWave.every} 秒从矿区刷出亡灵，每 ${config.undeadMineWave.increaseEvery} 秒数量增加`);
+  if (config.darkeningSky) mechanics.push(`天色每 ${config.darkeningSky.tick} 秒变暗，${Math.round(config.darkeningSky.duration / 60)} 分钟后达到最暗`);
+  if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
+  if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
+  if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
+  if (config.godV) mechanics.push("神明 V 加入战斗");
+  if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
+  if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
+  if (config.iceRoad) {
+    const slow = Math.round((1 - (config.iceRoad.slowFactor ?? 1)) * 100);
+    const sides = config.iceRoad.affectedSides?.includes("player") && config.iceRoad.affectedSides.length === 1 ? "只影响我方" : "影响场上单位";
+    mechanics.push(`冰地：${sides}，移动速度降低 ${slow}%`);
+  }
+  if (config.stormClouds) mechanics.push(`每 ${config.stormClouds.every} 秒雷云落下 ${config.stormClouds.bolts} 道闪电，命中率 ${Math.round(config.stormClouds.hitChance * 100)}%，每道 ${config.stormClouds.damage} 伤害`);
+  if (config.centerElectricGate) mechanics.push("地图中间存在无敌电门，敌人会无视它继续前进");
+  if (config.snow) mechanics.push(`雪地：单位移速降低 ${Math.round((1 - config.snow.moveFactor) * 100)}%`);
+  if (config.secondPhase) {
+    mechanics.push(config.secondPhase.message ?? "摧毁第一座雕像后进入第二阶段");
+    if (config.secondPhase.killPlayerArmy) mechanics.push("第二阶段开始时，全场普通友军会被秒杀");
+    if (config.secondPhase.stunPlayerArmy) mechanics.push(`第二阶段开始时，我方单位眩晕 ${config.secondPhase.stunPlayerArmy} 秒`);
+    if (config.secondPhase.reinforcements?.length) {
+      const text = config.secondPhase.reinforcements
+        .map((reinforcement) => `${reinforcement.count ?? 1} 个${UNIT[reinforcement.type]?.name ?? reinforcement.type}/${reinforcement.every}秒`)
+        .join("、");
+      mechanics.push(`第二阶段敌方持续增援：${text}`);
+    }
+    if (config.secondPhase.winByKillingType) mechanics.push(`击杀${UNIT[config.secondPhase.winByKillingType]?.name ?? "指定单位"}后通关`);
+  }
+  return mechanics.length ? mechanics : ["无特殊机制"];
+}
+
+function renderCampaignBriefing(config) {
+  const rewardText = getCampaignRewardText(config);
+  const secondPhaseEnemyUnits = config.secondPhase ? [...(config.secondPhase.enemyRoster ?? []), ...(config.secondPhase.enemyStart ?? [])] : [];
+  const secondPhaseLine = secondPhaseEnemyUnits.length
+    ? formatBriefingLine("第二阶段敌方", uniqueUnitList(secondPhaseEnemyUnits))
+    : "";
+  const mechanics = describeCampaignMechanics(config);
+
+  briefingTitle.textContent = config.title;
+  briefingReward.textContent = `通关后解锁：${rewardText}`;
+  briefingContent.innerHTML = `
+    <section class="briefing-section">
+      <h4>我方</h4>
+      ${formatBriefingLine("可用单位", config.playerRoster?.length ? uniqueUnitList(config.playerRoster) : "本关无法建造单位")}
+      ${formatBriefingLine("开局单位", countUnitList(config.playerStart))}
+      ${formatBriefingLine("初始金币", `${config.startGold ?? 0}`)}
+    </section>
+    <section class="briefing-section">
+      <h4>敌方</h4>
+      ${formatBriefingLine("主要单位", uniqueUnitList([...(config.enemyRoster ?? []), ...(config.enemyStart ?? [])]))}
+      ${formatBriefingLine("开局单位", countUnitList(config.enemyStart))}
+      ${formatBriefingLine("初始金币", `${config.enemyGold ?? 0}`)}
+      ${secondPhaseLine}
+    </section>
+    <section class="briefing-section briefing-wide">
+      <h4>特殊机制</h4>
+      <ul>
+        ${mechanics.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+  campaignBriefing.classList.remove("hidden");
 }
 
 function renderFactionUi() {
@@ -7449,6 +7587,11 @@ statsOverlay.addEventListener("click", (event) => {
 });
 
 campaignBackBtn.addEventListener("click", closeCampaignMap);
+briefingStartBtn.addEventListener("click", launchCampaignBriefing);
+briefingCloseBtn.addEventListener("click", closeCampaignBriefing);
+campaignBriefing.addEventListener("click", (event) => {
+  if (event.target === campaignBriefing) closeCampaignBriefing();
+});
 
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
