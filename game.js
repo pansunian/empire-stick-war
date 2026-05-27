@@ -919,7 +919,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "chaos",
       startGold: 180,
       enemyGold: 760,
-      snow: { moveFactor: 0.9, ignoreGiant: true },
+      iceRoad: { slowFactor: 0.9, fastFactor: 0.9, affectedSides: ["player"] },
       secondPhase: {
         enemyFaction: "chaos",
         enemyRoster: [],
@@ -936,7 +936,7 @@ const CAMPAIGN_LEVELS = {
         message: "超级巨人出现，击杀它才可通关",
       },
       rewardText: "投石车",
-      objective: "霜冻之地会让普通单位移速下降 10%，巨人不受影响；摧毁雕像后击杀超级巨人",
+      objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁雕像后击杀超级巨人",
     },
   },
   chaos: {
@@ -3821,6 +3821,7 @@ function getMoveFactor(unit) {
 function getIceRoadMoveFactor(unit) {
   const road = activeCampaign?.iceRoad;
   if (!road) return 1;
+  if (road.affectedSides && !road.affectedSides.includes(unit.side)) return 1;
   if (road.fastFactor === road.slowFactor || road.slowDuration === undefined) return road.slowFactor ?? 1;
   return (unit.iceRoadMoveTimer ?? 0) >= road.slowDuration ? road.fastFactor : road.slowFactor;
 }
