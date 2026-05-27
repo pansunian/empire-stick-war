@@ -54,7 +54,7 @@ const FIELD = {
   mineDistance: 300,
 };
 const MINE_LANES = [-205, -72, 72, 185];
-const NORMAL_MINE_COLUMNS = [0, 300];
+const NORMAL_MINE_COLUMNS = [0, 170];
 const NORMAL_MINE_CAPACITY = 5000;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -2328,7 +2328,7 @@ function createMinesForSide(side) {
   return MINE_LANES.flatMap((laneY, rowIndex) => (
     NORMAL_MINE_COLUMNS.map((columnOffset, columnIndex) => ({
       id: `${side}-mine-${rowIndex}-${columnIndex}`,
-      x: baseX + dir * (FIELD.mineDistance + columnOffset),
+      x: baseX + dir * (Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2)) + columnOffset),
       y: FIELD.ground + laneY,
       remaining: NORMAL_MINE_CAPACITY,
       capacity: NORMAL_MINE_CAPACITY,
