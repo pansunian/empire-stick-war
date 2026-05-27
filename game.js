@@ -42,16 +42,18 @@ if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
 }
 
 const FIELD = {
-  width: 2600,
+  width: 3300,
   height: 620,
   ground: 470,
-  playerBase: 95,
-  enemyBase: 2505,
-  playerGate: 185,
-  enemyGate: 2415,
-  playerMineX: 425,
-  enemyMineX: 2175,
+  playerBase: 70,
+  enemyBase: 3230,
+  playerGate: 160,
+  enemyGate: 3140,
+  playerMineX: 570,
+  enemyMineX: 2730,
+  mineDistance: 500,
 };
+const MINE_LANES = [-72, -24, 24, 72];
 const RALLY = {
   playerOffset: 150,
   enemyOffset: 150,
@@ -642,6 +644,8 @@ const UNIT = {
     jumpRadius: 80,
     jumpDamage: 15,
     jumpStun: 3,
+    visualScale: 1.22,
+    collisionRadius: 19,
   },
   linghan: {
     name: "凌寒",
@@ -1582,6 +1586,7 @@ function spawnUnit(type, side, x) {
     maxShieldHp: data.shieldHp ?? 0,
     cooldown: 0,
     mineTimer: 0,
+    mineSlotId: null,
     carry: 0,
     poisonTimer: 0,
     poisonDps: 0,
@@ -2096,6 +2101,7 @@ function update(dt) {
   updateCampaignRules(dt);
   updateEnemyAi(dt);
   updateUnits(dt);
+  resolveUnitCollisions();
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
   updateArrows(dt);
@@ -2215,6 +2221,60 @@ function createGoldRushMines(config) {
 
 function isGoldRushActive() {
   return Boolean(activeCampaign?.goldRush && state.goldRushMines?.length);
+}
+
+function getSideMines(side) {
+  const isPlayer = side === "player";
+  const baseX = isPlayer ? FIELD.playerBase : FIELD.enemyBase;
+  const dir = isPlayer ? 1 : -1;
+  return MINE_LANES.map((laneY, index) => {
+    const xOffset = Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2));
+    return {
+      id: `${side}-mine-${index}`,
+      x: baseX + dir * xOffset,
+      y: FIELD.ground + laneY,
+    };
+  });
+}
+
+function getMineForMiner(unit) {
+  const mines = getSideMines(unit.side);
+  const current = mines.find((mine) => mine.id === unit.mineSlotId);
+  if (current) return current;
+  const mine = mines
+    .map((candidate) => ({
+      mine: candidate,
+      score: distanceTo(unit.x, unit.y, candidate.x, candidate.y) + getMineOccupancy(unit.side, candidate.id) * 80,
+    }))
+    .sort((a, b) => a.score - b.score)[0]?.mine;
+  unit.mineSlotId = mine?.id ?? null;
+  return mine;
+}
+
+function getMineOccupancy(side, mineId) {
+  return state.units.filter((unit) => (
+    unit.side === side
+    && unit.type === "miner"
+    && unit.hp > 0
+    && !isUnitHidden(unit)
+    && unit.mineSlotId === mineId
+    && unit.carry < UNIT.miner.bagSize
+  )).length;
+}
+
+function distanceTo(x1, y1, x2, y2) {
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+function moveUnitTowardPoint(unit, targetX, targetY, speed, dt, tolerance = 5) {
+  const dx = targetX - unit.x;
+  const dy = targetY - unit.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= tolerance) return false;
+  const step = Math.min(distance, speed * getMoveFactor(unit) * dt);
+  unit.x += (dx / distance) * step;
+  unit.y += (dy / distance) * step;
+  return true;
 }
 
 function updateCampaignReinforcements(dt) {
@@ -2721,6 +2781,55 @@ function updateUnits(dt) {
     }
     updateIceRoadMoveTimer(unit, beforeX, dt);
   }
+}
+
+function resolveUnitCollisions() {
+  const visible = state.units.filter((unit) => unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
+  for (let i = 0; i < visible.length; i += 1) {
+    for (let j = i + 1; j < visible.length; j += 1) {
+      const a = visible[i];
+      const b = visible[j];
+      if (UNIT[a.type]?.flying || UNIT[b.type]?.flying) continue;
+      const minDistance = getCollisionRadius(a) + getCollisionRadius(b);
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distance = Math.hypot(dx, dy) || 0.01;
+      if (distance >= minDistance) continue;
+
+      const push = (minDistance - distance) / 2;
+      const nx = dx / distance;
+      const ny = dy / distance;
+      if (!isAnchoredForCollision(a)) {
+        a.x -= nx * push;
+        a.y -= ny * push;
+        clampUnitPosition(a);
+      }
+      if (!isAnchoredForCollision(b)) {
+        b.x += nx * push;
+        b.y += ny * push;
+        clampUnitPosition(b);
+      }
+    }
+  }
+}
+
+function getCollisionRadius(unit) {
+  const data = UNIT[unit.type] ?? {};
+  if (data.collisionRadius) return data.collisionRadius;
+  if (data.giant) return 24;
+  if (unit.type === "treeEnt") return 25;
+  if (unit.type === "rocketCart" || unit.type === "catapult") return 28;
+  return 12 * (data.visualScale ?? 1);
+}
+
+function isAnchoredForCollision(unit) {
+  return unit.type === "electricGate" || (unit.type === "treeEnt" && unit.rooted) || UNIT[unit.type]?.immobile;
+}
+
+function clampUnitPosition(unit) {
+  const pad = getCollisionRadius(unit);
+  unit.x = Math.max(FIELD.playerBase + pad, Math.min(FIELD.enemyBase - pad, unit.x));
+  unit.y = Math.max(FIELD.ground - 96, Math.min(FIELD.ground + 96, unit.y));
 }
 
 function updateHurricane(unit, dt) {
@@ -3338,13 +3447,14 @@ function updateMiner(unit, dt) {
   }
 
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
-  const mine = isPlayer ? FIELD.playerMineX : FIELD.enemyMineX;
+  const mine = getMineForMiner(unit);
   const mustDeposit = unit.carry >= UNIT.miner.bagSize;
   const forcedHome = isPlayer && state.command === "retreat";
-  const targetX = forcedHome || mustDeposit ? home : mine;
+  const targetX = forcedHome || mustDeposit || !mine ? home : mine.x;
+  const targetY = forcedHome || mustDeposit || !mine ? FIELD.ground : mine.y;
 
-  if (Math.abs(unit.x - targetX) > 5) {
-    unit.x += Math.sign(targetX - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+  if (forcedHome || mustDeposit) unit.mineSlotId = null;
+  if (moveUnitTowardPoint(unit, targetX, targetY, getMinerMoveSpeed(unit), dt, 5)) {
     return;
   }
 
@@ -3508,13 +3618,14 @@ function moveTowardCastle(unit, dt) {
   }
   if (unit.type === "waterElement" && unit.boundTargetId) releaseFrozenTarget(unit);
 
-  if (Math.abs(unit.x - castleX) > 6) {
+  if (distanceTo(unit.x, unit.y, castleX, FIELD.ground) > 6) {
     const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed);
-    unit.x += Math.sign(castleX - unit.x) * speed * getMoveFactor(unit) * dt;
+    moveUnitTowardPoint(unit, castleX, FIELD.ground, speed, dt, 6);
     return true;
   }
 
   unit.x = castleX;
+  unit.y = FIELD.ground;
   unit.inCastle = true;
   unit.cooldown = 0;
   if (unit.carry > 0) {
@@ -5052,8 +5163,8 @@ function draw() {
   if (isGoldRushActive()) {
     drawGoldRushMines();
   } else {
-    drawMine(FIELD.playerMineX, "player");
-    drawMine(FIELD.enemyMineX, "enemy");
+    getSideMines("player").forEach((mine) => drawMine(mine, "player"));
+    getSideMines("enemy").forEach((mine) => drawMine(mine, "enemy"));
   }
   drawCastle("player");
   drawCastle("enemy");
@@ -5158,6 +5269,9 @@ function drawSky() {
   drawMountain(690, 315, "#526158");
   drawMountain(1110, 340, "#44534b");
   drawMountain(1390, 320, "#38483f");
+  drawMountain(1760, 350, "#4a5a53");
+  drawMountain(2180, 325, "#394940");
+  drawMountain(2600, 345, "#526158");
 
   ctx.fillStyle = "rgba(255, 239, 186, 0.7)";
   ctx.beginPath();
@@ -5189,19 +5303,21 @@ function drawGround() {
   }
 }
 
-function drawMine(x, side) {
+function drawMine(mine, side) {
+  const x = typeof mine === "number" ? mine : mine.x;
+  const y = typeof mine === "number" ? FIELD.ground : mine.y;
   const faction = factionForSide(side);
   ctx.fillStyle = "#403421";
   ctx.beginPath();
-  ctx.moveTo(x - 58, FIELD.ground + 18);
-  ctx.lineTo(x - 16, FIELD.ground - 52);
-  ctx.lineTo(x + 56, FIELD.ground + 18);
+  ctx.moveTo(x - 58, y + 18);
+  ctx.lineTo(x - 16, y - 52);
+  ctx.lineTo(x + 56, y + 18);
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = FACTIONS[faction].mineColor;
   ctx.beginPath();
-  ctx.arc(x + 7, FIELD.ground - 8, 15, 0, Math.PI * 2);
-  ctx.arc(x - 17, FIELD.ground + 8, 10, 0, Math.PI * 2);
+  ctx.arc(x + 7, y - 8, 15, 0, Math.PI * 2);
+  ctx.arc(x - 17, y + 8, 10, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -5316,6 +5432,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "hill") {
+    drawHillUnit(unit);
+    ctx.restore();
+    return;
+  }
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -5371,6 +5492,48 @@ function drawGodVHeadpiece() {
   ctx.quadraticCurveTo(0, -76, 10, -72);
   ctx.stroke();
   ctx.restore();
+}
+
+function drawHillUnit(unit) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#4c3e28";
+  ctx.fillStyle = "#8f7a54";
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(-18, -50);
+  ctx.lineTo(4, -66);
+  ctx.lineTo(25, -50);
+  ctx.lineTo(18, -18);
+  ctx.lineTo(-16, -18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#d6c090";
+  ctx.beginPath();
+  ctx.arc(1, -82, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#6f5c3c";
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(-14, -42);
+  ctx.lineTo(-34, -28);
+  ctx.moveTo(20, -43);
+  ctx.lineTo(36, -32);
+  ctx.moveTo(-10, -18);
+  ctx.lineTo(-24, 4);
+  ctx.moveTo(13, -18);
+  ctx.lineTo(29, 3);
+  ctx.stroke();
+
+  drawStoneWeapon(1.3);
+  ctx.restore();
+  drawUnitHp(unit);
 }
 
 function drawCatapultUnit(unit) {
@@ -5717,6 +5880,32 @@ function drawMedusaUnit(unit) {
   drawUnitHp(unit);
 }
 
+function drawStoneWeapon(scale = 1) {
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#8a7348";
+  ctx.beginPath();
+  ctx.moveTo(17, -46);
+  ctx.lineTo(36, -61);
+  ctx.lineTo(57, -50);
+  ctx.lineTo(50, -28);
+  ctx.lineTo(24, -25);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#4c3e28";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(225, 205, 150, 0.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(27, -47);
+  ctx.lineTo(38, -54);
+  ctx.moveTo(39, -34);
+  ctx.lineTo(49, -42);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawWeapon(type) {
   ctx.strokeStyle = "#e7dfc7";
   ctx.lineWidth = 3;
@@ -5998,16 +6187,7 @@ function drawWeapon(type) {
     ctx.fillStyle = type === "superGiant" ? "#2f2634" : "#493b4e";
     ctx.fillRect(39, -65, type === "superGiant" ? 24 : 18, type === "superGiant" ? 24 : 18);
   } else if (type === "hill") {
-    ctx.fillStyle = "#8a7348";
-    ctx.beginPath();
-    ctx.moveTo(13, -27);
-    ctx.lineTo(28, -64);
-    ctx.lineTo(53, -27);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#4c3e28";
-    ctx.lineWidth = 4;
-    ctx.stroke();
+    drawStoneWeapon(1.25);
   } else if (type === "linghan") {
     ctx.strokeStyle = "#d8f8ff";
     ctx.lineWidth = 5;
@@ -6025,18 +6205,7 @@ function drawWeapon(type) {
     ctx.arc(45, -68, 17, 0, Math.PI * 1.7);
     ctx.stroke();
   } else if (type === "earthElement") {
-    ctx.fillStyle = "#8a7348";
-    ctx.beginPath();
-    ctx.moveTo(18, -45);
-    ctx.lineTo(35, -56);
-    ctx.lineTo(53, -47);
-    ctx.lineTo(48, -29);
-    ctx.lineTo(24, -27);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#4c3e28";
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    drawStoneWeapon(1);
   } else if (type === "waterElement") {
     return;
   } else if (type === "fireElement") {
@@ -6689,8 +6858,9 @@ function findPlayerMedusaAt(point) {
 function findUnitAt(point) {
   return state.units.find((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit)) return false;
-    const height = UNIT[unit.type]?.giant ? 150 : unit.type === "treeEnt" ? 120 : 86;
-    const width = UNIT[unit.type]?.giant ? 74 : unit.type === "treeEnt" ? 72 : 48;
+    const scale = UNIT[unit.type]?.visualScale ?? 1;
+    const height = (UNIT[unit.type]?.giant ? 150 : unit.type === "treeEnt" ? 120 : 86) * scale;
+    const width = (UNIT[unit.type]?.giant ? 74 : unit.type === "treeEnt" ? 72 : 48) * scale;
     return Math.abs(unit.x - point.x) <= width && Math.abs(unit.y - 48 - point.y) <= height;
   });
 }
