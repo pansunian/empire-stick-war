@@ -2628,6 +2628,11 @@ function updateUnits(dt) {
         continue;
       }
     }
+    if (isPlayerForcedGuarding(unit)) {
+      moveTowardGuardLine(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
 
     if (unit.type === "waterElement" && unit.boundTargetId) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -3586,6 +3591,19 @@ function getDesiredX(unit, target) {
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
   if (target) return target.x + range - 8;
   return FIELD.playerBase;
+}
+
+function isPlayerForcedGuarding(unit) {
+  if (unit.side !== "player" || state.command !== "guard") return false;
+  if (unit.forceCharge || unit.type === "miner" || unit.type === "electricGate") return false;
+  return unit.x > getPlayerRallyX(unit) + 8;
+}
+
+function moveTowardGuardLine(unit, dt) {
+  const data = UNIT[unit.type];
+  const targetX = getPlayerRallyX(unit);
+  if (Math.abs(unit.x - targetX) <= 4) return;
+  unit.x += Math.sign(targetX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
 }
 
 function getEnemyFormationX(unit) {
