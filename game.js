@@ -886,7 +886,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 120,
-      goldRush: { columns: 4, rows: 4, mineGold: 5000 },
+      goldRush: { columns: 5, rows: 4, mineGold: 5000 },
       rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
