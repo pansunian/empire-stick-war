@@ -43,8 +43,8 @@ if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
 
 const FIELD = {
   width: 3600,
-  height: 620,
-  ground: 470,
+  height: 800,
+  ground: 610,
   playerBase: 70,
   enemyBase: 3530,
   playerGate: 160,
@@ -53,7 +53,7 @@ const FIELD = {
   enemyMineX: 3030,
   mineDistance: 300,
 };
-const MINE_LANES = [-72, -24, 24, 72];
+const MINE_LANES = [-140, -48, 48, 140];
 const NORMAL_MINE_CAPACITY = 5000;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -2891,7 +2891,7 @@ function isAnchoredForCollision(unit) {
 function clampUnitPosition(unit) {
   const pad = getCollisionRadius(unit);
   unit.x = Math.max(FIELD.playerBase + pad, Math.min(FIELD.enemyBase - pad, unit.x));
-  unit.y = Math.max(FIELD.ground - 96, Math.min(FIELD.ground + 96, unit.y));
+  unit.y = Math.max(FIELD.ground - 170, Math.min(FIELD.ground + 150, unit.y));
 }
 
 function updateHurricane(unit, dt) {
@@ -5393,22 +5393,22 @@ function drawMine(mine, side) {
   const faction = factionForSide(side);
   ctx.fillStyle = remaining > 0 ? "#403421" : "#26231e";
   ctx.beginPath();
-  ctx.moveTo(x - 58, y + 18);
-  ctx.lineTo(x - 16, y - 52);
-  ctx.lineTo(x + 56, y + 18);
+  ctx.moveTo(x - 42, y + 13);
+  ctx.lineTo(x - 12, y - 38);
+  ctx.lineTo(x + 41, y + 13);
   ctx.closePath();
   ctx.fill();
   if (remaining > 0) {
     ctx.fillStyle = FACTIONS[faction].mineColor;
     ctx.beginPath();
-    ctx.arc(x + 7, y - 8, 15, 0, Math.PI * 2);
-    ctx.arc(x - 17, y + 8, 10, 0, Math.PI * 2);
+    ctx.arc(x + 5, y - 6, 11, 0, Math.PI * 2);
+    ctx.arc(x - 12, y + 6, 7, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
-  ctx.fillRect(x - 30, y + 24, 60, 5);
+  ctx.fillRect(x - 23, y + 18, 46, 5);
   ctx.fillStyle = remaining > 0 ? "#f5c542" : "#5d574b";
-  ctx.fillRect(x - 30, y + 24, 60 * ratio, 5);
+  ctx.fillRect(x - 23, y + 18, 46 * ratio, 5);
 }
 
 function drawGoldRushMines() {
@@ -5418,28 +5418,28 @@ function drawGoldRushMines() {
     const y = mine.y ?? FIELD.ground;
     ctx.fillStyle = mine.remaining > 0 ? "#3b301f" : "#2a2925";
     ctx.beginPath();
-    ctx.moveTo(mine.x - 42, y + 16);
-    ctx.lineTo(mine.x - 12, y - 42);
-    ctx.lineTo(mine.x + 44, y + 16);
+    ctx.moveTo(mine.x - 34, y + 13);
+    ctx.lineTo(mine.x - 10, y - 34);
+    ctx.lineTo(mine.x + 35, y + 13);
     ctx.closePath();
     ctx.fill();
 
     if (mine.remaining > 0) {
       ctx.fillStyle = "#f5c542";
       ctx.beginPath();
-      ctx.arc(mine.x + 3, y - 3, 11, 0, Math.PI * 2);
-      ctx.arc(mine.x - 14, y + 8, 7, 0, Math.PI * 2);
+      ctx.arc(mine.x + 2, y - 3, 9, 0, Math.PI * 2);
+      ctx.arc(mine.x - 11, y + 6, 5, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    ctx.fillRect(mine.x - 28, y + 24, 56, 6);
+    ctx.fillRect(mine.x - 22, y + 19, 44, 5);
     ctx.fillStyle = "#f5c542";
-    ctx.fillRect(mine.x - 28, y + 24, 56 * ratio, 6);
+    ctx.fillRect(mine.x - 22, y + 19, 44 * ratio, 5);
     ctx.fillStyle = "#efe6c8";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 44);
+    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 38);
   });
   ctx.restore();
 }
