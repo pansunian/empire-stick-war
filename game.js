@@ -77,7 +77,7 @@ const CENTER_TOWER = {
   y: FIELD.ground - 72,
   radiusX: 155,
   radiusY: 150,
-  captureTime: 10,
+  captureTime: 15,
   income: 6,
 };
 
@@ -2164,12 +2164,8 @@ function updateCenterTower(dt) {
 
   const playerNearby = getTowerUnits("player").length > 0;
   const enemyNearby = getTowerUnits("enemy").length > 0;
-  if (state.towerOwner === "player" && enemyNearby) neutralizeCenterTower("enemy");
-  if (state.towerOwner === "enemy" && playerNearby) neutralizeCenterTower("player");
 
   if (playerNearby === enemyNearby) {
-    state.towerCaptureSide = null;
-    state.towerCaptureTimer = 0;
     return;
   }
 
@@ -2186,20 +2182,18 @@ function updateCenterTower(dt) {
   }
   state.towerCaptureTimer += dt;
   if (state.towerCaptureTimer >= CENTER_TOWER.captureTime) {
+    if (state.towerOwner && state.towerOwner !== capturingSide) {
+      state.towerOwner = null;
+      state.towerCaptureTimer = 0;
+      popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, "中心塔回到中立", capturingSide === "player" ? "#9fc0ff" : "#ff9b8d");
+      return;
+    }
     state.towerOwner = capturingSide;
     state.towerCaptureSide = null;
     state.towerCaptureTimer = 0;
     popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, `${capturingSide === "player" ? "我方" : "敌方"}占领中心塔`, capturingSide === "player" ? "#9fc0ff" : "#ff9b8d");
     if (capturingSide === "player") statusEl.textContent = "中心塔已占领，每秒 +6 金币；再次点击进攻可冲击敌方雕像";
   }
-}
-
-function neutralizeCenterTower(contestingSide) {
-  if (!state.towerOwner) return;
-  state.towerOwner = null;
-  state.towerCaptureSide = null;
-  state.towerCaptureTimer = 0;
-  popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, "中心塔被争夺", contestingSide === "player" ? "#9fc0ff" : "#ff9b8d");
 }
 
 function getTowerUnits(side) {
@@ -5637,9 +5631,15 @@ function drawUnit(unit) {
   const flightOffset = UNIT[unit.type]?.flying ? -42 : 0;
   const size = UNIT[unit.type]?.visualScale ?? (UNIT[unit.type]?.giant ? 1.55 : 1);
 
+  if (UNIT[unit.type]?.flying) drawFlightMarker(unit, flightOffset);
+
   ctx.save();
   ctx.translate(unit.x, unit.y + bob + flightOffset);
   ctx.scale(dir * size, size);
+  if (UNIT[unit.type]?.flying) {
+    ctx.shadowColor = "#d7f6ff";
+    ctx.shadowBlur = 12;
+  }
   if (unit.type === "vClone") {
     ctx.shadowColor = "#78ff9a";
     ctx.shadowBlur = 18;
@@ -5711,6 +5711,32 @@ function drawUnit(unit) {
   drawWeapon(unit.type);
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawFlightMarker(unit, flightOffset) {
+  const baseY = unit.y + 7;
+  const airY = unit.y + flightOffset - 6;
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(unit.x, baseY, 28, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(215, 246, 255, 0.58)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(unit.x, baseY - 3);
+  ctx.lineTo(unit.x, airY + 18);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = "rgba(215, 246, 255, 0.75)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(unit.x, airY + 18, 24, 7, 0, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }
 
