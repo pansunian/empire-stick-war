@@ -54,6 +54,7 @@ const FIELD = {
   mineDistance: 300,
 };
 const MINE_LANES = [-205, -72, 72, 185];
+const MINE_ROW_OFFSETS = [0, 300];
 const NORMAL_MINE_CAPACITY = 5000;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -257,7 +258,7 @@ const UNIT = {
     train: 8,
     cooldown: 1.5,
     stunDuration: 1,
-    blindSpot: 120,
+    blindSpot: 100,
   },
   enslavedGiant: {
     name: "投石巨人",
@@ -288,7 +289,7 @@ const UNIT = {
     volleyRadius: 50,
     splash: 24,
     arrowLife: 1.35,
-    blindSpot: 100,
+    blindSpot: 80,
   },
   creeper: {
     name: "爬行者",
@@ -2324,16 +2325,15 @@ function createSideMines() {
 function createMinesForSide(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   const dir = side === "player" ? 1 : -1;
-  return MINE_LANES.map((laneY, index) => {
-    const xOffset = Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2));
-    return {
-      id: `${side}-mine-${index}`,
-      x: baseX + dir * xOffset,
+  return MINE_ROW_OFFSETS.flatMap((rowOffset, rowIndex) => (
+    MINE_LANES.map((laneY, laneIndex) => ({
+      id: `${side}-mine-${rowIndex}-${laneIndex}`,
+      x: baseX + dir * (FIELD.mineDistance + rowOffset),
       y: FIELD.ground + laneY,
       remaining: NORMAL_MINE_CAPACITY,
       capacity: NORMAL_MINE_CAPACITY,
-    };
-  });
+    }))
+  ));
 }
 
 function getSideMines(side) {
@@ -2895,6 +2895,7 @@ function updateUnits(dt) {
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
     const desiredX = getDesiredX(unit, target);
     const distance = Math.abs(unit.x - desiredX);
+    const moveTolerance = getMoveTolerance(unit, target, desiredX);
 
     const range = getUnitRange(unit);
 
@@ -2903,7 +2904,7 @@ function updateUnits(dt) {
         updateIceRoadMoveTimer(unit, beforeX, dt);
         continue;
       }
-      if (distance > 4) {
+      if (distance > moveTolerance) {
         moveRocketCartToward(unit, desiredX, dt);
       }
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -2916,7 +2917,7 @@ function updateUnits(dt) {
       attack(unit, target);
     } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
       moveTowardGuardLine(unit, dt);
-    } else if (distance > 4) {
+    } else if (distance > moveTolerance) {
       unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
     }
     updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -3865,18 +3866,30 @@ function getDesiredX(unit, target) {
   return FIELD.playerBase;
 }
 
+function getMoveTolerance(unit, target, desiredX) {
+  if (target?.kind === "statue") return 4;
+  if (target && target.kind !== "statue") return 4;
+  const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
+  if (Math.abs(desiredX - enemyBase) < 2) return 4;
+  return getCommandPointTolerance(unit);
+}
+
+function getCommandPointTolerance(unit) {
+  return UNIT[unit.type]?.giant ? 110 : 150;
+}
+
 function isPlayerForcedGuarding(unit) {
   if (unit.side !== "player" || state.command !== "guard") return false;
   if (unit.forceCharge || unit.type === "miner" || unit.type === "electricGate") return false;
   const point = getGuardFormationPoint(unit, "player");
-  return distanceTo(unit.x, unit.y, point.x, point.y) > 8;
+  return distanceTo(unit.x, unit.y, point.x, point.y) > getCommandPointTolerance(unit);
 }
 
 function moveTowardGuardLine(unit, dt) {
   const data = UNIT[unit.type];
   const baseX = unit.side === "enemy" ? state.enemyLineX : null;
   const point = getGuardFormationPoint(unit, unit.side, baseX);
-  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed, dt, 5);
+  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed, dt, getCommandPointTolerance(unit));
 }
 
 function getEnemyFormationX(unit) {
