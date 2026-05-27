@@ -640,6 +640,20 @@ canvas {
   gap: 10px;
 }
 
+.command-group {
+  display: grid;
+  grid-template-columns: repeat(3, 96px);
+  grid-template-rows: repeat(2, 56px);
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.command-group .command-btn {
+  min-width: 96px;
+  min-height: 56px;
+  padding: 6px 8px;
+}
+
 .unit-shop {
   flex: 1;
   display: grid;
@@ -1394,6 +1408,7 @@ canvas {
 
   .command-group {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 54px);
   }
 
   .unit-shop {
@@ -1529,6 +1544,7 @@ canvas {
 
   .command-group {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 48px);
     gap: 6px;
   }
 

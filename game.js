@@ -54,7 +54,7 @@ const FIELD = {
   mineDistance: 300,
 };
 const MINE_LANES = [-205, -72, 72, 185];
-const MINE_ROW_OFFSETS = [0, 300];
+const NORMAL_MINE_LANES = [-235, -178, -86, -32, 32, 86, 178, 235];
 const NORMAL_MINE_CAPACITY = 5000;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -2325,15 +2325,16 @@ function createSideMines() {
 function createMinesForSide(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   const dir = side === "player" ? 1 : -1;
-  return MINE_ROW_OFFSETS.flatMap((rowOffset, rowIndex) => (
-    MINE_LANES.map((laneY, laneIndex) => ({
-      id: `${side}-mine-${rowIndex}-${laneIndex}`,
-      x: baseX + dir * (FIELD.mineDistance + rowOffset),
+  return NORMAL_MINE_LANES.map((laneY, index) => {
+    const xOffset = Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2));
+    return {
+      id: `${side}-mine-${index}`,
+      x: baseX + dir * xOffset,
       y: FIELD.ground + laneY,
       remaining: NORMAL_MINE_CAPACITY,
       capacity: NORMAL_MINE_CAPACITY,
-    }))
-  ));
+    };
+  });
 }
 
 function getSideMines(side) {
