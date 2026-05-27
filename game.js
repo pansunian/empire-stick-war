@@ -837,7 +837,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "dreadfire", "electricGate", "vUnit", "treeEnt", "rog", "scaldStrike", "windElement"],
+  element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
   order: 1,
@@ -1123,6 +1123,19 @@ const CAMPAIGN_LEVELS = {
       rewardText: "飓风与厄火",
       objective: "雪中守护神明 V，先破混沌雕像，再击破秩序雕像",
     },
+    6: {
+      title: "第六关：导弹前线",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane"],
+      enemyRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      enemyStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      enemyFaction: "order",
+      startGold: 220,
+      enemyGold: 260,
+      campaignMissiles: { every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speed: 0.18 },
+      rewardText: "V",
+      objective: "敌方每 30 秒会朝我方最前线发射 12 发高速导弹；导弹来袭前会有 8 秒警告倒计时",
+    },
   },
 };
 let activeCampaign = null;
@@ -1343,6 +1356,8 @@ function newGame() {
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
+    campaignMissileTimer: activeCampaign?.campaignMissiles ? Math.max(0, activeCampaign.campaignMissiles.every - activeCampaign.campaignMissiles.warning) : 0,
+    campaignMissileWarning: 0,
     sideMines: createSideMines(),
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
@@ -1517,6 +1532,7 @@ function describeCampaignMechanics(config) {
   if (config.godV) mechanics.push("神明 V 加入战斗");
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
+  if (config.campaignMissiles) mechanics.push(`每 ${config.campaignMissiles.every} 秒导弹来袭：提前 ${config.campaignMissiles.warning} 秒警告，随后 ${config.campaignMissiles.count} 发导弹轰击我方最前线，每发 ${config.campaignMissiles.damage} 点范围伤害，最多命中 ${config.campaignMissiles.limit} 名我方单位`);
   if (config.iceRoad) {
     const slow = Math.round((1 - (config.iceRoad.slowFactor ?? 1)) * 100);
     const sides = config.iceRoad.affectedSides?.includes("player") && config.iceRoad.affectedSides.length === 1 ? "只影响我方" : "影响场上单位";
@@ -2372,6 +2388,7 @@ function updateCampaignRules(dt) {
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
+  updateCampaignMissiles(dt);
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
   updateCampaignStormClouds(dt);
@@ -2683,6 +2700,64 @@ function updateCampaignMeteor(dt) {
     });
     popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
   }
+}
+
+function updateCampaignMissiles(dt) {
+  const missile = activeCampaign?.campaignMissiles;
+  if (!missile) return;
+
+  if (state.campaignMissileWarning > 0) {
+    const previousSecond = Math.ceil(state.campaignMissileWarning);
+    state.campaignMissileWarning = Math.max(0, state.campaignMissileWarning - dt);
+    const nextSecond = Math.ceil(state.campaignMissileWarning);
+    if (nextSecond > 0 && nextSecond !== previousSecond) {
+      popText(getPlayerFrontlineX(), FIELD.ground - 190, `导弹 ${nextSecond}`, "#ffdf6b");
+    }
+    if (state.campaignMissileWarning <= 0) {
+      launchCampaignMissiles(missile);
+      state.campaignMissileTimer = Math.max(0, missile.every - missile.warning);
+    }
+    return;
+  }
+
+  state.campaignMissileTimer -= dt;
+  if (state.campaignMissileTimer > 0) return;
+
+  state.campaignMissileWarning = missile.warning;
+  state.campaignMissileTimer = 0;
+  popText(getPlayerFrontlineX(), FIELD.ground - 190, `导弹来袭 ${missile.warning}`, "#ffdf6b");
+}
+
+function getPlayerFrontlineX() {
+  const candidates = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
+  if (!candidates.length) return FIELD.playerGate + 260;
+  return Math.max(...candidates.map((unit) => unit.x));
+}
+
+function launchCampaignMissiles(missile) {
+  const frontX = getPlayerFrontlineX();
+  const count = missile.count ?? 12;
+  const laneSpread = 180;
+  for (let i = 0; i < count; i += 1) {
+    const offset = ((i / Math.max(1, count - 1)) - 0.5) * laneSpread + (Math.random() - 0.5) * 36;
+    const tx = Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 80, frontX + offset));
+    const ty = FIELD.ground - 38 + (Math.random() - 0.5) * 46;
+    state.arrows.push({
+      x: FIELD.width + 130 + i * 12,
+      y: FIELD.ground - 250 + (i % 4) * 16,
+      tx,
+      ty,
+      side: "enemy",
+      damage: missile.damage,
+      radius: missile.radius,
+      limit: missile.limit,
+      life: missile.speed,
+      duration: missile.speed,
+      type: "campaignMissile",
+    });
+  }
+  state.screenShake = Math.max(state.screenShake ?? 0, 0.45);
+  popText(frontX, FIELD.ground - 190, "导弹齐射", "#ff6b4a");
 }
 
 function updateEnemyAi(dt) {
@@ -4855,6 +4930,8 @@ function updateArrows(dt) {
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side);
+      } else if (arrow.type === "campaignMissile") {
+        explodeCampaignMissile(arrow);
       } else if (arrow.type === "rocketVolley") {
         explodeRocketArrow(arrow);
       } else {
@@ -4922,6 +4999,15 @@ function explodeRocketArrow(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.22, duration: 0.22, color: "#ffce7a" });
+}
+
+function explodeCampaignMissile(arrow) {
+  const targets = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, arrow.limit ?? 3);
+  targets.forEach((target) => {
+    applyUnitDamage(target, arrow.damage, { label: "导弹", color: "#ff6b4a", yOffset: -82 });
+  });
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.radius, life: 0.24, duration: 0.24, color: "#ff6b4a" });
+  state.screenShake = Math.max(state.screenShake ?? 0, 0.18);
 }
 
 function explodeBolt(arrow) {
@@ -5596,10 +5682,28 @@ function draw() {
   state.blasts.forEach(drawBlast);
   state.lightning.forEach(drawLightning);
   drawSnow();
+  drawCampaignMissileWarning();
   drawCampaignDarkness();
   state.floaters.forEach(drawFloater);
 
   if (state.over) drawEndOverlay();
+  ctx.restore();
+}
+
+function drawCampaignMissileWarning() {
+  if (!activeCampaign?.campaignMissiles || state.campaignMissileWarning <= 0) return;
+  const seconds = Math.ceil(state.campaignMissileWarning);
+  const x = Math.max(180, Math.min(FIELD.width - 180, getPlayerFrontlineX()));
+  ctx.save();
+  ctx.fillStyle = "rgba(90, 22, 14, 0.78)";
+  ctx.strokeStyle = "#ffdf6b";
+  ctx.lineWidth = 2;
+  ctx.fillRect(x - 142, 78, 284, 54);
+  ctx.strokeRect(x - 142, 78, 284, 54);
+  ctx.fillStyle = "#ffdf6b";
+  ctx.font = "800 20px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`导弹来袭 ${seconds}`, x, 112);
   ctx.restore();
 }
 
@@ -7010,6 +7114,19 @@ function drawArrow(arrow) {
     ctx.fillStyle = "#ff7a3d";
     ctx.beginPath();
     ctx.arc(x + 15, y - 6, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  if (arrow.type === "campaignMissile") {
+    ctx.strokeStyle = "#ffdf6b";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x + 24, y - 5);
+    ctx.lineTo(x - 22, y + 5);
+    ctx.stroke();
+    ctx.fillStyle = "#ff6b4a";
+    ctx.beginPath();
+    ctx.arc(x - 24, y + 5, 5, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
