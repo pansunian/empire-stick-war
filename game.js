@@ -2914,6 +2914,8 @@ function updateUnits(dt) {
       attack(unit, target);
     } else if (target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
       attack(unit, target);
+    } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
+      moveTowardGuardLine(unit, dt);
     } else if (distance > 4) {
       unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
     }
@@ -3866,20 +3868,20 @@ function getDesiredX(unit, target) {
 function isPlayerForcedGuarding(unit) {
   if (unit.side !== "player" || state.command !== "guard") return false;
   if (unit.forceCharge || unit.type === "miner" || unit.type === "electricGate") return false;
-  return unit.x > getPlayerRallyX(unit) + 8;
+  const point = getGuardFormationPoint(unit, "player");
+  return distanceTo(unit.x, unit.y, point.x, point.y) > 8;
 }
 
 function moveTowardGuardLine(unit, dt) {
   const data = UNIT[unit.type];
-  const targetX = getPlayerRallyX(unit);
-  if (Math.abs(unit.x - targetX) <= 4) return;
-  unit.x += Math.sign(targetX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+  const baseX = unit.side === "enemy" ? state.enemyLineX : null;
+  const point = getGuardFormationPoint(unit, unit.side, baseX);
+  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed, dt, 5);
 }
 
 function getEnemyFormationX(unit) {
-  const slot = (unit.id % 9) * 24;
-  const jitter = unit.type === "miner" ? 120 : slot;
-  return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, Math.max(FIELD.playerGate + 220, state.enemyLineX + jitter));
+  const point = getGuardFormationPoint(unit, "enemy", state.enemyLineX);
+  return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, Math.max(FIELD.playerGate + 220, point.x));
 }
 
 function getPlayerRallyBaseX() {
@@ -3891,11 +3893,24 @@ function getEnemyRallyBaseX() {
 }
 
 function getPlayerRallyX(unit) {
-  return Math.min(getPlayerRallyBaseX() + RALLY.maxSpread, getPlayerRallyBaseX() + (unit.id % 18) * RALLY.spacing);
+  return getGuardFormationPoint(unit, "player").x;
 }
 
 function getEnemyRallyX(unit) {
-  return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, getEnemyRallyBaseX() + (unit.id % 18) * RALLY.spacing);
+  return getGuardFormationPoint(unit, "enemy").x;
+}
+
+function getGuardFormationPoint(unit, side, baseOverride = null) {
+  const column = unit.id % 4;
+  const row = Math.floor(unit.id / 4) % 9;
+  const rowOffsets = [-150, -112, -74, -36, 0, 36, 74, 112, 150];
+  const columnSpacing = 42;
+  const baseX = baseOverride ?? (side === "player" ? getPlayerRallyBaseX() : getEnemyRallyBaseX());
+  const direction = side === "player" ? 1 : -1;
+  return {
+    x: baseX + direction * column * columnSpacing,
+    y: FIELD.ground + rowOffsets[row],
+  };
 }
 
 function getTowerRallyX(unit, side) {
