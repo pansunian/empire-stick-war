@@ -1058,7 +1058,7 @@ const CAMPAIGN_LEVELS = {
       objective: "以土元素开采与作战，在巨大陨石下守住矿脉",
     },
     3: {
-      title: "第三关：冰道异变",
+      title: "第三关：冰地异变",
       playerRoster: ["earthElement", "waterElement", "fireElement", "rog", "hill", "linghan"],
       playerStart: ["earthElement", "fireElement", "rog", "vUnit"],
       enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete"],
@@ -1067,10 +1067,10 @@ const CAMPAIGN_LEVELS = {
       startGold: 130,
       enemyGold: 180,
       godV: true,
-      iceRoad: { slowDuration: 5, slowFactor: 0.5, fastFactor: 1.5 },
+      iceRoad: { slowFactor: 0.8, fastFactor: 0.8 },
       enemyDeathsBecomeWaterScorpion: true,
       rewardText: "水元素、树精与赤炎",
-      objective: "在冰道上掌握移动节奏，利用敌军死亡后的水蝎子反击",
+      objective: "在冰地上稳住阵线，利用敌军死亡后的水蝎子反击",
     },
     4: {
       title: "第四关：雷云战场",
@@ -3821,6 +3821,7 @@ function getMoveFactor(unit) {
 function getIceRoadMoveFactor(unit) {
   const road = activeCampaign?.iceRoad;
   if (!road) return 1;
+  if (road.fastFactor === road.slowFactor || road.slowDuration === undefined) return road.slowFactor ?? 1;
   return (unit.iceRoadMoveTimer ?? 0) >= road.slowDuration ? road.fastFactor : road.slowFactor;
 }
 
@@ -5434,18 +5435,30 @@ function drawStormClouds() {
 function drawIceRoadGround() {
   if (!activeCampaign?.iceRoad) return;
   ctx.save();
-  const gradient = ctx.createLinearGradient(0, FIELD.ground - 12, 0, FIELD.ground + 72);
-  gradient.addColorStop(0, "rgba(198, 239, 255, 0.38)");
-  gradient.addColorStop(1, "rgba(118, 194, 230, 0.22)");
+  const top = FIELD.ground - 225;
+  const gradient = ctx.createLinearGradient(0, top, 0, FIELD.height);
+  gradient.addColorStop(0, "rgba(210, 244, 255, 0.42)");
+  gradient.addColorStop(0.48, "rgba(142, 212, 236, 0.34)");
+  gradient.addColorStop(1, "rgba(72, 130, 154, 0.18)");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, FIELD.ground - 8, FIELD.width, 92);
-  ctx.strokeStyle = "rgba(235, 252, 255, 0.55)";
+  ctx.fillRect(0, top, FIELD.width, FIELD.height - top);
+  ctx.strokeStyle = "rgba(235, 252, 255, 0.48)";
   ctx.lineWidth = 2;
-  for (let x = -80; x < FIELD.width; x += 120) {
+  for (let x = -90; x < FIELD.width; x += 130) {
     ctx.beginPath();
-    ctx.moveTo(x, FIELD.ground + 18);
-    ctx.lineTo(x + 88, FIELD.ground + 4);
+    ctx.moveTo(x, FIELD.ground - 176 + ((x / 130) % 3) * 52);
+    ctx.lineTo(x + 92, FIELD.ground - 192 + ((x / 130) % 3) * 52);
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 26, FIELD.ground + 34 - ((x / 130) % 4) * 34);
+    ctx.lineTo(x + 118, FIELD.ground + 18 - ((x / 130) % 4) * 34);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(244, 253, 255, 0.2)";
+  for (let x = 40; x < FIELD.width; x += 210) {
+    ctx.beginPath();
+    ctx.ellipse(x, FIELD.ground - 70 + (x % 420 === 0 ? 72 : 0), 42, 10, -0.1, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -5488,20 +5501,26 @@ function drawMountain(offset, base, color) {
 function drawGround() {
   const top = 350;
   const gradient = ctx.createLinearGradient(0, top, 0, FIELD.height);
-  gradient.addColorStop(0, "#6f8d43");
-  gradient.addColorStop(0.45, "#3f642d");
-  gradient.addColorStop(1, "#183116");
+  gradient.addColorStop(0, "#78a055");
+  gradient.addColorStop(0.45, "#426f34");
+  gradient.addColorStop(1, "#193a18");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, top, FIELD.width, FIELD.height - top);
 
-  ctx.fillStyle = "rgba(36, 74, 28, 0.62)";
-  ctx.fillRect(0, FIELD.ground - 18, FIELD.width, 36);
-  ctx.fillStyle = "rgba(17, 43, 16, 0.58)";
-  ctx.fillRect(0, FIELD.ground + 50, FIELD.width, 44);
+  ctx.fillStyle = "rgba(94, 130, 49, 0.42)";
+  ctx.fillRect(0, FIELD.ground - 92, FIELD.width, 36);
+  ctx.fillStyle = "rgba(38, 88, 32, 0.52)";
+  ctx.fillRect(0, FIELD.ground - 20, FIELD.width, 42);
+  ctx.fillStyle = "rgba(19, 50, 18, 0.48)";
+  ctx.fillRect(0, FIELD.ground + 76, FIELD.width, 52);
 
   for (let x = 0; x < FIELD.width; x += 42) {
     ctx.fillStyle = x % 84 === 0 ? "rgba(157, 190, 82, 0.28)" : "rgba(106, 148, 64, 0.24)";
     ctx.fillRect(x, FIELD.ground - 26 + (x % 126 === 0 ? 8 : 0), 25, 4);
+  }
+  for (let x = 18; x < FIELD.width; x += 96) {
+    ctx.fillStyle = "rgba(180, 210, 105, 0.2)";
+    ctx.fillRect(x, FIELD.ground - 142 + (x % 288 === 0 ? 86 : 0), 16, 3);
   }
 }
 
