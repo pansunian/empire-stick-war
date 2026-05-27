@@ -53,7 +53,7 @@ const FIELD = {
   enemyMineX: 3030,
   mineDistance: 300,
 };
-const MINE_LANES = [-140, -48, 48, 140];
+const MINE_LANES = [-205, -72, 72, 185];
 const NORMAL_MINE_CAPACITY = 5000;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -2128,7 +2128,6 @@ function update(dt) {
   updateCampaignRules(dt);
   updateEnemyAi(dt);
   updateUnits(dt);
-  resolveUnitCollisions();
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
   updateArrows(dt);
@@ -5465,14 +5464,22 @@ function drawMountain(offset, base, color) {
 }
 
 function drawGround() {
-  ctx.fillStyle = "#29351f";
-  ctx.fillRect(0, FIELD.ground, FIELD.width, FIELD.height - FIELD.ground);
-  ctx.fillStyle = "#5b4b2c";
-  ctx.fillRect(0, FIELD.ground + 30, FIELD.width, 34);
+  const top = 350;
+  const gradient = ctx.createLinearGradient(0, top, 0, FIELD.height);
+  gradient.addColorStop(0, "#6f8d43");
+  gradient.addColorStop(0.45, "#3f642d");
+  gradient.addColorStop(1, "#183116");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, top, FIELD.width, FIELD.height - top);
+
+  ctx.fillStyle = "rgba(36, 74, 28, 0.62)";
+  ctx.fillRect(0, FIELD.ground - 18, FIELD.width, 36);
+  ctx.fillStyle = "rgba(17, 43, 16, 0.58)";
+  ctx.fillRect(0, FIELD.ground + 50, FIELD.width, 44);
 
   for (let x = 0; x < FIELD.width; x += 42) {
-    ctx.fillStyle = x % 84 === 0 ? "#344323" : "#41512a";
-    ctx.fillRect(x, FIELD.ground + 4, 25, 5);
+    ctx.fillStyle = x % 84 === 0 ? "rgba(157, 190, 82, 0.28)" : "rgba(106, 148, 64, 0.24)";
+    ctx.fillRect(x, FIELD.ground - 26 + (x % 126 === 0 ? 8 : 0), 25, 4);
   }
 }
 
@@ -5485,22 +5492,22 @@ function drawMine(mine, side) {
   const faction = factionForSide(side);
   ctx.fillStyle = remaining > 0 ? "#403421" : "#26231e";
   ctx.beginPath();
-  ctx.moveTo(x - 42, y + 13);
-  ctx.lineTo(x - 12, y - 38);
-  ctx.lineTo(x + 41, y + 13);
+  ctx.moveTo(x - 35, y + 11);
+  ctx.lineTo(x - 10, y - 31);
+  ctx.lineTo(x + 34, y + 11);
   ctx.closePath();
   ctx.fill();
   if (remaining > 0) {
     ctx.fillStyle = FACTIONS[faction].mineColor;
     ctx.beginPath();
-    ctx.arc(x + 5, y - 6, 11, 0, Math.PI * 2);
-    ctx.arc(x - 12, y + 6, 7, 0, Math.PI * 2);
+    ctx.arc(x + 4, y - 5, 9, 0, Math.PI * 2);
+    ctx.arc(x - 10, y + 5, 6, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
-  ctx.fillRect(x - 23, y + 18, 46, 5);
+  ctx.fillRect(x - 19, y + 15, 38, 4);
   ctx.fillStyle = remaining > 0 ? "#f5c542" : "#5d574b";
-  ctx.fillRect(x - 23, y + 18, 46 * ratio, 5);
+  ctx.fillRect(x - 19, y + 15, 38 * ratio, 4);
 }
 
 function drawGoldRushMines() {
@@ -5510,28 +5517,28 @@ function drawGoldRushMines() {
     const y = mine.y ?? FIELD.ground;
     ctx.fillStyle = mine.remaining > 0 ? "#3b301f" : "#2a2925";
     ctx.beginPath();
-    ctx.moveTo(mine.x - 34, y + 13);
-    ctx.lineTo(mine.x - 10, y - 34);
-    ctx.lineTo(mine.x + 35, y + 13);
+    ctx.moveTo(mine.x - 29, y + 11);
+    ctx.lineTo(mine.x - 9, y - 29);
+    ctx.lineTo(mine.x + 30, y + 11);
     ctx.closePath();
     ctx.fill();
 
     if (mine.remaining > 0) {
       ctx.fillStyle = "#f5c542";
       ctx.beginPath();
-      ctx.arc(mine.x + 2, y - 3, 9, 0, Math.PI * 2);
-      ctx.arc(mine.x - 11, y + 6, 5, 0, Math.PI * 2);
+      ctx.arc(mine.x + 2, y - 3, 7, 0, Math.PI * 2);
+      ctx.arc(mine.x - 9, y + 5, 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    ctx.fillRect(mine.x - 22, y + 19, 44, 5);
+    ctx.fillRect(mine.x - 18, y + 16, 36, 4);
     ctx.fillStyle = "#f5c542";
-    ctx.fillRect(mine.x - 22, y + 19, 44 * ratio, 5);
+    ctx.fillRect(mine.x - 18, y + 16, 36 * ratio, 4);
     ctx.fillStyle = "#efe6c8";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 38);
+    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 33);
   });
   ctx.restore();
 }
