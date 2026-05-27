@@ -51,7 +51,7 @@ const FIELD = {
   enemyGate: 3440,
   playerMineX: 570,
   enemyMineX: 3030,
-  mineDistance: 500,
+  mineDistance: 300,
 };
 const MINE_LANES = [-72, -24, 24, 72];
 const NORMAL_MINE_CAPACITY = 5000;
@@ -877,7 +877,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 120,
-      goldRush: { mineCount: 10, mineGold: 5000 },
+      goldRush: { columns: 4, rows: 4, mineGold: 5000 },
       rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
@@ -2211,16 +2211,27 @@ function strikeStormBolt(storm) {
 
 function createGoldRushMines(config) {
   if (!config) return [];
-  const count = config.mineCount ?? 10;
-  const left = FIELD.playerGate + 520;
-  const right = FIELD.enemyGate - 520;
-  const step = count > 1 ? (right - left) / (count - 1) : 0;
-  return Array.from({ length: count }, (_, index) => ({
-    id: `goldRush-${index}`,
-    x: left + step * index,
-    remaining: config.mineGold ?? 5000,
-    capacity: config.mineGold ?? 5000,
-  }));
+  const columns = config.columns ?? config.mineCount ?? 10;
+  const rows = config.rows ?? 1;
+  const center = FIELD.width / 2;
+  const columnSpacing = config.columnSpacing ?? 170;
+  const laneY = rows === 4 ? MINE_LANES : Array.from({ length: rows }, (_, index) => (index - (rows - 1) / 2) * 48);
+  const left = center - ((columns - 1) * columnSpacing) / 2;
+  const mines = [];
+
+  for (let column = 0; column < columns; column += 1) {
+    for (let row = 0; row < rows; row += 1) {
+      mines.push({
+        id: `goldRush-${column}-${row}`,
+        x: left + column * columnSpacing,
+        y: FIELD.ground + laneY[row],
+        remaining: config.mineGold ?? 5000,
+        capacity: config.mineGold ?? 5000,
+      });
+    }
+  }
+
+  return mines;
 }
 
 function isGoldRushActive() {
@@ -3557,8 +3568,7 @@ function updateGoldRushMiner(unit, dt) {
 
   if (mustDeposit) {
     unit.goldRushMineId = null;
-    if (Math.abs(unit.x - home) > 5) {
-      unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+    if (moveUnitTowardPoint(unit, home, FIELD.ground, getMinerMoveSpeed(unit), dt, 5)) {
       return;
     }
     if (isPlayer) state.gold += unit.carry;
@@ -3574,8 +3584,7 @@ function updateGoldRushMiner(unit, dt) {
   if (!mine) {
     unit.goldRushMineId = null;
     if (unit.carry > 0) {
-      if (Math.abs(unit.x - home) > 5) {
-        unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+      if (moveUnitTowardPoint(unit, home, FIELD.ground, getMinerMoveSpeed(unit), dt, 5)) {
         return;
       }
       if (isPlayer) state.gold += unit.carry;
@@ -3584,14 +3593,13 @@ function updateGoldRushMiner(unit, dt) {
       unit.carry = 0;
       unit.mineTimer = 0;
       updateHud();
-    } else if (Math.abs(unit.x - home) > 5) {
-      unit.x += Math.sign(home - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+    } else {
+      moveUnitTowardPoint(unit, home, FIELD.ground, getMinerMoveSpeed(unit), dt, 5);
     }
     return;
   }
 
-  if (Math.abs(unit.x - mine.x) > 5) {
-    unit.x += Math.sign(mine.x - unit.x) * getMinerMoveSpeed(unit) * getMoveFactor(unit) * dt;
+  if (moveUnitTowardPoint(unit, mine.x, mine.y ?? FIELD.ground, getMinerMoveSpeed(unit), dt, 5)) {
     return;
   }
 
@@ -3607,6 +3615,10 @@ function updateGoldRushMiner(unit, dt) {
   unit.carry += mined;
   mine.remaining -= mined;
   popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+  if (mine.remaining <= 0) {
+    popText(mine.x, (mine.y ?? FIELD.ground) - 72, "金矿枯竭", "#d8c7a0");
+    unit.goldRushMineId = null;
+  }
 }
 
 function getGoldRushMineForMiner(unit) {
@@ -3614,7 +3626,7 @@ function getGoldRushMineForMiner(unit) {
   if (current) return current;
   const available = state.goldRushMines
     .filter((mine) => canMineGoldRushMine(unit, mine))
-    .sort((a, b) => Math.abs(unit.x - a.x) - Math.abs(unit.x - b.x));
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground));
   const mine = available[0];
   unit.goldRushMineId = mine?.id ?? null;
   return mine;
@@ -3632,7 +3644,7 @@ function getGoldRushMineOccupyingSide(mine) {
     && candidate.hp > 0
     && !isUnitHidden(candidate)
     && candidate.goldRushMineId === mine.id
-    && Math.abs(candidate.x - mine.x) <= 8
+    && distanceTo(candidate.x, candidate.y, mine.x, mine.y ?? FIELD.ground) <= 10
     && candidate.carry < UNIT.miner.bagSize
   ));
   return miner?.side ?? null;
@@ -5403,30 +5415,31 @@ function drawGoldRushMines() {
   ctx.save();
   state.goldRushMines.forEach((mine) => {
     const ratio = mine.capacity > 0 ? mine.remaining / mine.capacity : 0;
+    const y = mine.y ?? FIELD.ground;
     ctx.fillStyle = mine.remaining > 0 ? "#3b301f" : "#2a2925";
     ctx.beginPath();
-    ctx.moveTo(mine.x - 42, FIELD.ground + 16);
-    ctx.lineTo(mine.x - 12, FIELD.ground - 42);
-    ctx.lineTo(mine.x + 44, FIELD.ground + 16);
+    ctx.moveTo(mine.x - 42, y + 16);
+    ctx.lineTo(mine.x - 12, y - 42);
+    ctx.lineTo(mine.x + 44, y + 16);
     ctx.closePath();
     ctx.fill();
 
     if (mine.remaining > 0) {
       ctx.fillStyle = "#f5c542";
       ctx.beginPath();
-      ctx.arc(mine.x + 3, FIELD.ground - 3, 11, 0, Math.PI * 2);
-      ctx.arc(mine.x - 14, FIELD.ground + 8, 7, 0, Math.PI * 2);
+      ctx.arc(mine.x + 3, y - 3, 11, 0, Math.PI * 2);
+      ctx.arc(mine.x - 14, y + 8, 7, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    ctx.fillRect(mine.x - 28, FIELD.ground + 24, 56, 6);
+    ctx.fillRect(mine.x - 28, y + 24, 56, 6);
     ctx.fillStyle = "#f5c542";
-    ctx.fillRect(mine.x - 28, FIELD.ground + 24, 56 * ratio, 6);
+    ctx.fillRect(mine.x - 28, y + 24, 56 * ratio, 6);
     ctx.fillStyle = "#efe6c8";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, FIELD.ground + 44);
+    ctx.fillText(Math.ceil(mine.remaining).toString(), mine.x, y + 44);
   });
   ctx.restore();
 }
