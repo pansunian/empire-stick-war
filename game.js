@@ -179,13 +179,15 @@ const UNIT = {
     name: "弩手",
     cost: 160,
     hp: 150,
-    damage: 30,
+    damage: 9,
     range: 108,
     speed: 38,
     train: 5,
-    cooldown: 2,
+    cooldown: 1,
     splash: 62,
-    splashDamage: 9,
+    splashDamage: 25,
+    bombDelay: 2,
+    bombLimit: 5,
     flying: true,
   },
   musketeer: {
@@ -265,6 +267,8 @@ const UNIT = {
     cooldown: 1.5,
     stunDuration: 1,
     blindSpot: 100,
+    splash: 58,
+    aoeLimit: 3,
   },
   enslavedGiant: {
     name: "投石巨人",
@@ -277,6 +281,8 @@ const UNIT = {
     cooldown: 1.5,
     stunDuration: 1,
     blindSpot: 120,
+    splash: 58,
+    aoeLimit: 3,
     giant: true,
     freezeImmune: true,
   },
@@ -465,6 +471,8 @@ const UNIT = {
     speed: 18,
     train: 8.5,
     cooldown: 1.6,
+    splash: 52,
+    aoeLimit: 3,
     giant: true,
     antiAir: true,
     freezeImmune: true,
@@ -1234,12 +1242,13 @@ function formatSpecial(type) {
   if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
+  if (type === "crossbow") notes.push(`每秒发射一箭造成 ${data.damage} 伤害，并绑定炸弹；${data.bombDelay}秒后爆炸造成 ${data.splashDamage} 范围伤害，最多 ${data.bombLimit} 个敌人`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
-  if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V单位，冷却 ${data.slayCooldown}秒`);
+  if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V/攻城器械单位，冷却 ${data.slayCooldown}秒`);
   if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
   return notes.join("；") || "无";
@@ -2270,6 +2279,7 @@ function update(dt) {
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
   updateArrows(dt);
+  updateStickyBombs(dt);
   updateFrozenDamage(dt);
   updatePoison(dt);
   updateBurn(dt);
@@ -4229,6 +4239,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "chaosGiant") {
+    smashArea(unit, target);
+    return;
+  }
+
   if (unit.type === "catapult" || unit.type === "enslavedGiant") {
     throwBoulder(unit, target);
     return;
@@ -4604,6 +4619,21 @@ function launchTornado(unit, target) {
   popText(unit.x, unit.y - 100, "龙卷风", "#d7f6ee");
 }
 
+function smashArea(unit, target) {
+  const data = UNIT[unit.type];
+  if (target.kind === "statue") {
+    applyDamage(target, data.damage, unit.side);
+    getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit).forEach((enemy) => {
+      applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+    });
+  } else {
+    getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit).forEach((enemy) => {
+      applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+    });
+  }
+  state.blasts.push({ x: target.x, y: (target.y ?? FIELD.ground) - 30, radius: data.splash, life: 0.28, duration: 0.28, color: "#c7b0d8" });
+}
+
 function throwBoulder(unit, target) {
   const data = UNIT[unit.type];
   state.arrows.push({
@@ -4614,6 +4644,8 @@ function throwBoulder(unit, target) {
     side: unit.side,
     damage: data.damage,
     stun: data.stunDuration,
+    splash: data.splash,
+    aoeLimit: data.aoeLimit,
     target,
     life: 0.8,
     type: "boulder",
@@ -4811,7 +4843,9 @@ function updateArrows(dt) {
     arrow.life -= dt;
     if (arrow.life <= 0) {
       if (arrow.type === "crossbow") {
-        explodeBolt(arrow);
+        attachCrossbowBomb(arrow);
+      } else if (arrow.type === "boulder" && arrow.splash) {
+        explodeBoulder(arrow);
       } else if (arrow.type === "poisonZombie") {
         applyDamage(arrow.target, arrow.damage, arrow.side);
         applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration);
@@ -4830,6 +4864,53 @@ function updateArrows(dt) {
     }
   }
   state.arrows = state.arrows.filter((arrow) => arrow.life > 0);
+}
+
+function attachCrossbowBomb(arrow) {
+  const data = UNIT.crossbow;
+  applyDamage(arrow.target, arrow.damage, arrow.side);
+  if (!arrow.target || arrow.target.kind === "statue" || arrow.target.hp <= 0 || isUnitHidden(arrow.target)) return;
+  arrow.target.stickyBombs = arrow.target.stickyBombs ?? [];
+  arrow.target.stickyBombs.push({
+    timer: data.bombDelay,
+    side: arrow.side,
+    damage: data.splashDamage,
+    radius: data.splash,
+    limit: data.bombLimit,
+  });
+  popText(arrow.target.x, arrow.target.y - 96, "炸弹附着", "#ffce7a");
+}
+
+function updateStickyBombs(dt) {
+  state.units.forEach((unit) => {
+    if (!unit.stickyBombs?.length || unit.hp <= 0 || isUnitHidden(unit)) return;
+    unit.stickyBombs.forEach((bomb) => {
+      bomb.timer -= dt;
+    });
+    const ready = unit.stickyBombs.filter((bomb) => bomb.timer <= 0);
+    unit.stickyBombs = unit.stickyBombs.filter((bomb) => bomb.timer > 0);
+    ready.forEach((bomb) => explodeStickyBomb(unit, bomb));
+  });
+}
+
+function explodeStickyBomb(unit, bomb) {
+  getUnitsInRadius(unit.x, bomb.radius, bomb.side, bomb.limit).forEach((target) => {
+    applyUnitDamage(target, bomb.damage, { label: "炸弹", color: "#ffce7a", yOffset: -78 });
+  });
+  state.blasts.push({ x: unit.x, y: unit.y - 30, radius: bomb.radius, life: 0.32, duration: 0.32, color: "#ffce7a" });
+  popText(unit.x, unit.y - 108, "爆炸", "#ffce7a");
+}
+
+function explodeBoulder(arrow) {
+  const limit = arrow.aoeLimit ?? 3;
+  if (arrow.target?.kind === "statue") {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, limit).forEach((target) => {
+    applyUnitDamage(target, arrow.damage, { label: "投石", color: "#c0a36d", yOffset: -80 });
+    if (arrow.stun) applyStun(target, arrow.stun);
+  });
+  state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: "#c0a36d" });
 }
 
 function explodeRocketArrow(arrow) {
@@ -6859,6 +6940,21 @@ function drawUnitHp(unit) {
     ctx.fill();
   }
 
+  if (unit.stickyBombs?.length) {
+    ctx.fillStyle = "#ffce7a";
+    ctx.beginPath();
+    ctx.arc(0, -102, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#2b2418";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = "#ffefb0";
+    ctx.beginPath();
+    ctx.moveTo(3, -107);
+    ctx.lineTo(8, -112);
+    ctx.stroke();
+  }
+
   if (unit.stunTimer > 0) {
     ctx.fillStyle = "#d7b978";
     ctx.fillRect(-8, -98, 16, 4);
@@ -7328,6 +7424,7 @@ function canMedusaSlay(medusa, target) {
   if (UNIT[target.type]?.slayImmune) return false;
   if (isHeroUnit(target)) return false;
   if (UNIT[target.type]?.giant) return false;
+  if (target.type === "catapult" || target.type === "rocketCart") return false;
   return true;
 }
 
