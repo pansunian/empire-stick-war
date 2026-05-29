@@ -967,15 +967,16 @@ const CAMPAIGN_LEVELS = {
     7: {
       title: "第七关：负隅顽抗",
       playerRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
-      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart", "archmage"],
+      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
       enemyFaction: "element",
       startGold: 260,
       enemyGold: 220,
       enemyGodV: true,
+      campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speed: 0.18 },
       rewardText: "法师与修道士",
-      objective: "双方阵容相当于元素帝国第六关互换；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
+      objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
     },
   },
   chaos: {
@@ -1557,7 +1558,11 @@ function describeCampaignMechanics(config) {
   if (config.enemyGodV) mechanics.push("敌方英雄单位神明 V 加入战斗，被击败后会退出战场");
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
-  if (config.campaignMissiles) mechanics.push(`每 ${config.campaignMissiles.every} 秒导弹来袭：提前 ${config.campaignMissiles.warning} 秒警告，随后 ${config.campaignMissiles.count} 发导弹轰击我方最前线，每发 ${config.campaignMissiles.damage} 点范围伤害，最多命中 ${config.campaignMissiles.limit} 名我方单位`);
+  if (config.campaignMissiles) {
+    const sideText = config.campaignMissiles.side === "player" ? "我方火箭弹支援" : "敌方导弹来袭";
+    const targetText = config.campaignMissiles.side === "player" ? "敌方最前线" : "我方最前线";
+    mechanics.push(`每 ${config.campaignMissiles.every} 秒${sideText}：提前 ${config.campaignMissiles.warning} 秒警告，随后 ${config.campaignMissiles.count} 发轰击${targetText}，每发 ${config.campaignMissiles.damage} 点范围伤害，最多命中 ${config.campaignMissiles.limit} 名单位`);
+  }
   if (config.iceRoad) {
     const slow = Math.round((1 - (config.iceRoad.slowFactor ?? 1)) * 100);
     const sides = config.iceRoad.affectedSides?.includes("player") && config.iceRoad.affectedSides.length === 1 ? "只影响我方" : "影响场上单位";
@@ -2769,7 +2774,7 @@ function updateCampaignMissiles(dt) {
     state.campaignMissileWarning = Math.max(0, state.campaignMissileWarning - dt);
     const nextSecond = Math.ceil(state.campaignMissileWarning);
     if (nextSecond > 0 && nextSecond !== previousSecond) {
-      popText(getPlayerFrontlineX(), FIELD.ground - 190, `导弹 ${nextSecond}`, "#ffdf6b");
+      popText(getMissileTargetX(missile), FIELD.ground - 190, `${getMissileLabel(missile)} ${nextSecond}`, "#ffdf6b");
     }
     if (state.campaignMissileWarning <= 0) {
       launchCampaignMissiles(missile);
@@ -2783,29 +2788,43 @@ function updateCampaignMissiles(dt) {
 
   state.campaignMissileWarning = missile.warning;
   state.campaignMissileTimer = 0;
-  popText(getPlayerFrontlineX(), FIELD.ground - 190, `导弹来袭 ${missile.warning}`, "#ffdf6b");
+  popText(getMissileTargetX(missile), FIELD.ground - 190, `${getMissileLabel(missile)} ${missile.warning}`, "#ffdf6b");
 }
 
-function getPlayerFrontlineX() {
-  const candidates = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
-  if (!candidates.length) return FIELD.playerGate + 260;
-  return Math.max(...candidates.map((unit) => unit.x));
+function getMissileSide(missile) {
+  return missile.side === "player" ? "player" : "enemy";
+}
+
+function getMissileLabel(missile) {
+  return missile.label ?? (getMissileSide(missile) === "player" ? "火箭弹支援" : "导弹来袭");
+}
+
+function getMissileTargetX(missile) {
+  const attackerSide = getMissileSide(missile);
+  const targetSide = attackerSide === "player" ? "enemy" : "player";
+  const candidates = state.units.filter((unit) => unit.side === targetSide && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
+  if (!candidates.length) return attackerSide === "player" ? FIELD.enemyGate - 260 : FIELD.playerGate + 260;
+  return attackerSide === "player"
+    ? Math.min(...candidates.map((unit) => unit.x))
+    : Math.max(...candidates.map((unit) => unit.x));
 }
 
 function launchCampaignMissiles(missile) {
-  const frontX = getPlayerFrontlineX();
+  const missileSide = getMissileSide(missile);
+  const frontX = getMissileTargetX(missile);
   const count = missile.count ?? 12;
   const laneSpread = 180;
+  const startX = missileSide === "player" ? -130 : FIELD.width + 130;
   for (let i = 0; i < count; i += 1) {
     const offset = ((i / Math.max(1, count - 1)) - 0.5) * laneSpread + (Math.random() - 0.5) * 36;
     const tx = Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 80, frontX + offset));
     const ty = FIELD.ground - 38 + (Math.random() - 0.5) * 46;
     state.arrows.push({
-      x: FIELD.width + 130 + i * 12,
+      x: startX + (missileSide === "player" ? -i * 12 : i * 12),
       y: FIELD.ground - 250 + (i % 4) * 16,
       tx,
       ty,
-      side: "enemy",
+      side: missileSide,
       damage: missile.damage,
       radius: missile.radius,
       limit: missile.limit,
@@ -2815,7 +2834,7 @@ function launchCampaignMissiles(missile) {
     });
   }
   state.screenShake = Math.max(state.screenShake ?? 0, 0.45);
-  popText(frontX, FIELD.ground - 190, "导弹齐射", "#ff6b4a");
+  popText(frontX, FIELD.ground - 190, getMissileSide(missile) === "player" ? "火箭弹齐射" : "导弹齐射", "#ff6b4a");
 }
 
 function updateEnemyAi(dt) {
@@ -5863,8 +5882,9 @@ function draw() {
 
 function drawCampaignMissileWarning() {
   if (!activeCampaign?.campaignMissiles || state.campaignMissileWarning <= 0) return;
+  const missile = activeCampaign.campaignMissiles;
   const seconds = Math.ceil(state.campaignMissileWarning);
-  const x = Math.max(180, Math.min(FIELD.width - 180, getPlayerFrontlineX()));
+  const x = Math.max(180, Math.min(FIELD.width - 180, getMissileTargetX(missile)));
   ctx.save();
   ctx.fillStyle = "rgba(90, 22, 14, 0.78)";
   ctx.strokeStyle = "#ffdf6b";
@@ -5874,7 +5894,7 @@ function drawCampaignMissileWarning() {
   ctx.fillStyle = "#ffdf6b";
   ctx.font = "800 20px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`导弹来袭 ${seconds}`, x, 112);
+  ctx.fillText(`${getMissileLabel(missile)} ${seconds}`, x, 112);
   ctx.restore();
 }
 
