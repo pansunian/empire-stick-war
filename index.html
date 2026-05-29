@@ -13,7 +13,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260529-mobile-ui-v2" />
+    <link rel="stylesheet" href="./style.css?v=20260529-mobile-ui-v3" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -156,7 +156,12 @@
           </button>
         </div>
 
-        <div class="unit-shop" aria-label="训练单位">
+        <button id="mobileUnitsToggle" class="mobile-units-toggle" type="button" aria-expanded="false" aria-controls="unitShop">
+          <span>兵种</span>
+          <small>训练</small>
+        </button>
+
+        <div id="unitShop" class="unit-shop" aria-label="训练单位">
           <button class="train-btn" data-unit="miner">
             <span class="unit-icon miner"></span>
             <strong>矿工</strong>
@@ -220,6 +225,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260529-mobile-ui-v2"></script>
+    <script src="./game.js?v=20260529-mobile-ui-v3"></script>
   </body>
 </html>

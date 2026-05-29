@@ -736,6 +736,10 @@ canvas {
   padding: 12px;
 }
 
+.mobile-units-toggle {
+  display: none;
+}
+
 .command-group,
 .unit-shop {
   display: flex;
@@ -2661,6 +2665,109 @@ canvas {
   .faction-card small {
     font-size: 10px;
     line-height: 1.4;
+  }
+}
+
+@media (max-width: 932px) and (orientation: landscape) {
+  .game-shell {
+    grid-template-rows: 42px minmax(260px, 1fr) 58px;
+  }
+
+  .control-deck {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 74px;
+    grid-template-rows: 46px;
+    gap: 6px;
+    height: 58px;
+    padding: 6px;
+    overflow: visible;
+  }
+
+  .command-group {
+    grid-template-columns: repeat(6, minmax(66px, 1fr));
+    gap: 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .command-group::-webkit-scrollbar,
+  .unit-shop::-webkit-scrollbar {
+    display: none;
+  }
+
+  .command-btn {
+    height: 46px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .command-btn span {
+    white-space: nowrap;
+  }
+
+  .mobile-units-toggle {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 1px;
+    height: 46px;
+    border: 1px solid rgba(230, 184, 74, 0.64);
+    border-radius: 8px;
+    background: rgba(230, 184, 74, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    color: #fff1c8;
+    font-weight: 900;
+  }
+
+  .mobile-units-toggle small {
+    color: rgba(245, 240, 223, 0.66);
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .mobile-units-toggle[aria-expanded="true"] {
+    background: rgba(230, 184, 74, 0.32);
+    border-color: rgba(255, 216, 104, 0.9);
+  }
+
+  .unit-shop {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: calc(100% + 8px);
+    z-index: 8;
+    display: none;
+    height: 74px;
+    grid-template-rows: 62px;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(82px, 96px);
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px;
+    border: 1px solid rgba(230, 184, 74, 0.32);
+    border-radius: 8px;
+    background: rgba(14, 17, 18, 0.96);
+    box-shadow: 0 -16px 34px rgba(0, 0, 0, 0.36);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .unit-shop.mobile-open {
+    display: grid;
+  }
+
+  .train-btn {
+    height: 62px;
+    border-radius: 8px;
+    padding: 0 6px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .train-btn strong {
+    font-size: 11px;
+    line-height: 1.1;
   }
 }
 

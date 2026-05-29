@@ -39,6 +39,7 @@ const statsTable = document.querySelector("#statsTable");
 const armyCommandButtons = [...document.querySelectorAll(".command-btn[data-command]")];
 const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")];
 const unitShop = document.querySelector(".unit-shop");
+const mobileUnitsToggle = document.querySelector("#mobileUnitsToggle");
 let trainButtons = [...document.querySelectorAll(".train-btn")];
 const restartBtn = document.querySelector("#restartBtn");
 let deferredInstallPrompt = null;
@@ -1710,8 +1711,20 @@ function renderShop() {
         return;
       }
       queueUnit(button.dataset.unit);
+      closeMobileUnitShop();
     });
   });
+}
+
+function closeMobileUnitShop() {
+  unitShop?.classList.remove("mobile-open");
+  mobileUnitsToggle?.setAttribute("aria-expanded", "false");
+}
+
+function toggleMobileUnitShop() {
+  if (!unitShop || !mobileUnitsToggle) return;
+  const isOpen = unitShop.classList.toggle("mobile-open");
+  mobileUnitsToggle.setAttribute("aria-expanded", String(isOpen));
 }
 
 function setCommand(command) {
@@ -7690,12 +7703,20 @@ function toggleTreeEntRoot(unit) {
 }
 
 armyCommandButtons.forEach((button) => {
-  button.addEventListener("click", () => setCommand(button.dataset.command));
+  button.addEventListener("click", () => {
+    closeMobileUnitShop();
+    setCommand(button.dataset.command);
+  });
 });
 
 minerCommandButtons.forEach((button) => {
-  button.addEventListener("click", () => setMinerCommand(button.dataset.minerCommand));
+  button.addEventListener("click", () => {
+    closeMobileUnitShop();
+    setMinerCommand(button.dataset.minerCommand);
+  });
 });
+
+mobileUnitsToggle?.addEventListener("click", toggleMobileUnitShop);
 
 canvas.addEventListener("dblclick", (event) => {
   if (state.over) return;
