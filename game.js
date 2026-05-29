@@ -965,7 +965,7 @@ const CAMPAIGN_LEVELS = {
       objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁雕像后击杀超级巨人",
     },
     7: {
-      title: "第七关：神明反攻",
+      title: "第七关：负隅顽抗",
       playerRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
       playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart", "archmage"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
