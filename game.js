@@ -7816,7 +7816,7 @@ modeButtons.forEach((button) => {
 
 factionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    enterFullscreen();
+    if (!isIosDevice()) enterFullscreen();
     selectedFaction = button.dataset.faction;
     if (selectedMode === "campaign") {
       openCampaignMap();
