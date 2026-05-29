@@ -964,6 +964,19 @@ const CAMPAIGN_LEVELS = {
       rewardText: "投石车",
       objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁雕像后击杀超级巨人",
     },
+    7: {
+      title: "第七关：神明反攻",
+      playerRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart", "archmage"],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
+      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
+      enemyFaction: "element",
+      startGold: 260,
+      enemyGold: 220,
+      enemyGodV: true,
+      rewardText: "法师与修道士",
+      objective: "双方阵容相当于元素帝国第六关互换；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
+    },
   },
   chaos: {
     1: {
@@ -1540,7 +1553,8 @@ function describeCampaignMechanics(config) {
   if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
   if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
   if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
-  if (config.godV) mechanics.push("神明 V 加入战斗");
+  if (config.godV) mechanics.push("神明 V 加入我方战斗");
+  if (config.enemyGodV) mechanics.push("敌方英雄单位神明 V 加入战斗，被击败后会退出战场");
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
   if (config.campaignMissiles) mechanics.push(`每 ${config.campaignMissiles.every} 秒导弹来袭：提前 ${config.campaignMissiles.warning} 秒警告，随后 ${config.campaignMissiles.count} 发导弹轰击我方最前线，每发 ${config.campaignMissiles.damage} 点范围伤害，最多命中 ${config.campaignMissiles.limit} 名我方单位`);
@@ -1892,7 +1906,9 @@ function spawnUnit(type, side, x) {
 }
 
 function applyCampaignUnitModifiers(unit) {
-  if (!activeCampaign?.godV || unit.side !== "player" || unit.type !== "vUnit") return;
+  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit";
+  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit";
+  if (!isPlayerGodV && !isEnemyGodV) return;
   unit.nameOverride = "神明V";
   unit.godV = true;
   unit.maxHp = 1275;
@@ -5598,7 +5614,7 @@ function removeDead() {
       state.winner = "enemy";
       statusEl.textContent = `${UNIT[unit.type].name}倒下，挑战失败`;
     }
-    popText(unit.x, unit.y - 35, "倒下", "#a7a7a7");
+    popText(unit.x, unit.y - 35, unit.godV ? "退出战场" : "倒下", unit.godV ? "#d7ceff" : "#a7a7a7");
     return false;
   });
   deathSpawns.forEach(spawnDeathUnit);
