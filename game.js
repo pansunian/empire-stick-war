@@ -845,6 +845,7 @@ const MODE_START_GOLD = {
   versus: 120,
   brawl: 5000,
 };
+const CAMPAIGN_LEVEL_COUNT = 15;
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
@@ -1426,8 +1427,8 @@ function renderCampaignMap() {
   const unlocks = CAMPAIGN_UNLOCKS[faction];
 
   campaignTitle.textContent = `${FACTIONS[faction].name}战役`;
-  campaignProgress.textContent = `第 ${progress} 关可挑战，共 12 关`;
-  campaignPath.innerHTML = Array.from({ length: 12 }, (_, index) => {
+  campaignProgress.textContent = `第 ${progress} 关可挑战，共 ${CAMPAIGN_LEVEL_COUNT} 关`;
+  campaignPath.innerHTML = Array.from({ length: CAMPAIGN_LEVEL_COUNT }, (_, index) => {
     const level = index + 1;
     const unitType = unlocks[index];
     const unitName = UNIT[unitType]?.name ?? "终章军团";
