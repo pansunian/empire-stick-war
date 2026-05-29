@@ -1729,28 +1729,49 @@ function toggleMobileUnitShop() {
 
 function setCommand(command) {
   if (command === "attack") {
-    if (state.command === "attack" && state.attackIntent === "tower" && state.towerOwner === "player") {
+    if (state.command === "attack" && state.attackIntent === "tower") {
       state.attackIntent = "statue";
     } else {
       state.attackIntent = "tower";
     }
+    state.command = "attack";
+  } else if (command === "guard") {
+    if (state.command === "attack" && state.attackIntent === "statue") {
+      state.command = "attack";
+      state.attackIntent = "tower";
+    } else {
+      state.command = "guard";
+      state.attackIntent = "tower";
+    }
+  } else if (command === "retreat") {
+    state.command = "retreat";
+    state.attackIntent = "tower";
   } else {
+    state.command = command;
     state.attackIntent = "tower";
   }
-  state.command = command;
-  if (command !== "retreat") {
+  if (state.command !== "retreat") {
     state.units.forEach((unit) => {
       if (unit.side === "player" && unit.inCastle) unit.inCastle = false;
     });
   }
   armyCommandButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.command === command);
+    const active = button.dataset.command === "attack"
+      ? state.command === "attack"
+      : button.dataset.command === state.command;
+    button.classList.toggle("active", active);
   });
 
   if (!state.over) {
-    const label = { retreat: "撤退！部队回到城堡内", guard: "防守阵线已展开", attack: state.attackIntent === "statue" ? "全军进攻，目标敌方雕像" : "部队前往中心塔，占领据点" };
-    statusEl.textContent = label[command];
+    statusEl.textContent = getCommandStatusText();
   }
+}
+
+function getCommandStatusText() {
+  if (state.command === "retreat") return "撤退！部队回到城堡内";
+  if (state.command === "guard") return "部队回到城堡前防守";
+  if (state.command === "attack" && state.attackIntent === "statue") return "全军进攻，目标敌方雕像";
+  return "部队前往中心塔，占领范围防守";
 }
 
 function setMinerCommand(command) {
