@@ -79,6 +79,16 @@ const BASE_ATTACK = {
   range: 420,
   damage: 20,
   cooldown: 2,
+  orderCooldown: 2.5,
+  orderArrowCount: 20,
+  orderArrowDamage: 8,
+  orderArrowSplash: 40,
+  orderArrowLimit: 2,
+  chaosDamage: 60,
+  chaosCooldown: 1.5,
+  chaosSplash: 64,
+  chaosLimit: 3,
+  chaosStun: 2,
 };
 const CENTER_TOWER = {
   x: FIELD.width / 2,
@@ -629,12 +639,12 @@ const UNIT = {
     range: 270,
     speed: 38,
     train: 0,
-    cooldown: 5,
+    cooldown: 4,
     cloudRadius: 100,
     cloudDuration: 9.6,
     boltEvery: 0.8,
     boltCount: 12,
-    boltDamage: 18,
+    boltDamage: 15,
     boltSlow: 0.75,
     boltSlowDuration: 4,
     deathRainRadius: 400,
@@ -3009,25 +3019,94 @@ function updateBaseAttacks(dt) {
   if (state.playerBaseAttackTimer <= 0) {
     const target = findBaseTarget("player");
     if (target) {
-      launchBaseBoulder("player", target);
-      state.playerBaseAttackTimer = BASE_ATTACK.cooldown;
+      launchBaseAttack("player", target);
+      state.playerBaseAttackTimer = getBaseAttackProfile("player").cooldown;
     }
   }
 
   if (state.enemyBaseAttackTimer <= 0) {
     const target = findBaseTarget("enemy");
     if (target) {
-      launchBaseBoulder("enemy", target);
-      state.enemyBaseAttackTimer = BASE_ATTACK.cooldown;
+      launchBaseAttack("enemy", target);
+      state.enemyBaseAttackTimer = getBaseAttackProfile("enemy").cooldown;
     }
   }
 }
 
 function findBaseTarget(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
+  const profile = getBaseAttackProfile(side);
   return state.units
-    .filter((unit) => unit.side !== side && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - baseX) <= BASE_ATTACK.range)
+    .filter((unit) => unit.side !== side && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - baseX) <= profile.range)
     .sort((a, b) => Math.abs(a.x - baseX) - Math.abs(b.x - baseX))[0];
+}
+
+function getBaseAttackProfile(side) {
+  const faction = factionForSide(side);
+  if (faction === "order") {
+    return { type: "orderVolley", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.orderCooldown };
+  }
+  if (faction === "element") {
+    return { type: "stormCloud", range: BASE_ATTACK.range, cooldown: UNIT.stormLich.cooldown };
+  }
+  return { type: "chaosBoulder", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.chaosCooldown };
+}
+
+function launchBaseAttack(side, target) {
+  const profile = getBaseAttackProfile(side);
+  if (profile.type === "orderVolley") {
+    launchBaseArrowVolley(side, target);
+    return;
+  }
+  if (profile.type === "stormCloud") {
+    summonBaseStormCloud(side, target);
+    return;
+  }
+  launchBaseBoulder(side, target);
+}
+
+function launchBaseArrowVolley(side, target) {
+  const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
+  const dir = side === "player" ? 1 : -1;
+  for (let i = 0; i < BASE_ATTACK.orderArrowCount; i += 1) {
+    const drift = (i - (BASE_ATTACK.orderArrowCount - 1) / 2) * 4 + (Math.random() - 0.5) * 18;
+    state.arrows.push({
+      x: baseX + dir * 10,
+      y: FIELD.ground - 142 - (i % 5) * 4,
+      tx: target.x + drift,
+      ty: target.y ? target.y - 40 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 112,
+      side,
+      damage: BASE_ATTACK.orderArrowDamage,
+      splash: BASE_ATTACK.orderArrowSplash,
+      limit: BASE_ATTACK.orderArrowLimit,
+      target,
+      life: 0.52 + (i % 4) * 0.03,
+      duration: 0.52 + (i % 4) * 0.03,
+      type: "baseVolley",
+    });
+  }
+  popText(baseX, FIELD.ground - 165, "基地箭雨", side === "player" ? "#9fc0ff" : "#ff9b8d");
+}
+
+function summonBaseStormCloud(side, target) {
+  const data = UNIT.stormLich;
+  const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
+  state.stormClouds.push({
+    type: "attack",
+    x: target.x,
+    y: FIELD.ground - 230,
+    side,
+    radius: data.cloudRadius,
+    life: data.cloudDuration,
+    duration: data.cloudDuration,
+    boltTimer: 0,
+    boltsLeft: data.boltCount,
+    boltEvery: data.boltEvery,
+    damage: data.boltDamage,
+    slow: data.boltSlow,
+    slowDuration: data.boltSlowDuration,
+  });
+  popText(baseX, FIELD.ground - 165, "基地乌云", side === "player" ? "#9fc0ff" : "#ff9b8d");
 }
 
 function launchBaseBoulder(side, target) {
@@ -3038,7 +3117,10 @@ function launchBaseBoulder(side, target) {
     tx: target.x,
     ty: target.y ? target.y - 42 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 110,
     side,
-    damage: BASE_ATTACK.damage,
+    damage: BASE_ATTACK.chaosDamage,
+    splash: BASE_ATTACK.chaosSplash,
+    aoeLimit: BASE_ATTACK.chaosLimit,
+    stun: BASE_ATTACK.chaosStun,
     target,
     life: 0.8,
     type: "boulder",
@@ -3148,7 +3230,8 @@ function updateUnits(dt) {
 
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
     const desiredX = getDesiredX(unit, target);
-    const distance = Math.abs(unit.x - desiredX);
+    const desiredPoint = getDesiredPoint(unit, target, desiredX);
+    const distance = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y);
     const moveTolerance = getMoveTolerance(unit, target, desiredX);
 
     const range = getUnitRange(unit);
@@ -3159,7 +3242,7 @@ function updateUnits(dt) {
         continue;
       }
       if (distance > moveTolerance) {
-        moveRocketCartToward(unit, desiredX, dt);
+        moveRocketCartToward(unit, desiredPoint, dt);
       }
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
@@ -3172,7 +3255,10 @@ function updateUnits(dt) {
     } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
       moveTowardGuardLine(unit, dt);
     } else if (distance > moveTolerance) {
-      unit.x += Math.sign(desiredX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+      const tolerance = unit.side === "player" && state.command === "attack" && state.attackIntent === "tower" && !target
+        ? getTowerPointTolerance(unit)
+        : 5;
+      moveUnitTowardPoint(unit, desiredPoint.x, desiredPoint.y, unit.speed ?? data.speed, dt, tolerance);
     }
     updateIceRoadMoveTimer(unit, beforeX, dt);
   }
@@ -3345,13 +3431,12 @@ function updateHill(unit, dt) {
   popText(unit.x, unit.y - 118, "大跳", "#c0a36d");
 }
 
-function moveRocketCartToward(unit, desiredX, dt) {
+function moveRocketCartToward(unit, desiredPoint, dt) {
   const data = UNIT.rocketCart;
   const minX = FIELD.playerBase + 18;
   const maxX = FIELD.enemyBase - 18;
-  const targetX = Math.max(minX, Math.min(maxX, desiredX));
-  if (Math.abs(unit.x - targetX) <= 4) return;
-  unit.x += Math.sign(targetX - unit.x) * (unit.speed ?? data.speed) * getMoveFactor(unit) * dt;
+  const targetX = Math.max(minX, Math.min(maxX, desiredPoint.x));
+  moveUnitTowardPoint(unit, targetX, desiredPoint.y, unit.speed ?? data.speed, dt, 5);
   unit.x = Math.max(minX, Math.min(maxX, unit.x));
 }
 
@@ -4122,6 +4207,17 @@ function getDesiredX(unit, target) {
   return FIELD.playerBase;
 }
 
+function getDesiredPoint(unit, target, desiredX) {
+  if (unit.side === "player") {
+    if (state.command === "guard" && !target) return getGuardFormationPoint(unit, "player");
+    if (state.command === "attack" && state.attackIntent === "tower" && !target) return getTowerRallyPoint(unit, "player");
+  }
+  if (unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner !== "enemy" && !target) {
+    return getTowerRallyPoint(unit, "enemy");
+  }
+  return { x: desiredX, y: unit.y };
+}
+
 function getMoveTolerance(unit, target, desiredX) {
   if (target?.kind === "statue") return 4;
   if (target && target.kind !== "statue") return 4;
@@ -4132,6 +4228,10 @@ function getMoveTolerance(unit, target, desiredX) {
 
 function getCommandPointTolerance(unit) {
   return UNIT[unit.type]?.giant ? 110 : 150;
+}
+
+function getTowerPointTolerance(unit) {
+  return UNIT[unit.type]?.giant ? 72 : 42;
 }
 
 function isPlayerForcedGuarding(unit) {
@@ -4183,9 +4283,19 @@ function getGuardFormationPoint(unit, side, baseOverride = null) {
 }
 
 function getTowerRallyX(unit, side) {
+  return getTowerRallyPoint(unit, side).x;
+}
+
+function getTowerRallyPoint(unit, side) {
+  const column = unit.id % 5;
+  const row = Math.floor(unit.id / 5) % 5;
   const direction = side === "player" ? -1 : 1;
-  const slot = (unit.id % 14) * 9;
-  return CENTER_TOWER.x + direction * (42 + slot);
+  const xOffsets = [18, 46, 74, 102, 130];
+  const yOffsets = [-70, -34, 0, 34, 70];
+  return {
+    x: CENTER_TOWER.x + direction * xOffsets[column],
+    y: CENTER_TOWER.y + yOffsets[row],
+  };
 }
 
 function getUnitRange(unit) {
@@ -4963,6 +5073,8 @@ function updateArrows(dt) {
         if (target) applyDamage(target, arrow.damage, arrow.side);
       } else if (arrow.type === "campaignMissile") {
         explodeCampaignMissile(arrow);
+      } else if (arrow.type === "baseVolley") {
+        explodeBaseVolleyArrow(arrow);
       } else if (arrow.type === "rocketVolley") {
         explodeRocketArrow(arrow);
       } else {
@@ -5030,6 +5142,17 @@ function explodeRocketArrow(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.22, duration: 0.22, color: "#ffce7a" });
+}
+
+function explodeBaseVolleyArrow(arrow) {
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 2);
+  targets.forEach((target) => {
+    applyUnitDamage(target, arrow.damage, { label: "爆箭", color: "#ffce7a", yOffset: -78 });
+  });
+  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= arrow.splash + 28) {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.18, duration: 0.18, color: "#ffce7a" });
 }
 
 function explodeCampaignMissile(arrow) {
@@ -6022,6 +6145,25 @@ function drawCastle(side) {
   ctx.fillStyle = color;
   ctx.fillRect(29, FIELD.ground - 76, 26, 10);
 
+  ctx.restore();
+  drawCastleHpBar(baseX, hp, isPlayer);
+}
+
+function drawCastleHpBar(baseX, hp, isPlayer) {
+  const width = 175;
+  const y = FIELD.ground - 238;
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
+  ctx.fillRect(baseX - width / 2, y, width, 14);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.36)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(baseX - width / 2, y, width, 14);
+  ctx.fillStyle = isPlayer ? "#5be887" : "#5be887";
+  ctx.fillRect(baseX - width / 2 + 2, y + 2, (width - 4) * Math.max(0, hp / STATUE_MAX_HP), 10);
+  ctx.fillStyle = "#f8eac5";
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(isPlayer ? "我方基地" : "敌方基地", baseX, y - 7);
   ctx.restore();
 }
 

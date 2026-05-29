@@ -677,14 +677,7 @@ canvas {
 }
 
 .health-bars {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  top: 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  pointer-events: none;
+  display: none;
 }
 
 .health-bars label {
