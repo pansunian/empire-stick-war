@@ -62,7 +62,7 @@ const FIELD = {
 };
 const MINE_LANES = [-205, -72, 72, 185];
 const NORMAL_MINE_COLUMNS = [0, 170];
-const NORMAL_MINE_CAPACITY = 5000;
+const NORMAL_MINE_CAPACITY = 2500;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
   playerOffset: 150,
@@ -1006,7 +1006,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 120,
-      goldRush: { columns: 6, rows: 5, mineGold: 5000 },
+      goldRush: { columns: 6, rows: 5, mineGold: 2500 },
       rewardText: "",
       objective: "争夺地图中部金矿，控制淘金速度取得优势",
     },
@@ -1187,7 +1187,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "order",
       startGold: 120,
       enemyGold: 120,
-      goldRush: { columns: 6, rows: 5, mineGold: 5000 },
+      goldRush: { columns: 6, rows: 5, mineGold: 2500 },
       rewardText: "无新增单位",
       objective: "淘金热规则与秩序帝国淘金热一致，争夺中央金矿并击败秩序帝国",
     },
@@ -2823,8 +2823,8 @@ function createGoldRushMines(config) {
         id: `goldRush-${column}-${row}`,
         x: left + column * columnSpacing,
         y: FIELD.ground + laneY[row],
-        remaining: config.mineGold ?? 5000,
-        capacity: config.mineGold ?? 5000,
+        remaining: config.mineGold ?? NORMAL_MINE_CAPACITY,
+        capacity: config.mineGold ?? NORMAL_MINE_CAPACITY,
       });
     }
   }
@@ -3625,6 +3625,7 @@ function updateUnits(dt) {
     }
 
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
+    rememberFocusTarget(unit, target);
     const desiredX = getDesiredX(unit, target);
     const desiredPoint = getDesiredPoint(unit, target, desiredX);
     const distance = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y);
@@ -4876,7 +4877,7 @@ function findTarget(unit) {
   if (retaliationTarget) return retaliationTarget;
 
   let nearby = null;
-  let nearestDistance = Infinity;
+  let bestScore = Infinity;
 
   for (const other of state.units) {
     if (other.side === unit.side || other.hp <= 0) continue;
@@ -4887,9 +4888,10 @@ function findTarget(unit) {
 
     const searchRange = Math.max(260, getUnitRange(unit));
     const distance = distanceTo(unit.x, unit.y, other.x, other.y);
-    if (distance < searchRange && distance < nearestDistance) {
+    const score = getTargetSelectionScore(unit, other, distance);
+    if (distance < searchRange && score < bestScore) {
       nearby = other;
-      nearestDistance = distance;
+      bestScore = score;
     }
   }
 
@@ -4904,6 +4906,30 @@ function findTarget(unit) {
   }
 
   return null;
+}
+
+function getTargetSelectionScore(unit, target, distance) {
+  if (!isRangedUnit(unit)) return distance;
+  return distance + countFriendlyFocusers(unit, target) * 260;
+}
+
+function countFriendlyFocusers(unit, target) {
+  return state.units.filter((ally) => (
+    ally !== unit
+    && ally.side === unit.side
+    && ally.hp > 0
+    && !isUnitHidden(ally)
+    && isRangedUnit(ally)
+    && ally.focusTargetId === target.id
+  )).length;
+}
+
+function isRangedUnit(unit) {
+  return getUnitRange(unit) > 60;
+}
+
+function rememberFocusTarget(unit, target) {
+  unit.focusTargetId = target?.id ?? null;
 }
 
 function getRetaliationTarget(unit) {
