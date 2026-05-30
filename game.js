@@ -3529,6 +3529,8 @@ function updateUnits(dt) {
     unit.medusaSlayTimer = Math.max(0, unit.medusaSlayTimer - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
+    unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
+    if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
@@ -3647,7 +3649,7 @@ function updateUnits(dt) {
       attack(unit, target);
     } else if (!mustReachTowerRally && target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
       attack(unit, target);
-    } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
+    } else if (unit.side === "enemy" && state.enemyCommand === "guard" && !isRetaliationTarget(unit, target)) {
       moveTowardGuardLine(unit, dt);
     } else if (distance > moveTolerance) {
       const tolerance = unit.side === "player" && state.command === "attack" && state.attackIntent === "tower" && !target
@@ -4711,6 +4713,7 @@ function getDesiredX(unit, target) {
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
+    if (target && isRetaliationTarget(unit, target)) return target.x - range + 8;
     if (state.command === "guard") return getPlayerRallyX(unit);
     if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyX(unit, "player");
     if (target && target.kind !== "statue") return target.x - range + 8;
@@ -4720,6 +4723,7 @@ function getDesiredX(unit, target) {
 
   if (unit.forceCharge) return FIELD.playerBase;
   if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
+  if (target && isRetaliationTarget(unit, target)) return target.x + range - 8;
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
   if (state.enemyCommand === "attack" && state.towerOwner !== "enemy") return getTowerRallyX(unit, "enemy");
   if (target && target.kind !== "statue") return target.x + range - 8;
@@ -4858,6 +4862,9 @@ function findTarget(unit) {
       y: FIELD.ground - 80,
     };
   }
+  const retaliationTarget = getRetaliationTarget(unit);
+  if (retaliationTarget) return retaliationTarget;
+
   let nearby = null;
   let nearestDistance = Infinity;
 
@@ -4887,6 +4894,26 @@ function findTarget(unit) {
   }
 
   return null;
+}
+
+function getRetaliationTarget(unit) {
+  if (!unit.retaliateTargetId || unit.retaliateTimer <= 0) return null;
+  const target = state.units.find((other) => other.id === unit.retaliateTargetId);
+  if (!target || target.hp <= 0 || isUnitHidden(target)) return null;
+  if (!canTarget(unit, target)) return null;
+  return target;
+}
+
+function isRetaliationTarget(unit, target) {
+  return Boolean(target?.id && unit.retaliateTargetId === target.id && unit.retaliateTimer > 0);
+}
+
+function markRetaliationTarget(target, attacker) {
+  if (!target || target.kind === "statue" || !attacker || attacker.kind === "statue") return;
+  if (target.side === attacker.side || target.hp <= 0 || attacker.hp <= 0) return;
+  if (!canTarget(target, attacker)) return;
+  target.retaliateTargetId = attacker.id;
+  target.retaliateTimer = 4;
 }
 
 function nearestEnemy(unit, range) {
@@ -4932,6 +4959,7 @@ function attack(unit, target) {
   if (unit.cooldown > 0) return;
   unit.cooldown = data.cooldown ?? 0.9;
   unit.combatTimer = 3;
+  markRetaliationTarget(target, unit);
 
   if (unit.type === "spearman" && !unit.spearThrown) {
     throwSpear(unit, target);
