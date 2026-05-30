@@ -433,6 +433,17 @@ const UNIT = {
     train: 5.8,
     cooldown: 1.05,
   },
+  darkKnightBrother: {
+    name: "黑骑士兄长",
+    cost: 0,
+    hp: 700,
+    damage: 20,
+    range: 42,
+    speed: 44,
+    train: 0,
+    cooldown: 1.2,
+    hero: true,
+  },
   executioner: {
     name: "刽子手",
     cost: 200,
@@ -874,6 +885,7 @@ const UNIT_ICON = {
   medusa: "venom",
   demonArcher: "wing",
   darkKnight: "axe",
+  darkKnightBrother: "axe",
   executioner: "axe",
   undeadMage: "skull",
   suikai: "skull",
@@ -902,7 +914,7 @@ const UNIT_ICON = {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
 
@@ -1170,7 +1182,7 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：雷霆神王",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
-      playerStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight"],
+      playerStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight", "darkKnightBrother", "darkKnightBrother"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
       enemyStart: ["vUnit", "zeus"],
       enemyFaction: "element",
@@ -1286,6 +1298,19 @@ const CAMPAIGN_LEVELS = {
       enemyGold: 300,
       rewardText: "",
       objective: "英雄普罗米修斯参战：每 8 秒轮流释放火龙、小火人和神火流星，对抗秩序帝国全兵种军团",
+    },
+    8: {
+      title: "第八关：黑骑士兄长",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
+      playerStart: ["vUnit", "zeus"],
+      enemyRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
+      enemyStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight", "darkKnightBrother", "darkKnightBrother"],
+      enemyFaction: "chaos",
+      startGold: 260,
+      enemyGold: 300,
+      stormClouds: { every: 20, duration: 15, strikeEvery: 5, bolts: 5, hitChance: 0.7, damage: 15, healWindFused: 8 },
+      rewardText: "其他未解锁的所有单位",
+      objective: "本关相当于混沌帝国第八关双方互换；敌方黑骑士兄长成对参战，其中一人倒下时，另一人狂暴 60 秒，攻速与移速翻倍",
     },
   },
 };
@@ -1403,6 +1428,7 @@ function formatSpecial(type) {
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "prometheus") notes.push(`英雄单位；每 ${data.spellEvery}秒轮流释放火龙、小火人和 ${data.meteorCount} 发神火流星`);
+  if (type === "darkKnightBrother") notes.push("英雄单位；兄弟之一阵亡时，另一位狂暴60秒，攻速和移速翻倍");
   if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
   if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
@@ -6130,6 +6156,9 @@ function removeDead() {
     if (unit.type === "stormLich") {
       createStormLichDeathRain(unit);
     }
+    if (unit.type === "darkKnightBrother") {
+      enrageSurvivingDarkKnightBrother(unit);
+    }
     if (activeCampaign?.playerDeathBlast && unit.side === "player" && !UNIT[unit.type]?.hero) {
       explodePlayerDeathBlast(unit);
     }
@@ -6204,6 +6233,19 @@ function removeDead() {
     return false;
   });
   deathSpawns.forEach(spawnDeathUnit);
+}
+
+function enrageSurvivingDarkKnightBrother(deadBrother) {
+  const survivor = state.units.find((unit) => (
+    unit !== deadBrother
+    && unit.type === "darkKnightBrother"
+    && unit.side === deadBrother.side
+    && unit.hp > 0
+    && !isUnitHidden(unit)
+  ));
+  if (!survivor) return;
+  survivor.rageTimer = Math.max(survivor.rageTimer ?? 0, 60);
+  popText(survivor.x, survivor.y - 125, "兄弟狂暴", "#ff4f3d");
 }
 
 function explodePlayerDeathBlast(unit) {
@@ -7201,6 +7243,7 @@ function getUnitColor(unit) {
   if (type === "bomber") return "#f09a47";
   if (type === "demonArcher") return "#d05b8f";
   if (type === "darkKnight") return "#55505f";
+  if (type === "darkKnightBrother") return "#3f3b4a";
   if (type === "executioner") return "#6f4b46";
   if (type === "chaosGiant") return "#493b4e";
   if (type === "superGiant") return "#2f2634";
@@ -7245,6 +7288,7 @@ function getHeadColor(unit) {
   if (factionForSide(unit.side) !== "chaos") return getUnitColor(unit);
   if (unit.type === "creeper") return "#b8b0a5";
   if (unit.type === "undead") return "#9ee06b";
+  if (unit.type === "darkKnightBrother") return "#d8ccff";
   if (unit.type === "executioner") return "#e0beb8";
   if (unit.type === "deadCorpse") return "#93d96b";
   if (unit.type === "medusa") return "#d8f6b8";
@@ -7859,15 +7903,15 @@ function drawWeapon(type) {
     ctx.moveTo(36, -45);
     ctx.lineTo(45, -56);
     ctx.stroke();
-  } else if (type === "darkKnight" || type === "executioner") {
+  } else if (type === "darkKnight" || type === "darkKnightBrother" || type === "executioner") {
     ctx.lineWidth = 5;
-    ctx.strokeStyle = type === "executioner" ? "#3d2723" : "#1f1f26";
+    ctx.strokeStyle = type === "executioner" ? "#3d2723" : type === "darkKnightBrother" ? "#17151d" : "#1f1f26";
     ctx.beginPath();
     ctx.moveTo(15, -32);
-    ctx.lineTo(type === "executioner" ? 52 : 45, -55);
+    ctx.lineTo(type === "executioner" ? 52 : type === "darkKnightBrother" ? 50 : 45, type === "darkKnightBrother" ? -59 : -55);
     ctx.stroke();
-    ctx.fillStyle = type === "executioner" ? "#6f4b46" : "#34313d";
-    ctx.fillRect(type === "executioner" ? 42 : -11, type === "executioner" ? -63 : -49, type === "executioner" ? 22 : 22, type === "executioner" ? 18 : 22);
+    ctx.fillStyle = type === "executioner" ? "#6f4b46" : type === "darkKnightBrother" ? "#262231" : "#34313d";
+    ctx.fillRect(type === "executioner" ? 42 : -11, type === "executioner" ? -63 : type === "darkKnightBrother" ? -53 : -49, type === "executioner" ? 22 : type === "darkKnightBrother" ? 26 : 22, type === "executioner" ? 18 : type === "darkKnightBrother" ? 26 : 22);
   } else {
     ctx.strokeStyle = "#7b4b28";
     ctx.beginPath();
