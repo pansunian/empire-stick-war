@@ -619,10 +619,11 @@ const UNIT = {
     dragonDamage: 50,
     dragonStun: 3,
     dragonDelay: 0.6,
-    dragonRadius: 92,
+    dragonRadius: 225,
     meteorCount: 20,
     meteorDamage: 4,
-    meteorRadius: 130,
+    meteorWidth: 200,
+    meteorHeight: 80,
   },
   redflame: {
     name: "赤炎",
@@ -5105,12 +5106,16 @@ function castFireDragon(unit, target) {
 
 function castMeteorRain(unit, target) {
   const data = UNIT.dreadfire;
+  const columns = Math.ceil(Math.sqrt(data.meteorCount * (data.meteorWidth / data.meteorHeight)));
+  const rows = Math.ceil(data.meteorCount / columns);
   for (let i = 0; i < data.meteorCount; i += 1) {
-    const ratio = (i + 0.5) / data.meteorCount;
-    const offset = (ratio - 0.5) * data.meteorRadius * 2;
+    const column = i % columns;
+    const row = Math.floor(i / columns);
+    const xRatio = columns <= 1 ? 0.5 : column / (columns - 1);
+    const yRatio = rows <= 1 ? 0.5 : row / (rows - 1);
     state.meteors.push({
-      x: target.x + offset,
-      y: FIELD.ground - 30,
+      x: target.x + (xRatio - 0.5) * data.meteorWidth,
+      y: FIELD.ground - 30 + (yRatio - 0.5) * data.meteorHeight,
       side: unit.side,
       damage: data.meteorDamage,
       life: 0.35 + i * 0.045,
@@ -7543,7 +7548,8 @@ function drawLightning(bolt) {
 
 function drawMeteor(meteor) {
   const progress = 1 - meteor.life / meteor.duration;
-  const y = FIELD.ground - 260 + progress * 230;
+  const targetY = meteor.y ?? FIELD.ground - 30;
+  const y = targetY - 230 + progress * 230;
   ctx.globalAlpha = 0.85;
   ctx.strokeStyle = "#ffb45e";
   ctx.lineWidth = meteor.campaign ? 8 : 3;
