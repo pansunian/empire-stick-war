@@ -4751,7 +4751,7 @@ function getCommandPointTolerance(unit) {
 }
 
 function getTowerPointTolerance(unit) {
-  return UNIT[unit.type]?.giant ? 72 : 42;
+  return UNIT[unit.type]?.giant ? 24 : 14;
 }
 
 function isPlayerForcedGuarding(unit) {
@@ -4810,8 +4810,8 @@ function getTowerRallyPoint(unit, side) {
   const column = unit.id % 5;
   const row = Math.floor(unit.id / 5) % 5;
   const direction = side === "player" ? -1 : 1;
-  const xOffsets = [18, 46, 74, 102, 130];
-  const yOffsets = [-70, -34, 0, 34, 70];
+  const xOffsets = [12, 34, 56, 78, 100];
+  const yOffsets = [-64, -32, 0, 32, 64];
   return {
     x: CENTER_TOWER.x + direction * xOffsets[column],
     y: CENTER_TOWER.y + yOffsets[row],
