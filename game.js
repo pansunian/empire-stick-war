@@ -543,6 +543,18 @@ const UNIT = {
     burnDps: 3,
     burnDuration: 5,
   },
+  fireImp: {
+    name: "小火人",
+    cost: 0,
+    hp: 150,
+    damage: 10,
+    range: 34,
+    speed: 62,
+    train: 0,
+    cooldown: 1,
+    burnDps: 3,
+    burnDuration: 10,
+  },
   windElement: {
     name: "风元素",
     cost: 120,
@@ -650,6 +662,29 @@ const UNIT = {
     deathRainRadius: 400,
     deathRainDrops: 100,
     rainHeal: 5,
+  },
+  prometheus: {
+    name: "普罗米修斯",
+    cost: 0,
+    hp: 700,
+    damage: 0,
+    range: 300,
+    speed: 34,
+    train: 0,
+    cooldown: 1,
+    spellEvery: 8,
+    dragonCount: 4,
+    dragonDamage: 50,
+    dragonRadius: 70,
+    dragonLimit: 3,
+    dragonStun: 3,
+    burnDps: 3,
+    burnDuration: 10,
+    fireImpCount: 3,
+    meteorCount: 40,
+    meteorDamage: 9,
+    meteorRadius: 135,
+    hero: true,
   },
   hurricane: {
     name: "飓风",
@@ -815,6 +850,7 @@ const UNIT_ICON = {
   earthElement: "earth",
   waterElement: "water",
   fireElement: "fire",
+  fireImp: "fire",
   windElement: "lightning",
   treeEnt: "miner",
   waterScorpion: "spear",
@@ -822,6 +858,7 @@ const UNIT_ICON = {
   dreadfire: "fire-dragon",
   redflame: "fire",
   stormLich: "lightning",
+  prometheus: "fire",
   hurricane: "tornado",
   hill: "earth",
   linghan: "water",
@@ -833,7 +870,7 @@ const UNIT_ICON = {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
 
 let state;
@@ -1175,6 +1212,18 @@ const CAMPAIGN_LEVELS = {
       rewardText: "V",
       objective: "敌方每 30 秒会朝我方最前线发射 12 发高速导弹；导弹来袭前会有 8 秒警告倒计时",
     },
+    7: {
+      title: "第七关：普罗米修斯",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "vUnit", "prometheus"],
+      enemyRoster: ["miner", "swordsman", "spearman", "greatsword", "spartan", "archer", "monk", "mage", "crossbow", "musketeer"],
+      enemyStart: ["miner", "miner", "swordsman", "spearman", "greatsword", "archer", "monk", "mage"],
+      enemyFaction: "order",
+      startGold: 260,
+      enemyGold: 300,
+      rewardText: "",
+      objective: "英雄普罗米修斯参战：每 8 秒轮流释放火龙、小火人和神火流星，对抗秩序帝国全兵种军团",
+    },
   },
 };
 let activeCampaign = null;
@@ -1290,6 +1339,7 @@ function formatSpecial(type) {
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
+  if (type === "prometheus") notes.push(`英雄单位；每 ${data.spellEvery}秒轮流释放火龙、小火人和 ${data.meteorCount} 发神火流星`);
   if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
   if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
@@ -1878,6 +1928,8 @@ function spawnUnit(type, side, x) {
     blinkTimer: 0,
     blinkUsed: false,
     cloneSpawnTimer: type === "vUnit" ? UNIT.vUnit.cloneReleaseDelay : 0,
+    prometheusSpellTimer: UNIT[type].spellEvery ?? 0,
+    prometheusSpellIndex: 0,
     electricGateTimer: UNIT[type].duration ?? 0,
     electricGateTick: 1,
     spearThrown: false,
@@ -3253,6 +3305,9 @@ function updateUnits(dt) {
     if (unit.type === "archmage") {
       updateArchmage(unit, dt);
     }
+    if (unit.type === "prometheus") {
+      updatePrometheus(unit, dt);
+    }
     if (unit.type === "berserker") {
       updateBerserker(unit, dt);
     }
@@ -3921,6 +3976,21 @@ function updateArchmage(unit, dt) {
   }
 }
 
+function updatePrometheus(unit, dt) {
+  const data = UNIT.prometheus;
+  unit.prometheusSpellTimer -= dt;
+  if (unit.prometheusSpellTimer > 0) return;
+
+  const target = findTarget(unit);
+  if (!target) {
+    unit.prometheusSpellTimer = Math.min(unit.prometheusSpellTimer + 1, data.spellEvery);
+    return;
+  }
+
+  unit.prometheusSpellTimer += data.spellEvery;
+  castPrometheusSpell(unit, target);
+}
+
 function updateHeroBlink(unit, data) {
   if (unit.blinkUsed) return;
   if (unit.hp > (data.blinkHpThreshold ?? UNIT.vUnit.blinkHpThreshold)) return;
@@ -4570,6 +4640,9 @@ function attack(unit, target) {
   if (unit.poisonOnHit && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? 2, Infinity, { sourceSide: unit.side });
   }
+  if (unit.type === "fireImp" && target.kind !== "statue") {
+    applyBurn(target, data.burnDps, data.burnDuration);
+  }
   if (data.stunDuration) applyStun(target, data.stunDuration);
 }
 
@@ -4804,6 +4877,76 @@ function castRedflameSpell(unit, target) {
 
   castRedflamePillars(unit, target);
   unit.nextRedflameSpell = "fireball";
+}
+
+function castPrometheusSpell(unit, target) {
+  const spell = unit.prometheusSpellIndex % 3;
+  unit.prometheusSpellIndex = (unit.prometheusSpellIndex + 1) % 3;
+  if (spell === 0) {
+    castPrometheusDragons(unit, target);
+  } else if (spell === 1) {
+    summonPrometheusFireImps(unit);
+  } else {
+    castPrometheusMeteorRain(unit, target);
+  }
+}
+
+function castPrometheusDragons(unit, target) {
+  const data = UNIT.prometheus;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x + dir * 60;
+  const targetX = target.kind === "statue" ? target.x : target.x;
+  for (let i = 0; i < data.dragonCount; i += 1) {
+    const rawX = startX + dir * i * 58;
+    const x = dir > 0 ? Math.min(rawX, targetX) : Math.max(rawX, targetX);
+    const enemies = getUnitsInRadius(x, data.dragonRadius, unit.side, data.dragonLimit);
+    enemies.forEach((enemy) => {
+      applyUnitDamage(enemy, data.dragonDamage, { label: "火龙", color: "#ff7a3d", yOffset: -86 });
+      applyStun(enemy, data.dragonStun);
+      applyBurn(enemy, data.burnDps, data.burnDuration);
+    });
+    state.spikes.push({
+      x1: x - dir * 24,
+      x2: x + dir * 44,
+      y: FIELD.ground - 18,
+      side: unit.side,
+      life: 0.38,
+      duration: 0.38,
+      color: "#ff6a3d",
+    });
+    state.blasts.push({ x, y: FIELD.ground - 34, radius: data.dragonRadius, life: 0.32, duration: 0.32, color: "#ff4f2e" });
+  }
+  popText(unit.x, unit.y - 126, "火龙 x4", "#ff7a3d");
+}
+
+function summonPrometheusFireImps(unit) {
+  const data = UNIT.prometheus;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.fireImpCount; i += 1) {
+    const imp = spawnUnit("fireImp", unit.side, unit.x - dir * (26 + i * 18));
+    imp.summonerId = unit.id;
+    imp.forceCharge = true;
+  }
+  popText(unit.x, unit.y - 126, "小火人 x3", "#ff9b45");
+}
+
+function castPrometheusMeteorRain(unit, target) {
+  const data = UNIT.prometheus;
+  for (let i = 0; i < data.meteorCount; i += 1) {
+    const ratio = (i + 0.5) / data.meteorCount;
+    const offset = (ratio - 0.5) * data.meteorRadius * 2;
+    state.meteors.push({
+      x: target.x + offset,
+      y: FIELD.ground - 30,
+      side: unit.side,
+      damage: data.meteorDamage,
+      life: 0.3 + i * 0.035,
+      duration: 0.3 + i * 0.035,
+      label: "神火流星",
+      color: "#ff7a3d",
+    });
+  }
+  popText(target.x, FIELD.ground - 86, "神火流星", "#ffb45e");
 }
 
 function castRedflameFireball(unit, target) {
@@ -6545,6 +6688,7 @@ function getUnitColor(unit) {
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
   if (unit.type === "fireElement") return "#f07845";
+  if (unit.type === "fireImp") return "#ff8a3d";
   if (unit.type === "windElement") return "#d7f6ee";
   if (unit.type === "treeEnt") return "#5f8a57";
   if (unit.type === "waterScorpion") return "#56a8c8";
@@ -6552,6 +6696,7 @@ function getUnitColor(unit) {
   if (unit.type === "dreadfire") return "#8e2f32";
   if (unit.type === "redflame") return "#c63a25";
   if (unit.type === "stormLich") return "#566582";
+  if (unit.type === "prometheus") return "#d75a31";
   if (unit.type === "hurricane") return "#92d8d0";
   if (unit.type === "hill") return "#8f7a54";
   if (unit.type === "linghan") return "#5ca8d8";
@@ -6588,6 +6733,7 @@ function getHeadColor(unit) {
   if (unit.type === "earthElement") return "#c0a36d";
   if (unit.type === "waterElement") return "#b8f0ff";
   if (unit.type === "fireElement") return "#ffd08a";
+  if (unit.type === "fireImp") return "#ffe0a3";
   if (unit.type === "windElement") return "#ffffff";
   if (unit.type === "treeEnt") return "#9fc082";
   if (unit.type === "waterScorpion") return "#b8f0ff";
@@ -6595,6 +6741,7 @@ function getHeadColor(unit) {
   if (unit.type === "dreadfire") return "#ff8963";
   if (unit.type === "redflame") return "#ffd08a";
   if (unit.type === "stormLich") return "#d7f6ff";
+  if (unit.type === "prometheus") return "#ffe0a3";
   if (unit.type === "hurricane") return "#ffffff";
   if (unit.type === "hill") return "#d6c090";
   if (unit.type === "linghan") return "#d8f8ff";
@@ -7073,33 +7220,33 @@ function drawWeapon(type) {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
     return;
-  } else if (type === "fireElement") {
+  } else if (type === "fireElement" || type === "fireImp") {
     ctx.fillStyle = "#ff7a3d";
     ctx.beginPath();
-    ctx.arc(42, -40, 13, 0, Math.PI * 2);
+    ctx.arc(type === "fireImp" ? 32 : 42, type === "fireImp" ? -35 : -40, type === "fireImp" ? 9 : 13, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#ff7a3d";
     ctx.beginPath();
-    ctx.moveTo(39, -53);
-    ctx.lineTo(48, -42);
-    ctx.lineTo(37, -31);
-    ctx.lineTo(31, -42);
+    ctx.moveTo(type === "fireImp" ? 30 : 39, type === "fireImp" ? -44 : -53);
+    ctx.lineTo(type === "fireImp" ? 38 : 48, type === "fireImp" ? -36 : -42);
+    ctx.lineTo(type === "fireImp" ? 30 : 37, type === "fireImp" ? -27 : -31);
+    ctx.lineTo(type === "fireImp" ? 24 : 31, type === "fireImp" ? -36 : -42);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = "#ffd08a";
     ctx.beginPath();
-    ctx.arc(44, -41, 6, 0, Math.PI * 2);
+    ctx.arc(type === "fireImp" ? 33 : 44, type === "fireImp" ? -36 : -41, type === "fireImp" ? 4 : 6, 0, Math.PI * 2);
     ctx.fill();
-  } else if (type === "dreadfire" || type === "redflame") {
+  } else if (type === "dreadfire" || type === "redflame" || type === "prometheus") {
     ctx.strokeStyle = "#3a1718";
-    ctx.lineWidth = type === "redflame" ? 7 : 5;
+    ctx.lineWidth = type === "redflame" || type === "prometheus" ? 7 : 5;
     ctx.beginPath();
     ctx.moveTo(14, -25);
-    ctx.lineTo(type === "redflame" ? 37 : 31, type === "redflame" ? -70 : -63);
+    ctx.lineTo(type === "redflame" || type === "prometheus" ? 37 : 31, type === "redflame" || type === "prometheus" ? -70 : -63);
     ctx.stroke();
     ctx.fillStyle = "#ff6a3a";
     ctx.beginPath();
-    ctx.arc(type === "redflame" ? 42 : 34, type === "redflame" ? -72 : -66, type === "redflame" ? 12 : 8, 0, Math.PI * 2);
+    ctx.arc(type === "redflame" || type === "prometheus" ? 42 : 34, type === "redflame" || type === "prometheus" ? -72 : -66, type === "prometheus" ? 14 : type === "redflame" ? 12 : 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "rgba(255, 122, 61, 0.45)";
     ctx.beginPath();
