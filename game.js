@@ -1596,7 +1596,7 @@ function newGame() {
   spawnCampaignCenterElectricGate();
   setCommand("guard");
   setMinerCommand("mine");
-  if (activeCampaign) statusEl.textContent = `${activeCampaign.title}：${activeCampaign.objective}`;
+  if (activeCampaign) statusEl.textContent = activeCampaign.title;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
 }
