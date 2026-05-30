@@ -2677,8 +2677,7 @@ function getTowerUnits(side) {
     && !isUnitHidden(unit)
     && unit.type !== "miner"
     && !UNIT[unit.type]?.untargetable
-    && Math.abs(unit.x - CENTER_TOWER.x) <= CENTER_TOWER.radiusX
-    && Math.abs(unit.y - CENTER_TOWER.y) <= CENTER_TOWER.radiusY
+    && isInsideTowerCaptureArea(unit)
   ));
 }
 
@@ -3630,9 +3629,10 @@ function updateUnits(dt) {
     const moveTolerance = getMoveTolerance(unit, target, desiredX);
 
     const range = getUnitRange(unit);
+    const mustReachTowerRally = isTowerRallyCommand(unit) && !isInsideTowerCaptureArea(unit);
 
     if (unit.type === "rocketCart") {
-      if (updateRocketCart(unit, target, range, dt)) {
+      if (!mustReachTowerRally && updateRocketCart(unit, target, range, dt)) {
         updateIceRoadMoveTimer(unit, beforeX, dt);
         continue;
       }
@@ -3643,9 +3643,9 @@ function updateUnits(dt) {
       continue;
     }
 
-    if (target && canAttackFromDistance(unit, target, range)) {
+    if (!mustReachTowerRally && target && canAttackFromDistance(unit, target, range)) {
       attack(unit, target);
-    } else if (target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
+    } else if (!mustReachTowerRally && target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
       attack(unit, target);
     } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
       moveTowardGuardLine(unit, dt);
@@ -4711,18 +4711,18 @@ function getDesiredX(unit, target) {
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
-    if (target && target.kind !== "statue") return target.x - range + 8;
     if (state.command === "guard") return getPlayerRallyX(unit);
     if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyX(unit, "player");
+    if (target && target.kind !== "statue") return target.x - range + 8;
     if (target) return target.x - range + 8;
     return FIELD.enemyBase;
   }
 
   if (unit.forceCharge) return FIELD.playerBase;
   if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
-  if (target && target.kind !== "statue") return target.x + range - 8;
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
   if (state.enemyCommand === "attack" && state.towerOwner !== "enemy") return getTowerRallyX(unit, "enemy");
+  if (target && target.kind !== "statue") return target.x + range - 8;
   if (target) return target.x + range - 8;
   return FIELD.playerBase;
 }
@@ -4730,15 +4730,16 @@ function getDesiredX(unit, target) {
 function getDesiredPoint(unit, target, desiredX) {
   if (unit.side === "player") {
     if (state.command === "guard" && !target) return getGuardFormationPoint(unit, "player");
-    if (state.command === "attack" && state.attackIntent === "tower" && !target) return getTowerRallyPoint(unit, "player");
+    if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyPoint(unit, "player");
   }
-  if (unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner !== "enemy" && !target) {
+  if (unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner !== "enemy") {
     return getTowerRallyPoint(unit, "enemy");
   }
   return { x: desiredX, y: unit.y };
 }
 
 function getMoveTolerance(unit, target, desiredX) {
+  if (isTowerRallyCommand(unit)) return getTowerPointTolerance(unit);
   if (target?.kind === "statue") return 4;
   if (target && target.kind !== "statue") return 4;
   const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
@@ -4751,7 +4752,19 @@ function getCommandPointTolerance(unit) {
 }
 
 function getTowerPointTolerance(unit) {
-  return UNIT[unit.type]?.giant ? 24 : 14;
+  return UNIT[unit.type]?.giant ? 12 : 8;
+}
+
+function isTowerRallyCommand(unit) {
+  if (unit.side === "player") {
+    return state.command === "attack" && state.attackIntent === "tower";
+  }
+  return unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner !== "enemy";
+}
+
+function isInsideTowerCaptureArea(unit) {
+  return Math.abs(unit.x - CENTER_TOWER.x) <= CENTER_TOWER.radiusX
+    && Math.abs(unit.y - CENTER_TOWER.y) <= CENTER_TOWER.radiusY;
 }
 
 function isPlayerForcedGuarding(unit) {
@@ -4810,8 +4823,8 @@ function getTowerRallyPoint(unit, side) {
   const column = unit.id % 5;
   const row = Math.floor(unit.id / 5) % 5;
   const direction = side === "player" ? -1 : 1;
-  const xOffsets = [12, 34, 56, 78, 100];
-  const yOffsets = [-64, -32, 0, 32, 64];
+  const xOffsets = [8, 26, 44, 62, 80];
+  const yOffsets = [-54, -27, 0, 27, 54];
   return {
     x: CENTER_TOWER.x + direction * xOffsets[column],
     y: CENTER_TOWER.y + yOffsets[row],

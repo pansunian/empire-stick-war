@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v11";
+const CACHE_NAME = "stick-war-pwa-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260530-tower-rally-inside",
+  "./game.js?v=20260530-force-tower-rally-inside",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];
