@@ -1035,8 +1035,8 @@ const CAMPAIGN_LEVELS = {
       title: "第六关：霜冻之地",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage"],
       playerStart: ["miner", "swordsman", "spearman", "archer", "musketeer", "berserker"],
-      enemyRoster: ["miner", "chaosGiant", "enslavedGiant", "bomber"],
-      enemyStart: ["miner", "miner", "bomber", "bomber", "bomber"],
+      enemyRoster: ["miner", "chaosGiant", "enslavedGiant", "bomber", "creeper", "demonArcher"],
+      enemyStart: ["miner", "miner", "bomber", "bomber", "bomber", "creeper", "demonArcher"],
       enemyFaction: "chaos",
       startGold: 180,
       enemyGold: 760,
@@ -7568,7 +7568,7 @@ function drawWeapon(type) {
     ctx.moveTo(24, -36);
     ctx.lineTo(32, -28);
     ctx.stroke();
-  } else if (type === "greatsword") {
+  } else if (type === "greatsword" || type === "berserker") {
     ctx.strokeStyle = "#f2f6f8";
     ctx.lineWidth = 6;
     ctx.beginPath();
