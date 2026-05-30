@@ -81,16 +81,17 @@ const BASE_ATTACK = {
   range: 420,
   damage: 20,
   cooldown: 2,
-  orderCooldown: 2.5,
+  orderCooldown: 1.8,
   orderArrowCount: 20,
-  orderArrowDamage: 8,
+  orderArrowDamage: 5,
   orderArrowSplash: 40,
   orderArrowLimit: 2,
-  chaosDamage: 60,
+  chaosDamage: 35,
   chaosCooldown: 1.5,
   chaosSplash: 64,
   chaosLimit: 3,
-  chaosStun: 2,
+  chaosStun: 1,
+  elementStormDamage: 10,
 };
 const CENTER_TOWER = {
   x: FIELD.width / 2,
@@ -1027,10 +1028,10 @@ const CAMPAIGN_LEVELS = {
         enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete", "darkKnight"],
         enemyGold: 200,
         killPlayerArmy: true,
-        message: "混沌帝国参战，摧毁混沌雕像才可胜利",
+        message: "混沌帝国参战，摧毁混沌基地才可胜利",
       },
       rewardText: "火枪手",
-      objective: "先击破秩序雕像，再迎战混沌帝国并摧毁第二座雕像",
+      objective: "先击破秩序基地，再迎战混沌帝国并摧毁第二座基地",
     },
     6: {
       title: "第六关：霜冻之地",
@@ -1059,7 +1060,7 @@ const CAMPAIGN_LEVELS = {
         message: "超级巨人出现，击杀它才可通关",
       },
       rewardText: "投石车",
-      objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁雕像后击杀超级巨人",
+      objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁基地后击杀超级巨人",
     },
     7: {
       title: "第七关：负隅顽抗",
@@ -1163,10 +1164,10 @@ const CAMPAIGN_LEVELS = {
         enemyStart: ["miner", "swordsman", "archer", "greatsword", "spearman", "spartan"],
         enemyGold: 230,
         killPlayerArmy: true,
-        message: "秩序帝国参战，再次摧毁秩序雕像才可胜利",
+        message: "秩序帝国参战，再次摧毁秩序基地才可胜利",
       },
       rewardText: "爬行者",
-      objective: "顶住大型爬行者冲击，击败混沌雕像后再迎战秩序帝国",
+      objective: "顶住大型爬行者冲击，击败混沌基地后再迎战秩序帝国",
     },
     6: {
       title: "第六关：大法师围城",
@@ -1290,10 +1291,10 @@ const CAMPAIGN_LEVELS = {
         enemyGold: 240,
         killPlayerArmy: true,
         spareGodV: true,
-        message: "秩序帝国雕像出现，神明 V 躲过秒杀，继续摧毁秩序雕像",
+        message: "秩序帝国基地出现，神明 V 躲过秒杀，继续摧毁秩序基地",
       },
       rewardText: "飓风与厄火",
-      objective: "雪中守护神明 V，先破混沌雕像，再击破秩序雕像",
+      objective: "雪中守护神明 V，先破混沌基地，再击破秩序基地",
     },
     6: {
       title: "第六关：导弹前线",
@@ -1450,7 +1451,7 @@ function formatSpecial(type) {
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "prometheus") notes.push(`英雄单位；每 ${data.spellEvery}秒轮流释放火龙、小火人和 ${data.meteorCount} 发神火流星`);
   if (type === "darkKnightBrother") notes.push("英雄单位；兄弟之一阵亡时，另一位狂暴60秒，攻速和移速翻倍");
-  if (type === "superGiant") notes.push("只攻击雕像，击杀后通关");
+  if (type === "superGiant") notes.push("只攻击基地，击杀后通关");
   if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
@@ -1769,7 +1770,7 @@ function describeCampaignMechanics(config) {
   if (config.centerElectricGate) mechanics.push("地图中间存在无敌电门，敌人会无视它继续前进");
   if (config.snow) mechanics.push(`雪地：单位移速降低 ${Math.round((1 - config.snow.moveFactor) * 100)}%`);
   if (config.secondPhase) {
-    mechanics.push(config.secondPhase.message ?? "摧毁第一座雕像后进入第二阶段");
+    mechanics.push(config.secondPhase.message ?? "摧毁第一座基地后进入第二阶段");
     if (config.secondPhase.killPlayerArmy) mechanics.push("第二阶段开始时，全场普通友军会被秒杀");
     if (config.secondPhase.stunPlayerArmy) mechanics.push(`第二阶段开始时，我方单位眩晕 ${config.secondPhase.stunPlayerArmy} 秒`);
     if (config.secondPhase.reinforcements?.length) {
@@ -1997,7 +1998,7 @@ function setCommand(command) {
 function getCommandStatusText() {
   if (state.command === "retreat") return "撤退！部队回到城堡内";
   if (state.command === "guard") return "部队回到城堡前防守";
-  if (state.command === "attack" && state.attackIntent === "statue") return "全军进攻，目标敌方雕像";
+  if (state.command === "attack" && state.attackIntent === "statue") return "全军进攻，目标敌方基地";
   return "部队前往中心塔，占领范围防守";
 }
 
@@ -2682,7 +2683,7 @@ function updateCenterTower(dt) {
     state.towerCaptureSide = null;
     state.towerCaptureTimer = 0;
     popText(CENTER_TOWER.x, CENTER_TOWER.y - 85, `${capturingSide === "player" ? "我方" : "敌方"}占领中心塔`, capturingSide === "player" ? "#9fc0ff" : "#ff9b8d");
-    if (capturingSide === "player") statusEl.textContent = "中心塔已占领，每秒 +6 金币；再次点击进攻可冲击敌方雕像";
+    if (capturingSide === "player") statusEl.textContent = "中心塔已占领，每秒 +6 金币；再次点击进攻可冲击敌方基地";
   }
 }
 
@@ -3548,7 +3549,7 @@ function summonBaseStormCloud(side, target) {
     boltTimer: 0,
     boltsLeft: data.boltCount,
     boltEvery: data.boltEvery,
-    damage: data.boltDamage,
+    damage: BASE_ATTACK.elementStormDamage,
     slow: data.boltSlow,
     slowDuration: data.boltSlowDuration,
   });
@@ -3687,16 +3688,18 @@ function updateUnits(dt) {
     }
 
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
-    const desiredX = getDesiredX(unit, target);
-    const desiredPoint = getDesiredPoint(unit, target, desiredX);
+    const statueTarget = getForcedStatueTarget(unit, target);
+    const activeTarget = statueTarget ?? target;
+    const desiredX = getDesiredX(unit, activeTarget);
+    const desiredPoint = getDesiredPoint(unit, activeTarget, desiredX);
     const distance = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y);
-    const moveTolerance = getMoveTolerance(unit, target, desiredX);
+    const moveTolerance = getMoveTolerance(unit, activeTarget, desiredX);
 
     const range = getUnitRange(unit);
     const mustReachTowerRally = isTowerRallyCommand(unit) && !isInsideTowerCaptureArea(unit);
 
     if (unit.type === "rocketCart") {
-      if (!mustReachTowerRally && updateRocketCart(unit, target, range, dt)) {
+      if (!mustReachTowerRally && updateRocketCart(unit, activeTarget, range, dt)) {
         updateIceRoadMoveTimer(unit, beforeX, dt);
         continue;
       }
@@ -3707,14 +3710,14 @@ function updateUnits(dt) {
       continue;
     }
 
-    if (!mustReachTowerRally && target && canAttackFromDistance(unit, target, range)) {
-      attack(unit, target);
-    } else if (!mustReachTowerRally && target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
-      attack(unit, target);
+    if (!mustReachTowerRally && activeTarget && canAttackFromDistance(unit, activeTarget, range)) {
+      attack(unit, activeTarget);
+    } else if (!mustReachTowerRally && activeTarget && activeTarget.kind === "statue" && Math.abs(unit.x - activeTarget.x) <= getStatueAttackReach(unit)) {
+      attack(unit, activeTarget);
     } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
       moveTowardGuardLine(unit, dt);
     } else if (distance > moveTolerance) {
-      const tolerance = unit.side === "player" && state.command === "attack" && state.attackIntent === "tower" && !target
+      const tolerance = unit.side === "player" && state.command === "attack" && state.attackIntent === "tower" && !activeTarget
         ? getTowerPointTolerance(unit)
         : 5;
       moveUnitTowardPoint(unit, desiredPoint.x, desiredPoint.y, unit.speed ?? data.speed, dt, tolerance);
@@ -4818,6 +4821,29 @@ function getMoveTolerance(unit, target, desiredX) {
   const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
   if (Math.abs(desiredX - enemyBase) < 2) return 4;
   return getCommandPointTolerance(unit);
+}
+
+function getForcedStatueTarget(unit, target) {
+  if (!isStatueAttackCommand(unit)) return null;
+  const baseX = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
+  if (Math.abs(unit.x - baseX) > getStatueAttackReach(unit) + 80) return null;
+  if (target?.kind === "statue") return target;
+  return {
+    kind: "statue",
+    side: unit.side === "player" ? "enemy" : "player",
+    x: baseX,
+    y: FIELD.ground - 80,
+  };
+}
+
+function isStatueAttackCommand(unit) {
+  if (UNIT[unit.type]?.statueOnly) return true;
+  if (unit.side === "player") return state.command === "attack" && state.attackIntent === "statue";
+  return unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner === "enemy";
+}
+
+function getStatueAttackReach(unit) {
+  return Math.max(getUnitRange(unit) + 16, getCollisionRadius(unit) + 40);
 }
 
 function getCommandPointTolerance(unit) {
@@ -6518,7 +6544,7 @@ function checkWin() {
     if (state.playerHp <= 0) {
       state.over = true;
       state.winner = "enemy";
-      statusEl.textContent = "失败，我方雕像倒塌";
+      statusEl.textContent = "失败，我方基地倒塌";
       homeBtn.classList.remove("hidden");
       return;
     }
@@ -6542,7 +6568,7 @@ function checkWin() {
       return;
     }
     statusEl.textContent =
-      state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}雕像已被摧毁` : "失败，我方雕像倒塌";
+      state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}基地已被摧毁` : "失败，我方基地倒塌";
     homeBtn.classList.remove("hidden");
   }
 }
