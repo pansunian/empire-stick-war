@@ -69,6 +69,7 @@ const RALLY = {
   enemyOffset: 150,
   spacing: 9,
   maxSpread: 180,
+  guardForwardFromMine: 300,
 };
 
 const MERGE_COST = 30;
@@ -4795,11 +4796,19 @@ function getEnemyFormationX(unit) {
 }
 
 function getPlayerRallyBaseX() {
-  return FIELD.playerMineX + RALLY.playerOffset;
+  return getFrontMineColumnX("player") + RALLY.guardForwardFromMine;
 }
 
 function getEnemyRallyBaseX() {
-  return FIELD.enemyMineX - RALLY.enemyOffset;
+  return getFrontMineColumnX("enemy") - RALLY.guardForwardFromMine;
+}
+
+function getFrontMineColumnX(side) {
+  const mines = getSideMines(side);
+  if (!mines.length) return side === "player" ? FIELD.playerMineX : FIELD.enemyMineX;
+  return mines.reduce((frontX, mine) => (
+    side === "player" ? Math.max(frontX, mine.x) : Math.min(frontX, mine.x)
+  ), mines[0].x);
 }
 
 function getPlayerRallyX(unit) {
