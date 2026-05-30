@@ -1070,11 +1070,10 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "element",
       startGold: 350,
       enemyGold: 220,
-      enemyGodV: true,
       campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speedPerSecond: 450 },
       rewardText: "火箭车",
       hideObjectiveMechanic: true,
-      objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
+      objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；敌方只有普通 V，摧毁敌方基地即可胜利",
     },
     8: {
       title: "第八关：岩浆箭雨",
@@ -3165,28 +3164,46 @@ function getMissileLabel(missile) {
 }
 
 function getMissileTargetX(missile) {
+  return getMissileTargetInfo(missile).x;
+}
+
+function getMissileTargetInfo(missile) {
   const attackerSide = getMissileSide(missile);
   const targetSide = attackerSide === "player" ? "enemy" : "player";
   const candidates = state.units.filter((unit) => unit.side === targetSide && unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
-  if (!candidates.length) return attackerSide === "player" ? FIELD.enemyGate - 260 : FIELD.playerGate + 260;
-  return attackerSide === "player"
-    ? Math.min(...candidates.map((unit) => unit.x))
-    : Math.max(...candidates.map((unit) => unit.x));
+  if (!candidates.length) {
+    return {
+      x: attackerSide === "player" ? FIELD.enemyGate - 260 : FIELD.playerGate + 260,
+      target: null,
+    };
+  }
+  const target = candidates.reduce((front, unit) => {
+    if (!front) return unit;
+    return attackerSide === "player"
+      ? (unit.x < front.x ? unit : front)
+      : (unit.x > front.x ? unit : front);
+  }, null);
+  return { x: target.x, target };
 }
 
 function launchCampaignMissiles(missile) {
   const missileSide = getMissileSide(missile);
-  const frontX = getMissileTargetX(missile);
+  const targetInfo = getMissileTargetInfo(missile);
+  const frontX = targetInfo.x;
   const count = missile.count ?? 12;
   const laneSpread = 180;
   const startX = missileSide === "player" ? -130 : FIELD.width + 130;
   const speedPerSecond = missile.speedPerSecond ?? 0;
   for (let i = 0; i < count; i += 1) {
     const offset = ((i / Math.max(1, count - 1)) - 0.5) * laneSpread + (Math.random() - 0.5) * 36;
-    const tx = Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 80, frontX + offset));
     const ty = FIELD.ground - 38 + (Math.random() - 0.5) * 46;
     const x = startX + (missileSide === "player" ? -i * 12 : i * 12);
     const y = FIELD.ground - 250 + (i % 4) * 16;
+    const rawTx = frontX + offset;
+    const distanceToCurrent = Math.hypot(rawTx - x, ty - y);
+    const travelToCurrent = speedPerSecond > 0 ? Math.max(0.1, distanceToCurrent / speedPerSecond) : missile.speed;
+    const predictedX = predictMissileTargetX(targetInfo.target, travelToCurrent, rawTx);
+    const tx = Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 80, predictedX));
     const distance = Math.hypot(tx - x, ty - y);
     const duration = speedPerSecond > 0 ? Math.max(0.1, distance / speedPerSecond) : missile.speed;
     state.arrows.push({
@@ -3205,6 +3222,14 @@ function launchCampaignMissiles(missile) {
   }
   state.screenShake = Math.max(state.screenShake ?? 0, 0.45);
   popText(frontX, FIELD.ground - 190, getMissileSide(missile) === "player" ? "火箭弹齐射" : "导弹齐射", "#ff6b4a");
+}
+
+function predictMissileTargetX(target, travelTime, fallbackX) {
+  if (!target || !Number.isFinite(travelTime)) return fallbackX;
+  const velocityX = Number.isFinite(target.velocityX) ? target.velocityX : 0;
+  if (Math.abs(velocityX) < 5) return fallbackX;
+  const leadX = velocityX * Math.min(travelTime, 3);
+  return fallbackX + leadX;
 }
 
 function updateEnemyAi(dt) {
@@ -4725,8 +4750,11 @@ function getIceRoadMoveFactor(unit) {
 }
 
 function updateIceRoadMoveTimer(unit, beforeX, dt) {
+  const dx = unit.x - beforeX;
+  unit.velocityX = dt > 0 ? dx / dt : 0;
+  if (Math.abs(dx) > 0.05) unit.lastMoveDir = Math.sign(dx);
   if (!activeCampaign?.iceRoad) return;
-  if (Math.abs(unit.x - beforeX) > 0.1) unit.iceRoadMoveTimer = (unit.iceRoadMoveTimer ?? 0) + dt;
+  if (Math.abs(dx) > 0.1) unit.iceRoadMoveTimer = (unit.iceRoadMoveTimer ?? 0) + dt;
   else unit.iceRoadMoveTimer = 0;
 }
 
