@@ -1051,9 +1051,9 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：岩浆箭雨",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
-      playerStart: ["miner", "miner", "swordsman", "spearman", "greatsword", "musketeer", "rocketCart"],
+      playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "crossbow", "crossbow"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
-      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "stormLich", "dreadfire", "vUnit"],
+      enemyStart: ["vUnit", "prometheus"],
       enemyFaction: "element",
       startGold: 300,
       enemyGold: 320,
@@ -1170,9 +1170,9 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：雷霆神王",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
-      playerStart: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "darkKnight", "creeper"],
+      playerStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
-      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
+      enemyStart: ["vUnit", "zeus"],
       enemyFaction: "element",
       startGold: 260,
       enemyGold: 300,
