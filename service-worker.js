@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v17";
+const CACHE_NAME = "stick-war-pwa-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260530-crossbow-bomb-18",
+  "./game.js?v=20260530-approach-nearby-enemies",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];

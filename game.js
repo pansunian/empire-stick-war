@@ -4732,6 +4732,9 @@ function getDesiredX(unit, target) {
 }
 
 function getDesiredPoint(unit, target, desiredX) {
+  if (target && target.kind !== "statue") {
+    return { x: desiredX, y: target.y ?? unit.y };
+  }
   if (unit.side === "player") {
     if (state.command === "guard" && !target) return getGuardFormationPoint(unit, "player");
     if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyPoint(unit, "player");
@@ -4849,7 +4852,14 @@ function isInsideBlindSpot(unit, target) {
 function canAttackFromDistance(unit, target, range) {
   if (!target) return false;
   if (isInsideBlindSpot(unit, target)) return false;
+  if (target.kind !== "statue" && Math.abs((target.y ?? unit.y) - unit.y) > getAttackLaneTolerance(unit)) return false;
   return Math.abs(unit.x - target.x) <= range;
+}
+
+function getAttackLaneTolerance(unit) {
+  if (UNIT[unit.type]?.giant) return 95;
+  if ((UNIT[unit.type]?.range ?? 0) > 80) return 85;
+  return 42;
 }
 
 function findTarget(unit) {
@@ -4876,7 +4886,7 @@ function findTarget(unit) {
     if (unit.type === "waterElement" && other.frozenBy) continue;
 
     const searchRange = Math.max(260, getUnitRange(unit));
-    const distance = Math.abs(other.x - unit.x);
+    const distance = distanceTo(unit.x, unit.y, other.x, other.y);
     if (distance < searchRange && distance < nearestDistance) {
       nearby = other;
       nearestDistance = distance;
