@@ -687,6 +687,36 @@ const UNIT = {
     meteorRadius: 135,
     hero: true,
   },
+  zeus: {
+    name: "宙斯",
+    cost: 0,
+    hp: 1000,
+    damage: 0,
+    range: 320,
+    speed: 32,
+    train: 0,
+    cooldown: 1,
+    overheadRadius: 180,
+    overheadEvery: 0.6,
+    cloudEvery: 10,
+    cloudRadius: 300,
+    cloudDuration: 15,
+    cloudMoveSpeed: 30,
+    boltEvery: 0.6,
+    boltDamage: 16,
+    boltStun: 1,
+    columnEvery: 12,
+    columnDuration: 8,
+    columnDamage: 24,
+    columnWidth: 28,
+    gateEvery: 15,
+    gateDuration: 8,
+    gateDamage: 24,
+    gateWidth: 92,
+    gateSlow: 0.5,
+    gateSlowDuration: 2,
+    hero: true,
+  },
   hurricane: {
     name: "飓风",
     cost: 0,
@@ -846,6 +876,7 @@ const UNIT_ICON = {
   executioner: "axe",
   undeadMage: "skull",
   suikai: "skull",
+  zeus: "lightning",
   chaosGiant: "axe",
   superGiant: "axe",
   earthElement: "earth",
@@ -870,7 +901,7 @@ const UNIT_ICON = {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
 
@@ -1135,6 +1166,18 @@ const CAMPAIGN_LEVELS = {
       rewardText: "无新增单位",
       objective: "淘金热规则与秩序帝国淘金热一致，争夺中央金矿并击败秩序帝国",
     },
+    8: {
+      title: "第八关：雷霆神王",
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
+      playerStart: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "darkKnight", "creeper"],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
+      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
+      enemyFaction: "element",
+      startGold: 260,
+      enemyGold: 300,
+      rewardText: "",
+      objective: "敌方英雄宙斯参战：头顶雷云会自动攻击下方敌人，并周期召唤移动乌云、电墙和电门",
+    },
   },
   element: {
     1: {
@@ -1368,6 +1411,7 @@ function formatSpecial(type) {
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
+  if (type === "zeus") notes.push(`英雄单位；头顶雷云自动攻击；每 ${data.cloudEvery}秒召唤移动乌云；每 ${data.columnEvery}秒召唤电墙；每 ${data.gateEvery}秒召唤电门`);
   if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V/攻城器械单位，冷却 ${data.slayCooldown}秒`);
   if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
@@ -1438,6 +1482,7 @@ function newGame() {
     meteors: [],
     stormClouds: [],
     tornadoes: [],
+    electricColumns: [],
     pendingMerges: [],
     floaters: [],
     spawnQueue: [],
@@ -1972,6 +2017,10 @@ function spawnUnit(type, side, x) {
     suikaiHookTimer: UNIT[type].hookEvery ?? 0,
     archmageFireballTimer: UNIT[type].fireballEvery ?? 0,
     archmageAttackCount: 0,
+    zeusOverheadTimer: UNIT[type].overheadEvery ?? 0,
+    zeusCloudTimer: UNIT[type].cloudEvery ?? 0,
+    zeusColumnTimer: UNIT[type].columnEvery ?? 0,
+    zeusGateTimer: UNIT[type].gateEvery ?? 0,
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
     hillJumpTimer: UNIT[type].jumpEvery ?? 0,
     linghanFreezeTimer: 0,
@@ -2513,6 +2562,7 @@ function update(dt) {
   updateMeteors(dt);
   updateStormClouds(dt);
   updateTornadoes(dt);
+  updateElectricWalls(dt);
   updateIceFieldEffects(dt);
   updateParticles(dt);
   removeDead();
@@ -3428,6 +3478,9 @@ function updateUnits(dt) {
     if (unit.type === "suikai") {
       updateSuikai(unit, dt);
     }
+    if (unit.type === "zeus") {
+      updateZeus(unit, dt);
+    }
     if (unit.type === "archmage") {
       updateArchmage(unit, dt);
     }
@@ -4071,6 +4124,116 @@ function updateSuikai(unit, dt) {
       unit.suikaiHookTimer = Math.min(unit.suikaiHookTimer + 1.2, data.hookEvery);
     }
   }
+}
+
+function updateZeus(unit, dt) {
+  const data = UNIT.zeus;
+  unit.zeusOverheadTimer -= dt;
+  unit.zeusCloudTimer -= dt;
+  unit.zeusColumnTimer -= dt;
+  unit.zeusGateTimer -= dt;
+
+  if (unit.zeusOverheadTimer <= 0) {
+    unit.zeusOverheadTimer += data.overheadEvery;
+    strikeZeusOverhead(unit);
+  }
+
+  if (unit.zeusCloudTimer <= 0) {
+    const target = findTarget(unit);
+    if (target) {
+      unit.zeusCloudTimer += data.cloudEvery;
+      summonZeusCloud(unit, target);
+    } else {
+      unit.zeusCloudTimer = Math.min(unit.zeusCloudTimer + 1, data.cloudEvery);
+    }
+  }
+
+  if (unit.zeusColumnTimer <= 0) {
+    const target = findTarget(unit);
+    if (target) {
+      unit.zeusColumnTimer += data.columnEvery;
+      summonZeusElectricWall(unit, target);
+    } else {
+      unit.zeusColumnTimer = Math.min(unit.zeusColumnTimer + 1, data.columnEvery);
+    }
+  }
+
+  if (unit.zeusGateTimer <= 0) {
+    const target = findTarget(unit);
+    if (target) {
+      unit.zeusGateTimer += data.gateEvery;
+      summonZeusElectricGate(unit, target);
+    } else {
+      unit.zeusGateTimer = Math.min(unit.zeusGateTimer + 1, data.gateEvery);
+    }
+  }
+}
+
+function strikeZeusOverhead(unit) {
+  const data = UNIT.zeus;
+  const target = getUnitsInRadius(unit.x, data.overheadRadius, unit.side, Infinity)
+    .filter((enemy) => Math.abs(enemy.x - unit.x) <= data.overheadRadius)
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0];
+  if (!target) return;
+  applyDamage(target, data.boltDamage, unit.side);
+  applyStun(target, data.boltStun);
+  state.lightning.push({
+    x1: unit.x + (Math.random() * 80 - 40),
+    y1: unit.y - 158,
+    x2: target.x,
+    y2: target.y - 48 + (UNIT[target.type]?.flying ? -42 : 0),
+    life: 0.22,
+    duration: 0.22,
+  });
+}
+
+function summonZeusCloud(unit, target) {
+  const data = UNIT.zeus;
+  state.stormClouds.push({
+    type: "attack",
+    x: target.x,
+    y: FIELD.ground - 230,
+    side: unit.side,
+    radius: data.cloudRadius,
+    life: data.cloudDuration,
+    duration: data.cloudDuration,
+    boltTimer: 0,
+    boltsLeft: Math.ceil(data.cloudDuration / data.boltEvery),
+    boltEvery: data.boltEvery,
+    damage: data.boltDamage,
+    stun: data.boltStun,
+    slow: 1,
+    slowDuration: 0,
+    moveSpeed: data.cloudMoveSpeed,
+    moveDir: unit.side === "player" ? 1 : -1,
+  });
+  popText(target.x, FIELD.ground - 132, "宙斯雷云", "#d7f6ff");
+}
+
+function summonZeusElectricWall(unit, target) {
+  const data = UNIT.zeus;
+  const x = Math.max(FIELD.playerGate + 90, Math.min(FIELD.enemyGate - 90, target.x));
+  state.electricColumns.push({
+    x,
+    side: unit.side,
+    life: data.columnDuration,
+    duration: data.columnDuration,
+    damage: data.columnDamage,
+    slow: data.gateSlow,
+    slowDuration: data.gateSlowDuration,
+    tick: 0,
+    width: data.columnWidth,
+  });
+  popText(x, FIELD.ground - 150, "电墙", "#d7f6ff");
+}
+
+function summonZeusElectricGate(unit, target) {
+  const x = Math.max(FIELD.playerGate + 90, Math.min(FIELD.enemyGate - 90, target.x));
+  const gate = spawnUnit("electricGate", unit.side, x);
+  gate.y = target.y ?? FIELD.ground;
+  gate.summonerId = unit.id;
+  gate.noRespawn = true;
+  popText(x, FIELD.ground - 150, "召唤电门", "#d7f6ff");
 }
 
 function summonSuikaiCorpses(unit) {
@@ -5676,7 +5839,41 @@ function updateStormClouds(dt) {
   state.stormClouds = state.stormClouds.filter((cloud) => cloud.life > 0 && (cloud.type !== "rain" || cloud.dropsLeft > 0));
 }
 
+function updateElectricWalls(dt) {
+  for (const wall of state.electricColumns) {
+    wall.life -= dt;
+    wall.tick += dt;
+    while (wall.tick >= 1) {
+      wall.tick -= 1;
+      strikeElectricWall(wall);
+    }
+  }
+  state.electricColumns = state.electricColumns.filter((wall) => wall.life > 0);
+}
+
+function strikeElectricWall(wall) {
+  state.units.forEach((unit) => {
+    if (unit.side === wall.side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (Math.abs(unit.x - wall.x) > wall.width) return;
+    applyUnitDamage(unit, wall.damage, { label: "电墙", color: "#d7f6ff", yOffset: -98 });
+    unit.stormSlowTimer = wall.slowDuration;
+    unit.stormSlowFactor = Math.min(unit.stormSlowFactor ?? 1, wall.slow);
+    state.lightning.push({
+      x1: wall.x + (Math.random() * 34 - 17),
+      y1: FIELD.ground - 178,
+      x2: unit.x,
+      y2: unit.y - 44 + (UNIT[unit.type]?.flying ? -42 : 0),
+      life: 0.18,
+      duration: 0.18,
+    });
+  });
+}
+
 function updateAttackStormCloud(cloud, dt) {
+  if (cloud.moveSpeed) {
+    cloud.x += (cloud.moveDir ?? 1) * cloud.moveSpeed * dt;
+    cloud.x = Math.max(FIELD.playerGate + 80, Math.min(FIELD.enemyGate - 80, cloud.x));
+  }
   if (cloud.boltsLeft <= 0) return;
   cloud.boltTimer -= dt;
   while (cloud.boltsLeft > 0 && cloud.boltTimer <= 0) {
@@ -5691,8 +5888,11 @@ function strikeStormLichBolt(cloud) {
   if (!targets.length) return;
   const target = targets[Math.floor(Math.random() * targets.length)];
   applyDamage(target, cloud.damage, cloud.side);
-  target.stormSlowTimer = cloud.slowDuration;
-  target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, cloud.slow);
+  if (cloud.stun) applyStun(target, cloud.stun);
+  if (cloud.slowDuration > 0) {
+    target.stormSlowTimer = cloud.slowDuration;
+    target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, cloud.slow);
+  }
   state.lightning.push({
     x1: target.x + (Math.random() * 70 - 35),
     y1: cloud.y,
@@ -5897,7 +6097,7 @@ function removeDead() {
         },
       });
     }
-    if (unit.type === "electricGate" && unit.expired) {
+    if (unit.type === "electricGate" && unit.expired && !unit.noRespawn) {
       deathSpawns.push({
         type: UNIT.electricGate.respawnType,
         side: unit.side,
@@ -6181,6 +6381,7 @@ function draw() {
   state.meteors.forEach(drawMeteor);
   state.stormClouds.forEach(drawStormCloud);
   state.tornadoes.forEach(drawTornado);
+  state.electricColumns.forEach(drawElectricWall);
   state.iceFields.forEach(drawIceField);
   state.spikes.forEach(drawSpike);
   state.blasts.forEach(drawBlast);
@@ -6613,6 +6814,7 @@ function drawUnit(unit) {
   ctx.stroke();
 
   if (unit.godV || unit.godVClone) drawGodVHeadpiece();
+  if (unit.type === "zeus") drawZeusOverheadCloud(unit);
 
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -6681,6 +6883,26 @@ function drawGodVHeadpiece() {
   ctx.beginPath();
   ctx.moveTo(-10, -72);
   ctx.quadraticCurveTo(0, -76, 10, -72);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawZeusOverheadCloud(unit) {
+  ctx.save();
+  ctx.globalAlpha = 0.72;
+  ctx.fillStyle = "#44546b";
+  for (let i = 0; i < 4; i += 1) {
+    ctx.beginPath();
+    ctx.ellipse((i - 1.5) * 13, -108 + Math.sin(unit.anim + i) * 2, 17, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = "#d7f6ff";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-4, -96);
+  ctx.lineTo(-14, -78);
+  ctx.lineTo(0, -83);
+  ctx.lineTo(-8, -63);
   ctx.stroke();
   ctx.restore();
 }
@@ -6880,6 +7102,7 @@ function getUnitColor(unit) {
   if (unit.type === "redflame") return "#c63a25";
   if (unit.type === "stormLich") return "#566582";
   if (unit.type === "prometheus") return "#d75a31";
+  if (unit.type === "zeus") return "#6d75c8";
   if (unit.type === "hurricane") return "#92d8d0";
   if (unit.type === "hill") return "#8f7a54";
   if (unit.type === "linghan") return "#5ca8d8";
@@ -6925,6 +7148,7 @@ function getHeadColor(unit) {
   if (unit.type === "redflame") return "#ffd08a";
   if (unit.type === "stormLich") return "#d7f6ff";
   if (unit.type === "prometheus") return "#ffe0a3";
+  if (unit.type === "zeus") return "#f0e8ff";
   if (unit.type === "hurricane") return "#ffffff";
   if (unit.type === "hill") return "#d6c090";
   if (unit.type === "linghan") return "#d8f8ff";
@@ -7447,6 +7671,16 @@ function drawWeapon(type) {
     ctx.lineTo(42, -42);
     ctx.lineTo(31, -17);
     ctx.stroke();
+  } else if (type === "zeus") {
+    ctx.strokeStyle = "#d7f6ff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(16, -24);
+    ctx.lineTo(34, -62);
+    ctx.lineTo(25, -55);
+    ctx.moveTo(34, -62);
+    ctx.lineTo(44, -47);
+    ctx.stroke();
   } else if (type === "hurricane") {
     ctx.strokeStyle = "#d7f6ee";
     ctx.lineWidth = 4;
@@ -7768,6 +8002,28 @@ function drawStormCloud(cloud) {
       ctx.lineTo(x - 8, cloud.y + 58);
       ctx.stroke();
     }
+  }
+  ctx.restore();
+}
+
+function drawElectricWall(wall) {
+  const alpha = Math.max(0.25, Math.min(0.85, wall.life / wall.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = "#d7f6ff";
+  ctx.lineWidth = 5;
+  ctx.shadowColor = "#9ee8ff";
+  ctx.shadowBlur = 12;
+  const top = FIELD.ground - 205;
+  const bottom = FIELD.ground + 135;
+  for (let i = 0; i < 5; i += 1) {
+    const x = wall.x + (i - 2) * 8;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    for (let y = top; y < bottom; y += 42) {
+      ctx.lineTo(x + (Math.random() - 0.5) * 24, y + 28);
+    }
+    ctx.stroke();
   }
   ctx.restore();
 }
