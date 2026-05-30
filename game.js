@@ -1068,7 +1068,7 @@ const CAMPAIGN_LEVELS = {
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
       enemyFaction: "element",
-      startGold: 260,
+      startGold: 350,
       enemyGold: 220,
       enemyGodV: true,
       campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speed: 0.18 },
@@ -1508,8 +1508,8 @@ function newGame() {
   homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
-  const startGold = activeCampaign ? CAMPAIGN_START_GOLD : (MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus);
-  const enemyStartGold = activeCampaign ? CAMPAIGN_START_GOLD : startGold;
+  const startGold = activeCampaign ? (activeCampaign.startGold ?? CAMPAIGN_START_GOLD) : (MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus);
+  const enemyStartGold = activeCampaign ? (activeCampaign.enemyGold ?? CAMPAIGN_START_GOLD) : startGold;
   const sideMines = createSideMines();
 
   state = {
@@ -1799,14 +1799,14 @@ function renderCampaignBriefing(config) {
       <h4>敌方单位</h4>
       ${formatBriefingLine("主要单位", uniqueUnitList([...(config.enemyRoster ?? []), ...(config.enemyStart ?? [])]))}
       ${formatBriefingLine("开局单位", countUnitList(config.enemyStart))}
-      ${formatBriefingLine("初始金币", `${CAMPAIGN_START_GOLD}`)}
+      ${formatBriefingLine("初始金币", `${config.enemyGold ?? CAMPAIGN_START_GOLD}`)}
       ${secondPhaseLine}
     </section>
     <section class="briefing-section">
       <h4>我方单位</h4>
       ${formatBriefingLine("可用单位", config.playerRoster?.length ? uniqueUnitList(config.playerRoster) : "本关无法建造单位")}
       ${formatBriefingLine("开局单位", countUnitList(config.playerStart))}
-      ${formatBriefingLine("初始金币", `${CAMPAIGN_START_GOLD}`)}
+      ${formatBriefingLine("初始金币", `${config.startGold ?? CAMPAIGN_START_GOLD}`)}
     </section>
     <section class="briefing-section">
       <h4>特殊机制</h4>
