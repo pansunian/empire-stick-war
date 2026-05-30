@@ -8402,9 +8402,12 @@ async function handleInstallClick() {
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {
-      statusEl.textContent = "离线缓存暂时不可用，联网游玩不受影响";
-    });
+    navigator.serviceWorker
+      .register("./service-worker.js")
+      .then((registration) => registration.update())
+      .catch(() => {
+        statusEl.textContent = "离线缓存暂时不可用，联网游玩不受影响";
+      });
   });
 }
 

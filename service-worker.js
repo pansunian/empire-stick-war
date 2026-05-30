@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v7";
+const CACHE_NAME = "stick-war-pwa-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260529-mobile-ui-v3",
-  "./game.js?v=20260529-mobile-ui-v3",
+  "./style.css",
+  "./game.js?v=20260530-water-scorpion-hp",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];
@@ -36,6 +36,22 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  const url = new URL(event.request.url);
+  const isFreshCodeAsset = url.pathname.endsWith("/game.js") || url.pathname.endsWith("/style.css");
+  if (isFreshCodeAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type === "opaque") return response;
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
