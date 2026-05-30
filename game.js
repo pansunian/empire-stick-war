@@ -1016,6 +1016,23 @@ const CAMPAIGN_LEVELS = {
       rewardText: "火箭车",
       objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
     },
+    8: {
+      title: "第八关：岩浆箭雨",
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+      playerStart: ["miner", "miner", "swordsman", "spearman", "greatsword", "musketeer", "rocketCart"],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
+      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "stormLich", "dreadfire", "vUnit"],
+      enemyFaction: "element",
+      startGold: 300,
+      enemyGold: 320,
+      enemyGodV: true,
+      arrowRain: { every: 15, total: 300, perSecond: 75, damage: 10, radius: 24, side: "player" },
+      playerDeathBlast: { damage: 13, radius: 52, limit: 3 },
+      magmaGround: { every: 20, duration: 10, damage: 3 },
+      campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18 },
+      rewardText: "",
+      objective: "箭雨每 15 秒支援我方，只攻击敌方；我方阵亡会小范围爆炸伤到友军；周期性岩浆地会灼烧战场，火元素合成单位免疫；同时会落下巨大陨石",
+    },
   },
   chaos: {
     1: {
@@ -1443,6 +1460,9 @@ function newGame() {
     arrowRainTimer: activeCampaign?.arrowRain?.every ?? 0,
     arrowRainRemaining: 0,
     arrowRainDropCarry: 0,
+    magmaGroundTimer: activeCampaign?.magmaGround?.every ?? 0,
+    magmaGroundRemaining: 0,
+    magmaGroundTick: 0,
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
@@ -1610,7 +1630,10 @@ function describeCampaignMechanics(config) {
     mechanics.push(`敌方每 ${config.enemyReinforcement.every} 秒增援 ${count} 个${UNIT[config.enemyReinforcement.type]?.name ?? "单位"}`);
   }
   if (config.arrowRain) mechanics.push(`每 ${config.arrowRain.every} 秒落下箭雨，总计 ${config.arrowRain.total} 支，每支 ${config.arrowRain.damage} 点伤害`);
+  if (config.arrowRain?.side === "player") mechanics.push("本关箭雨只攻击敌方单位");
   if (config.goldRush) mechanics.push(`淘金热：中央共有 ${config.goldRush.columns * config.goldRush.rows} 个金矿，每个最多 ${config.goldRush.mineGold} 金币`);
+  if (config.playerDeathBlast) mechanics.push(`我方单位阵亡时爆炸，对周围友军造成 ${config.playerDeathBlast.damage} 点伤害，最多 ${config.playerDeathBlast.limit} 名`);
+  if (config.magmaGround) mechanics.push(`每 ${config.magmaGround.every} 秒地面变成岩浆，持续 ${config.magmaGround.duration} 秒，每秒造成 ${config.magmaGround.damage} 点伤害，火元素合成单位免疫`);
   if (config.playerDeathsBecomeEnemySpearman) mechanics.push("我方单位阵亡后会在原地转化为敌方长矛兵");
   if (config.enemySpartanDamageReduction) mechanics.push(`敌方斯巴达减伤 ${Math.round(config.enemySpartanDamageReduction * 100)}%`);
   if (config.undeadMineWave) mechanics.push(`每 ${config.undeadMineWave.every} 秒从矿区刷出亡灵，每 ${config.undeadMineWave.increaseEvery} 秒数量增加`);
@@ -2518,6 +2541,7 @@ function updateCampaignRules(dt) {
   updateCampaignUndeadMineWave(dt);
   updateCampaignMeteor(dt);
   updateCampaignMissiles(dt);
+  updateCampaignMagmaGround(dt);
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
   updateCampaignStormClouds(dt);
@@ -2774,7 +2798,7 @@ function spawnCampaignRainArrow(rain) {
     y: -50 - Math.random() * 80,
     tx,
     ty: FIELD.ground - 18,
-    side: "enemy",
+    side: rain.side === "player" ? "player" : "enemy",
     damage: rain.damage,
     radius: rain.radius,
     life: 0.9,
@@ -2829,6 +2853,45 @@ function updateCampaignMeteor(dt) {
     });
     popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
   }
+}
+
+function updateCampaignMagmaGround(dt) {
+  const magma = activeCampaign?.magmaGround;
+  if (!magma) return;
+
+  if (state.magmaGroundRemaining > 0) {
+    state.magmaGroundRemaining = Math.max(0, state.magmaGroundRemaining - dt);
+    state.magmaGroundTick += dt;
+    while (state.magmaGroundTick >= 1) {
+      state.magmaGroundTick -= 1;
+      damageMagmaGround(magma);
+    }
+    if (state.magmaGroundRemaining <= 0) {
+      state.magmaGroundTimer = magma.every;
+      state.magmaGroundTick = 0;
+      popText(FIELD.width / 2, FIELD.ground - 118, "岩浆冷却", "#ffb45e");
+    }
+    return;
+  }
+
+  state.magmaGroundTimer -= dt;
+  if (state.magmaGroundTimer > 0) return;
+
+  state.magmaGroundRemaining = magma.duration;
+  state.magmaGroundTick = 0;
+  popText(FIELD.width / 2, FIELD.ground - 128, "岩浆地喷发", "#ff6a3d");
+}
+
+function damageMagmaGround(magma) {
+  state.units.forEach((unit) => {
+    if (unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (isMagmaImmune(unit)) return;
+    applyUnitDamage(unit, magma.damage, { label: "岩浆", color: "#ff6a3d", yOffset: -96 });
+  });
+}
+
+function isMagmaImmune(unit) {
+  return ["fireElement", "fireImp", "rog", "dreadfire", "redflame", "scaldStrike", "prometheus"].includes(unit.type);
 }
 
 function updateCampaignMissiles(dt) {
@@ -5727,6 +5790,9 @@ function removeDead() {
     if (unit.type === "stormLich") {
       createStormLichDeathRain(unit);
     }
+    if (activeCampaign?.playerDeathBlast && unit.side === "player" && !UNIT[unit.type]?.hero) {
+      explodePlayerDeathBlast(unit);
+    }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
       deathSpawns.push({
         type: "spearman",
@@ -5798,6 +5864,26 @@ function removeDead() {
     return false;
   });
   deathSpawns.forEach(spawnDeathUnit);
+}
+
+function explodePlayerDeathBlast(unit) {
+  const blast = activeCampaign.playerDeathBlast;
+  const allies = state.units
+    .filter((candidate) => (
+      candidate !== unit
+      && candidate.side === unit.side
+      && candidate.hp > 0
+      && !isUnitHidden(candidate)
+      && !UNIT[candidate.type]?.untargetable
+      && Math.abs(candidate.x - unit.x) <= blast.radius
+      && Math.abs(candidate.y - unit.y) <= blast.radius
+    ))
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
+    .slice(0, blast.limit ?? AOE_TARGET_LIMIT);
+  allies.forEach((ally) => {
+    applyUnitDamage(ally, blast.damage, { label: "殉爆", color: "#ffb45e", yOffset: -82 });
+  });
+  state.blasts.push({ x: unit.x, y: unit.y - 26, radius: blast.radius, life: 0.28, duration: 0.28, color: "#ffb45e" });
 }
 
 function spawnDeathUnit(spawn) {
@@ -6010,6 +6096,7 @@ function draw() {
   drawSky();
   drawStormClouds();
   drawGround();
+  drawCampaignMagmaGround();
   drawIceRoadGround();
   if (isGoldRushActive()) {
     drawGoldRushMines();
@@ -6198,6 +6285,31 @@ function drawGround() {
     ctx.fillStyle = "rgba(180, 210, 105, 0.2)";
     ctx.fillRect(x, FIELD.ground - 142 + (x % 288 === 0 ? 86 : 0), 16, 3);
   }
+}
+
+function drawCampaignMagmaGround() {
+  if (!activeCampaign?.magmaGround || state.magmaGroundRemaining <= 0) return;
+  const top = FIELD.ground - 168;
+  const alpha = 0.2 + 0.12 * Math.sin(performance.now() / 120);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.14, alpha);
+  const gradient = ctx.createLinearGradient(0, top, 0, FIELD.ground + 150);
+  gradient.addColorStop(0, "#ff6a3d");
+  gradient.addColorStop(0.5, "#e14222");
+  gradient.addColorStop(1, "#7f2517");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, top, FIELD.width, FIELD.height - top);
+  ctx.globalAlpha = 0.42;
+  ctx.strokeStyle = "#ffcf6b";
+  ctx.lineWidth = 3;
+  for (let x = -80; x < FIELD.width + 80; x += 150) {
+    ctx.beginPath();
+    ctx.moveTo(x, FIELD.ground - 110);
+    ctx.lineTo(x + 90, FIELD.ground - 62);
+    ctx.lineTo(x + 30, FIELD.ground + 12);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawMine(mine, side) {
