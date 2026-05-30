@@ -516,7 +516,7 @@ const UNIT = {
   superGiant: {
     name: "超级巨人",
     cost: 0,
-    hp: 12000,
+    hp: 20000,
     damage: 300,
     range: 58,
     speed: 20,
@@ -529,6 +529,7 @@ const UNIT = {
     slayImmune: true,
     controlImmune: true,
     statueOnly: true,
+    visualScale: 2.45,
     hero: true,
   },
   earthElement: {
@@ -1047,6 +1048,7 @@ const CAMPAIGN_LEVELS = {
         enemyStart: ["superGiant"],
         enemyGold: 0,
         disableEnemyTraining: true,
+        forceAllUnitsCharge: true,
         stunPlayerArmy: 5,
         reinforcements: [
           { type: "creeper", every: 5 },
@@ -1061,7 +1063,7 @@ const CAMPAIGN_LEVELS = {
     },
     7: {
       title: "第七关：负隅顽抗",
-      playerRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      playerRoster: ["miner", "swordsman", "greatsword", "archon", "crossbow", "rocketCart"],
       playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
@@ -1071,6 +1073,7 @@ const CAMPAIGN_LEVELS = {
       enemyGodV: true,
       campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speed: 0.18 },
       rewardText: "火箭车",
+      hideObjectiveMechanic: true,
       objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
     },
     8: {
@@ -1720,7 +1723,7 @@ function getCampaignRewardText(config) {
 
 function describeCampaignMechanics(config) {
   const mechanics = [];
-  if (config.objective) mechanics.push(config.objective);
+  if (config.objective && !config.hideObjectiveMechanic) mechanics.push(config.objective);
   if (config.failOnDeath) mechanics.push(`${UNIT[config.failOnDeath]?.name ?? "英雄"}死亡则挑战失败`);
   if (config.enemyReinforcement) {
     const count = config.enemyReinforcement.count ?? 1;
@@ -6544,12 +6547,31 @@ function startCampaignSecondPhase() {
   state.iceFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
-    spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
+    const unit = spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
+    if (phase.forceAllUnitsCharge) unit.forceCharge = true;
   });
+  if (phase.forceAllUnitsCharge) forceAllBattleUnitsCharge();
   renderFactionUi();
   updateHud();
   statusEl.textContent = phase.message ?? "第二场战斗开始";
   popText(FIELD.enemyBase, FIELD.ground - 170, "第二场战斗", "#ffb0a3");
+}
+
+function forceAllBattleUnitsCharge() {
+  state.command = "attack";
+  state.attackIntent = "statue";
+  state.enemyCommand = "attack";
+  state.enemyCommandTimer = 8;
+  state.enemyAttackWaveTimer = 8;
+  state.enemyHoldTimer = 0;
+  state.units.forEach((unit) => {
+    if (unit.hp <= 0 || isUnitHidden(unit) || unit.type === "miner" || unit.type === "electricGate") return;
+    unit.forceCharge = true;
+  });
+  commandButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.command === "attack");
+  });
+  popText(FIELD.width / 2, FIELD.ground - 190, "全军冲锋", "#ffd27a");
 }
 
 function stunPlayerArmy(duration) {
