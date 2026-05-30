@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v23";
+const CACHE_NAME = "stick-war-pwa-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260530-fix-versus-brawl-start",
+  "./game.js?v=20260530-explicit-faction-start",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];

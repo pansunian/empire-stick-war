@@ -931,7 +931,7 @@ const STAT_GROUPS = [
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
 
-let state;
+let state = null;
 let lastTime = performance.now();
 let selectedFaction = "order";
 let enemyFaction = "chaos";
@@ -2588,6 +2588,7 @@ function queueUnit(type) {
 }
 
 function update(dt) {
+  if (!state) return;
   if (state.paused) return;
 
   if (state.over) {
@@ -6569,12 +6570,14 @@ function updateParticles(dt) {
 }
 
 function popText(x, y, text, color) {
+  if (!state) return;
   if (state.floaters.length > 90) state.floaters.splice(0, state.floaters.length - 90);
   state.floaters.push({ x, y, text, color, life: 0.9 });
 }
 
 function draw() {
   ctx.clearRect(0, 0, FIELD.width, FIELD.height);
+  if (!state) return;
   ctx.save();
   if ((state.screenShake ?? 0) > 0) {
     const shake = state.screenShake * 7;
@@ -8399,6 +8402,7 @@ function drawEndOverlay() {
 }
 
 function returnToMainMenu() {
+  state = null;
   activeCampaign = null;
   selectedMode = "versus";
   modeButtons.forEach((button) => {
@@ -8908,5 +8912,4 @@ factionButtons.forEach((button) => {
 
 loadCampaignSave();
 registerServiceWorker();
-newGame();
 requestAnimationFrame(loop);
