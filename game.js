@@ -608,7 +608,7 @@ const UNIT = {
   waterScorpion: {
     name: "水蝎子",
     cost: 0,
-    hp: 30,
+    hp: 40,
     damage: 5,
     range: 28,
     speed: 80,
