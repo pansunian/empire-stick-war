@@ -1214,10 +1214,10 @@ const CAMPAIGN_LEVELS = {
       title: "第一关：亡灵毒潮",
       playerRoster: [],
       playerStart: [
-        "earthElement", "earthElement", "earthElement", "earthElement",
-        "waterElement", "waterElement", "waterElement", "waterElement",
-        "fireElement", "fireElement", "fireElement", "fireElement",
-        "windElement", "windElement", "windElement", "windElement",
+        "earthElement", "earthElement",
+        "waterElement", "waterElement",
+        "fireElement", "fireElement",
+        "windElement", "windElement",
         "vUnit",
       ],
       enemyRoster: ["undead", "poisonZombie"],
@@ -1225,6 +1225,7 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "chaos",
       startGold: 0,
       enemyGold: 120,
+      disableEnemyBaseAttack: true,
       godV: true,
       rewardText: "土元素、土化矿工能力与山丘",
       objective: "守护神明 V，击败亡灵与毒尸",
@@ -3463,7 +3464,7 @@ function updateBaseAttacks(dt) {
   state.playerBaseAttackTimer = Math.max(0, state.playerBaseAttackTimer - dt);
   state.enemyBaseAttackTimer = Math.max(0, state.enemyBaseAttackTimer - dt);
 
-  if (state.playerBaseAttackTimer <= 0) {
+  if (!isBaseAttackDisabled("player") && state.playerBaseAttackTimer <= 0) {
     const target = findBaseTarget("player");
     if (target) {
       launchBaseAttack("player", target);
@@ -3471,13 +3472,19 @@ function updateBaseAttacks(dt) {
     }
   }
 
-  if (state.enemyBaseAttackTimer <= 0) {
+  if (!isBaseAttackDisabled("enemy") && state.enemyBaseAttackTimer <= 0) {
     const target = findBaseTarget("enemy");
     if (target) {
       launchBaseAttack("enemy", target);
       state.enemyBaseAttackTimer = getBaseAttackProfile("enemy").cooldown;
     }
   }
+}
+
+function isBaseAttackDisabled(side) {
+  if (!activeCampaign) return false;
+  if (side === "player") return Boolean(activeCampaign.disablePlayerBaseAttack);
+  return Boolean(activeCampaign.disableEnemyBaseAttack);
 }
 
 function findBaseTarget(side) {
