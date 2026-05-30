@@ -1064,14 +1064,14 @@ const CAMPAIGN_LEVELS = {
     7: {
       title: "第七关：负隅顽抗",
       playerRoster: ["miner", "swordsman", "greatsword", "archon", "crossbow", "rocketCart"],
-      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart", "rocketCart"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
       enemyFaction: "element",
       startGold: 350,
       enemyGold: 220,
       enemyGodV: true,
-      campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speed: 0.18 },
+      campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speedPerSecond: 200 },
       rewardText: "火箭车",
       hideObjectiveMechanic: true,
       objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
@@ -3180,21 +3180,26 @@ function launchCampaignMissiles(missile) {
   const count = missile.count ?? 12;
   const laneSpread = 180;
   const startX = missileSide === "player" ? -130 : FIELD.width + 130;
+  const speedPerSecond = missile.speedPerSecond ?? 0;
   for (let i = 0; i < count; i += 1) {
     const offset = ((i / Math.max(1, count - 1)) - 0.5) * laneSpread + (Math.random() - 0.5) * 36;
     const tx = Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 80, frontX + offset));
     const ty = FIELD.ground - 38 + (Math.random() - 0.5) * 46;
+    const x = startX + (missileSide === "player" ? -i * 12 : i * 12);
+    const y = FIELD.ground - 250 + (i % 4) * 16;
+    const distance = Math.hypot(tx - x, ty - y);
+    const duration = speedPerSecond > 0 ? Math.max(0.1, distance / speedPerSecond) : missile.speed;
     state.arrows.push({
-      x: startX + (missileSide === "player" ? -i * 12 : i * 12),
-      y: FIELD.ground - 250 + (i % 4) * 16,
+      x,
+      y,
       tx,
       ty,
       side: missileSide,
       damage: missile.damage,
       radius: missile.radius,
       limit: missile.limit,
-      life: missile.speed,
-      duration: missile.speed,
+      life: duration,
+      duration,
       type: "campaignMissile",
     });
   }
@@ -8670,6 +8675,7 @@ function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
   if (target.side === v.side) return false;
   if (isControlImmune(target)) return false;
+  if (isSiegeControlImmune(target) && !v.canControlAll) return false;
   if (v.canControlAll) return true;
   return true;
 }
@@ -8680,6 +8686,10 @@ function isHeroUnit(unit) {
 
 function isControlImmune(unit) {
   return isHeroUnit(unit) || unit.type === "vClone" || UNIT[unit.type]?.giant || UNIT[unit.type]?.controlImmune;
+}
+
+function isSiegeControlImmune(unit) {
+  return unit?.type === "catapult" || unit?.type === "rocketCart";
 }
 
 function beginMedusaSlay(medusa) {
