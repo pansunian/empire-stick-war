@@ -1534,6 +1534,11 @@ function newGame() {
     enemyCommand: "guard",
     enemyCommandTimer: 0,
     enemyLineX: getEnemyRallyBaseX(sideMines),
+    enemyCounterPushTimer: 0,
+    enemyCounterTargetX: null,
+    enemyCounterCooldown: 0,
+    enemyHoldTimer: 10,
+    enemyAttackWaveTimer: 0,
     playerBaseAttackTimer: 0,
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
@@ -3193,6 +3198,11 @@ function updateEnemyAi(dt) {
   state.enemyMinerTimer -= dt;
   state.enemyAttackMood += dt;
   state.enemyCommandTimer -= dt;
+  state.enemyCounterPushTimer = Math.max(0, (state.enemyCounterPushTimer ?? 0) - dt);
+  state.enemyCounterCooldown = Math.max(0, (state.enemyCounterCooldown ?? 0) - dt);
+  state.enemyHoldTimer = Math.max(0, (state.enemyHoldTimer ?? 0) - dt);
+  state.enemyAttackWaveTimer = Math.max(0, (state.enemyAttackWaveTimer ?? 0) - dt);
+  if (state.enemyCounterPushTimer <= 0) state.enemyCounterTargetX = null;
   updateEnemyCommand();
   updateEnemyBattleLine(dt);
   if (activeCampaign?.secondPhase?.disableEnemyTraining && state.campaignPhase === 2) return;
@@ -3264,19 +3274,22 @@ function updateEnemyCommand() {
   const playerPower = getArmyPower("player");
   const enemyFighters = countFighters("enemy");
   const playerPressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 430).length;
+  const underAttack = (state.enemyCounterPushTimer ?? 0) > 0;
+  const canStartWave = state.enemyHoldTimer <= 0 && state.enemyAttackWaveTimer <= 0 && state.enemyAttackMood >= 18;
+  const waveReady = enemyFighters >= 5 && enemyPower >= Math.max(300, playerPower * 0.98);
   let nextCommand = "guard";
 
   if (state.enemyHp < 360 && enemyPower < playerPower * 0.95) {
     nextCommand = "retreat";
+  } else if (underAttack && enemyFighters >= 3 && enemyPower >= playerPower * 0.62) {
+    nextCommand = "guard";
   } else if (playerPressure >= 3 || enemyPower < playerPower * 0.78 || enemyFighters < 3) {
     nextCommand = "guard";
-  } else if (state.enemyAttackMood < 16) {
+  } else if (!canStartWave) {
     nextCommand = "guard";
-  } else if (enemyFighters >= 5 && enemyPower >= Math.max(260, playerPower * 1.08)) {
+  } else if (waveReady) {
     nextCommand = "attack";
-  } else if (Math.random() < 0.22) {
-    nextCommand = "guard";
-  } else {
+  } else if (enemyFighters >= 4 && Math.random() < 0.18) {
     nextCommand = "attack";
   }
 
@@ -3284,8 +3297,12 @@ function updateEnemyCommand() {
     state.enemyCommand = nextCommand;
     const label = { retreat: "敌方撤退", guard: "敌方防守", attack: "敌方进攻" };
     popText(FIELD.enemyGate - 90, FIELD.ground - 135, label[nextCommand], "#ffb0a3");
+    if (nextCommand === "attack") {
+      state.enemyAttackWaveTimer = 7 + Math.random() * 4;
+      state.enemyHoldTimer = 10 + Math.random() * 6;
+    }
   }
-  state.enemyCommandTimer = 4 + Math.random() * 2.5;
+  state.enemyCommandTimer = nextCommand === "attack" ? 5 + Math.random() * 2 : 3.5 + Math.random() * 2.5;
 }
 
 function updateEnemyBattleLine(dt) {
@@ -3299,6 +3316,9 @@ function updateEnemyBattleLine(dt) {
     targetLine = FIELD.enemyGate - 55;
   } else if (state.enemyCommand === "attack") {
     targetLine = Math.max(FIELD.playerGate + 220, playerFront ? playerFront + 210 : FIELD.playerGate + 520);
+  } else if ((state.enemyCounterPushTimer ?? 0) > 0) {
+    const counterX = state.enemyCounterTargetX ?? playerFront;
+    targetLine = counterX ? Math.max(FIELD.playerGate + 260, counterX + 150) : getEnemyRallyBaseX();
   } else if (enemyFighters >= 4 && enemyPower >= playerPower * 0.85) {
     targetLine = Math.max(FIELD.playerGate + 340, playerFront ? playerFront + 300 : FIELD.enemyGate - 620);
   } else {
@@ -3308,7 +3328,7 @@ function updateEnemyBattleLine(dt) {
   if (state.enemyCommand !== "retreat") {
     targetLine = Math.min(getEnemyRallyBaseX(), Math.max(FIELD.playerGate + 220, targetLine));
   }
-  const lineSpeed = state.enemyCommand === "retreat" ? 210 : state.enemyCommand === "attack" ? 92 : 56;
+  const lineSpeed = state.enemyCommand === "retreat" ? 210 : state.enemyCommand === "attack" ? 92 : (state.enemyCounterPushTimer ?? 0) > 0 ? 116 : 56;
   const step = Math.sign(targetLine - state.enemyLineX) * lineSpeed * dt;
   if (Math.abs(targetLine - state.enemyLineX) <= Math.abs(step)) state.enemyLineX = targetLine;
   else state.enemyLineX += step;
@@ -3652,7 +3672,7 @@ function updateUnits(dt) {
       attack(unit, target);
     } else if (!mustReachTowerRally && target && target.kind === "statue" && Math.abs(unit.x - target.x) <= range + 12) {
       attack(unit, target);
-    } else if (unit.side === "enemy" && state.enemyCommand === "guard" && !isRetaliationTarget(unit, target)) {
+    } else if (unit.side === "enemy" && state.enemyCommand === "guard") {
       moveTowardGuardLine(unit, dt);
     } else if (distance > moveTolerance) {
       const tolerance = unit.side === "player" && state.command === "attack" && state.attackIntent === "tower" && !target
@@ -4717,6 +4737,7 @@ function getDesiredX(unit, target) {
     if (unit.forceCharge) return FIELD.enemyBase;
     if (state.command === "retreat") return UNIT[unit.type]?.giant ? FIELD.playerGate + 58 : FIELD.playerBase + 42;
     if (target && isRetaliationTarget(unit, target)) return target.x - range + 8;
+    if (target && target.kind !== "statue" && state.command === "attack") return target.x - range + 8;
     if (state.command === "guard") return getPlayerRallyX(unit);
     if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyX(unit, "player");
     if (target && target.kind !== "statue") return target.x - range + 8;
@@ -4726,7 +4747,7 @@ function getDesiredX(unit, target) {
 
   if (unit.forceCharge) return FIELD.playerBase;
   if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
-  if (target && isRetaliationTarget(unit, target)) return target.x + range - 8;
+  if (target && isRetaliationTarget(unit, target) && !isEnemyCounterPushing()) return target.x + range - 8;
   if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
   if (state.enemyCommand === "attack" && state.towerOwner !== "enemy") return getTowerRallyX(unit, "enemy");
   if (target && target.kind !== "statue") return target.x + range - 8;
@@ -4770,6 +4791,10 @@ function isTowerRallyCommand(unit) {
     return state.command === "attack" && state.attackIntent === "tower";
   }
   return unit.side === "enemy" && state.enemyCommand === "attack" && state.towerOwner !== "enemy";
+}
+
+function isEnemyCounterPushing() {
+  return (state.enemyCounterPushTimer ?? 0) > 0;
 }
 
 function isInsideTowerCaptureArea(unit) {
@@ -4935,6 +4960,23 @@ function markRetaliationTarget(target, attacker) {
   if (!canTarget(target, attacker)) return;
   target.retaliateTargetId = attacker.id;
   target.retaliateTimer = 4;
+  if (target.side === "enemy" && state.enemyCommand === "guard") {
+    triggerEnemyCounterPush(attacker);
+  }
+}
+
+function triggerEnemyCounterPush(attacker) {
+  if ((state.enemyCounterCooldown ?? 0) > 0) return;
+  const enemyFighters = countFighters("enemy");
+  const enemyPower = getArmyPower("enemy");
+  const playerPower = getArmyPower("player");
+  if (enemyFighters < 3 || enemyPower < playerPower * 0.55) return;
+
+  state.enemyCounterPushTimer = Math.max(state.enemyCounterPushTimer ?? 0, 4.5);
+  state.enemyCounterCooldown = 5.5;
+  state.enemyCounterTargetX = attacker.x;
+  state.enemyCommandTimer = Math.min(state.enemyCommandTimer, 1.2);
+  popText(FIELD.enemyGate - 115, FIELD.ground - 150, "敌方整队反击", "#ffb0a3");
 }
 
 function nearestEnemy(unit, range) {
@@ -6480,6 +6522,11 @@ function startCampaignSecondPhase() {
   state.enemyCommand = "guard";
   state.enemyCommandTimer = 0;
   state.enemyLineX = getEnemyRallyBaseX();
+  state.enemyCounterPushTimer = 0;
+  state.enemyCounterTargetX = null;
+  state.enemyCounterCooldown = 0;
+  state.enemyHoldTimer = 8;
+  state.enemyAttackWaveTimer = 0;
   state.secondPhaseReinforcementTimers = (phase.reinforcements ?? []).map((reinforcement) => reinforcement.every);
   if (phase.killPlayerArmy) {
     state.units.forEach((unit) => {
