@@ -1501,6 +1501,7 @@ function newGame() {
   pauseBtn.textContent = "暂停";
   const startGold = activeCampaign ? CAMPAIGN_START_GOLD : (MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus);
   const enemyStartGold = activeCampaign ? CAMPAIGN_START_GOLD : startGold;
+  const sideMines = createSideMines();
 
   state = {
     gold: startGold,
@@ -1532,7 +1533,7 @@ function newGame() {
     enemyAttackMood: 4,
     enemyCommand: "guard",
     enemyCommandTimer: 0,
-    enemyLineX: getEnemyRallyBaseX(),
+    enemyLineX: getEnemyRallyBaseX(sideMines),
     playerBaseAttackTimer: 0,
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
@@ -1556,7 +1557,7 @@ function newGame() {
     campaignMeteorCooldownDelay: 0,
     campaignMissileTimer: activeCampaign?.campaignMissiles ? Math.max(0, activeCampaign.campaignMissiles.every - activeCampaign.campaignMissiles.warning) : 0,
     campaignMissileWarning: 0,
-    sideMines: createSideMines(),
+    sideMines,
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
@@ -2600,6 +2601,7 @@ function update(dt) {
   updateCampaignRules(dt);
   updateEnemyAi(dt);
   updatePendingMerges(dt);
+  resetFocusTargetCounts();
   updateUnits(dt);
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
@@ -4795,16 +4797,16 @@ function getEnemyFormationX(unit) {
   return Math.min(getEnemyRallyBaseX() + RALLY.maxSpread, Math.max(FIELD.playerGate + 220, point.x));
 }
 
-function getPlayerRallyBaseX() {
-  return getFrontMineColumnX("player") + RALLY.guardForwardFromMine;
+function getPlayerRallyBaseX(sideMines = null) {
+  return getFrontMineColumnX("player", sideMines) + RALLY.guardForwardFromMine;
 }
 
-function getEnemyRallyBaseX() {
-  return getFrontMineColumnX("enemy") - RALLY.guardForwardFromMine;
+function getEnemyRallyBaseX(sideMines = null) {
+  return getFrontMineColumnX("enemy", sideMines) - RALLY.guardForwardFromMine;
 }
 
-function getFrontMineColumnX(side) {
-  const mines = getSideMines(side);
+function getFrontMineColumnX(side, sideMines = null) {
+  const mines = sideMines?.[side] ?? getSideMines(side);
   if (!mines.length) return side === "player" ? FIELD.playerMineX : FIELD.enemyMineX;
   return mines.reduce((frontX, mine) => (
     side === "player" ? Math.max(frontX, mine.x) : Math.min(frontX, mine.x)
@@ -4923,14 +4925,7 @@ function getTargetSelectionScore(unit, target, distance) {
 }
 
 function countFriendlyFocusers(unit, target) {
-  return state.units.filter((ally) => (
-    ally !== unit
-    && ally.side === unit.side
-    && ally.hp > 0
-    && !isUnitHidden(ally)
-    && isRangedUnit(ally)
-    && ally.focusTargetId === target.id
-  )).length;
+  return state.focusTargetCounts?.[unit.side]?.get(target.id) ?? 0;
 }
 
 function isRangedUnit(unit) {
@@ -4939,6 +4934,17 @@ function isRangedUnit(unit) {
 
 function rememberFocusTarget(unit, target) {
   unit.focusTargetId = target?.id ?? null;
+  if (!target?.id || !isRangedUnit(unit)) return;
+  const counts = state.focusTargetCounts?.[unit.side];
+  if (!counts) return;
+  counts.set(target.id, (counts.get(target.id) ?? 0) + 1);
+}
+
+function resetFocusTargetCounts() {
+  state.focusTargetCounts = {
+    player: new Map(),
+    enemy: new Map(),
+  };
 }
 
 function getRetaliationTarget(unit) {

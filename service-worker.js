@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v22";
+const CACHE_NAME = "stick-war-pwa-v23";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260530-frostland-creeper-eclipse",
+  "./game.js?v=20260530-fix-versus-brawl-start",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];
