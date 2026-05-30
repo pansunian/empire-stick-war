@@ -1213,7 +1213,13 @@ const CAMPAIGN_LEVELS = {
     1: {
       title: "第一关：亡灵毒潮",
       playerRoster: [],
-      playerStart: ["earthElement", "earthElement", "waterElement", "waterElement", "fireElement", "fireElement", "windElement", "windElement", "vUnit"],
+      playerStart: [
+        "earthElement", "earthElement", "earthElement", "earthElement",
+        "waterElement", "waterElement", "waterElement", "waterElement",
+        "fireElement", "fireElement", "fireElement", "fireElement",
+        "windElement", "windElement", "windElement", "windElement",
+        "vUnit",
+      ],
       enemyRoster: ["undead", "poisonZombie"],
       enemyStart: ["miner", "undead", "poisonZombie"],
       enemyFaction: "chaos",
@@ -1741,7 +1747,7 @@ function describeCampaignMechanics(config) {
   if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
   if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
   if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
-  if (config.godV) mechanics.push("神明 V 加入我方战斗");
+  if (config.godV) mechanics.push("神明 V 加入我方战斗，若神明 V 死亡则挑战失败");
   if (config.enemyGodV) mechanics.push("敌方英雄单位神明 V 加入战斗，被击败后会退出战场");
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
@@ -6349,7 +6355,13 @@ function removeDead() {
       state.winner = "enemy";
       statusEl.textContent = `${UNIT[unit.type].name}倒下，挑战失败`;
     }
-    popText(unit.x, unit.y - 35, unit.godV ? "退出战场" : "倒下", unit.godV ? "#d7ceff" : "#a7a7a7");
+    if (unit.godV && unit.side === "player") {
+      state.over = true;
+      state.winner = "enemy";
+      statusEl.textContent = "神明V倒下，挑战失败";
+    }
+    const godVExit = unit.godV && unit.side === "enemy" && activeCampaign?.enemyGodV;
+    popText(unit.x, unit.y - 35, godVExit ? "退出战场" : "倒下", godVExit ? "#d7ceff" : "#a7a7a7");
     return false;
   });
   deathSpawns.forEach(spawnDeathUnit);
