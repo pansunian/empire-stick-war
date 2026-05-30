@@ -2602,7 +2602,6 @@ function update(dt) {
   updateCampaignRules(dt);
   updateEnemyAi(dt);
   updatePendingMerges(dt);
-  resetFocusTargetCounts();
   updateUnits(dt);
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
@@ -3629,7 +3628,6 @@ function updateUnits(dt) {
     }
 
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
-    rememberFocusTarget(unit, target);
     const desiredX = getDesiredX(unit, target);
     const desiredPoint = getDesiredPoint(unit, target, desiredX);
     const distance = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y);
@@ -4889,7 +4887,7 @@ function findTarget(unit) {
   if (retaliationTarget) return retaliationTarget;
 
   let nearby = null;
-  let bestScore = Infinity;
+  let nearestDistance = Infinity;
 
   for (const other of state.units) {
     if (other.side === unit.side || other.hp <= 0) continue;
@@ -4900,10 +4898,9 @@ function findTarget(unit) {
 
     const searchRange = Math.max(260, getUnitRange(unit));
     const distance = distanceTo(unit.x, unit.y, other.x, other.y);
-    const score = getTargetSelectionScore(unit, other, distance);
-    if (distance < searchRange && score < bestScore) {
+    if (distance < searchRange && distance < nearestDistance) {
       nearby = other;
-      bestScore = score;
+      nearestDistance = distance;
     }
   }
 
@@ -4918,34 +4915,6 @@ function findTarget(unit) {
   }
 
   return null;
-}
-
-function getTargetSelectionScore(unit, target, distance) {
-  if (!isRangedUnit(unit)) return distance;
-  return distance + countFriendlyFocusers(unit, target) * 260;
-}
-
-function countFriendlyFocusers(unit, target) {
-  return state.focusTargetCounts?.[unit.side]?.get(target.id) ?? 0;
-}
-
-function isRangedUnit(unit) {
-  return getUnitRange(unit) > 60;
-}
-
-function rememberFocusTarget(unit, target) {
-  unit.focusTargetId = target?.id ?? null;
-  if (!target?.id || !isRangedUnit(unit)) return;
-  const counts = state.focusTargetCounts?.[unit.side];
-  if (!counts) return;
-  counts.set(target.id, (counts.get(target.id) ?? 0) + 1);
-}
-
-function resetFocusTargetCounts() {
-  state.focusTargetCounts = {
-    player: new Map(),
-    enemy: new Map(),
-  };
 }
 
 function getRetaliationTarget(unit) {
