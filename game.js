@@ -73,6 +73,7 @@ const RALLY = {
 
 const MERGE_COST = 30;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
 const BASE_ATTACK = {
@@ -1057,10 +1058,10 @@ const CAMPAIGN_LEVELS = {
       startGold: 300,
       enemyGold: 320,
       enemyGodV: true,
-      arrowRain: { every: 15, total: 300, perSecond: 75, damage: 10, radius: 24, side: "player" },
+      arrowRain: { every: 15, total: 300, perSecond: 75, damage: 10, radius: 24, side: "player", cooldownAfterComplete: true },
       playerDeathBlast: { damage: 13, radius: 52, limit: 3 },
       magmaGround: { every: 20, duration: 10, damage: 3 },
-      campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18 },
+      campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18, cooldownAfterComplete: true },
       rewardText: "其他未解锁的所有单位",
       objective: "箭雨每 15 秒支援我方，只攻击敌方；我方阵亡会小范围爆炸伤到友军；周期性岩浆地会灼烧战场，火元素合成单位免疫；同时会落下巨大陨石",
     },
@@ -1175,8 +1176,9 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "element",
       startGold: 260,
       enemyGold: 300,
+      stormClouds: { every: 20, duration: 15, strikeEvery: 5, bolts: 5, hitChance: 0.7, damage: 15, healWindFused: 8 },
       rewardText: "其他未解锁的所有单位",
-      objective: "敌方英雄宙斯参战：头顶雷云会自动攻击下方敌人，并周期召唤移动乌云、电墙和电门",
+      objective: "敌方英雄宙斯参战：头顶雷云会自动攻击下方敌人，并周期召唤移动乌云、电墙和电门；战场会周期出现雷云，强化风元素合成单位与宙斯",
     },
   },
   element: {
@@ -1512,12 +1514,16 @@ function newGame() {
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
     campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
+    campaignMeteorCooldownDelay: 0,
     campaignMissileTimer: activeCampaign?.campaignMissiles ? Math.max(0, activeCampaign.campaignMissiles.every - activeCampaign.campaignMissiles.warning) : 0,
     campaignMissileWarning: 0,
     sideMines: createSideMines(),
     goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
+    stormCloudRemaining: 0,
+    stormCloudStrikeTimer: 0,
+    stormCloudHealTick: 0,
     campaignPhase: 1,
     secondPhaseReinforcementTimers: [],
     campaignDarknessElapsed: 0,
@@ -1701,7 +1707,12 @@ function describeCampaignMechanics(config) {
     const sides = config.iceRoad.affectedSides?.includes("player") && config.iceRoad.affectedSides.length === 1 ? "只影响我方" : "影响场上单位";
     mechanics.push(`冰地：${sides}，移动速度降低 ${slow}%`);
   }
-  if (config.stormClouds) mechanics.push(`每 ${config.stormClouds.every} 秒雷云落下 ${config.stormClouds.bolts} 道闪电，命中率 ${Math.round(config.stormClouds.hitChance * 100)}%，每道 ${config.stormClouds.damage} 伤害`);
+  if (config.stormClouds) {
+    const durationText = config.stormClouds.duration ? `，持续 ${config.stormClouds.duration} 秒，结束后再冷却` : "";
+    const strikeText = config.stormClouds.duration ? `期间每 ${config.stormClouds.strikeEvery ?? 5} 秒` : `每 ${config.stormClouds.every} 秒`;
+    mechanics.push(`${strikeText}雷云落下 ${config.stormClouds.bolts} 道闪电，命中率 ${Math.round(config.stormClouds.hitChance * 100)}%，每道 ${config.stormClouds.damage} 伤害${durationText}`);
+    if (config.stormClouds.healWindFused) mechanics.push(`乌云出现时，风元素合成单位与宙斯每秒恢复 ${config.stormClouds.healWindFused} 点生命值`);
+  }
   if (config.centerElectricGate) mechanics.push("地图中间存在无敌电门，敌人会无视它继续前进");
   if (config.snow) mechanics.push(`雪地：单位移速降低 ${Math.round((1 - config.snow.moveFactor) * 100)}%`);
   if (config.secondPhase) {
@@ -2680,12 +2691,59 @@ function updateCampaignEnemyHealthGrowth(dt) {
 function updateCampaignStormClouds(dt) {
   const storm = activeCampaign?.stormClouds;
   if (!storm) return;
+
+  if (storm.duration) {
+    if (state.stormCloudRemaining > 0) {
+      state.stormCloudRemaining = Math.max(0, state.stormCloudRemaining - dt);
+      state.stormCloudStrikeTimer -= dt;
+      while (state.stormCloudStrikeTimer <= 0 && state.stormCloudRemaining > 0) {
+        state.stormCloudStrikeTimer += storm.strikeEvery ?? 5;
+        for (let i = 0; i < storm.bolts; i += 1) {
+          strikeStormBolt(storm);
+        }
+      }
+      healStormFavoredUnits(storm, dt);
+      if (state.stormCloudRemaining <= 0) {
+        state.stormCloudTimer = storm.every;
+        state.stormCloudHealTick = 0;
+        popText(FIELD.width / 2, FIELD.ground - 190, "乌云散去", "#d7f6ff");
+      }
+      return;
+    }
+
+    state.stormCloudTimer -= dt;
+    if (state.stormCloudTimer > 0) return;
+    state.stormCloudRemaining = storm.duration;
+    state.stormCloudStrikeTimer = 0;
+    state.stormCloudHealTick = 0;
+    popText(FIELD.width / 2, FIELD.ground - 190, "雷云压境", "#d7f6ff");
+    return;
+  }
+
   state.stormCloudTimer -= dt;
   if (state.stormCloudTimer > 0) return;
   state.stormCloudTimer += storm.every;
   for (let i = 0; i < storm.bolts; i += 1) {
     strikeStormBolt(storm);
   }
+}
+
+function healStormFavoredUnits(storm, dt) {
+  if (!storm.healWindFused) return;
+  state.stormCloudHealTick += dt;
+  while (state.stormCloudHealTick >= 1) {
+    state.stormCloudHealTick -= 1;
+    state.units.forEach((unit) => {
+      if (unit.hp <= 0 || isUnitHidden(unit) || !isStormFavoredUnit(unit) || unit.hp >= unit.maxHp) return;
+      const healed = Math.min(storm.healWindFused, unit.maxHp - unit.hp);
+      unit.hp += healed;
+      popText(unit.x, unit.y - 108, `雷云恢复 +${healed}`, "#b7f6ff");
+    });
+  }
+}
+
+function isStormFavoredUnit(unit) {
+  return WIND_MERGED_UNITS.has(unit.type) || unit.type === "zeus";
 }
 
 function strikeStormBolt(storm) {
@@ -2874,9 +2932,10 @@ function updateCampaignArrowRain(dt) {
   const rain = activeCampaign?.arrowRain;
   if (!rain) return;
 
-  state.arrowRainTimer -= dt;
-  if (state.arrowRainTimer <= 0 && state.arrowRainRemaining <= 0) {
-    state.arrowRainTimer += rain.every;
+  if (state.arrowRainRemaining <= 0) {
+    state.arrowRainTimer -= dt;
+    if (state.arrowRainTimer > 0) return;
+    if (!rain.cooldownAfterComplete) state.arrowRainTimer += rain.every;
     state.arrowRainRemaining = rain.total;
     state.arrowRainDropCarry = 0;
     popText(FIELD.width / 2, FIELD.ground - 165, "箭雨来袭", "#f5f0df");
@@ -2890,6 +2949,9 @@ function updateCampaignArrowRain(dt) {
   state.arrowRainDropCarry -= drops;
   for (let i = 0; i < drops; i += 1) {
     spawnCampaignRainArrow(rain);
+  }
+  if (rain.cooldownAfterComplete && state.arrowRainRemaining <= 0) {
+    state.arrowRainTimer = rain.every;
   }
 }
 
@@ -2937,10 +2999,18 @@ function updateCampaignMeteor(dt) {
   const meteor = activeCampaign?.campaignMeteor;
   if (!meteor) return;
 
+  if (state.campaignMeteorCooldownDelay > 0) {
+    state.campaignMeteorCooldownDelay = Math.max(0, state.campaignMeteorCooldownDelay - dt);
+    if (state.campaignMeteorCooldownDelay <= 0) {
+      state.campaignMeteorTimer = meteor.every;
+    }
+    return;
+  }
+
   state.campaignMeteorTimer -= dt;
   if (state.campaignMeteorTimer > 0) return;
 
-  state.campaignMeteorTimer += meteor.every;
+  if (!meteor.cooldownAfterComplete) state.campaignMeteorTimer += meteor.every;
   const minX = Math.min(FIELD.playerMineX, FIELD.enemyMineX);
   const maxX = Math.max(FIELD.playerMineX, FIELD.enemyMineX);
   const count = meteor.count ?? 1;
@@ -2960,6 +3030,10 @@ function updateCampaignMeteor(dt) {
       campaign: true,
     });
     popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
+  }
+  if (meteor.cooldownAfterComplete) {
+    state.campaignMeteorTimer = 0;
+    state.campaignMeteorCooldownDelay = meteor.duration + (count - 1) * 0.18;
   }
 }
 
@@ -6446,6 +6520,7 @@ function drawCampaignDarkness() {
 
 function drawStormClouds() {
   if (!activeCampaign?.stormClouds) return;
+  if (activeCampaign.stormClouds.duration && state.stormCloudRemaining <= 0) return;
   ctx.save();
   ctx.fillStyle = "rgba(24, 31, 43, 0.72)";
   ctx.fillRect(0, 0, FIELD.width, 118);
