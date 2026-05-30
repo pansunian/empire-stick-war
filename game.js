@@ -1438,6 +1438,7 @@ function newGame() {
     meteors: [],
     stormClouds: [],
     tornadoes: [],
+    pendingMerges: [],
     floaters: [],
     spawnQueue: [],
     enemySpawnTimer: 0,
@@ -1984,6 +1985,8 @@ function spawnUnit(type, side, x) {
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
+    merging: false,
+    mergeId: null,
     earthMiner: false,
     rooted: type === "treeEnt" ? false : null,
     inCastle: false,
@@ -2049,10 +2052,7 @@ function mergeTreeEnt(side) {
   }
 
   releaseFrozenTarget(water);
-  state.units = state.units.filter((unit) => unit !== earth && unit !== water);
-  spawnUnit("treeEnt", side, (earth.x + water.x) / 2);
-  popText((earth.x + water.x) / 2, FIELD.ground - 95, "合成树精", "#8ee0cf");
-  return true;
+  return beginElementMerge(side, [earth, water], "treeEnt", "合成树精", "#8ee0cf");
 }
 
 function mergeRog(side) {
@@ -2066,10 +2066,7 @@ function mergeRog(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => unit !== earth && unit !== fire);
-  spawnUnit("rog", side, (earth.x + fire.x) / 2);
-  popText((earth.x + fire.x) / 2, FIELD.ground - 95, "合成罗格", "#ff9b45");
-  return true;
+  return beginElementMerge(side, [earth, fire], "rog", "合成罗格", "#ff9b45");
 }
 
 function mergeDreadfire(side) {
@@ -2083,10 +2080,7 @@ function mergeDreadfire(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => unit !== fire && unit !== wind);
-  spawnUnit("dreadfire", side, (fire.x + wind.x) / 2);
-  popText((fire.x + wind.x) / 2, FIELD.ground - 95, "合成厄火", "#ff7a3d");
-  return true;
+  return beginElementMerge(side, [fire, wind], "dreadfire", "合成厄火", "#ff7a3d");
 }
 
 function mergeRedflame(side) {
@@ -2100,11 +2094,7 @@ function mergeRedflame(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => !materials.includes(unit));
-  const spawnX = (materials[0].x + materials[1].x) / 2;
-  spawnUnit("redflame", side, spawnX);
-  popText(spawnX, FIELD.ground - 95, "合成赤炎", "#ff6a3d");
-  return true;
+  return beginElementMerge(side, materials, "redflame", "合成赤炎", "#ff6a3d");
 }
 
 function mergeStormLich(side) {
@@ -2118,11 +2108,7 @@ function mergeStormLich(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => !materials.includes(unit));
-  const spawnX = (materials[0].x + materials[1].x) / 2;
-  spawnUnit("stormLich", side, spawnX);
-  popText(spawnX, FIELD.ground - 95, "合成风暴巫妖", "#9ee8ff");
-  return true;
+  return beginElementMerge(side, materials, "stormLich", "合成风暴巫妖", "#9ee8ff");
 }
 
 function mergeHurricane(side) {
@@ -2137,10 +2123,7 @@ function mergeHurricane(side) {
   }
 
   releaseFrozenTarget(water);
-  state.units = state.units.filter((unit) => unit !== water && unit !== wind);
-  spawnUnit("hurricane", side, (water.x + wind.x) / 2);
-  popText((water.x + wind.x) / 2, FIELD.ground - 95, "合成飓风", "#9ee8ff");
-  return true;
+  return beginElementMerge(side, [water, wind], "hurricane", "合成飓风", "#9ee8ff");
 }
 
 function mergeHill(side) {
@@ -2154,11 +2137,7 @@ function mergeHill(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => !materials.includes(unit));
-  const spawnX = (materials[0].x + materials[1].x) / 2;
-  spawnUnit("hill", side, spawnX);
-  popText(spawnX, FIELD.ground - 95, "合成山丘", "#c0a36d");
-  return true;
+  return beginElementMerge(side, materials, "hill", "合成山丘", "#c0a36d");
 }
 
 function mergeLinghan(side) {
@@ -2173,11 +2152,7 @@ function mergeLinghan(side) {
   }
 
   materials.forEach(releaseFrozenTarget);
-  state.units = state.units.filter((unit) => !materials.includes(unit));
-  const spawnX = (materials[0].x + materials[1].x) / 2;
-  spawnUnit("linghan", side, spawnX);
-  popText(spawnX, FIELD.ground - 95, "合成凌寒", "#9ee8ff");
-  return true;
+  return beginElementMerge(side, materials, "linghan", "合成凌寒", "#9ee8ff");
 }
 
 function mergeScaldStrike(side) {
@@ -2192,10 +2167,9 @@ function mergeScaldStrike(side) {
   }
 
   releaseFrozenTarget(water);
-  state.units = state.units.filter((unit) => unit !== water && unit !== fire);
-  spawnUnit("scaldStrike", side, (water.x + fire.x) / 2);
-  popText((water.x + fire.x) / 2, FIELD.ground - 95, "合成烫水击", "#ffb36e");
-  return true;
+  return beginElementMerge(side, [water, fire], null, "烫水爆裂", "#ffb36e", {
+    onComplete: (merge, x, y) => detonateScaldStrike(side, x, y),
+  });
 }
 
 function mergeElectricGate(side) {
@@ -2209,10 +2183,7 @@ function mergeElectricGate(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => unit !== earth && unit !== wind);
-  spawnUnit("electricGate", side, (earth.x + wind.x) / 2);
-  popText((earth.x + wind.x) / 2, FIELD.ground - 95, "合成电门", "#9ee8ff");
-  return true;
+  return beginElementMerge(side, [earth, wind], "electricGate", "合成电门", "#9ee8ff");
 }
 
 function mergeV(side) {
@@ -2226,11 +2197,7 @@ function mergeV(side) {
     return false;
   }
 
-  state.units = state.units.filter((unit) => !materials.includes(unit));
-  const spawnX = materials.reduce((sum, unit) => sum + unit.x, 0) / materials.length;
-  spawnUnit("vUnit", side, spawnX);
-  popText(spawnX, FIELD.ground - 105, "合成 V", "#d7ceff");
-  return true;
+  return beginElementMerge(side, materials, "vUnit", "合成 V", "#d7ceff");
 }
 
 function payMergeCost(side, x, color) {
@@ -2246,6 +2213,92 @@ function payMergeCost(side, x, color) {
 function refundMergeCost(side) {
   if (side === "player") state.gold += MERGE_COST;
   else state.enemyGold += MERGE_COST;
+}
+
+function beginElementMerge(side, materials, resultType, text, color, options = {}) {
+  const liveMaterials = materials.filter((unit) => unit?.hp > 0 && !isUnitHidden(unit));
+  if (liveMaterials.length !== materials.length) {
+    refundMergeCost(side);
+    return false;
+  }
+
+  const id = state.nextId++;
+  const targetX = liveMaterials.reduce((sum, unit) => sum + unit.x, 0) / liveMaterials.length;
+  const targetY = liveMaterials.reduce((sum, unit) => sum + unit.y, 0) / liveMaterials.length;
+  liveMaterials.forEach((unit) => {
+    unit.merging = true;
+    unit.mergeId = id;
+    unit.cooldown = 0;
+    unit.stunTimer = 0;
+    unit.combatTimer = 0;
+    unit.targetX = targetX;
+    unit.targetY = targetY;
+  });
+  state.pendingMerges.push({
+    id,
+    side,
+    materialIds: liveMaterials.map((unit) => unit.id),
+    resultType,
+    text,
+    color,
+    targetX,
+    targetY,
+    onComplete: options.onComplete ?? null,
+  });
+  popText(targetX, targetY - 95, "元素靠拢", color);
+  return true;
+}
+
+function updatePendingMerges(dt) {
+  if (!state.pendingMerges.length) return;
+  const remaining = [];
+  for (const merge of state.pendingMerges) {
+    const materials = merge.materialIds
+      .map((id) => state.units.find((unit) => unit.id === id && unit.hp > 0))
+      .filter(Boolean);
+    if (materials.length !== merge.materialIds.length) {
+      materials.forEach((unit) => {
+        unit.merging = false;
+        unit.mergeId = null;
+      });
+      continue;
+    }
+
+    const targetX = materials.reduce((sum, unit) => sum + unit.x, 0) / materials.length;
+    const targetY = materials.reduce((sum, unit) => sum + unit.y, 0) / materials.length;
+    merge.targetX = targetX;
+    merge.targetY = targetY;
+    materials.forEach((unit) => {
+      moveUnitTowardPoint(unit, targetX, targetY, Math.max(72, (UNIT[unit.type]?.speed ?? 36) * 1.8), dt, 2);
+      unit.targetX = targetX;
+      unit.targetY = targetY;
+    });
+
+    const aligned = materials.every((unit) => Math.abs(unit.x - targetX) <= 4);
+    if (aligned) {
+      completeElementMerge(merge, materials, targetX, targetY);
+    } else {
+      remaining.push(merge);
+    }
+  }
+  state.pendingMerges = remaining;
+}
+
+function completeElementMerge(merge, materials, x, y) {
+  const hpRatio = Math.max(0.05, materials.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / materials.length);
+  materials.forEach(releaseFrozenTarget);
+  state.units = state.units.filter((unit) => !materials.includes(unit));
+
+  if (merge.onComplete) {
+    merge.onComplete(merge, x, y, hpRatio);
+    popText(x, y - 95, merge.text, merge.color);
+    return;
+  }
+
+  const result = spawnUnit(merge.resultType, merge.side, x);
+  result.y = y;
+  result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
+  popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
 }
 
 function spawnVClones(v) {
@@ -2270,72 +2323,76 @@ function spawnVClone(v, offset) {
 
 function getTreeEntMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
+    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
+    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
   };
 }
 
 function getRogMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
+    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
   };
 }
 
 function getDreadfireMaterials(side) {
   return {
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
+    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
   };
 }
 
 function getRedflameMaterials(side) {
   const materials = state.units
-    .filter((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .filter((unit) => isMergeMaterial(unit, side, "fireElement"))
     .slice(0, 2);
   return materials.length === 2 ? materials : null;
 }
 
 function getStormLichMaterials(side) {
   const materials = state.units
-    .filter((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .filter((unit) => isMergeMaterial(unit, side, "windElement"))
     .slice(0, 2);
   return materials.length === 2 ? materials : null;
 }
 
 function getHurricaneMaterials(side) {
   return {
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
+    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
   };
 }
 
 function getScaldStrikeMaterials(side) {
   return {
-    water: state.units.find((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId),
-    fire: state.units.find((unit) => unit.side === side && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
+    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
   };
 }
 
 function getElectricGateMaterials(side) {
   return {
-    earth: state.units.find((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit)),
-    wind: state.units.find((unit) => unit.side === side && unit.type === "windElement" && unit.hp > 0 && !isUnitHidden(unit)),
+    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
+    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
   };
 }
 
 function getHillMaterials(side) {
   const materials = state.units
-    .filter((unit) => unit.side === side && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit))
+    .filter((unit) => isMergeMaterial(unit, side, "earthElement"))
     .slice(0, 2);
   return materials.length === 2 ? materials : null;
 }
 
 function getLinghanMaterials(side) {
   const materials = state.units
-    .filter((unit) => unit.side === side && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId)
+    .filter((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId)
     .slice(0, 2);
   return materials.length === 2 ? materials : null;
+}
+
+function isMergeMaterial(unit, side, type) {
+  return unit.side === side && unit.type === type && unit.hp > 0 && !unit.merging && !isUnitHidden(unit);
 }
 
 function getVMaterials(side) {
@@ -2344,7 +2401,7 @@ function getVMaterials(side) {
 
   for (const type of required) {
     const unit = state.units.find((candidate) => {
-      if (candidate.side !== side || candidate.type !== type || candidate.hp <= 0 || isUnitHidden(candidate) || picked.includes(candidate)) return false;
+      if (candidate.side !== side || candidate.type !== type || candidate.hp <= 0 || candidate.merging || isUnitHidden(candidate) || picked.includes(candidate)) return false;
       if (candidate.type === "waterElement" && candidate.boundTargetId) return false;
       return true;
     });
@@ -2443,6 +2500,7 @@ function update(dt) {
   updateCenterTower(dt);
   updateCampaignRules(dt);
   updateEnemyAi(dt);
+  updatePendingMerges(dt);
   updateUnits(dt);
   updateBaseAttacks(dt);
   updateChaosRecovery(dt);
@@ -3021,7 +3079,7 @@ function updateEnemyAi(dt) {
   }
 
   if (state.enemySpawnTimer <= 0) {
-    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner" && !UNIT[type]?.hero);
+    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner" && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
     const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction()) <= state.enemyGold);
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
@@ -3297,6 +3355,10 @@ function updateUnits(dt) {
   for (const unit of state.units) {
     const data = UNIT[unit.type];
     const beforeX = unit.x;
+    if (unit.merging) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (isUnitHidden(unit)) {
       if (unit.side === "player" && state.command === "retreat") continue;
       unit.inCastle = false;
@@ -4727,23 +4789,27 @@ function explodeDeadCorpse(unit) {
 }
 
 function explodeScaldStrike(unit) {
-  const data = UNIT.scaldStrike;
+  detonateScaldStrike(unit.side, unit.x, unit.y);
   unit.hp = 0;
-  getUnitsInRadius(unit.x, data.splash, unit.side, Infinity).forEach((enemy) => {
-    applyDamage(enemy, data.damage, unit.side);
+}
+
+function detonateScaldStrike(side, x, y = FIELD.ground) {
+  const data = UNIT.scaldStrike;
+  getUnitsInRadius(x, data.splash, side, Infinity).forEach((enemy) => {
+    applyDamage(enemy, data.damage, side);
     applyStun(enemy, data.stunDuration);
     applyBurn(enemy, data.burnDps, data.burnDuration);
   });
 
-  if (unit.side === "enemy" && Math.abs(FIELD.playerBase - unit.x) <= data.splash + 28) {
-    applyDamage({ kind: "statue", side: "player", x: FIELD.playerBase }, data.damage, unit.side);
+  if (side === "enemy" && Math.abs(FIELD.playerBase - x) <= data.splash + 28) {
+    applyDamage({ kind: "statue", side: "player", x: FIELD.playerBase }, data.damage, side);
   }
-  if (unit.side === "player" && Math.abs(FIELD.enemyBase - unit.x) <= data.splash + 28) {
-    applyDamage({ kind: "statue", side: "enemy", x: FIELD.enemyBase }, data.damage, unit.side);
+  if (side === "player" && Math.abs(FIELD.enemyBase - x) <= data.splash + 28) {
+    applyDamage({ kind: "statue", side: "enemy", x: FIELD.enemyBase }, data.damage, side);
   }
 
-  state.blasts.push({ x: unit.x, y: unit.y - 28, radius: data.splash, life: 0.45, duration: 0.45, color: "#ffb36e" });
-  popText(unit.x, unit.y - 105, "烫水爆裂", "#ffb36e");
+  state.blasts.push({ x, y: y - 28, radius: data.splash, life: 0.45, duration: 0.45, color: "#ffb36e" });
+  popText(x, y - 105, "烫水爆裂", "#ffb36e");
 }
 
 function throwSpear(unit, target) {
