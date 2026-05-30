@@ -939,6 +939,7 @@ const MODE_START_GOLD = {
   versus: 120,
   brawl: 5000,
 };
+const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
@@ -1498,8 +1499,8 @@ function newGame() {
   homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
-  const startGold = activeCampaign?.startGold ?? MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus;
-  const enemyStartGold = activeCampaign?.enemyGold ?? startGold;
+  const startGold = activeCampaign ? CAMPAIGN_START_GOLD : (MODE_START_GOLD[selectedMode] ?? MODE_START_GOLD.versus);
+  const enemyStartGold = activeCampaign ? CAMPAIGN_START_GOLD : startGold;
 
   state = {
     gold: startGold,
@@ -1783,14 +1784,14 @@ function renderCampaignBriefing(config) {
       <h4>敌方单位</h4>
       ${formatBriefingLine("主要单位", uniqueUnitList([...(config.enemyRoster ?? []), ...(config.enemyStart ?? [])]))}
       ${formatBriefingLine("开局单位", countUnitList(config.enemyStart))}
-      ${formatBriefingLine("初始金币", `${config.enemyGold ?? 0}`)}
+      ${formatBriefingLine("初始金币", `${CAMPAIGN_START_GOLD}`)}
       ${secondPhaseLine}
     </section>
     <section class="briefing-section">
       <h4>我方单位</h4>
       ${formatBriefingLine("可用单位", config.playerRoster?.length ? uniqueUnitList(config.playerRoster) : "本关无法建造单位")}
       ${formatBriefingLine("开局单位", countUnitList(config.playerStart))}
-      ${formatBriefingLine("初始金币", `${config.startGold ?? 0}`)}
+      ${formatBriefingLine("初始金币", `${CAMPAIGN_START_GOLD}`)}
     </section>
     <section class="briefing-section">
       <h4>特殊机制</h4>
@@ -1815,9 +1816,9 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "treeEnt", action: "mergeTreeEnt" },
   { type: "rog", action: "mergeRog" },
   { type: "dreadfire", action: "mergeDreadfire" },
-  { type: "redflame", action: "mergeRedflame" },
-  { type: "stormLich", action: "mergeStormLich" },
   { type: "hurricane", action: "mergeHurricane" },
+  { type: "stormLich", action: "mergeStormLich" },
+  { type: "redflame", action: "mergeRedflame" },
   { type: "hill", action: "mergeHill" },
   { type: "linghan", action: "mergeLinghan" },
   { type: "scaldStrike", action: "mergeScaldStrike" },
