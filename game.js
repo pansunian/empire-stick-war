@@ -994,7 +994,6 @@ const CAMPAIGN_LEVELS = {
       startGold: 140,
       enemyGold: 160,
       playerDeathsBecomeEnemySpearman: true,
-      enemySpartanDamageReduction: 0.2,
       rewardText: "斯巴达",
       objective: "谨慎推进，阵亡的我方单位会被敌军转化为长矛兵",
     },
