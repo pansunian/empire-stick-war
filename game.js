@@ -158,7 +158,7 @@ const UNIT = {
   greatsword: {
     name: "大剑兵",
     cost: 150,
-    hp: 180,
+    hp: 250,
     damage: 20,
     range: 38,
     speed: 42,
