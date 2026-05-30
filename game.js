@@ -1071,7 +1071,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 350,
       enemyGold: 220,
       enemyGodV: true,
-      campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speedPerSecond: 200 },
+      campaignMissiles: { side: "player", label: "火箭弹支援", every: 30, warning: 8, count: 12, damage: 50, radius: 58, limit: 3, speedPerSecond: 450 },
       rewardText: "火箭车",
       hideObjectiveMechanic: true,
       objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；击败神明 V 后他会退出战场，摧毁敌方基地即可胜利",
