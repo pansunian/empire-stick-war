@@ -144,6 +144,17 @@ const UNIT = {
     train: 4.4,
     cooldown: 1.35,
   },
+  goldenArcher: {
+    name: "黄金弓箭手",
+    cost: 0,
+    hp: 200,
+    damage: 18,
+    range: 220,
+    speed: 46,
+    train: 0,
+    cooldown: 1,
+    hero: true,
+  },
   greatsword: {
     name: "大剑兵",
     cost: 150,
@@ -864,6 +875,7 @@ const UNIT_ICON = {
   swordsman: "sharp-sword",
   spearman: "spear",
   archer: "bow",
+  goldenArcher: "bow",
   greatsword: "greatsword",
   spartan: "spartan",
   archon: "spartan",
@@ -913,7 +925,7 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
@@ -1063,9 +1075,9 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：岩浆箭雨",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
-      playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "crossbow", "crossbow"],
+      playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "goldenArcher"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
-      enemyStart: ["vUnit", "prometheus"],
+      enemyStart: ["vUnit", "prometheus", "fireElement"],
       enemyFaction: "element",
       startGold: 300,
       enemyGold: 320,
@@ -1182,9 +1194,9 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：雷霆神王",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
-      playerStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight", "darkKnightBrother", "darkKnightBrother"],
+      playerStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
-      enemyStart: ["vUnit", "zeus"],
+      enemyStart: ["vUnit", "zeus", "windElement"],
       enemyFaction: "element",
       startGold: 260,
       enemyGold: 300,
@@ -1302,9 +1314,9 @@ const CAMPAIGN_LEVELS = {
     8: {
       title: "第八关：黑骑士兄长",
       playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
-      playerStart: ["vUnit", "zeus"],
+      playerStart: ["vUnit", "zeus", "windElement"],
       enemyRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
-      enemyStart: ["miner", "miner", "miner", "miner", "undeadMage", "machete", "darkKnight", "darkKnightBrother", "darkKnightBrother"],
+      enemyStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
       enemyFaction: "chaos",
       startGold: 260,
       enemyGold: 300,
@@ -5005,6 +5017,7 @@ function attack(unit, target) {
 
   if (
     unit.type === "archer" ||
+    unit.type === "goldenArcher" ||
     unit.type === "crossbow" ||
     unit.type === "poisonZombie" ||
     unit.type === "musketeer" ||
@@ -7206,6 +7219,7 @@ function drawEnslavedGiantBasket() {
 
 function getUnitColor(unit) {
   if (unit.type === "archon") return "#5e89d8";
+  if (unit.type === "goldenArcher") return "#e0b84f";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
@@ -7275,6 +7289,7 @@ function getHeadColor(unit) {
   if (unit.type === "vUnit") return "#ffffff";
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "mage") return "#d7ceff";
+  if (unit.type === "goldenArcher") return "#fff1a8";
   if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "archon") return "#dbe8ff";
