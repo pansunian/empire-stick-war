@@ -7496,12 +7496,19 @@ function drawWeapon(type) {
     ctx.lineTo(38, -23);
     ctx.stroke();
   } else if (type === "spartan") {
-    ctx.strokeStyle = "#f2f6f8";
+    ctx.strokeStyle = "#c8a35a";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(18, -35);
-    ctx.lineTo(54, -45);
+    ctx.moveTo(13, -35);
+    ctx.lineTo(70, -57);
     ctx.stroke();
+    ctx.fillStyle = "#f2f6f8";
+    ctx.beginPath();
+    ctx.moveTo(70, -57);
+    ctx.lineTo(56, -61);
+    ctx.lineTo(61, -47);
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = "#aab7c2";
     ctx.beginPath();
     ctx.moveTo(12, -48);
