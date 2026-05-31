@@ -177,6 +177,18 @@ const UNIT = {
     train: 6.2,
     cooldown: 1,
   },
+  goldenSpartan: {
+    name: "黄金斯巴达",
+    cost: 0,
+    hp: 850,
+    damage: 40,
+    range: 42,
+    speed: 55,
+    train: 0,
+    cooldown: 1.8,
+    goldenSpearDamage: 100,
+    hero: true,
+  },
   archon: {
     name: "执政官",
     cost: 200,
@@ -881,6 +893,7 @@ const UNIT_ICON = {
   goldenArcher: "bow",
   greatsword: "greatsword",
   spartan: "spartan",
+  goldenSpartan: "spartan",
   archon: "spartan",
   monk: "monk",
   crossbow: "bomb-crossbow",
@@ -928,7 +941,7 @@ const UNIT_ICON = {
 };
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
 ];
@@ -1077,21 +1090,16 @@ const CAMPAIGN_LEVELS = {
       objective: "双方阵容相当于元素帝国第六关互换；我方没有大法师，但有火箭弹支援；敌方只有普通 V，摧毁敌方基地即可胜利",
     },
     8: {
-      title: "第八关：岩浆箭雨",
+      title: "第八关：黄金战矛",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
-      playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "goldenArcher"],
-      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
-      enemyStart: ["miner", "miner", "vUnit", "prometheus", "fireElement"],
-      enemyFaction: "element",
+      playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "greatsword", "spartan", "goldenSpartan"],
+      enemyRoster: ["miner", "creeper", "undead", "poisonZombie", "machete", "darkKnight", "deadCorpse", "undeadMage", "demonArcher", "executioner"],
+      enemyStart: ["miner", "miner", "creeper", "undead", "machete", "darkKnight"],
+      enemyFaction: "chaos",
       startGold: 300,
       enemyGold: 320,
-      enemyGodV: true,
-      arrowRain: { every: 15, total: 300, perSecond: 75, damage: 10, radius: 24, side: "player", cooldownAfterComplete: true },
-      playerDeathBlast: { damage: 13, radius: 52, limit: 3 },
-      magmaGround: { every: 20, duration: 10, damage: 3 },
-      campaignMeteor: { every: 15, count: 3, damage: 80, radius: 96, duration: 2.4, size: 18, cooldownAfterComplete: true },
       rewardText: "其他未解锁的所有单位",
-      objective: "箭雨每 15 秒支援我方，只攻击敌方；我方阵亡会小范围爆炸伤到友军；周期性岩浆地会灼烧战场，火元素合成单位免疫；同时会落下巨大陨石",
+      objective: "我方可使用秩序帝国全部单位；英雄黄金斯巴达参战，双击可向最前方敌人投出一次黄金长矛",
     },
   },
   chaos: {
@@ -1448,6 +1456,7 @@ function formatSpecial(type) {
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (type === "goldenSpartan") notes.push(`英雄单位；双击后向最前方敌人投出一次黄金长矛，造成 ${data.goldenSpearDamage} 点伤害`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
   if (type === "prometheus") notes.push(`英雄单位；每 ${data.spellEvery}秒轮流释放火龙、小火人和 ${data.meteorCount} 发神火流星`);
@@ -2069,6 +2078,7 @@ function spawnUnit(type, side, x) {
     electricGateTimer: UNIT[type].duration ?? 0,
     electricGateTick: 1,
     spearThrown: false,
+    goldenSpearThrown: false,
     spearRecoverTimer: 0,
     initialClonesReleased: false,
     controlledTargetId: null,
@@ -7431,6 +7441,7 @@ function drawEnslavedGiantBasket() {
 function getUnitColor(unit) {
   if (unit.type === "archon") return "#5e89d8";
   if (unit.type === "goldenArcher") return "#e0b84f";
+  if (unit.type === "goldenSpartan") return "#d7a92e";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
@@ -7501,6 +7512,7 @@ function getHeadColor(unit) {
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "mage") return "#d7ceff";
   if (unit.type === "goldenArcher") return "#fff1a8";
+  if (unit.type === "goldenSpartan") return "#fff1a8";
   if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "archon") return "#dbe8ff";
@@ -7706,21 +7718,21 @@ function drawWeapon(type) {
     ctx.moveTo(25, -35);
     ctx.lineTo(38, -23);
     ctx.stroke();
-  } else if (type === "spartan") {
-    ctx.strokeStyle = "#c8a35a";
+  } else if (type === "spartan" || type === "goldenSpartan") {
+    ctx.strokeStyle = type === "goldenSpartan" ? "#f7d66b" : "#c8a35a";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(13, -35);
     ctx.lineTo(70, -57);
     ctx.stroke();
-    ctx.fillStyle = "#f2f6f8";
+    ctx.fillStyle = type === "goldenSpartan" ? "#fff0a8" : "#f2f6f8";
     ctx.beginPath();
     ctx.moveTo(70, -57);
     ctx.lineTo(56, -61);
     ctx.lineTo(61, -47);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = "#aab7c2";
+    ctx.fillStyle = type === "goldenSpartan" ? "#d7a92e" : "#aab7c2";
     ctx.beginPath();
     ctx.moveTo(12, -48);
     ctx.lineTo(28, -42);
@@ -8293,6 +8305,8 @@ function drawArrow(arrow) {
   ctx.strokeStyle =
     arrow.type === "crossbow"
       ? "#ffce7a"
+      : arrow.type === "goldenSpear"
+        ? "#f7d66b"
       : arrow.type === "spearThrow"
         ? "#dfe8ff"
       : arrow.type === "poisonZombie"
@@ -8306,7 +8320,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "musketeer" ? 5 : arrow.type === "spearThrow" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "musketeer" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
@@ -8712,6 +8726,13 @@ function findPlayerMedusaAt(point) {
   });
 }
 
+function findPlayerGoldenSpartanAt(point) {
+  return state.units.find((unit) => {
+    if (unit.side !== "player" || unit.type !== "goldenSpartan" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    return Math.abs(unit.x - point.x) <= 54 && Math.abs(unit.y - 48 - point.y) <= 92;
+  });
+}
+
 function findUnitAt(point) {
   return state.units.find((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit)) return false;
@@ -8774,6 +8795,48 @@ function beginManualVControl(v) {
   }
   state.pendingVControlId = v.id;
   popText(v.x, v.y - 125, "选择控制目标", "#d7ceff");
+}
+
+function throwGoldenSpear(unit) {
+  if (unit.goldenSpearThrown) {
+    popText(unit.x, unit.y - 125, "金矛已投", "#f7d66b");
+    return;
+  }
+  const target = findFrontEnemyForGoldenSpear(unit.side);
+  if (!target) {
+    popText(unit.x, unit.y - 125, "没有目标", "#f7d66b");
+    return;
+  }
+  unit.goldenSpearThrown = true;
+  unit.cooldown = Math.max(unit.cooldown, UNIT.goldenSpartan.cooldown);
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 58,
+    tx: target.x,
+    ty: target.y ? target.y - 40 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 118,
+    side: unit.side,
+    damage: UNIT.goldenSpartan.goldenSpearDamage,
+    target,
+    life: 0.42,
+    type: "goldenSpear",
+  });
+  popText(unit.x, unit.y - 118, "黄金投矛", "#f7d66b");
+}
+
+function findFrontEnemyForGoldenSpear(side) {
+  const enemies = state.units.filter((unit) => (
+    unit.side !== side &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !UNIT[unit.type]?.untargetable
+  ));
+  if (!enemies.length) return null;
+  return enemies.reduce((front, unit) => {
+    if (!front) return unit;
+    return side === "player"
+      ? (unit.x < front.x ? unit : front)
+      : (unit.x > front.x ? unit : front);
+  }, null);
 }
 
 function tryMedusaSlay(point) {
@@ -8841,6 +8904,13 @@ function sacrificeWaterElement(unit) {
 }
 
 function handleSpecialPress(point) {
+  const goldenSpartan = findPlayerGoldenSpartanAt(point);
+  if (goldenSpartan) {
+    throwGoldenSpear(goldenSpartan);
+    updateHud();
+    return true;
+  }
+
   const v = findPlayerVAt(point);
   if (v) {
     beginManualVControl(v);
