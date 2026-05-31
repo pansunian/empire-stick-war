@@ -1611,6 +1611,8 @@ function newGame() {
     secondPhaseReinforcementTimers: [],
     campaignDarknessElapsed: 0,
     screenShake: 0,
+    playerGodVAssigned: false,
+    enemyGodVAssigned: false,
     nextId: 1,
   };
 
@@ -2147,9 +2149,11 @@ function spawnUnit(type, side, x) {
 }
 
 function applyCampaignUnitModifiers(unit) {
-  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit";
-  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit";
+  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit" && !state.playerGodVAssigned;
+  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit" && !state.enemyGodVAssigned;
   if (!isPlayerGodV && !isEnemyGodV) return;
+  if (isPlayerGodV) state.playerGodVAssigned = true;
+  if (isEnemyGodV) state.enemyGodVAssigned = true;
   unit.nameOverride = "神明V";
   unit.godV = true;
   unit.maxHp = 1275;
