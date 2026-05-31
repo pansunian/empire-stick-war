@@ -1245,7 +1245,7 @@ const CAMPAIGN_LEVELS = {
         "waterElement", "waterElement",
         "fireElement", "fireElement",
         "windElement", "windElement",
-        "vUnit",
+        "vUnit", "vUnit",
       ],
       enemyRoster: ["undead", "poisonZombie"],
       enemyStart: ["miner", "undead", "poisonZombie"],
