@@ -2135,6 +2135,7 @@ function spawnUnit(type, side, x, options = {}) {
     shieldCastTimer: UNIT[type].shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
+    hero: Boolean(data.hero),
     spawnedClones: false,
     summonerId: null,
     forceCharge: false,
@@ -2170,6 +2171,7 @@ function applyCampaignUnitModifiers(unit, options = {}) {
   if (isEnemyGodV) state.enemyGodVAssigned = true;
   unit.nameOverride = "神明V";
   unit.godV = true;
+  unit.hero = true;
   unit.maxHp = 1275;
   unit.hp = 1275;
   unit.cloneSpawnTimer = 5;
@@ -3867,7 +3869,7 @@ function updateLinghan(unit, dt) {
 function canLinghanFreeze(unit, target) {
   if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || isUnitHidden(target)) return false;
   const data = UNIT[target.type];
-  if (!data || target.frozenBy || data.freezeImmune || data.giant || data.hero) return false;
+  if (!data || target.frozenBy || data.freezeImmune || data.giant || isHeroUnit(target)) return false;
   if (target.type === "catapult" || target.type === "rocketCart" || target.type === "electricGate") return false;
   if (!isAheadOf(unit, target)) return false;
   return Math.abs(target.x - unit.x) <= UNIT.linghan.range;
@@ -6397,7 +6399,7 @@ function removeDead() {
     if (unit.type === "darkKnightBrother") {
       enrageSurvivingDarkKnightBrother(unit);
     }
-    if (activeCampaign?.playerDeathBlast && unit.side === "player" && !UNIT[unit.type]?.hero) {
+    if (activeCampaign?.playerDeathBlast && unit.side === "player" && !isHeroUnit(unit)) {
       explodePlayerDeathBlast(unit);
     }
     if (activeCampaign?.playerDeathsBecomeEnemySpearman && unit.side === "player") {
@@ -6425,7 +6427,7 @@ function removeDead() {
         color: "#8ee0cf",
       });
     }
-    if (activeCampaign?.enemyDeathsBecomePlayerUndead && unit.side === "enemy" && unit.type !== "undead" && !UNIT[unit.type]?.hero) {
+    if (activeCampaign?.enemyDeathsBecomePlayerUndead && unit.side === "enemy" && unit.type !== "undead" && !isHeroUnit(unit)) {
       deathSpawns.push({
         type: "undead",
         side: "player",
