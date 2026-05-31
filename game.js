@@ -81,13 +81,13 @@ const BASE_ATTACK = {
   range: 420,
   damage: 20,
   cooldown: 2,
-  orderCooldown: 1.8,
-  orderArrowCount: 20,
-  orderArrowDamage: 5,
+  orderCooldown: 4,
+  orderArrowCount: 15,
+  orderArrowDamage: 8,
   orderArrowSplash: 40,
-  orderArrowLimit: 2,
-  chaosDamage: 35,
-  chaosCooldown: 1.5,
+  orderArrowLimit: 3,
+  chaosDamage: 60,
+  chaosCooldown: 3,
   chaosSplash: 64,
   chaosLimit: 3,
   chaosStun: 1,
@@ -844,6 +844,7 @@ const UNIT = {
     cooldown: 1,
     controlEvery: 15,
     controlLock: 1,
+    controlRange: 700,
     blinkHpThreshold: 100,
     blinkThreatHp: 600,
     blinkCooldown: 20,
@@ -2157,6 +2158,7 @@ function applyCampaignUnitModifiers(unit) {
   unit.blinkHpThreshold = 350;
   unit.blinkThreatHp = 1000;
   unit.blinkDistance = 600;
+  unit.controlRange = 1000;
   unit.canControlAll = true;
 }
 
@@ -4204,7 +4206,7 @@ function findMostThreateningEnemy(unit) {
   let bestScore = -Infinity;
 
   state.units.forEach((target) => {
-    if (target.side === unit.side || target.hp <= 0 || isUnitHidden(target) || isControlImmune(target)) return;
+    if (!canVControl(unit, target)) return;
     const data = UNIT[target.type];
     const distancePenalty = Math.abs(target.x - unit.x) / 20;
     const score = data.damage * 4 + target.hp * 0.35 + (data.range ?? 0) * 0.08 - distancePenalty;
@@ -8775,8 +8777,13 @@ function canVControl(v, target) {
   if (target.side === v.side) return false;
   if (isControlImmune(target)) return false;
   if (isSiegeControlImmune(target) && !v.canControlAll) return false;
+  if (Math.abs(target.x - v.x) > getVControlRange(v)) return false;
   if (v.canControlAll) return true;
   return true;
+}
+
+function getVControlRange(v) {
+  return v?.controlRange ?? UNIT.vUnit.controlRange;
 }
 
 function isHeroUnit(unit) {
