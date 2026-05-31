@@ -1096,7 +1096,7 @@ const CAMPAIGN_LEVELS = {
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
       playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "goldenArcher"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
-      enemyStart: ["miner", "miner", "godVUnit", "prometheus", "fireElement"],
+      enemyStart: ["miner", "miner", "vUnit", "prometheus", "fireElement"],
       enemyFaction: "element",
       startGold: 300,
       enemyGold: 320,
@@ -1245,7 +1245,7 @@ const CAMPAIGN_LEVELS = {
         "waterElement", "waterElement",
         "fireElement", "fireElement",
         "windElement", "windElement",
-        "godVUnit", "vUnit",
+        "vUnit", "vUnit",
       ],
       enemyRoster: ["undead", "poisonZombie"],
       enemyStart: ["miner", "undead", "poisonZombie"],
@@ -1260,7 +1260,7 @@ const CAMPAIGN_LEVELS = {
     2: {
       title: "第二关：冰地异变",
       playerRoster: ["earthElement", "waterElement", "fireElement", "rog", "hill", "linghan"],
-      playerStart: ["earthElement", "fireElement", "rog", "godVUnit"],
+      playerStart: ["earthElement", "fireElement", "rog", "vUnit"],
       enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete"],
       enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete"],
       enemyFaction: "chaos",
@@ -1275,7 +1275,7 @@ const CAMPAIGN_LEVELS = {
     3: {
       title: "第三关：天火矿脉",
       playerRoster: ["earthElement", "hill", "waterElement", "treeEnt", "linghan"],
-      playerStart: ["godVUnit", "waterElement", "waterElement", "waterElement"],
+      playerStart: ["vUnit", "waterElement", "waterElement", "waterElement"],
       enemyRoster: ["miner", "creeper", "machete"],
       enemyStart: ["miner", "miner", "darkKnight", "darkKnight", "creeper"],
       enemyFaction: "chaos",
@@ -1303,7 +1303,7 @@ const CAMPAIGN_LEVELS = {
     5: {
       title: "第五关：雪中电门",
       playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate"],
-      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "redflame", "godVUnit"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "redflame", "vUnit"],
       enemyRoster: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage", "demonArcher"],
       enemyStart: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage", "demonArcher"],
       enemyFaction: "chaos",
@@ -2055,9 +2055,7 @@ function setMinerCommand(command) {
   }
 }
 
-function spawnUnit(type, side, x, options = {}) {
-  const forceGodV = options.godV || type === "godVUnit";
-  if (type === "godVUnit") type = "vUnit";
+function spawnUnit(type, side, x) {
   const data = UNIT[type];
   const lane = Math.random() * 34 - 17;
   state.units.push({
@@ -2152,20 +2150,13 @@ function spawnUnit(type, side, x, options = {}) {
   });
 
   const unit = state.units[state.units.length - 1];
-  applyCampaignUnitModifiers(unit, { forceGodV });
+  applyCampaignUnitModifiers(unit);
   return unit;
 }
 
-function applyCampaignUnitModifiers(unit, options = {}) {
-  if (unit.type !== "vUnit") return;
-  const explicitPlayerGodV = activeCampaign?.playerStart?.includes("godVUnit");
-  const explicitEnemyGodV = activeCampaign?.enemyStart?.includes("godVUnit");
-  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && (
-    options.forceGodV || (!explicitPlayerGodV && !state.playerGodVAssigned)
-  );
-  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && (
-    options.forceGodV || (!explicitEnemyGodV && !state.enemyGodVAssigned)
-  );
+function applyCampaignUnitModifiers(unit) {
+  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit";
+  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit";
   if (!isPlayerGodV && !isEnemyGodV) return;
   if (isPlayerGodV) state.playerGodVAssigned = true;
   if (isEnemyGodV) state.enemyGodVAssigned = true;
