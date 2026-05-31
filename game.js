@@ -91,7 +91,8 @@ const BASE_ATTACK = {
   chaosSplash: 64,
   chaosLimit: 3,
   chaosStun: 1,
-  elementStormDamage: 10,
+  elementStormDamage: 15,
+  elementStormCooldown: 6,
 };
 const CENTER_TOWER = {
   x: FIELD.width / 2,
@@ -3530,7 +3531,7 @@ function getBaseAttackProfile(side) {
     return { type: "orderVolley", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.orderCooldown };
   }
   if (faction === "element") {
-    return { type: "stormCloud", range: BASE_ATTACK.range, cooldown: UNIT.stormLich.cooldown };
+    return { type: "stormCloud", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.elementStormCooldown };
   }
   return { type: "chaosBoulder", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.chaosCooldown };
 }
@@ -7173,6 +7174,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "waterScorpion") {
+    drawWaterScorpionUnit(unit);
+    ctx.restore();
+    return;
+  }
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -7699,6 +7705,62 @@ function drawStoneWeapon(scale = 1) {
   ctx.lineTo(49, -42);
   ctx.stroke();
   ctx.restore();
+}
+
+function drawWaterScorpionUnit(unit) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.fillStyle = "#9ee8ff";
+  ctx.strokeStyle = "#17617d";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.ellipse(0, -34, 26, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#b8f0ff";
+  ctx.beginPath();
+  ctx.ellipse(-18, -36, 12, 11, -0.18, 0, Math.PI * 2);
+  ctx.ellipse(17, -34, 13, 12, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#d94a42";
+  ctx.strokeStyle = "#7b2c30";
+  ctx.lineWidth = 2;
+  [
+    [-15, -17, 22, 5],
+    [12, -17, 22, 5],
+  ].forEach(([x, y, width, height]) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(x < 0 ? -0.08 : 0.08);
+    ctx.fillRect(-width / 2, -height / 2, width, height);
+    ctx.strokeRect(-width / 2, -height / 2, width, height);
+    ctx.restore();
+  });
+
+  ctx.strokeStyle = "#d94a42";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(20, -42);
+  ctx.quadraticCurveTo(43, -61, 58, -45);
+  ctx.stroke();
+  ctx.fillStyle = "#ff6f66";
+  ctx.strokeStyle = "#7b2c30";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(63, -47, 7, 5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#17495e";
+  ctx.beginPath();
+  ctx.arc(-9, -42, 2.5, 0, Math.PI * 2);
+  ctx.arc(3, -43, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawUnitHp(unit);
 }
 
 function drawWeapon(type) {
