@@ -77,6 +77,7 @@ const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLi
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
+const GOD_V_CONTROL_RANGE = 1000;
 const BASE_ATTACK = {
   range: 420,
   damage: 20,
@@ -1783,8 +1784,8 @@ function describeCampaignMechanics(config) {
   if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
   if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
   if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
-  if (config.godV) mechanics.push("神明 V 加入我方战斗，若神明 V 死亡则挑战失败");
-  if (config.enemyGodV) mechanics.push("敌方英雄单位神明 V 加入战斗，被击败后会退出战场");
+  if (config.godV) mechanics.push(`神明 V 加入我方战斗，控制距离 ${GOD_V_CONTROL_RANGE}，若神明 V 死亡则挑战失败`);
+  if (config.enemyGodV) mechanics.push(`敌方英雄单位神明 V 加入战斗，控制距离 ${GOD_V_CONTROL_RANGE}，被击败后会退出战场`);
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
   if (config.campaignMissiles) {
@@ -2170,7 +2171,7 @@ function applyCampaignUnitModifiers(unit) {
   unit.blinkHpThreshold = 350;
   unit.blinkThreatHp = 1000;
   unit.blinkDistance = 600;
-  unit.controlRange = 1000;
+  unit.controlRange = GOD_V_CONTROL_RANGE;
   unit.canControlAll = true;
 }
 
