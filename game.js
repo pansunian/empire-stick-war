@@ -1260,8 +1260,8 @@ const CAMPAIGN_LEVELS = {
     },
     2: {
       title: "第二关：冰地异变",
-      playerRoster: ["earthElement", "waterElement", "fireElement", "rog", "hill", "linghan"],
-      playerStart: ["earthElement", "fireElement", "rog", "vUnit"],
+      playerRoster: ["earthElement", "hill"],
+      playerStart: ["earthElement", "hill", "vUnit"],
       enemyRoster: ["miner", "creeper", "bomber", "demonArcher", "machete"],
       enemyStart: ["miner", "creeper", "bomber", "demonArcher", "machete"],
       enemyFaction: "chaos",
