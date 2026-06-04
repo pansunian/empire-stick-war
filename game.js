@@ -7369,30 +7369,14 @@ function drawIronSword(x, y, angle, scale = 1) {
   ctx.rotate(angle);
   ctx.scale(scale, scale);
 
-  ctx.fillStyle = "#6f4a2d";
-  ctx.strokeStyle = "#3d2b1d";
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.roundRect(-16, -4, 18, 8, 4);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.strokeStyle = "#aab7c2";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(-1, -13);
-  ctx.lineTo(7, 13);
-  ctx.stroke();
-
   ctx.fillStyle = "#dfe7ec";
   ctx.strokeStyle = "#6f7f8a";
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(4, -6);
-  ctx.lineTo(43, -5);
-  ctx.lineTo(56, 0);
-  ctx.lineTo(43, 5);
-  ctx.lineTo(4, 6);
+  ctx.moveTo(3, -6);
+  ctx.quadraticCurveTo(28, -9, 53, -2);
+  ctx.quadraticCurveTo(57, 0, 53, 3);
+  ctx.quadraticCurveTo(28, 9, 3, 6);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -7400,15 +7384,29 @@ function drawIronSword(x, y, angle, scale = 1) {
   ctx.strokeStyle = "rgba(255,255,255,0.72)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(9, -2);
-  ctx.lineTo(43, -2);
+  ctx.moveTo(9, -3);
+  ctx.quadraticCurveTo(28, -5, 43, -2);
   ctx.stroke();
 
   ctx.strokeStyle = "#9aa8b2";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(6, 0);
-  ctx.lineTo(51, 0);
+  ctx.quadraticCurveTo(30, 3, 51, 0);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#aab7c2";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-2, -11);
+  ctx.lineTo(-2, 11);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#6f4a2d";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-19, 0);
+  ctx.lineTo(-5, 0);
   ctx.stroke();
 
   ctx.fillStyle = "#5d3a24";
