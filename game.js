@@ -945,8 +945,8 @@ const UNIT_ICON = {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "zeus", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "fireImp"]],
+  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
 let state = null;
@@ -1227,7 +1227,7 @@ const CAMPAIGN_LEVELS = {
       title: "第八关：雷霆神王",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
       playerStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
-      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
       enemyStart: ["miner", "miner", "vUnit", "zeus", "windElement"],
       enemyFaction: "element",
       startGold: 260,
@@ -1352,7 +1352,7 @@ const CAMPAIGN_LEVELS = {
     },
     8: {
       title: "第八关：黑骑士兄长",
-      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit"],
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
       playerStart: ["miner", "miner", "vUnit", "zeus", "windElement"],
       enemyRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "demonArcher", "bomber", "darkKnight", "chaosGiant", "creeper"],
       enemyStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
