@@ -7194,32 +7194,7 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#191919";
-  ctx.fillStyle = headColor;
-
-  ctx.beginPath();
-  ctx.arc(0, -62, 11, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  if (unit.godV || unit.godVClone) drawGodVHeadpiece();
-  if (unit.type === "zeus") drawZeusOverheadCloud(unit);
-
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(0, -50);
-  ctx.lineTo(0, -22);
-  ctx.moveTo(0, -41);
-  ctx.lineTo(18, -33);
-  ctx.moveTo(0, -39);
-  ctx.lineTo(-16, -30);
-  ctx.moveTo(0, -22);
-  ctx.lineTo(16, 0);
-  ctx.moveTo(0, -22);
-  ctx.lineTo(-14, 0);
-  ctx.stroke();
+  drawRoundedStickUnit(unit, color, headColor);
 
   drawWeapon(unit.type);
   drawUnitHp(unit);
@@ -7250,6 +7225,92 @@ function drawRoundedHead(headColor, x = 0, y = -64, radius = 13) {
   ctx.beginPath();
   ctx.arc(x - radius * 0.32, y - radius * 0.34, radius * 0.28, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawRoundedStickUnit(unit, color, headColor) {
+  const pose = roundedUnitPose(unit.type);
+  strokePose("#151515", pose.outerWidth, pose.path);
+  strokePose(color, pose.innerWidth, pose.path);
+  drawRoundedHead(headColor, 0, -64, pose.headRadius);
+  if (unit.godV || unit.godVClone) drawGodVHeadpiece();
+  if (unit.type === "zeus") drawZeusOverheadCloud(unit);
+}
+
+function roundedUnitPose(type) {
+  if (type === "creeper" || type === "largeCreeper" || type === "deadCorpse") {
+    return {
+      outerWidth: 12,
+      innerWidth: 7,
+      headRadius: 13,
+      path: () => {
+        ctx.moveTo(-1, -51);
+        ctx.quadraticCurveTo(7, -40, 4, -25);
+        ctx.moveTo(2, -42);
+        ctx.quadraticCurveTo(19, -34, 31, -29);
+        ctx.moveTo(-2, -39);
+        ctx.quadraticCurveTo(-18, -32, -27, -20);
+        ctx.moveTo(4, -25);
+        ctx.quadraticCurveTo(17, -14, 24, 3);
+        ctx.moveTo(2, -25);
+        ctx.quadraticCurveTo(-10, -13, -18, 4);
+      },
+    };
+  }
+  if (type === "chaosGiant" || type === "superGiant" || type === "enslavedGiant") {
+    return {
+      outerWidth: 13,
+      innerWidth: 8,
+      headRadius: 14,
+      path: () => {
+        ctx.moveTo(1, -52);
+        ctx.quadraticCurveTo(-3, -39, 1, -22);
+        ctx.moveTo(0, -43);
+        ctx.quadraticCurveTo(20, -35, 31, -43);
+        ctx.moveTo(-2, -42);
+        ctx.quadraticCurveTo(-20, -35, -31, -24);
+        ctx.moveTo(1, -22);
+        ctx.quadraticCurveTo(18, -12, 28, 4);
+        ctx.moveTo(0, -22);
+        ctx.quadraticCurveTo(-14, -11, -24, 5);
+      },
+    };
+  }
+  if (type === "archer" || type === "goldenArcher" || type === "demonArcher" || type === "crossbow" || type === "musketeer") {
+    return {
+      outerWidth: 12,
+      innerWidth: 7,
+      headRadius: 13,
+      path: () => {
+        ctx.moveTo(1, -51);
+        ctx.quadraticCurveTo(-2, -39, 1, -24);
+        ctx.moveTo(0, -42);
+        ctx.quadraticCurveTo(17, -37, 28, -38);
+        ctx.moveTo(-2, -41);
+        ctx.quadraticCurveTo(-17, -35, -26, -26);
+        ctx.moveTo(1, -24);
+        ctx.quadraticCurveTo(15, -14, 21, 3);
+        ctx.moveTo(0, -24);
+        ctx.quadraticCurveTo(-12, -12, -18, 4);
+      },
+    };
+  }
+  return {
+    outerWidth: 12,
+    innerWidth: 7,
+    headRadius: 13,
+    path: () => {
+      ctx.moveTo(1, -51);
+      ctx.quadraticCurveTo(-3, -39, 1, -24);
+      ctx.moveTo(0, -42);
+      ctx.quadraticCurveTo(17, -36, 26, -43);
+      ctx.moveTo(-2, -41);
+      ctx.quadraticCurveTo(-18, -36, -24, -25);
+      ctx.moveTo(1, -24);
+      ctx.quadraticCurveTo(17, -14, 23, 2);
+      ctx.moveTo(0, -24);
+      ctx.quadraticCurveTo(-12, -12, -18, 4);
+    },
+  };
 }
 
 function drawMinerUnit(unit, color, headColor) {
@@ -7913,6 +7974,8 @@ function drawStoneWeapon(scale = 1) {
 }
 
 function drawWeapon(type) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.strokeStyle = "#e7dfc7";
   ctx.lineWidth = 3;
   if (type === "miner") {
