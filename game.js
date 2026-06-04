@@ -7358,32 +7358,67 @@ function drawSwordsmanUnit(unit, color, headColor) {
   });
 
   drawRoundedHead(headColor, 0, -64, 13);
-  ctx.strokeStyle = "#f2f6f8";
-  ctx.lineWidth = 7;
+  drawIronSword(25, -43, -0.72, 0.95);
+
+  drawUnitHp(unit);
+}
+
+function drawIronSword(x, y, angle, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#6f4a2d";
+  ctx.strokeStyle = "#3d2b1d";
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(25, -43);
-  ctx.lineTo(57, -73);
+  ctx.roundRect(-16, -4, 18, 8, 4);
+  ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = "#94a3ad";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(31, -48);
-  ctx.lineTo(50, -66);
-  ctx.stroke();
+
   ctx.strokeStyle = "#aab7c2";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(18, -40);
-  ctx.lineTo(32, -28);
-  ctx.stroke();
-  ctx.strokeStyle = "#65442a";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(22, -42);
-  ctx.lineTo(29, -35);
+  ctx.moveTo(-1, -13);
+  ctx.lineTo(7, 13);
   ctx.stroke();
 
-  drawUnitHp(unit);
+  ctx.fillStyle = "#dfe7ec";
+  ctx.strokeStyle = "#6f7f8a";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(4, -6);
+  ctx.lineTo(43, -5);
+  ctx.lineTo(56, 0);
+  ctx.lineTo(43, 5);
+  ctx.lineTo(4, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.72)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(9, -2);
+  ctx.lineTo(43, -2);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#9aa8b2";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(6, 0);
+  ctx.lineTo(51, 0);
+  ctx.stroke();
+
+  ctx.fillStyle = "#5d3a24";
+  ctx.beginPath();
+  ctx.arc(-18, 0, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#2f2118";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawFlightMarker(unit, flightOffset) {
