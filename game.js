@@ -7313,16 +7313,14 @@ function drawMinerUnit(unit, color, headColor) {
   ctx.strokeStyle = "#4b3420";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(19, -48);
-  ctx.lineTo(42, -72);
+  ctx.moveTo(33, -75);
+  ctx.lineTo(33, -46);
   ctx.stroke();
+
   ctx.strokeStyle = "#cfd6dc";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(31, -72);
-  ctx.quadraticCurveTo(47, -82, 62, -70);
-  ctx.moveTo(38, -65);
-  ctx.lineTo(52, -54);
+  ctx.arc(33, -74, 20, Math.PI * 1.05, Math.PI * 1.95);
   ctx.stroke();
 
   drawUnitHp(unit);
