@@ -7184,6 +7184,16 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "miner") {
+    drawMinerUnit(unit, color, headColor);
+    ctx.restore();
+    return;
+  }
+  if (unit.type === "swordsman") {
+    drawSwordsmanUnit(unit, color, headColor);
+    ctx.restore();
+    return;
+  }
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#191919";
@@ -7215,6 +7225,165 @@ function drawUnit(unit) {
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
   ctx.restore();
+}
+
+function strokePose(color, width, draw) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  draw();
+  ctx.stroke();
+}
+
+function drawRoundedHead(headColor, x = 0, y = -64, radius = 13) {
+  ctx.fillStyle = headColor;
+  ctx.strokeStyle = "#151515";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
+  ctx.beginPath();
+  ctx.arc(x - radius * 0.32, y - radius * 0.34, radius * 0.28, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMinerUnit(unit, color, headColor) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.fillStyle = "#7a4f2d";
+  ctx.strokeStyle = "#3d2a1b";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(-29, -38, 22, 28, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "#d0a05c";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-24, -31);
+  ctx.lineTo(-10, -25);
+  ctx.moveTo(-24, -21);
+  ctx.lineTo(-10, -15);
+  ctx.stroke();
+
+  strokePose("#151515", 12, () => {
+    ctx.moveTo(-2, -51);
+    ctx.quadraticCurveTo(2, -39, -3, -25);
+    ctx.moveTo(-1, -42);
+    ctx.quadraticCurveTo(16, -36, 25, -46);
+    ctx.moveTo(-5, -39);
+    ctx.quadraticCurveTo(-18, -31, -25, -20);
+    ctx.moveTo(-3, -25);
+    ctx.quadraticCurveTo(10, -15, 18, 1);
+    ctx.moveTo(-5, -25);
+    ctx.quadraticCurveTo(-14, -13, -21, 2);
+  });
+  strokePose(color, 7, () => {
+    ctx.moveTo(-2, -51);
+    ctx.quadraticCurveTo(2, -39, -3, -25);
+    ctx.moveTo(-1, -42);
+    ctx.quadraticCurveTo(16, -36, 25, -46);
+    ctx.moveTo(-5, -39);
+    ctx.quadraticCurveTo(-18, -31, -25, -20);
+    ctx.moveTo(-3, -25);
+    ctx.quadraticCurveTo(10, -15, 18, 1);
+    ctx.moveTo(-5, -25);
+    ctx.quadraticCurveTo(-14, -13, -21, 2);
+  });
+
+  drawRoundedHead(headColor, 0, -64, 13);
+  ctx.fillStyle = "#d0a05c";
+  ctx.strokeStyle = "#5c3a20";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-15, -71);
+  ctx.quadraticCurveTo(0, -82, 16, -71);
+  ctx.lineTo(11, -66);
+  ctx.quadraticCurveTo(0, -72, -11, -66);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#4b3420";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(19, -48);
+  ctx.lineTo(42, -72);
+  ctx.stroke();
+  ctx.strokeStyle = "#cfd6dc";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(31, -72);
+  ctx.quadraticCurveTo(47, -82, 62, -70);
+  ctx.moveTo(38, -65);
+  ctx.lineTo(52, -54);
+  ctx.stroke();
+
+  drawUnitHp(unit);
+}
+
+function drawSwordsmanUnit(unit, color, headColor) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  strokePose("#151515", 12, () => {
+    ctx.moveTo(1, -51);
+    ctx.quadraticCurveTo(-3, -39, 1, -24);
+    ctx.moveTo(0, -42);
+    ctx.quadraticCurveTo(17, -36, 26, -43);
+    ctx.moveTo(-2, -41);
+    ctx.quadraticCurveTo(-18, -36, -24, -25);
+    ctx.moveTo(1, -24);
+    ctx.quadraticCurveTo(17, -14, 23, 2);
+    ctx.moveTo(0, -24);
+    ctx.quadraticCurveTo(-12, -12, -18, 4);
+  });
+  strokePose(color, 7, () => {
+    ctx.moveTo(1, -51);
+    ctx.quadraticCurveTo(-3, -39, 1, -24);
+    ctx.moveTo(0, -42);
+    ctx.quadraticCurveTo(17, -36, 26, -43);
+    ctx.moveTo(-2, -41);
+    ctx.quadraticCurveTo(-18, -36, -24, -25);
+    ctx.moveTo(1, -24);
+    ctx.quadraticCurveTo(17, -14, 23, 2);
+    ctx.moveTo(0, -24);
+    ctx.quadraticCurveTo(-12, -12, -18, 4);
+  });
+
+  drawRoundedHead(headColor, 0, -64, 13);
+  ctx.strokeStyle = "#f2f6f8";
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(25, -43);
+  ctx.lineTo(57, -73);
+  ctx.stroke();
+  ctx.strokeStyle = "#94a3ad";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(31, -48);
+  ctx.lineTo(50, -66);
+  ctx.stroke();
+  ctx.strokeStyle = "#aab7c2";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(18, -40);
+  ctx.lineTo(32, -28);
+  ctx.stroke();
+  ctx.strokeStyle = "#65442a";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(22, -42);
+  ctx.lineTo(29, -35);
+  ctx.stroke();
+
+  drawUnitHp(unit);
 }
 
 function drawFlightMarker(unit, flightOffset) {
