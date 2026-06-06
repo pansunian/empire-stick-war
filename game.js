@@ -8288,6 +8288,34 @@ function drawWeapon(type) {
     ctx.beginPath();
     ctx.arc(37, -72, 15, 0, Math.PI * 1.55);
     ctx.stroke();
+  } else if (type === "stormLich") {
+    ctx.strokeStyle = "#7fa7b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -23);
+    ctx.quadraticCurveTo(24, -48, 35, -70);
+    ctx.stroke();
+    ctx.strokeStyle = "#d7f6ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(29, -66);
+    ctx.lineTo(39, -80);
+    ctx.lineTo(48, -66);
+    ctx.lineTo(36, -70);
+    ctx.lineTo(29, -66);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(158, 232, 255, 0.55)";
+    ctx.beginPath();
+    ctx.arc(39, -73, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#9ee8ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(44, -78);
+    ctx.lineTo(54, -88);
+    ctx.moveTo(46, -69);
+    ctx.lineTo(58, -65);
+    ctx.stroke();
   } else if (type === "enslavedGiant") {
     ctx.strokeStyle = "#c0a36d";
     ctx.lineWidth = 6;
