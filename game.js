@@ -124,6 +124,11 @@ const UNIT = {
     range: 32,
     speed: 55,
     train: 3.8,
+    selfRageEvery: 12,
+    selfRageDuration: 6,
+    selfRageRange: 115,
+    selfRageEnemyCount: 2,
+    selfRageHpCost: 10,
   },
   spearman: {
     name: "长矛兵",
@@ -254,6 +259,9 @@ const UNIT = {
     iceSlow: 0.1,
     iceAttackSlow: 0.1,
     iceDps: 3,
+    electricWallDamage: 16,
+    electricWallDuration: 6,
+    electricWallWidth: 58,
   },
   berserker: {
     name: "狂战士",
@@ -268,6 +276,7 @@ const UNIT = {
     rageDuration: 8,
     rageRange: 220,
     rageLimit: 10,
+    rageEnemyCount: 3,
     hero: true,
   },
   archmage: {
@@ -485,11 +494,15 @@ const UNIT = {
     name: "亡灵法师",
     cost: 250,
     hp: 200,
-    damage: 32,
-    range: 175,
+    damage: 25,
+    range: 120,
     speed: 26,
     train: 5.6,
-    cooldown: 2,
+    cooldown: 1.5,
+    staffRadius: 120,
+    boneSpikeEvery: 10,
+    boneSpikeDamage: 32,
+    boneSpikeRange: 160,
     summonEvery: 15,
     summonCount: 4,
   },
@@ -617,7 +630,7 @@ const UNIT = {
     train: 0,
     cooldown: 5,
     summonEvery: 8,
-    summonLimit: 5,
+    summonLimit: 3,
     summonDamage: 15,
     healOnHit: 10,
     immobile: false,
@@ -625,12 +638,15 @@ const UNIT = {
   waterScorpion: {
     name: "水蝎子",
     cost: 0,
-    hp: 40,
-    damage: 5,
+    hp: 60,
+    damage: 6,
     range: 28,
-    speed: 80,
+    speed: 55,
     train: 0,
     cooldown: 0.9,
+    poisonOnHit: true,
+    poisonDps: 2,
+    poisonDuration: Infinity,
   },
   rog: {
     name: "罗格",
@@ -761,11 +777,14 @@ const UNIT = {
     name: "飓风",
     cost: 0,
     hp: 250,
-    damage: 60,
-    range: 230,
-    speed: 42,
+    damage: 20,
+    range: 42,
+    speed: 70,
     train: 5.8,
-    cooldown: 5,
+    cooldown: 1.05,
+    tornadoEvery: 10,
+    tornadoDamage: 50,
+    tornadoRange: 230,
     stunDuration: 2,
     tornadoLife: 0.85,
     shieldEvery: 15,
@@ -1458,6 +1477,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
+  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
@@ -1470,12 +1490,12 @@ function formatSpecial(type) {
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "redflame") notes.push(`2 个火元素融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
   if (type === "stormLich") notes.push(`2 个风元素融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
-  if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾，减伤 ${Math.round(data.shieldReduction * 100)}%`);
+  if (type === "hurricane") notes.push(`近战普攻只打飞行/巨人/攻城/雕像；每 ${data.tornadoEvery}秒发射龙卷风 ${data.tornadoDamage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
   if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
-  if (type === "mage") notes.push(`魔爆 50 / 冰地减速90%并减攻速90%，每秒 ${data.iceDps} 伤害，持续 ${data.iceDuration}秒`);
+  if (type === "mage") notes.push(`按顺序释放魔爆 / 冰地 / 电墙；电墙每秒 ${data.electricWallDamage} 伤害，持续 ${data.electricWallDuration}秒`);
   if (type === "goldenSpartan") notes.push(`英雄单位；双击后向最前方敌人投出一次黄金长矛，造成 ${data.goldenSpearDamage} 点伤害`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
@@ -1487,9 +1507,10 @@ function formatSpecial(type) {
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
   if (type === "crossbow") notes.push(`每秒发射一箭造成 ${data.damage} 伤害，并绑定炸弹；${data.bombDelay}秒后爆炸造成 ${data.splashDamage} 范围伤害，最多 ${data.bombLimit} 个敌人`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
-  if (type === "waterScorpion") notes.push("由树精召唤");
+  if (type === "waterScorpion") notes.push("由树精召唤；攻击使敌人中毒");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
-  if (type === "undeadMage") notes.push(`每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；每 ${data.boneSpikeEvery}秒骨刺 ${data.boneSpikeRange} 距离；每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "berserker") notes.push(`附近至少 ${data.rageEnemyCount} 名敌人时释放狂暴`);
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
   if (type === "zeus") notes.push(`英雄单位；头顶雷云自动攻击；每 ${data.cloudEvery}秒召唤移动乌云；每 ${data.columnEvery}秒召唤电墙；每 ${data.gateEvery}秒召唤电门`);
   if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V/攻城器械单位，冷却 ${data.slayCooldown}秒`);
@@ -2125,6 +2146,9 @@ function spawnUnit(type, side, x) {
     zeusColumnTimer: UNIT[type].columnEvery ?? 0,
     zeusGateTimer: UNIT[type].gateEvery ?? 0,
     berserkerRageTimer: UNIT[type].rageEvery ?? 0,
+    swordsmanRageTimer: UNIT[type].selfRageEvery ?? 0,
+    swordsmanSelfRageTimer: 0,
+    undeadBoneTimer: UNIT[type].boneSpikeEvery ?? 0,
     hillJumpTimer: UNIT[type].jumpEvery ?? 0,
     linghanFreezeTimer: 0,
     rageTimer: 0,
@@ -2132,6 +2156,7 @@ function spawnUnit(type, side, x) {
     rocketReloadTimer: 0,
     rocketFireTimer: 0,
     shieldCastTimer: UNIT[type].shieldEvery ?? 0,
+    tornadoTimer: UNIT[type].tornadoEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
     hero: Boolean(data.hero),
@@ -3642,6 +3667,7 @@ function updateUnits(dt) {
     unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
+    unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -3697,6 +3723,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "undeadMage") {
       updateUndeadMage(unit, dt);
+    }
+    if (unit.type === "swordsman") {
+      updateSwordsman(unit, dt);
     }
     if (unit.type === "suikai") {
       updateSuikai(unit, dt);
@@ -3824,6 +3853,17 @@ function clampUnitPosition(unit) {
 
 function updateHurricane(unit, dt) {
   const data = UNIT.hurricane;
+  unit.tornadoTimer = Math.max(0, (unit.tornadoTimer ?? data.tornadoEvery) - dt);
+  if (unit.tornadoTimer <= 0) {
+    const tornadoTarget = findHurricaneTornadoTarget(unit);
+    if (tornadoTarget) {
+      unit.tornadoTimer = data.tornadoEvery;
+      launchTornado(unit, tornadoTarget);
+    } else {
+      unit.tornadoTimer = 1;
+    }
+  }
+
   unit.shieldCastTimer = Math.max(0, (unit.shieldCastTimer ?? data.shieldEvery) - dt);
   if (unit.shieldCastTimer > 0) return;
 
@@ -3840,6 +3880,17 @@ function updateHurricane(unit, dt) {
   target.shieldReduction = data.shieldReduction;
   unit.shieldCastTimer = data.shieldEvery;
   popText(target.x, target.y - 105, "风盾", "#9ee8ff");
+}
+
+function findHurricaneTornadoTarget(unit) {
+  const data = UNIT.hurricane;
+  return state.units
+    .filter((enemy) => {
+      if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
+      if (!isAheadOf(unit, enemy)) return false;
+      return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.tornadoRange;
+    })
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
 
 function updateLinghan(unit, dt) {
@@ -4312,13 +4363,46 @@ function killSummonedUndead(mage) {
   if (killed > 0) popText(mage.x, mage.y - 120, "亡灵消散", "#b8b0a5");
 }
 
+function updateSwordsman(unit, dt) {
+  const data = UNIT.swordsman;
+  unit.swordsmanRageTimer = Math.max(0, (unit.swordsmanRageTimer ?? data.selfRageEvery) - dt);
+  if (unit.swordsmanRageTimer > 0 || unit.hp <= data.selfRageHpCost) return;
+
+  const nearbyEnemies = state.units.filter((enemy) => {
+    if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
+    return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.selfRageRange;
+  }).length;
+
+  if (nearbyEnemies < data.selfRageEnemyCount) {
+    unit.swordsmanRageTimer = 1;
+    return;
+  }
+
+  unit.hp = Math.max(1, unit.hp - data.selfRageHpCost);
+  unit.swordsmanSelfRageTimer = Math.max(unit.swordsmanSelfRageTimer ?? 0, data.selfRageDuration);
+  unit.swordsmanRageTimer = data.selfRageEvery;
+  popText(unit.x, unit.y - 104, `狂暴 -${data.selfRageHpCost}生命`, "#ff5a45");
+}
+
 function updateUndeadMage(unit, dt) {
+  const data = UNIT.undeadMage;
+  unit.undeadBoneTimer = Math.max(0, (unit.undeadBoneTimer ?? data.boneSpikeEvery) - dt);
+  if (unit.undeadBoneTimer <= 0) {
+    const target = findUndeadBoneTarget(unit);
+    if (target) {
+      unit.undeadBoneTimer = data.boneSpikeEvery;
+      castUndeadPierce(unit, target);
+    } else {
+      unit.undeadBoneTimer = 1;
+    }
+  }
+
   unit.summonCooldown -= dt;
   if (unit.summonCooldown > 0) return;
 
-  unit.summonCooldown = UNIT.undeadMage.summonEvery;
+  unit.summonCooldown = data.summonEvery;
   const dir = unit.side === "player" ? 1 : -1;
-  for (let i = 0; i < UNIT.undeadMage.summonCount; i += 1) {
+  for (let i = 0; i < data.summonCount; i += 1) {
     spawnUnit("undead", unit.side, unit.x - dir * (22 + i * 16));
     const summoned = state.units[state.units.length - 1];
     summoned.forceCharge = true;
@@ -4329,6 +4413,17 @@ function updateUndeadMage(unit, dt) {
     summoned.summonerId = unit.id;
   }
   popText(unit.x, unit.y - 112, "亡灵冲锋", "#b8b0a5");
+}
+
+function findUndeadBoneTarget(unit) {
+  const data = UNIT.undeadMage;
+  return state.units
+    .filter((enemy) => {
+      if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
+      if (!isAheadOf(unit, enemy)) return false;
+      return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.boneSpikeRange;
+    })
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
 
 function updateSuikai(unit, dt) {
@@ -4522,6 +4617,15 @@ function updateBerserker(unit, dt) {
   const data = UNIT.berserker;
   unit.berserkerRageTimer -= dt;
   if (unit.berserkerRageTimer > 0) return;
+  const nearbyEnemies = state.units.filter((enemy) => {
+    if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
+    return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.rageRange;
+  }).length;
+  if (nearbyEnemies < data.rageEnemyCount) {
+    unit.berserkerRageTimer = 1;
+    return;
+  }
+
   unit.berserkerRageTimer += data.rageEvery;
   const candidates = state.units
     .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally))
@@ -4788,6 +4892,7 @@ function getMoveFactor(unit) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
   }
   if (unit.rageTimer > 0) factor *= 2;
+  if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   return factor;
 }
 
@@ -4815,6 +4920,7 @@ function getAttackSpeedFactor(unit) {
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.attackSlow ?? 1);
   }
   if (unit.rageTimer > 0) factor *= 2;
+  if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   return factor;
 }
 
@@ -5033,6 +5139,7 @@ function findTarget(unit) {
     if (other.side === unit.side || other.hp <= 0) continue;
     if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
+    if (unit.type === "hurricane" && !canHurricaneBasicTarget(other)) continue;
     if (!isAheadOf(unit, other)) continue;
     if (unit.type === "waterElement" && other.frozenBy) continue;
 
@@ -5062,6 +5169,7 @@ function getRetaliationTarget(unit) {
   const target = state.units.find((other) => other.id === unit.retaliateTargetId);
   if (!target || target.hp <= 0 || isUnitHidden(target)) return null;
   if (!canTarget(unit, target)) return null;
+  if (unit.type === "hurricane" && !canHurricaneBasicTarget(target)) return null;
   return target;
 }
 
@@ -5119,6 +5227,12 @@ function canTarget(attacker, target) {
   if (isUnitHidden(attacker) || isUnitHidden(target)) return false;
   if (UNIT[target.type]?.untargetable) return false;
   return !(UNIT[target.type]?.flying && isMelee(attacker) && !UNIT[attacker.type]?.antiAir);
+}
+
+function canHurricaneBasicTarget(target) {
+  if (target.kind === "statue") return true;
+  const data = UNIT[target.type] ?? {};
+  return Boolean(data.flying || data.giant || target.type === "catapult" || target.type === "rocketCart");
 }
 
 function isMelee(unit) {
@@ -5190,7 +5304,7 @@ function attack(unit, target) {
   }
 
   if (unit.type === "hurricane") {
-    launchTornado(unit, target);
+    strikeHurricaneMelee(unit, target);
     return;
   }
 
@@ -5210,7 +5324,7 @@ function attack(unit, target) {
   }
 
   if (unit.type === "undeadMage") {
-    castUndeadPierce(unit, target);
+    castUndeadStaffSlam(unit, target);
     return;
   }
 
@@ -5258,8 +5372,8 @@ function attack(unit, target) {
   }
 
   applyDamage(target, unit.damage ?? data.damage, unit.side);
-  if (unit.poisonOnHit && target.kind !== "statue") {
-    applyPoison(target, unit.poisonHitDps ?? 2, Infinity, { sourceSide: unit.side });
+  if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
+    applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side });
   }
   if (unit.type === "fireImp" && target.kind !== "statue") {
     applyBurn(target, data.burnDps, data.burnDuration);
@@ -5371,8 +5485,31 @@ function castMageSpell(unit, target) {
     return;
   }
 
-  castIceField(unit, target);
+  if (unit.nextSpell === "ice") {
+    castIceField(unit, target);
+    unit.nextSpell = "wall";
+    return;
+  }
+
+  castMageElectricWall(unit, target);
   unit.nextSpell = "blast";
+}
+
+function castMageElectricWall(unit, target) {
+  const data = UNIT.mage;
+  const x = Math.max(FIELD.playerGate + 90, Math.min(FIELD.enemyGate - 90, target.x));
+  state.electricColumns.push({
+    x,
+    side: unit.side,
+    life: data.electricWallDuration,
+    duration: data.electricWallDuration,
+    damage: data.electricWallDamage,
+    slow: 1,
+    slowDuration: 0,
+    tick: 0,
+    width: data.electricWallWidth,
+  });
+  popText(x, FIELD.ground - 142, "法师电墙", "#d7f6ff");
 }
 
 function castMagicBlast(unit, target) {
@@ -5403,9 +5540,30 @@ function castIceField(unit, target) {
   popText(target.x, FIELD.ground - 70, "冰地", "#9ee8ff");
 }
 
+function castUndeadStaffSlam(unit, target) {
+  const data = UNIT.undeadMage;
+  const centerX = target.kind === "statue" ? target.x : target.x;
+  if (target.kind === "statue") {
+    applyDamage(target, data.damage, unit.side);
+  }
+  getUnitsInRadius(centerX, data.staffRadius, unit.side).forEach((enemy) => {
+    applyUnitDamage(enemy, data.damage, { label: "杖击", color: "#b8b0a5", yOffset: -82 });
+  });
+  state.blasts.push({ x: centerX, y: FIELD.ground - 24, radius: data.staffRadius, life: 0.28, duration: 0.28, color: "#b8b0a5" });
+  popText(unit.x, unit.y - 112, "法杖砸地", "#b8b0a5");
+}
+
+function strikeHurricaneMelee(unit, target) {
+  const data = UNIT.hurricane;
+  applyDamage(target, data.damage, unit.side);
+  if (data.stunDuration && target.kind !== "statue") applyStun(target, Math.min(0.5, data.stunDuration));
+  state.blasts.push({ x: target.x, y: target.y ? target.y - 40 : FIELD.ground - 110, radius: 28, life: 0.18, duration: 0.18, color: "#d7f6ee" });
+}
+
 function castUndeadPierce(unit, target) {
   const data = UNIT.undeadMage;
-  applyDamage(target, data.damage, unit.side);
+  const damage = data.boneSpikeDamage;
+  applyDamage(target, damage, unit.side);
   state.spikes.push({
     x1: unit.x,
     x2: target.x,
@@ -5414,7 +5572,7 @@ function castUndeadPierce(unit, target) {
     life: 0.34,
     duration: 0.34,
   });
-  popText(target.x, target.y ? target.y - 80 : FIELD.ground - 130, `穿刺 -${data.damage}`, "#b8b0a5");
+  popText(target.x, target.y ? target.y - 80 : FIELD.ground - 130, `骨刺 -${damage}`, "#b8b0a5");
 }
 
 function castSuikaiPierce(unit, target) {
@@ -5644,7 +5802,7 @@ function launchTornado(unit, target) {
     tx: target.x,
     ty: target.y ? target.y - 35 : FIELD.ground - 90,
     side: unit.side,
-    damage: data.damage,
+    damage: data.tornadoDamage,
     stun: data.stunDuration,
     life: data.tornadoLife,
     duration: data.tornadoLife,
@@ -7150,7 +7308,7 @@ function drawUnit(unit) {
     ctx.shadowColor = "#9ee8ff";
     ctx.shadowBlur = 22;
   }
-  if (unit.rageTimer > 0) {
+  if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0) {
     ctx.shadowColor = "#ff4f3d";
     ctx.shadowBlur = 18;
   }
