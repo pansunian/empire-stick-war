@@ -7287,7 +7287,7 @@ function drawUnit(unit) {
   const color = getUnitColor(unit);
   const headColor = getHeadColor(unit);
   const dir = unit.side === "player" ? 1 : -1;
-  const bob = Math.sin(unit.anim) * 2;
+  const bob = getUnitBodyBob(unit);
   const flightOffset = UNIT[unit.type]?.flying ? -42 : 0;
   const size = UNIT[unit.type]?.visualScale ?? (UNIT[unit.type]?.giant ? 1.55 : 1);
 
@@ -7354,7 +7354,7 @@ function drawUnit(unit) {
   }
   drawRoundedStickUnit(unit, color, headColor);
 
-  drawWeapon(unit.type);
+  drawWeapon(unit.type, unit);
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
   ctx.restore();
@@ -7385,8 +7385,31 @@ function drawRoundedHead(headColor, x = 0, y = -64, radius = 13) {
   ctx.fill();
 }
 
+function getWalkAmount(unit) {
+  if (unit.stunTimer > 0 || unit.frozenBy || unit.controlLockTimer > 0 || isUnitHidden(unit)) return 0;
+  const velocity = Math.abs(unit.velocityX ?? 0);
+  if (velocity < 5) return 0;
+  return Math.min(1, velocity / 70);
+}
+
+function getWalkPhase(unit) {
+  return unit.anim * 0.82;
+}
+
+function getUnitBodyBob(unit) {
+  const walk = getWalkAmount(unit);
+  if (walk <= 0) return Math.sin(unit.anim * 0.35) * 0.45;
+  const phase = getWalkPhase(unit);
+  return Math.sin(phase * 2) * 2.1 * walk - Math.abs(Math.sin(phase)) * 1.1 * walk;
+}
+
+function makeLimbPath(startX, startY, jointX, jointY, endX, endY) {
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(jointX, jointY, endX, endY);
+}
+
 function drawRoundedStickUnit(unit, color, headColor) {
-  const pose = roundedUnitPose(unit.type);
+  const pose = roundedUnitPose(unit);
   strokePose("#151515", pose.outerWidth, pose.path);
   strokePose(color, pose.innerWidth, pose.path);
   drawRoundedHead(headColor, 0, -64, pose.headRadius);
@@ -7394,23 +7417,34 @@ function drawRoundedStickUnit(unit, color, headColor) {
   if (unit.type === "zeus") drawZeusOverheadCloud(unit);
 }
 
-function roundedUnitPose(type) {
+function roundedUnitPose(unit) {
+  const type = unit.type;
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const lean = step * 1.4;
+  const hipY = -24 + Math.abs(Math.sin(phase)) * 1.2 * walk;
+  const torsoTopX = 1 + lean * 0.6;
+  const shoulderY = -42;
+  const frontArm = 16 + counter * 13;
+  const rearArm = -15 + step * 11;
+  const frontFoot = 20 + step * 13;
+  const rearFoot = -18 + counter * 12;
+
   if (type === "creeper" || type === "largeCreeper" || type === "deadCorpse") {
     return {
       outerWidth: 12,
       innerWidth: 7,
       headRadius: 13,
       path: () => {
-        ctx.moveTo(-1, -51);
-        ctx.quadraticCurveTo(7, -40, 4, -25);
-        ctx.moveTo(2, -42);
-        ctx.quadraticCurveTo(19, -34, 31, -29);
-        ctx.moveTo(-2, -39);
-        ctx.quadraticCurveTo(-18, -32, -27, -20);
-        ctx.moveTo(4, -25);
-        ctx.quadraticCurveTo(17, -14, 24, 3);
-        ctx.moveTo(2, -25);
-        ctx.quadraticCurveTo(-10, -13, -18, 4);
+        makeLimbPath(-1 + lean * 0.4, -51, 7 + lean, -40, 4, -25);
+        makeLimbPath(2, -42, 17 + counter * 9, -33, 31 + counter * 9, -29 + liftB * 3);
+        makeLimbPath(-2, -39, -17 + step * 8, -32, -27 + step * 8, -20 + liftA * 3);
+        makeLimbPath(4, -25, 12 + step * 9, -13 - liftA * 5, 24 + step * 11, 3 - liftA * 3);
+        makeLimbPath(2, -25, -9 + counter * 8, -13 - liftB * 5, -18 + counter * 10, 4 - liftB * 3);
       },
     };
   }
@@ -7420,16 +7454,11 @@ function roundedUnitPose(type) {
       innerWidth: 8,
       headRadius: 14,
       path: () => {
-        ctx.moveTo(1, -52);
-        ctx.quadraticCurveTo(-3, -39, 1, -22);
-        ctx.moveTo(0, -43);
-        ctx.quadraticCurveTo(20, -35, 31, -43);
-        ctx.moveTo(-2, -42);
-        ctx.quadraticCurveTo(-20, -35, -31, -24);
-        ctx.moveTo(1, -22);
-        ctx.quadraticCurveTo(18, -12, 28, 4);
-        ctx.moveTo(0, -22);
-        ctx.quadraticCurveTo(-14, -11, -24, 5);
+        makeLimbPath(1 + lean * 0.3, -52, -3 + lean, -39, 1, -22);
+        makeLimbPath(0, -43, 18 + counter * 8, -34, 31 + counter * 8, -43 + liftB * 2);
+        makeLimbPath(-2, -42, -18 + step * 8, -35, -31 + step * 8, -24 + liftA * 2);
+        makeLimbPath(1, -22, 16 + step * 8, -12 - liftA * 4, 28 + step * 10, 4 - liftA * 2);
+        makeLimbPath(0, -22, -13 + counter * 7, -11 - liftB * 4, -24 + counter * 9, 5 - liftB * 2);
       },
     };
   }
@@ -7439,16 +7468,11 @@ function roundedUnitPose(type) {
       innerWidth: 7,
       headRadius: 13,
       path: () => {
-        ctx.moveTo(1, -51);
-        ctx.quadraticCurveTo(-2, -39, 1, -24);
-        ctx.moveTo(0, -42);
-        ctx.quadraticCurveTo(17, -37, 28, -38);
-        ctx.moveTo(-2, -41);
-        ctx.quadraticCurveTo(-17, -35, -26, -26);
-        ctx.moveTo(1, -24);
-        ctx.quadraticCurveTo(15, -14, 21, 3);
-        ctx.moveTo(0, -24);
-        ctx.quadraticCurveTo(-12, -12, -18, 4);
+        makeLimbPath(1 + lean * 0.25, -51, -2 + lean, -39, 1, hipY);
+        makeLimbPath(0, shoulderY, 15 + counter * 5, -37 + liftB, 28 + counter * 4, -38 + liftB);
+        makeLimbPath(-2, -41, -16 + step * 7, -35, -26 + step * 7, -26 + liftA * 2);
+        makeLimbPath(1, hipY, 12 + step * 8, -13 - liftA * 5, 21 + step * 10, 3 - liftA * 2);
+        makeLimbPath(0, hipY, -10 + counter * 8, -12 - liftB * 5, -18 + counter * 10, 4 - liftB * 2);
       },
     };
   }
@@ -7457,16 +7481,11 @@ function roundedUnitPose(type) {
     innerWidth: 7,
     headRadius: 13,
     path: () => {
-      ctx.moveTo(1, -51);
-      ctx.quadraticCurveTo(-3, -39, 1, -24);
-      ctx.moveTo(0, -42);
-      ctx.quadraticCurveTo(17, -36, 26, -43);
-      ctx.moveTo(-2, -41);
-      ctx.quadraticCurveTo(-18, -36, -24, -25);
-      ctx.moveTo(1, -24);
-      ctx.quadraticCurveTo(17, -14, 23, 2);
-      ctx.moveTo(0, -24);
-      ctx.quadraticCurveTo(-12, -12, -18, 4);
+      makeLimbPath(torsoTopX, -51, -3 + lean, -39, 1, hipY);
+      makeLimbPath(0, shoulderY, frontArm, -37 - liftB * 2, 26 + counter * 11, -43 + liftB * 5);
+      makeLimbPath(-2, -41, rearArm, -35 - liftA * 2, -24 + step * 11, -25 + liftA * 5);
+      makeLimbPath(1, hipY, 13 + step * 9, -13 - liftA * 7, frontFoot, 2 - liftA * 3);
+      makeLimbPath(0, hipY, -11 + counter * 8, -12 - liftB * 7, rearFoot, 4 - liftB * 3);
     },
   };
 }
@@ -7474,6 +7493,21 @@ function roundedUnitPose(type) {
 function drawMinerUnit(unit, color, headColor) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const hipY = -25 + Math.abs(Math.sin(phase)) * 1.1 * walk;
+  const lean = step * 1.1;
+  const minerPath = () => {
+    makeLimbPath(-2 + lean * 0.5, -51, 2 + lean, -39, -3, hipY);
+    makeLimbPath(-1, -42, 15 + counter * 7, -36 - liftB, 25 + counter * 8, -46 + liftB * 2);
+    makeLimbPath(-5, -39, -17 + step * 7, -31 - liftA, -25 + step * 8, -20 + liftA * 2);
+    makeLimbPath(-3, hipY, 8 + step * 8, -15 - liftA * 6, 18 + step * 10, 1 - liftA * 3);
+    makeLimbPath(-5, hipY, -13 + counter * 8, -13 - liftB * 6, -21 + counter * 10, 2 - liftB * 3);
+  };
 
   ctx.fillStyle = "#7a4f2d";
   ctx.strokeStyle = "#3d2a1b";
@@ -7491,30 +7525,8 @@ function drawMinerUnit(unit, color, headColor) {
   ctx.lineTo(-10, -15);
   ctx.stroke();
 
-  strokePose("#151515", 12, () => {
-    ctx.moveTo(-2, -51);
-    ctx.quadraticCurveTo(2, -39, -3, -25);
-    ctx.moveTo(-1, -42);
-    ctx.quadraticCurveTo(16, -36, 25, -46);
-    ctx.moveTo(-5, -39);
-    ctx.quadraticCurveTo(-18, -31, -25, -20);
-    ctx.moveTo(-3, -25);
-    ctx.quadraticCurveTo(10, -15, 18, 1);
-    ctx.moveTo(-5, -25);
-    ctx.quadraticCurveTo(-14, -13, -21, 2);
-  });
-  strokePose(color, 7, () => {
-    ctx.moveTo(-2, -51);
-    ctx.quadraticCurveTo(2, -39, -3, -25);
-    ctx.moveTo(-1, -42);
-    ctx.quadraticCurveTo(16, -36, 25, -46);
-    ctx.moveTo(-5, -39);
-    ctx.quadraticCurveTo(-18, -31, -25, -20);
-    ctx.moveTo(-3, -25);
-    ctx.quadraticCurveTo(10, -15, 18, 1);
-    ctx.moveTo(-5, -25);
-    ctx.quadraticCurveTo(-14, -13, -21, 2);
-  });
+  strokePose("#151515", 12, minerPath);
+  strokePose(color, 7, minerPath);
 
   drawRoundedHead(headColor, 0, -64, 13);
   ctx.fillStyle = "#d0a05c";
@@ -7532,14 +7544,14 @@ function drawMinerUnit(unit, color, headColor) {
   ctx.strokeStyle = "#4b3420";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(22, -42);
-  ctx.lineTo(43, -98);
+  ctx.moveTo(22 + counter * 4, -42 + liftB);
+  ctx.lineTo(43 + counter * 5, -98 + liftB * 2);
   ctx.stroke();
 
   ctx.strokeStyle = "#cfd6dc";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(43, -79, 19, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.arc(43 + counter * 5, -79 + liftB * 2, 19, Math.PI * 1.05, Math.PI * 1.95);
   ctx.stroke();
 
   drawUnitHp(unit);
@@ -7548,34 +7560,27 @@ function drawMinerUnit(unit, color, headColor) {
 function drawSwordsmanUnit(unit, color, headColor) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const hipY = -24 + Math.abs(Math.sin(phase)) * 1.15 * walk;
+  const lean = step * 1.2;
+  const swordPath = () => {
+    makeLimbPath(1 + lean * 0.5, -51, -3 + lean, -39, 1, hipY);
+    makeLimbPath(0, -42, 17 + counter * 7, -36 - liftB * 2, 26 + counter * 6, -43 + liftB * 3);
+    makeLimbPath(-2, -41, -18 + step * 8, -36 - liftA * 2, -24 + step * 9, -25 + liftA * 3);
+    makeLimbPath(1, hipY, 14 + step * 9, -14 - liftA * 7, 23 + step * 11, 2 - liftA * 3);
+    makeLimbPath(0, hipY, -11 + counter * 8, -12 - liftB * 7, -18 + counter * 10, 4 - liftB * 3);
+  };
 
-  strokePose("#151515", 12, () => {
-    ctx.moveTo(1, -51);
-    ctx.quadraticCurveTo(-3, -39, 1, -24);
-    ctx.moveTo(0, -42);
-    ctx.quadraticCurveTo(17, -36, 26, -43);
-    ctx.moveTo(-2, -41);
-    ctx.quadraticCurveTo(-18, -36, -24, -25);
-    ctx.moveTo(1, -24);
-    ctx.quadraticCurveTo(17, -14, 23, 2);
-    ctx.moveTo(0, -24);
-    ctx.quadraticCurveTo(-12, -12, -18, 4);
-  });
-  strokePose(color, 7, () => {
-    ctx.moveTo(1, -51);
-    ctx.quadraticCurveTo(-3, -39, 1, -24);
-    ctx.moveTo(0, -42);
-    ctx.quadraticCurveTo(17, -36, 26, -43);
-    ctx.moveTo(-2, -41);
-    ctx.quadraticCurveTo(-18, -36, -24, -25);
-    ctx.moveTo(1, -24);
-    ctx.quadraticCurveTo(17, -14, 23, 2);
-    ctx.moveTo(0, -24);
-    ctx.quadraticCurveTo(-12, -12, -18, 4);
-  });
+  strokePose("#151515", 12, swordPath);
+  strokePose(color, 7, swordPath);
 
   drawRoundedHead(headColor, 0, -64, 13);
-  drawIronSword(25, -43, -0.72, 0.95);
+  drawIronSword(25 + counter * 6, -43 + liftB * 3, -0.72 + counter * 0.08, 0.95);
 
   drawUnitHp(unit);
 }
@@ -8131,7 +8136,15 @@ function drawStoneWeapon(scale = 1) {
   ctx.restore();
 }
 
-function drawWeapon(type) {
+function drawWeapon(type, unit = null) {
+  const walk = unit ? getWalkAmount(unit) : 0;
+  const phase = unit ? getWalkPhase(unit) : 0;
+  const sway = Math.sin(phase + Math.PI) * walk;
+  ctx.save();
+  if (walk > 0 && !["miner", "swordsman", "waterElement", "vUnit", "vClone"].includes(type)) {
+    ctx.translate(sway * 2.2, Math.max(0, -sway) * 1.2);
+    ctx.rotate(sway * 0.035);
+  }
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "#e7dfc7";
@@ -8469,6 +8482,7 @@ function drawWeapon(type) {
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
+    ctx.restore();
     return;
   } else if (type === "fireElement" || type === "fireImp") {
     ctx.fillStyle = "#ff7a3d";
@@ -8572,6 +8586,7 @@ function drawWeapon(type) {
     ctx.lineTo(24, -55);
     ctx.stroke();
   } else if (type === "vUnit" || type === "vClone") {
+    ctx.restore();
     return;
   } else if (type === "treeEnt") {
     ctx.strokeStyle = "#3e5f38";
@@ -8668,6 +8683,7 @@ function drawWeapon(type) {
     ctx.lineTo(28, -15);
     ctx.stroke();
   }
+  ctx.restore();
 }
 
 function drawUnitHp(unit) {
