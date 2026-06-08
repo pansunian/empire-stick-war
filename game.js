@@ -1,5 +1,6 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
+const battlefieldWrap = document.querySelector(".battlefield-wrap");
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -43,6 +44,12 @@ const mobileUnitsToggle = document.querySelector("#mobileUnitsToggle");
 let trainButtons = [...document.querySelectorAll(".train-btn")];
 const restartBtn = document.querySelector("#restartBtn");
 let deferredInstallPrompt = null;
+const manualKeys = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+};
 
 if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
   document.documentElement.classList.add("ios-device");
@@ -1550,6 +1557,7 @@ function renderStatsTable() {
 }
 
 function newGame() {
+  resetManualKeys();
   enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
   renderFactionUi();
   renderShop();
@@ -1603,6 +1611,8 @@ function newGame() {
     pendingMedusaSlayId: null,
     inspectedUnitId: null,
     inspectedUnitTimer: 0,
+    controlledUnitId: null,
+    pendingManualAction: null,
     passiveGoldTimer: 2,
     towerOwner: null,
     towerCaptureSide: null,
@@ -1653,6 +1663,13 @@ function newGame() {
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
   if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
   updateHud();
+}
+
+function resetManualKeys() {
+  manualKeys.up = false;
+  manualKeys.down = false;
+  manualKeys.left = false;
+  manualKeys.right = false;
 }
 
 function spawnCampaignCenterElectricGate() {
@@ -2686,6 +2703,8 @@ function update(dt) {
     return;
   }
 
+  updateManualControlState();
+
   updateQueue(dt);
   updatePassiveGold(dt);
   updateCenterTower(dt);
@@ -3670,6 +3689,7 @@ function updateUnits(dt) {
     unit.cooldown = Math.max(0, unit.cooldown - dt * getAttackSpeedFactor(unit));
     unit.spearRecoverTimer = Math.max(0, unit.spearRecoverTimer - dt);
     unit.medusaSlayTimer = Math.max(0, unit.medusaSlayTimer - dt);
+    unit.controlTimer = Math.max(0, (unit.controlTimer ?? 0) - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
     unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
@@ -3687,6 +3707,11 @@ function updateUnits(dt) {
     }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+    if (isManuallyControlled(unit)) {
+      updateManualControlledUnit(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -3809,13 +3834,60 @@ function updateUnits(dt) {
     updateIceRoadMoveTimer(unit, beforeX, dt);
   }
   if (state.inspectedUnitTimer > 0) {
-    state.inspectedUnitTimer = Math.max(0, state.inspectedUnitTimer - dt);
+    if (state.inspectedUnitId !== state.controlledUnitId) {
+      state.inspectedUnitTimer = Math.max(0, state.inspectedUnitTimer - dt);
+    }
     const inspected = state.units.find((unit) => unit.id === state.inspectedUnitId && unit.hp > 0);
     if (!inspected || isUnitHidden(inspected)) {
       state.inspectedUnitId = null;
       state.inspectedUnitTimer = 0;
     }
   }
+}
+
+function updateManualControlState() {
+  if (!state.controlledUnitId) return;
+  const unit = getControlledUnit();
+  if (unit && !isUnitHidden(unit)) return;
+  state.controlledUnitId = null;
+  state.pendingManualAction = null;
+}
+
+function isManuallyControlled(unit) {
+  return Boolean(unit?.id && state.controlledUnitId === unit.id);
+}
+
+function getControlledUnit() {
+  if (!state?.controlledUnitId) return null;
+  return state.units.find((unit) => unit.id === state.controlledUnitId && unit.hp > 0) ?? null;
+}
+
+function updateManualControlledUnit(unit, dt) {
+  const data = UNIT[unit.type] ?? {};
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  Object.keys(unit.manualSkillCooldowns).forEach((key) => {
+    unit.manualSkillCooldowns[key] = Math.max(0, unit.manualSkillCooldowns[key] - dt);
+  });
+  if (unit.type === "vUnit") {
+    updateVClones(unit, dt);
+    updateVControlLink(unit);
+  }
+  if (unit.type === "archmage") updateHeroBlink(unit, UNIT.archmage);
+  if (unit.type === "treeEnt" && unit.rooted) return;
+  if (unit.type === "electricGate" || data.immobile) return;
+
+  const dx = (manualKeys.right ? 1 : 0) - (manualKeys.left ? 1 : 0);
+  const dy = (manualKeys.down ? 1 : 0) - (manualKeys.up ? 1 : 0);
+  if (!dx && !dy) return;
+  const distance = Math.hypot(dx, dy) || 1;
+  const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed ?? 0);
+  unit.x += (dx / distance) * speed * getMoveFactor(unit) * dt;
+  unit.y += (dy / distance) * speed * getMoveFactor(unit) * dt;
+  unit.inCastle = false;
+  unit.mineSlotId = null;
+  unit.mineWorkSlot = null;
+  unit.goldRushMineId = null;
+  clampUnitPosition(unit);
 }
 
 function resolveUnitCollisions() {
@@ -4200,7 +4272,6 @@ function updateV(unit, dt) {
 
   if (unit.controlledTargetId) return true;
 
-  unit.controlTimer = Math.max(0, unit.controlTimer - dt);
   if (unit.side !== "enemy" || unit.controlTimer > 0) return false;
 
   const target = findMostThreateningEnemy(unit);
@@ -4395,6 +4466,11 @@ function updateUndeadMage(unit, dt) {
   if (unit.summonCooldown > 0) return;
 
   unit.summonCooldown = data.summonEvery;
+  summonUndeadMageWave(unit);
+}
+
+function summonUndeadMageWave(unit) {
+  const data = UNIT.undeadMage;
   const dir = unit.side === "player" ? 1 : -1;
   for (let i = 0; i < data.summonCount; i += 1) {
     spawnUnit("undead", unit.side, unit.x - dir * (22 + i * 16));
@@ -6910,6 +6986,7 @@ function draw() {
   drawCenterTower();
   drawCastle("player");
   drawCastle("enemy");
+  drawControlledUnitMarker();
 
   const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
@@ -6928,6 +7005,7 @@ function draw() {
   drawCampaignMissileWarning();
   drawCampaignDarkness();
   state.floaters.forEach(drawFloater);
+  drawManualControlPanel();
 
   if (state.over) drawEndOverlay();
   ctx.restore();
@@ -8751,11 +8829,7 @@ function drawUnitHp(unit) {
   }
 }
 
-function drawInspectedUnitInfo() {
-  if (!state.inspectedUnitId || state.inspectedUnitTimer <= 0) return;
-  const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
-  if (!unit) return;
-
+function getInspectedUnitInfoLayout(unit) {
   const data = UNIT[unit.type] ?? {};
   const lines = [
     data.name ?? unit.type,
@@ -8765,11 +8839,34 @@ function drawInspectedUnitInfo() {
   ];
   ctx.save();
   ctx.font = "700 14px system-ui, sans-serif";
-  const width = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 24;
-  const height = 24 + lines.length * 18;
+  const width = Math.max(...lines.map((line) => ctx.measureText(line).width), 88) + 28;
+  ctx.restore();
+  const height = 104;
   const x = Math.max(10, Math.min(FIELD.width - width - 10, unit.x - width / 2));
   const y = Math.max(12, unit.y - (UNIT[unit.type]?.flying ? 126 : 112) - height);
+  return {
+    x,
+    y,
+    width,
+    height,
+    lines,
+    controlButton: {
+      x: x + width - 48,
+      y: y + 7,
+      width: 40,
+      height: 22,
+    },
+  };
+}
 
+function drawInspectedUnitInfo() {
+  if (!state.inspectedUnitId || state.inspectedUnitTimer <= 0) return;
+  const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
+  if (!unit) return;
+
+  const layout = getInspectedUnitInfoLayout(unit);
+  const { x, y, width, height, lines, controlButton } = layout;
+  ctx.save();
   ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
   ctx.strokeStyle = unit.side === "player" ? "#75a7ff" : "#ff9b8d";
   ctx.lineWidth = 2;
@@ -8780,12 +8877,22 @@ function drawInspectedUnitInfo() {
 
   ctx.fillStyle = "#f8eac5";
   ctx.textAlign = "center";
+  ctx.font = "700 14px system-ui, sans-serif";
   ctx.fillText(lines[0], x + width / 2, y + 20);
   ctx.font = "600 13px system-ui, sans-serif";
   ctx.fillStyle = "#d9d0b8";
   for (let i = 1; i < lines.length; i += 1) {
-    ctx.fillText(lines[i], x + width / 2, y + 22 + i * 18);
+    ctx.fillText(lines[i], x + width / 2, y + 24 + i * 18);
   }
+
+  const controlled = state.controlledUnitId === unit.id;
+  ctx.fillStyle = controlled ? "rgba(230, 184, 74, 0.92)" : "rgba(117, 167, 255, 0.78)";
+  ctx.beginPath();
+  ctx.roundRect(controlButton.x, controlButton.y, controlButton.width, controlButton.height, 6);
+  ctx.fill();
+  ctx.fillStyle = controlled ? "#16140f" : "#f5f0df";
+  ctx.font = "800 12px system-ui, sans-serif";
+  ctx.fillText(controlled ? "解除" : "控制", controlButton.x + controlButton.width / 2, controlButton.y + 15);
 
   ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
   ctx.beginPath();
@@ -8794,6 +8901,88 @@ function drawInspectedUnitInfo() {
   ctx.lineTo(unit.x, y + height + 9);
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
+}
+
+function drawControlledUnitMarker() {
+  const unit = getControlledUnit();
+  if (!unit || isUnitHidden(unit)) return;
+  ctx.save();
+  ctx.translate(unit.x, unit.y + 11);
+  ctx.scale(1.25, 0.34);
+  ctx.rotate(-0.05);
+  ctx.fillStyle = "rgba(230, 184, 74, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0, 5, 28, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawFlatStarPath(0, 0, 24, 10);
+  ctx.fillStyle = "#f5d14f";
+  ctx.fill();
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = "#7a5619";
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFlatStarPath(x, y, outerRadius, innerRadius) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i += 1) {
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const px = x + Math.cos(angle) * radius;
+    const py = y + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function drawManualControlPanel() {
+  const unit = getControlledUnit();
+  if (!unit || isUnitHidden(unit)) return;
+  const buttons = getManualControlButtons(unit);
+  if (!buttons.length) return;
+  const rect = getVisibleWorldRect();
+  const panel = getManualPanelRect(buttons, rect);
+  ctx.save();
+  ctx.fillStyle = "rgba(16, 20, 22, 0.78)";
+  ctx.strokeStyle = "rgba(230, 184, 74, 0.48)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(panel.x, panel.y, panel.width, panel.height, 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#f8eac5";
+  ctx.font = "900 16px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(`接管：${UNIT[unit.type]?.name ?? unit.type}`, panel.x + 14, panel.y + 24);
+  if (state.pendingManualAction) {
+    ctx.fillStyle = "#f5d14f";
+    ctx.font = "800 13px system-ui, sans-serif";
+    ctx.fillText("点击战场选择释放位置", panel.x + 14, panel.y + 43);
+  }
+
+  buttons.forEach((button) => {
+    const disabled = isManualButtonDisabled(unit, button);
+    ctx.fillStyle = button.id === state.pendingManualAction?.id
+      ? "rgba(230, 184, 74, 0.86)"
+      : disabled
+        ? "rgba(80, 84, 88, 0.72)"
+        : "rgba(36, 44, 50, 0.92)";
+    ctx.strokeStyle = disabled ? "rgba(255,255,255,0.12)" : "rgba(230, 184, 74, 0.48)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(button.x, button.y, button.width, button.height, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.fillStyle = disabled ? "rgba(245,240,223,0.48)" : "#f5f0df";
+    ctx.font = "900 13px system-ui, sans-serif";
+    ctx.fillText(button.label, button.x + button.width / 2, button.y + 21);
+    ctx.font = "700 11px system-ui, sans-serif";
+    ctx.fillStyle = disabled ? "rgba(245,240,223,0.34)" : "#cfc6ad";
+    ctx.fillText(button.mode === "direct" ? "立即" : "点地", button.x + button.width / 2, button.y + 38);
+  });
   ctx.restore();
 }
 
@@ -8809,6 +8998,441 @@ function getUnitBasicDamage(unit) {
 function formatStat(value) {
   if (!Number.isFinite(value)) return "0";
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
+}
+
+function getVisibleWorldRect() {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = FIELD.width / Math.max(1, rect.width);
+  const scaleY = FIELD.height / Math.max(1, rect.height);
+  return {
+    x: (battlefieldWrap?.scrollLeft ?? 0) * scaleX,
+    y: (battlefieldWrap?.scrollTop ?? 0) * scaleY,
+    width: (battlefieldWrap?.clientWidth ?? rect.width) * scaleX,
+    height: (battlefieldWrap?.clientHeight ?? rect.height) * scaleY,
+  };
+}
+
+function getManualPanelRect(buttons, visibleRect = getVisibleWorldRect()) {
+  const columns = Math.min(4, Math.max(1, buttons.length));
+  const rows = Math.ceil(buttons.length / columns);
+  const buttonWidth = 76;
+  const buttonHeight = 48;
+  const gap = 8;
+  const width = 28 + columns * buttonWidth + (columns - 1) * gap;
+  const height = 58 + rows * buttonHeight + (rows - 1) * gap;
+  const x = visibleRect.x + visibleRect.width - width - 18;
+  const y = visibleRect.y + visibleRect.height - height - 18;
+  return { x, y, width, height, columns, buttonWidth, buttonHeight, gap };
+}
+
+function getManualControlButtons(unit) {
+  const actions = getManualActions(unit);
+  const panel = getManualPanelRect(actions);
+  return actions.map((action, index) => {
+    const column = index % panel.columns;
+    const row = Math.floor(index / panel.columns);
+    return {
+      ...action,
+      x: panel.x + 14 + column * (panel.buttonWidth + panel.gap),
+      y: panel.y + 50 + row * (panel.buttonHeight + panel.gap),
+      width: panel.buttonWidth,
+      height: panel.buttonHeight,
+    };
+  });
+}
+
+function getManualActions(unit) {
+  const actions = [{ id: "attack", label: "普攻", mode: "direct" }];
+  const add = (id, label, mode = "point") => actions.push({ id, label, mode });
+  switch (unit.type) {
+    case "spearman":
+      if (!unit.spearThrown) add("throwSpear", "投矛", "target");
+      break;
+    case "goldenSpartan":
+      add("goldenSpear", "黄金矛", "direct");
+      break;
+    case "waterElement":
+      add("freeze", "冰冻", "target");
+      add("waterSacrifice", "水愈", "direct");
+      break;
+    case "mage":
+      add("magicBlast", "魔爆");
+      add("iceField", "冰地");
+      add("mageWall", "电墙");
+      break;
+    case "medusa":
+      add("medusaSlay", "石化", "target");
+      add("medusaPoison", "喷毒", "direct");
+      break;
+    case "vUnit":
+      add(unit.controlledTargetId ? "releaseV" : "vControl", unit.controlledTargetId ? "解除" : "控制", unit.controlledTargetId ? "direct" : "target");
+      break;
+    case "undeadMage":
+      add("undeadSpike", "骨刺", "target");
+      add("summonUndead", "召唤", "direct");
+      break;
+    case "suikai":
+      add("suikaiPierce", "骨刺", "target");
+      add("suikaiCorpses", "死尸", "direct");
+      add("suikaiHook", "镰钩", "target");
+      break;
+    case "treeEnt":
+      add("treeRoot", "树根", "target");
+      add("toggleRoot", unit.rooted ? "拔根" : "扎根", "direct");
+      break;
+    case "dreadfire":
+      add("fireDragon", "火龙");
+      add("meteorRain", "流星");
+      break;
+    case "redflame":
+      add("redFireball", "火球");
+      add("redPillars", "熔柱");
+      break;
+    case "stormLich":
+      add("stormCloud", "乌云");
+      break;
+    case "hurricane":
+      add("tornado", "龙卷");
+      add("hurricaneShield", "护盾", "direct");
+      break;
+    case "windElement":
+      add("windBolt", "闪电", "target");
+      break;
+    case "archmage":
+      add("chainLightning", "链雷", "target");
+      add("archFireballs", "火球雨", "direct");
+      add("arcaneExplosion", "奥爆", "direct");
+      break;
+    case "prometheus":
+      add("prometheusDragon", "火龙");
+      add("prometheusImp", "小火人", "direct");
+      add("prometheusMeteor", "神流星");
+      break;
+    case "zeus":
+      add("zeusCloud", "雷云");
+      add("zeusWall", "电墙");
+      add("zeusGate", "电门");
+      break;
+    case "berserker":
+      add("berserkerRage", "狂暴", "direct");
+      break;
+    case "scaldStrike":
+      add("scaldExplode", "爆裂", "direct");
+      break;
+    default:
+      break;
+  }
+  return actions;
+}
+
+function isManualButtonDisabled(unit, button) {
+  if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
+  if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
+  if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
+  if (button.id === "vControl" && (unit.controlTimer > 0 || unit.controlledTargetId)) return true;
+  if ((unit.manualSkillCooldowns?.[button.id] ?? 0) > 0) return true;
+  return button.id !== "attack" && unit.cooldown > 0;
+}
+
+function pointInRect(point, rect) {
+  return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+}
+
+function handleInspectedInfoButton(point) {
+  if (!state.inspectedUnitId || state.inspectedUnitTimer <= 0) return false;
+  const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
+  if (!unit) return false;
+  const layout = getInspectedUnitInfoLayout(unit);
+  if (!pointInRect(point, layout.controlButton)) return false;
+  toggleManualControl(unit);
+  return true;
+}
+
+function toggleManualControl(unit) {
+  if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
+  if (state.controlledUnitId === unit.id) {
+    state.controlledUnitId = null;
+    state.pendingManualAction = null;
+    popText(unit.x, unit.y - 112, "解除接管", "#f5d14f");
+    return true;
+  }
+  state.controlledUnitId = unit.id;
+  state.inspectedUnitId = unit.id;
+  state.inspectedUnitTimer = 9999;
+  state.pendingManualAction = null;
+  unit.inCastle = false;
+  popText(unit.x, unit.y - 112, "手动接管", "#f5d14f");
+  return true;
+}
+
+function handleManualControlClick(point) {
+  const unit = getControlledUnit();
+  if (!unit || isUnitHidden(unit)) return false;
+  const button = getManualControlButtons(unit).find((candidate) => pointInRect(point, candidate));
+  if (button) {
+    if (isManualButtonDisabled(unit, button)) {
+      popText(unit.x, unit.y - 116, getManualDisabledLabel(unit, button), "#d9d0b8");
+      return true;
+    }
+    if (button.mode === "direct") {
+      executeManualAction(unit, button, point);
+      updateHud();
+      return true;
+    }
+    state.pendingManualAction = { id: button.id, mode: button.mode };
+    popText(unit.x, unit.y - 116, `选择${button.label}位置`, "#f5d14f");
+    return true;
+  }
+
+  if (!state.pendingManualAction) return false;
+  const action = getManualActions(unit).find((candidate) => candidate.id === state.pendingManualAction.id);
+  if (action && !isManualButtonDisabled(unit, action)) {
+    executeManualAction(unit, action, point);
+  }
+  state.pendingManualAction = null;
+  updateHud();
+  return true;
+}
+
+function getManualDisabledLabel(unit, button) {
+  if (button.id === "goldenSpear" && unit.goldenSpearThrown) return "已使用";
+  if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return `冷却 ${Math.ceil(unit.medusaSlayTimer)}秒`;
+  if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
+  const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
+  if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
+  return "暂不可用";
+}
+
+function executeManualAction(unit, action, point) {
+  if (action.id === "attack") {
+    manualUnitAttack(unit);
+    return;
+  }
+  if (action.id === "releaseV") {
+    releaseVControl(unit, true);
+    return;
+  }
+  if (action.id === "toggleRoot") {
+    toggleTreeEntRoot(unit);
+    return;
+  }
+  if (action.id === "waterSacrifice") {
+    sacrificeWaterElement(unit);
+    return;
+  }
+  if (action.id === "goldenSpear") {
+    throwGoldenSpear(unit);
+    return;
+  }
+  if (action.id === "scaldExplode") {
+    explodeScaldStrike(unit);
+    return;
+  }
+
+  const target = action.mode === "target" ? getManualTargetAt(unit, point) : makeManualPointTarget(point);
+  if (action.mode === "target" && !target) {
+    popText(unit.x, unit.y - 116, "没有可用目标", "#d9d0b8");
+    return;
+  }
+
+  const used = castManualSkill(unit, action.id, target);
+  if (!used) return;
+  const data = UNIT[unit.type] ?? {};
+  unit.cooldown = Math.max(unit.cooldown ?? 0, data.cooldown ?? 1);
+  unit.combatTimer = 3;
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns[action.id] = getManualActionCooldown(unit, action.id);
+}
+
+function manualUnitAttack(unit) {
+  const range = Math.max(getUnitRange(unit), 70);
+  const target = findManualAttackTarget(unit, range);
+  if (!target) {
+    popText(unit.x, unit.y - 116, "附近没有目标", "#d9d0b8");
+    return;
+  }
+  if (canAttackFromDistance(unit, target, getUnitRange(unit)) || Math.abs(unit.x - target.x) <= range) {
+    attack(unit, target);
+    return;
+  }
+  popText(unit.x, unit.y - 116, "距离太远", "#d9d0b8");
+}
+
+function findManualAttackTarget(unit, range) {
+  return state.units
+    .filter((target) => target.side !== unit.side && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
+    .filter((target) => distanceTo(unit.x, unit.y, target.x, target.y) <= range)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
+}
+
+function getManualTargetAt(unit, point) {
+  const clicked = findUnitAt(point);
+  if (clicked && clicked.side !== unit.side && clicked.hp > 0 && canTarget(unit, clicked)) return clicked;
+  return state.units
+    .filter((target) => target.side !== unit.side && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
+    .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
+    .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
+}
+
+function makeManualPointTarget(point) {
+  return {
+    kind: "point",
+    x: Math.max(FIELD.playerBase + 30, Math.min(FIELD.enemyBase - 30, point.x)),
+    y: Math.max(FIELD.ground - 150, Math.min(FIELD.ground + 140, point.y)),
+  };
+}
+
+function getManualActionCooldown(unit, id) {
+  const data = UNIT[unit.type] ?? {};
+  const table = {
+    undeadSpike: data.boneSpikeEvery,
+    medusaPoison: data.poisonEvery,
+    summonUndead: data.summonEvery,
+    suikaiCorpses: data.corpseEvery,
+    suikaiHook: data.hookEvery,
+    hurricaneShield: data.shieldEvery,
+    zeusCloud: data.cloudEvery,
+    zeusWall: data.columnEvery,
+    zeusGate: data.gateEvery,
+    archFireballs: data.fireballEvery,
+    berserkerRage: data.rageEvery,
+  };
+  return table[id] ?? data.cooldown ?? 1;
+}
+
+function castManualSkill(unit, id, target) {
+  switch (id) {
+    case "throwSpear":
+      throwSpear(unit, target);
+      return true;
+    case "freeze":
+      bindFreeze(unit, target);
+      return true;
+    case "magicBlast":
+      castMagicBlast(unit, target);
+      return true;
+    case "iceField":
+      castIceField(unit, target);
+      return true;
+    case "mageWall":
+      castMageElectricWall(unit, target);
+      return true;
+    case "medusaSlay":
+      if (!canMedusaSlay(unit, target)) {
+        popText(unit.x, unit.y - 116, "无法石化", "#93d96b");
+        return false;
+      }
+      target.hp = 0;
+      unit.medusaSlayTimer = UNIT.medusa.slayCooldown;
+      state.lightning.push({ x1: unit.x, y1: unit.y - 78, x2: target.x, y2: target.y - 64, life: 0.28, duration: 0.28 });
+      popText(target.x, target.y - 92, "石化秒杀", "#93d96b");
+      return true;
+    case "medusaPoison":
+      sprayMedusaPoison(unit);
+      releaseMedusaCorpses(unit);
+      return true;
+    case "vControl":
+      if (!canVControl(unit, target)) {
+        popText(unit.x, unit.y - 116, "无法控制", "#d7ceff");
+        return false;
+      }
+      controlTargetWithV(unit, target);
+      return true;
+    case "undeadSpike":
+      castUndeadPierce(unit, target);
+      return true;
+    case "summonUndead":
+      summonUndeadMageWave(unit);
+      return true;
+    case "suikaiPierce":
+      castSuikaiPierce(unit, target);
+      return true;
+    case "suikaiCorpses":
+      summonSuikaiCorpses(unit);
+      return true;
+    case "suikaiHook":
+      if (!canSuikaiHook(unit, target) || Math.abs(target.x - unit.x) > UNIT.suikai.range + 180) {
+        popText(unit.x, unit.y - 116, "无法勾取", "#d8c8e8");
+        return false;
+      }
+      hookTargetWithSuikai(unit, target);
+      return true;
+    case "treeRoot":
+      castTreeRoot(unit, target);
+      return true;
+    case "fireDragon":
+      castFireDragon(unit, target);
+      return true;
+    case "meteorRain":
+      castMeteorRain(unit, target);
+      return true;
+    case "redFireball":
+      castRedflameFireball(unit, target);
+      return true;
+    case "redPillars":
+      castRedflamePillars(unit, target);
+      return true;
+    case "stormCloud":
+      summonStormCloud(unit, target);
+      return true;
+    case "tornado":
+      launchTornado(unit, target);
+      return true;
+    case "hurricaneShield":
+      castManualHurricaneShield(unit);
+      return true;
+    case "windBolt":
+      strikeLightning(unit, target);
+      return true;
+    case "chainLightning":
+      castChainLightning(unit, target);
+      return true;
+    case "archFireballs":
+      castArchmageFireballs(unit);
+      return true;
+    case "arcaneExplosion":
+      castArcaneExplosion(unit);
+      return true;
+    case "prometheusDragon":
+      castPrometheusDragons(unit, target);
+      return true;
+    case "prometheusImp":
+      summonPrometheusFireImps(unit);
+      return true;
+    case "prometheusMeteor":
+      castPrometheusMeteorRain(unit, target);
+      return true;
+    case "zeusCloud":
+      summonZeusCloud(unit, target);
+      return true;
+    case "zeusWall":
+      summonZeusElectricWall(unit, target);
+      return true;
+    case "zeusGate":
+      summonZeusElectricGate(unit, target);
+      return true;
+    case "berserkerRage":
+      unit.berserkerRageTimer = 0;
+      updateBerserker(unit, 0);
+      return true;
+    default:
+      return false;
+  }
+}
+
+function castManualHurricaneShield(unit) {
+  const data = UNIT.hurricane;
+  const target = state.units
+    .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally) && !UNIT[ally.type]?.untargetable && ally.shieldTimer <= 0)
+    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+  if (!target) {
+    popText(unit.x, unit.y - 116, "没有护盾目标", "#d7f6ee");
+    return;
+  }
+  target.shieldTimer = data.shieldDuration;
+  target.shieldReduction = data.shieldReduction;
+  popText(target.x, target.y - 100, "护盾", "#d7f6ee");
 }
 
 function drawArrow(arrow) {
@@ -9560,11 +10184,34 @@ canvas.addEventListener("click", (event) => {
     return;
   }
   const point = canvasPoint(event);
+  if (handleManualControlClick(point) || handleInspectedInfoButton(point)) {
+    updateHud();
+    return;
+  }
   if (tryMedusaSlay(point) || tryManualVControl(point)) {
     updateHud();
     return;
   }
   inspectUnitAt(point);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (!state?.controlledUnitId) return;
+  const key = event.key;
+  if (key === "ArrowUp" || key === "w" || key === "W") manualKeys.up = true;
+  else if (key === "ArrowDown" || key === "s" || key === "S") manualKeys.down = true;
+  else if (key === "ArrowLeft" || key === "a" || key === "A") manualKeys.left = true;
+  else if (key === "ArrowRight" || key === "d" || key === "D") manualKeys.right = true;
+  else return;
+  event.preventDefault();
+});
+
+window.addEventListener("keyup", (event) => {
+  const key = event.key;
+  if (key === "ArrowUp" || key === "w" || key === "W") manualKeys.up = false;
+  else if (key === "ArrowDown" || key === "s" || key === "S") manualKeys.down = false;
+  else if (key === "ArrowLeft" || key === "a" || key === "A") manualKeys.left = false;
+  else if (key === "ArrowRight" || key === "d" || key === "D") manualKeys.right = false;
 });
 
 let longPressTimer = null;
