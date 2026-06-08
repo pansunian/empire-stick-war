@@ -887,13 +887,13 @@ const FACTIONS = {
   order: {
     name: "秩序帝国",
     roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
-    startingUnits: ["miner", "swordsman"],
+    startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
   chaos: {
     name: "混沌帝国",
     roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "chaosGiant", "enslavedGiant"],
-    startingUnits: ["miner", "undead", "creeper"],
+    startingUnits: ["miner", "creeper", "bomber"],
     mineColor: "#b7f56e",
   },
   element: {
@@ -7884,6 +7884,7 @@ function getUnitColor(unit) {
   if (unit.type === "archon") return "#5e89d8";
   if (unit.type === "goldenArcher") return "#e0b84f";
   if (unit.type === "goldenSpartan") return "#d7a92e";
+  if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
@@ -7931,6 +7932,7 @@ function getUnitColor(unit) {
 }
 
 function getHeadColor(unit) {
+  if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (unit.type === "miner" && unit.earthMiner) return "#8a5b32";
   if (unit.type === "earthElement") return "#c0a36d";
   if (unit.type === "waterElement") return "#b8f0ff";
