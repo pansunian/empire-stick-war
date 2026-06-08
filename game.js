@@ -777,14 +777,11 @@ const UNIT = {
     name: "飓风",
     cost: 0,
     hp: 250,
-    damage: 20,
-    range: 42,
+    damage: 60,
+    range: 230,
     speed: 70,
     train: 5.8,
-    cooldown: 1.05,
-    tornadoEvery: 10,
-    tornadoDamage: 50,
-    tornadoRange: 230,
+    cooldown: 5,
     stunDuration: 2,
     tornadoLife: 0.85,
     shieldEvery: 15,
@@ -1490,7 +1487,7 @@ function formatSpecial(type) {
   if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "redflame") notes.push(`2 个火元素融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
   if (type === "stormLich") notes.push(`2 个风元素融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
-  if (type === "hurricane") notes.push(`近战普攻只打飞行/巨人/攻城/雕像；每 ${data.tornadoEvery}秒发射龙卷风 ${data.tornadoDamage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
+  if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风 ${data.damage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
   if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
@@ -1568,6 +1565,7 @@ function newGame() {
     enemyGold: enemyStartGold,
     command: "guard",
     attackIntent: "tower",
+    commandLevel: 0,
     minerCommand: "mine",
     paused: false,
     over: false,
@@ -2015,26 +2013,19 @@ function toggleMobileUnitShop() {
 
 function setCommand(command) {
   if (command === "attack") {
-    if (state.command === "attack" && state.attackIntent === "tower") {
-      state.attackIntent = "statue";
-    } else {
-      state.attackIntent = "tower";
-    }
-    state.command = "attack";
+    state.commandLevel = Math.min(2, (state.commandLevel ?? getCommandLevelFromState()) + 1);
+    applyCommandLevel();
   } else if (command === "guard") {
-    if (state.command === "attack" && state.attackIntent === "statue") {
-      state.command = "attack";
-      state.attackIntent = "tower";
-    } else {
-      state.command = "guard";
-      state.attackIntent = "tower";
-    }
+    state.commandLevel = Math.max(0, (state.commandLevel ?? getCommandLevelFromState()) - 1);
+    applyCommandLevel();
   } else if (command === "retreat") {
     state.command = "retreat";
     state.attackIntent = "tower";
+    state.commandLevel = 0;
   } else {
     state.command = command;
     state.attackIntent = "tower";
+    state.commandLevel = getCommandLevelFromState();
   }
   if (state.command !== "retreat") {
     state.units.forEach((unit) => {
@@ -2050,6 +2041,22 @@ function setCommand(command) {
 
   if (!state.over) {
     statusEl.textContent = getCommandStatusText();
+  }
+}
+
+function getCommandLevelFromState() {
+  if (state.command === "attack" && state.attackIntent === "statue") return 2;
+  if (state.command === "attack" && state.attackIntent === "tower") return 1;
+  return 0;
+}
+
+function applyCommandLevel() {
+  if ((state.commandLevel ?? 0) <= 0) {
+    state.command = "guard";
+    state.attackIntent = "tower";
+  } else {
+    state.command = "attack";
+    state.attackIntent = state.commandLevel >= 2 ? "statue" : "tower";
   }
 }
 
@@ -2156,7 +2163,6 @@ function spawnUnit(type, side, x) {
     rocketReloadTimer: 0,
     rocketFireTimer: 0,
     shieldCastTimer: UNIT[type].shieldEvery ?? 0,
-    tornadoTimer: UNIT[type].tornadoEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
     hero: Boolean(data.hero),
@@ -3853,17 +3859,6 @@ function clampUnitPosition(unit) {
 
 function updateHurricane(unit, dt) {
   const data = UNIT.hurricane;
-  unit.tornadoTimer = Math.max(0, (unit.tornadoTimer ?? data.tornadoEvery) - dt);
-  if (unit.tornadoTimer <= 0) {
-    const tornadoTarget = findHurricaneTornadoTarget(unit);
-    if (tornadoTarget) {
-      unit.tornadoTimer = data.tornadoEvery;
-      launchTornado(unit, tornadoTarget);
-    } else {
-      unit.tornadoTimer = 1;
-    }
-  }
-
   unit.shieldCastTimer = Math.max(0, (unit.shieldCastTimer ?? data.shieldEvery) - dt);
   if (unit.shieldCastTimer > 0) return;
 
@@ -3880,17 +3875,6 @@ function updateHurricane(unit, dt) {
   target.shieldReduction = data.shieldReduction;
   unit.shieldCastTimer = data.shieldEvery;
   popText(target.x, target.y - 105, "风盾", "#9ee8ff");
-}
-
-function findHurricaneTornadoTarget(unit) {
-  const data = UNIT.hurricane;
-  return state.units
-    .filter((enemy) => {
-      if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
-      if (!isAheadOf(unit, enemy)) return false;
-      return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.tornadoRange;
-    })
-    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
 
 function updateLinghan(unit, dt) {
@@ -4971,6 +4955,9 @@ function getMoveTolerance(unit, target, desiredX) {
   if (isTowerRallyCommand(unit)) return getTowerPointTolerance(unit);
   if (target?.kind === "statue") return 4;
   if (target && target.kind !== "statue") return 4;
+  if ((unit.side === "player" && state.command === "guard") || (unit.side === "enemy" && state.enemyCommand === "guard")) {
+    return getGuardPointTolerance(unit);
+  }
   const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
   if (Math.abs(desiredX - enemyBase) < 2) return 4;
   return getCommandPointTolerance(unit);
@@ -5007,6 +4994,10 @@ function getTowerPointTolerance(unit) {
   return UNIT[unit.type]?.giant ? 12 : 8;
 }
 
+function getGuardPointTolerance(unit) {
+  return UNIT[unit.type]?.giant ? 36 : 24;
+}
+
 function isTowerRallyCommand(unit) {
   if (unit.side === "player") {
     return state.command === "attack" && state.attackIntent === "tower";
@@ -5027,14 +5018,14 @@ function isPlayerForcedGuarding(unit) {
   if (unit.side !== "player" || state.command !== "guard") return false;
   if (unit.forceCharge || unit.type === "miner" || unit.type === "electricGate") return false;
   const point = getGuardFormationPoint(unit, "player");
-  return distanceTo(unit.x, unit.y, point.x, point.y) > getCommandPointTolerance(unit);
+  return distanceTo(unit.x, unit.y, point.x, point.y) > getGuardPointTolerance(unit);
 }
 
 function moveTowardGuardLine(unit, dt) {
   const data = UNIT[unit.type];
   const baseX = unit.side === "enemy" ? state.enemyLineX : null;
   const point = getGuardFormationPoint(unit, unit.side, baseX);
-  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed, dt, getCommandPointTolerance(unit));
+  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed, dt, getGuardPointTolerance(unit));
 }
 
 function getEnemyFormationX(unit) {
@@ -5067,16 +5058,27 @@ function getEnemyRallyX(unit) {
 }
 
 function getGuardFormationPoint(unit, side, baseOverride = null) {
-  const column = unit.id % 4;
-  const row = Math.floor(unit.id / 4) % 9;
-  const rowOffsets = [-150, -112, -74, -36, 0, 36, 74, 112, 150];
-  const columnSpacing = 42;
+  const index = getGuardFormationIndex(unit, side);
+  const rowOffsets = [-120, -84, -48, -12, 24, 60, 96, 132];
+  const rows = rowOffsets.length;
+  const row = index % rows;
+  const column = Math.floor(index / rows) % 5;
+  const columnSpacing = 34;
   const baseX = baseOverride ?? (side === "player" ? getPlayerRallyBaseX() : getEnemyRallyBaseX());
   const direction = side === "player" ? 1 : -1;
   return {
     x: baseX + direction * column * columnSpacing,
     y: FIELD.ground + rowOffsets[row],
   };
+}
+
+function getGuardFormationIndex(unit, side) {
+  const units = state.units
+    .filter((candidate) => candidate.side === side && candidate.hp > 0 && !isUnitHidden(candidate))
+    .filter((candidate) => candidate.type !== "miner" && candidate.type !== "electricGate" && !candidate.forceCharge)
+    .sort((a, b) => a.id - b.id);
+  const index = units.findIndex((candidate) => candidate.id === unit.id);
+  return index >= 0 ? index : Math.abs(unit.id);
 }
 
 function getTowerRallyX(unit, side) {
@@ -5139,7 +5141,6 @@ function findTarget(unit) {
     if (other.side === unit.side || other.hp <= 0) continue;
     if (isUnitHidden(other)) continue;
     if (!canTarget(unit, other)) continue;
-    if (unit.type === "hurricane" && !canHurricaneBasicTarget(other)) continue;
     if (!isAheadOf(unit, other)) continue;
     if (unit.type === "waterElement" && other.frozenBy) continue;
 
@@ -5169,7 +5170,6 @@ function getRetaliationTarget(unit) {
   const target = state.units.find((other) => other.id === unit.retaliateTargetId);
   if (!target || target.hp <= 0 || isUnitHidden(target)) return null;
   if (!canTarget(unit, target)) return null;
-  if (unit.type === "hurricane" && !canHurricaneBasicTarget(target)) return null;
   return target;
 }
 
@@ -5227,12 +5227,6 @@ function canTarget(attacker, target) {
   if (isUnitHidden(attacker) || isUnitHidden(target)) return false;
   if (UNIT[target.type]?.untargetable) return false;
   return !(UNIT[target.type]?.flying && isMelee(attacker) && !UNIT[attacker.type]?.antiAir);
-}
-
-function canHurricaneBasicTarget(target) {
-  if (target.kind === "statue") return true;
-  const data = UNIT[target.type] ?? {};
-  return Boolean(data.flying || data.giant || target.type === "catapult" || target.type === "rocketCart");
 }
 
 function isMelee(unit) {
@@ -5304,7 +5298,7 @@ function attack(unit, target) {
   }
 
   if (unit.type === "hurricane") {
-    strikeHurricaneMelee(unit, target);
+    launchTornado(unit, target);
     return;
   }
 
@@ -5553,13 +5547,6 @@ function castUndeadStaffSlam(unit, target) {
   popText(unit.x, unit.y - 112, "法杖砸地", "#b8b0a5");
 }
 
-function strikeHurricaneMelee(unit, target) {
-  const data = UNIT.hurricane;
-  applyDamage(target, data.damage, unit.side);
-  if (data.stunDuration && target.kind !== "statue") applyStun(target, Math.min(0.5, data.stunDuration));
-  state.blasts.push({ x: target.x, y: target.y ? target.y - 40 : FIELD.ground - 110, radius: 28, life: 0.18, duration: 0.18, color: "#d7f6ee" });
-}
-
 function castUndeadPierce(unit, target) {
   const data = UNIT.undeadMage;
   const damage = data.boneSpikeDamage;
@@ -5802,7 +5789,7 @@ function launchTornado(unit, target) {
     tx: target.x,
     ty: target.y ? target.y - 35 : FIELD.ground - 90,
     side: unit.side,
-    damage: data.tornadoDamage,
+    damage: data.damage,
     stun: data.stunDuration,
     life: data.tornadoLife,
     duration: data.tornadoLife,
@@ -6836,6 +6823,7 @@ function startCampaignSecondPhase() {
 function forceAllBattleUnitsCharge() {
   state.command = "attack";
   state.attackIntent = "statue";
+  state.commandLevel = 2;
   state.enemyCommand = "attack";
   state.enemyCommandTimer = 8;
   state.enemyAttackWaveTimer = 8;
