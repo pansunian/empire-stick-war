@@ -1601,6 +1601,8 @@ function newGame() {
     enemyBaseAttackTimer: 0,
     pendingVControlId: null,
     pendingMedusaSlayId: null,
+    inspectedUnitId: null,
+    inspectedUnitTimer: 0,
     passiveGoldTimer: 2,
     towerOwner: null,
     towerCaptureSide: null,
@@ -3805,6 +3807,14 @@ function updateUnits(dt) {
       moveUnitTowardPoint(unit, desiredPoint.x, desiredPoint.y, unit.speed ?? data.speed, dt, tolerance);
     }
     updateIceRoadMoveTimer(unit, beforeX, dt);
+  }
+  if (state.inspectedUnitTimer > 0) {
+    state.inspectedUnitTimer = Math.max(0, state.inspectedUnitTimer - dt);
+    const inspected = state.units.find((unit) => unit.id === state.inspectedUnitId && unit.hp > 0);
+    if (!inspected || isUnitHidden(inspected)) {
+      state.inspectedUnitId = null;
+      state.inspectedUnitTimer = 0;
+    }
   }
 }
 
@@ -6244,15 +6254,16 @@ function updateBurn(dt) {
 }
 
 function updateChaosRecovery(dt) {
-  const regenPerSecond = 4;
+  const regenEvery = 2;
+  const regenAmount = 5;
   state.units.forEach((unit) => {
     if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
     unit.chaosCleanseTimer -= dt;
 
-    if (unit.chaosRegenTick >= 1) {
+    if (unit.chaosRegenTick >= regenEvery) {
       unit.chaosRegenTick = 0;
-      const healed = Math.min(regenPerSecond, unit.maxHp - unit.hp);
+      const healed = Math.min(regenAmount, unit.maxHp - unit.hp);
       if (healed > 0) {
         unit.hp += healed;
         popText(unit.x, unit.y - 96, `恢复 +${healed}`, "#b7f56e");
@@ -6902,6 +6913,7 @@ function draw() {
 
   const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
+  drawInspectedUnitInfo();
   state.arrows.forEach(drawArrow);
   state.delayedSpells.forEach(drawDelayedSpell);
   state.meteors.forEach(drawMeteor);
@@ -8678,10 +8690,12 @@ function drawWeapon(type, unit = null) {
 
 function drawUnitHp(unit) {
   ctx.scale(unit.side === "player" ? 1 : -1, 1);
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(-19, -86, 38, 5);
-  ctx.fillStyle = "#6ee07c";
-  ctx.fillRect(-19, -86, 38 * (unit.hp / unit.maxHp), 5);
+  if (unit.hp < unit.maxHp) {
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(-19, -86, 38, 5);
+    ctx.fillStyle = "#6ee07c";
+    ctx.fillRect(-19, -86, 38 * (unit.hp / unit.maxHp), 5);
+  }
   if (unit.maxShieldHp > 0 && unit.shieldHp > 0) {
     ctx.fillStyle = "#9fc0ff";
     ctx.fillRect(-19, -93, 38 * (unit.shieldHp / unit.maxShieldHp), 4);
@@ -8735,6 +8749,66 @@ function drawUnitHp(unit) {
     ctx.fillStyle = unit.side === "player" ? "#f5c542" : "#b7f56e";
     ctx.fillRect(-18, -77, 36 * (unit.carry / UNIT.miner.bagSize), 5);
   }
+}
+
+function drawInspectedUnitInfo() {
+  if (!state.inspectedUnitId || state.inspectedUnitTimer <= 0) return;
+  const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
+  if (!unit) return;
+
+  const data = UNIT[unit.type] ?? {};
+  const lines = [
+    data.name ?? unit.type,
+    `生命 ${formatStat(unit.maxHp)}`,
+    `移速 ${formatStat(unit.speed ?? data.speed ?? 0)}`,
+    `普攻 ${formatStat(getUnitBasicDamage(unit))}`,
+  ];
+  ctx.save();
+  ctx.font = "700 14px system-ui, sans-serif";
+  const width = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 24;
+  const height = 24 + lines.length * 18;
+  const x = Math.max(10, Math.min(FIELD.width - width - 10, unit.x - width / 2));
+  const y = Math.max(12, unit.y - (UNIT[unit.type]?.flying ? 126 : 112) - height);
+
+  ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
+  ctx.strokeStyle = unit.side === "player" ? "#75a7ff" : "#ff9b8d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#f8eac5";
+  ctx.textAlign = "center";
+  ctx.fillText(lines[0], x + width / 2, y + 20);
+  ctx.font = "600 13px system-ui, sans-serif";
+  ctx.fillStyle = "#d9d0b8";
+  for (let i = 1; i < lines.length; i += 1) {
+    ctx.fillText(lines[i], x + width / 2, y + 22 + i * 18);
+  }
+
+  ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
+  ctx.beginPath();
+  ctx.moveTo(unit.x - 8, y + height - 1);
+  ctx.lineTo(unit.x + 8, y + height - 1);
+  ctx.lineTo(unit.x, y + height + 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function getUnitBasicDamage(unit) {
+  const data = UNIT[unit.type] ?? {};
+  if (unit.type === "mage") return data.damage;
+  if (unit.type === "undeadMage") return data.damage;
+  if (unit.type === "hurricane") return data.damage;
+  if (unit.type === "treeEnt") return data.damage;
+  return unit.damage ?? data.damage ?? 0;
+}
+
+function formatStat(value) {
+  if (!Number.isFinite(value)) return "0";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
 function drawArrow(arrow) {
@@ -9219,13 +9293,27 @@ function findPlayerGoldenSpartanAt(point) {
 }
 
 function findUnitAt(point) {
-  return state.units.find((unit) => {
-    if (unit.hp <= 0 || isUnitHidden(unit)) return false;
-    const scale = UNIT[unit.type]?.visualScale ?? 1;
-    const height = (UNIT[unit.type]?.giant ? 150 : unit.type === "treeEnt" ? 120 : 86) * scale;
-    const width = (UNIT[unit.type]?.giant ? 74 : unit.type === "treeEnt" ? 72 : 48) * scale;
-    return Math.abs(unit.x - point.x) <= width && Math.abs(unit.y - 48 - point.y) <= height;
-  });
+  return [...state.units]
+    .filter((unit) => unit.hp > 0 && !isUnitHidden(unit))
+    .sort((a, b) => b.y - a.y || b.id - a.id)
+    .find((unit) => {
+      const scale = UNIT[unit.type]?.visualScale ?? 1;
+      const height = (UNIT[unit.type]?.giant ? 150 : unit.type === "treeEnt" ? 120 : 86) * scale;
+      const width = (UNIT[unit.type]?.giant ? 74 : unit.type === "treeEnt" ? 72 : 48) * scale;
+      return Math.abs(unit.x - point.x) <= width && Math.abs(unit.y - 48 - point.y) <= height;
+    });
+}
+
+function inspectUnitAt(point) {
+  const unit = findUnitAt(point);
+  if (!unit) {
+    state.inspectedUnitId = null;
+    state.inspectedUnitTimer = 0;
+    return false;
+  }
+  state.inspectedUnitId = unit.id;
+  state.inspectedUnitTimer = 4;
+  return true;
 }
 
 function canMedusaSlay(medusa, target) {
@@ -9472,7 +9560,11 @@ canvas.addEventListener("click", (event) => {
     return;
   }
   const point = canvasPoint(event);
-  if (tryMedusaSlay(point) || tryManualVControl(point)) updateHud();
+  if (tryMedusaSlay(point) || tryManualVControl(point)) {
+    updateHud();
+    return;
+  }
+  inspectUnitAt(point);
 });
 
 let longPressTimer = null;
