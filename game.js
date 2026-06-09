@@ -637,7 +637,7 @@ const UNIT = {
     train: 0,
     cooldown: 5,
     summonEvery: 8,
-    summonLimit: 3,
+    summonLimit: 5,
     summonDamage: 15,
     healOnHit: 10,
     immobile: false,
@@ -645,7 +645,7 @@ const UNIT = {
   waterScorpion: {
     name: "水蝎子",
     cost: 0,
-    hp: 60,
+    hp: 45,
     damage: 6,
     range: 28,
     speed: 55,
@@ -1613,6 +1613,7 @@ function newGame() {
     inspectedUnitTimer: 0,
     controlledUnitId: null,
     pendingManualAction: null,
+    manualMoveTarget: null,
     passiveGoldTimer: 2,
     towerOwner: null,
     towerCaptureSide: null,
@@ -3857,6 +3858,7 @@ function updateManualControlState() {
   if (unit && !isUnitHidden(unit)) return;
   state.controlledUnitId = null;
   state.pendingManualAction = null;
+  state.manualMoveTarget = null;
 }
 
 function isManuallyControlled(unit) {
@@ -3884,15 +3886,23 @@ function updateManualControlledUnit(unit, dt) {
 
   const dx = (manualKeys.right ? 1 : 0) - (manualKeys.left ? 1 : 0);
   const dy = (manualKeys.down ? 1 : 0) - (manualKeys.up ? 1 : 0);
-  if (!dx && !dy) return;
-  const distance = Math.hypot(dx, dy) || 1;
   const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed ?? 0);
-  unit.x += (dx / distance) * speed * getMoveFactor(unit) * dt;
-  unit.y += (dy / distance) * speed * getMoveFactor(unit) * dt;
   unit.inCastle = false;
   unit.mineSlotId = null;
   unit.mineWorkSlot = null;
   unit.goldRushMineId = null;
+  if (!dx && !dy) {
+    if (!state.manualMoveTarget) return;
+    const moving = moveUnitTowardPoint(unit, state.manualMoveTarget.x, state.manualMoveTarget.y, speed, dt, 6);
+    clampUnitPosition(unit);
+    if (!moving) state.manualMoveTarget = null;
+    return;
+  }
+
+  state.manualMoveTarget = null;
+  const distance = Math.hypot(dx, dy) || 1;
+  unit.x += (dx / distance) * speed * getMoveFactor(unit) * dt;
+  unit.y += (dy / distance) * speed * getMoveFactor(unit) * dt;
   clampUnitPosition(unit);
 }
 
@@ -7010,6 +7020,7 @@ function draw() {
   drawSnow();
   drawCampaignMissileWarning();
   drawCampaignDarkness();
+  drawManualMoveTarget();
   state.floaters.forEach(drawFloater);
   drawManualControlPanel();
 
@@ -8850,7 +8861,7 @@ function getInspectedUnitInfoLayout(unit) {
   ctx.font = "700 14px system-ui, sans-serif";
   const width = Math.max(...lines.map((line) => ctx.measureText(line).width), 88) + 28;
   ctx.restore();
-  const height = 104;
+  const height = 124;
   const x = Math.max(10, Math.min(FIELD.width - width - 10, unit.x - width / 2));
   const y = Math.max(12, unit.y - (UNIT[unit.type]?.flying ? 126 : 112) - height);
   return {
@@ -8861,10 +8872,10 @@ function getInspectedUnitInfoLayout(unit) {
     lines,
     stats,
     controlButton: {
-      x: x + width - 48,
-      y: y + 7,
-      width: 40,
-      height: 22,
+      x: x + 14,
+      y: y + height - 34,
+      width: width - 28,
+      height: 25,
     },
   };
 }
@@ -8900,7 +8911,7 @@ function drawInspectedUnitInfo() {
   ctx.fill();
   ctx.fillStyle = controlled ? "#16140f" : "#f5f0df";
   ctx.font = "800 12px system-ui, sans-serif";
-  ctx.fillText(controlled ? "解除" : "控制", controlButton.x + controlButton.width / 2, controlButton.y + 15);
+  ctx.fillText(controlled ? "解除接管" : "接管控制", controlButton.x + controlButton.width / 2, controlButton.y + 17);
 
   ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
   ctx.beginPath();
@@ -9041,10 +9052,13 @@ function drawManualControlPanel() {
   ctx.font = "900 16px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillText(`接管：${UNIT[unit.type]?.name ?? unit.type}`, panel.x + 14, panel.y + 24);
+  ctx.fillStyle = "#cfc6ad";
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.fillText("方向键/WASD 或点地移动", panel.x + 14, panel.y + 42);
   if (state.pendingManualAction) {
     ctx.fillStyle = "#f5d14f";
     ctx.font = "800 13px system-ui, sans-serif";
-    ctx.fillText("点击战场选择释放位置", panel.x + 14, panel.y + 43);
+    ctx.fillText("点击战场选择释放位置", panel.x + 14, panel.y + 58);
   }
 
   buttons.forEach((button) => {
@@ -9068,6 +9082,25 @@ function drawManualControlPanel() {
     ctx.fillStyle = disabled ? "rgba(245,240,223,0.34)" : "#cfc6ad";
     ctx.fillText(button.mode === "direct" ? "立即" : "点地", button.x + button.width / 2, button.y + 38);
   });
+  ctx.restore();
+}
+
+function drawManualMoveTarget() {
+  if (!state.manualMoveTarget || !getControlledUnit()) return;
+  const target = state.manualMoveTarget;
+  ctx.save();
+  ctx.strokeStyle = "#f5d14f";
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.86;
+  ctx.beginPath();
+  ctx.ellipse(target.x, target.y + 8, 28, 10, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(target.x - 16, target.y + 8);
+  ctx.lineTo(target.x + 16, target.y + 8);
+  ctx.moveTo(target.x, target.y - 4);
+  ctx.lineTo(target.x, target.y + 20);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -9104,7 +9137,7 @@ function getManualPanelRect(buttons, visibleRect = getVisibleWorldRect()) {
   const buttonHeight = 48;
   const gap = 8;
   const width = 28 + columns * buttonWidth + (columns - 1) * gap;
-  const height = 58 + rows * buttonHeight + (rows - 1) * gap;
+  const height = 74 + rows * buttonHeight + (rows - 1) * gap;
   const x = visibleRect.x + visibleRect.width - width - 18;
   const y = visibleRect.y + visibleRect.height - height - 18;
   return { x, y, width, height, columns, buttonWidth, buttonHeight, gap };
@@ -9119,7 +9152,7 @@ function getManualControlButtons(unit) {
     return {
       ...action,
       x: panel.x + 14 + column * (panel.buttonWidth + panel.gap),
-      y: panel.y + 50 + row * (panel.buttonHeight + panel.gap),
+      y: panel.y + 66 + row * (panel.buttonHeight + panel.gap),
       width: panel.buttonWidth,
       height: panel.buttonHeight,
     };
@@ -9234,11 +9267,20 @@ function handleInspectedInfoButton(point) {
   return true;
 }
 
+function isPointInsideInspectedInfo(point) {
+  if (!state.inspectedUnitId || state.inspectedUnitTimer <= 0) return false;
+  const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
+  if (!unit) return false;
+  const layout = getInspectedUnitInfoLayout(unit);
+  return pointInRect(point, layout);
+}
+
 function toggleManualControl(unit) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
   if (state.controlledUnitId === unit.id) {
     state.controlledUnitId = null;
     state.pendingManualAction = null;
+    state.manualMoveTarget = null;
     popText(unit.x, unit.y - 112, "解除接管", "#f5d14f");
     return true;
   }
@@ -9246,6 +9288,7 @@ function toggleManualControl(unit) {
   state.inspectedUnitId = unit.id;
   state.inspectedUnitTimer = 9999;
   state.pendingManualAction = null;
+  state.manualMoveTarget = null;
   unit.inCastle = false;
   popText(unit.x, unit.y - 112, "手动接管", "#f5d14f");
   return true;
@@ -9254,6 +9297,7 @@ function toggleManualControl(unit) {
 function handleManualControlClick(point) {
   const unit = getControlledUnit();
   if (!unit || isUnitHidden(unit)) return false;
+  if (isPointInsideInspectedInfo(point)) return false;
   const button = getManualControlButtons(unit).find((candidate) => pointInRect(point, candidate));
   if (button) {
     if (isManualButtonDisabled(unit, button)) {
@@ -9270,7 +9314,14 @@ function handleManualControlClick(point) {
     return true;
   }
 
-  if (!state.pendingManualAction) return false;
+  const panel = getManualPanelRect(getManualActions(unit));
+  if (pointInRect(point, panel)) return true;
+
+  if (!state.pendingManualAction) {
+    state.manualMoveTarget = makeManualPointTarget(point);
+    popText(unit.x, unit.y - 116, "移动指令", "#f5d14f");
+    return true;
+  }
   const action = getManualActions(unit).find((candidate) => candidate.id === state.pendingManualAction.id);
   if (action && !isManualButtonDisabled(unit, action)) {
     executeManualAction(unit, action, point);
@@ -10281,8 +10332,18 @@ canvas.addEventListener("click", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (!state?.controlledUnitId) return;
   const key = event.key;
+  if (key === "c" || key === "C") {
+    const unit = state?.inspectedUnitId
+      ? state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate))
+      : null;
+    if (unit) {
+      toggleManualControl(unit);
+      event.preventDefault();
+    }
+    return;
+  }
+  if (!state?.controlledUnitId) return;
   if (key === "ArrowUp" || key === "w" || key === "W") manualKeys.up = true;
   else if (key === "ArrowDown" || key === "s" || key === "S") manualKeys.down = true;
   else if (key === "ArrowLeft" || key === "a" || key === "A") manualKeys.left = true;
