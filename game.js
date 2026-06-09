@@ -1124,7 +1124,6 @@ const CAMPAIGN_LEVELS = {
       enemyFaction: "element",
       startGold: 300,
       enemyGold: 320,
-      enemyGodV: true,
       arrowRain: { every: 15, total: 300, perSecond: 75, damage: 10, radius: 24, side: "player", cooldownAfterComplete: true },
       playerDeathBlast: { damage: 13, radius: 52, limit: 3 },
       magmaGround: { every: 20, duration: 10, damage: 3 },
@@ -1558,6 +1557,7 @@ function renderStatsTable() {
 
 function newGame() {
   resetManualKeys();
+  resetBattlefieldView();
   enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
   renderFactionUi();
   renderShop();
@@ -1670,6 +1670,12 @@ function resetManualKeys() {
   manualKeys.down = false;
   manualKeys.left = false;
   manualKeys.right = false;
+}
+
+function resetBattlefieldView() {
+  if (!battlefieldWrap) return;
+  battlefieldWrap.scrollLeft = 0;
+  battlefieldWrap.scrollTop = 0;
 }
 
 function spawnCampaignCenterElectricGate() {
@@ -8831,11 +8837,14 @@ function drawUnitHp(unit) {
 
 function getInspectedUnitInfoLayout(unit) {
   const data = UNIT[unit.type] ?? {};
+  const stats = [
+    { id: "hp", label: "生命", value: formatStat(unit.maxHp), valueColor: "#e94f4f" },
+    { id: "speed", label: "移速", value: formatStat(unit.speed ?? data.speed ?? 0), valueColor: "#4f8cff" },
+    { id: "damage", label: "攻击", value: formatStat(getUnitBasicDamage(unit)), valueColor: "#111111" },
+  ];
   const lines = [
     data.name ?? unit.type,
-    `生命 ${formatStat(unit.maxHp)}`,
-    `移速 ${formatStat(unit.speed ?? data.speed ?? 0)}`,
-    `普攻 ${formatStat(getUnitBasicDamage(unit))}`,
+    ...stats.map((stat) => `${stat.label} ${stat.value}`),
   ];
   ctx.save();
   ctx.font = "700 14px system-ui, sans-serif";
@@ -8850,6 +8859,7 @@ function getInspectedUnitInfoLayout(unit) {
     width,
     height,
     lines,
+    stats,
     controlButton: {
       x: x + width - 48,
       y: y + 7,
@@ -8865,7 +8875,7 @@ function drawInspectedUnitInfo() {
   if (!unit) return;
 
   const layout = getInspectedUnitInfoLayout(unit);
-  const { x, y, width, height, lines, controlButton } = layout;
+  const { x, y, width, height, lines, stats, controlButton } = layout;
   ctx.save();
   ctx.fillStyle = "rgba(18, 22, 24, 0.86)";
   ctx.strokeStyle = unit.side === "player" ? "#75a7ff" : "#ff9b8d";
@@ -8879,11 +8889,9 @@ function drawInspectedUnitInfo() {
   ctx.textAlign = "center";
   ctx.font = "700 14px system-ui, sans-serif";
   ctx.fillText(lines[0], x + width / 2, y + 20);
-  ctx.font = "600 13px system-ui, sans-serif";
-  ctx.fillStyle = "#d9d0b8";
-  for (let i = 1; i < lines.length; i += 1) {
-    ctx.fillText(lines[i], x + width / 2, y + 24 + i * 18);
-  }
+  stats.forEach((stat, index) => {
+    drawInfoStatRow(stat, x + 14, y + 37 + index * 18, width - 28);
+  });
 
   const controlled = state.controlledUnitId === unit.id;
   ctx.fillStyle = controlled ? "rgba(230, 184, 74, 0.92)" : "rgba(117, 167, 255, 0.78)";
@@ -8901,6 +8909,83 @@ function drawInspectedUnitInfo() {
   ctx.lineTo(unit.x, y + height + 9);
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
+}
+
+function drawInfoStatRow(stat, x, y, width) {
+  const iconX = x + 10;
+  const textX = x + 26;
+  ctx.save();
+  if (stat.id === "hp") drawHeartIcon(iconX, y - 4, "#e94f4f");
+  if (stat.id === "speed") drawRunnerIcon(iconX, y - 5, "#4f8cff");
+  if (stat.id === "damage") drawKeyIcon(iconX, y - 4, "#111111");
+  ctx.textAlign = "left";
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.fillStyle = "#d9d0b8";
+  ctx.fillText(`${stat.label}`, textX, y);
+  ctx.textAlign = "right";
+  ctx.font = "900 13px system-ui, sans-serif";
+  if (stat.id === "damage") {
+    const pillWidth = Math.max(26, ctx.measureText(stat.value).width + 12);
+    ctx.fillStyle = "rgba(245, 240, 223, 0.88)";
+    ctx.beginPath();
+    ctx.roundRect(x + width - pillWidth, y - 13, pillWidth, 17, 6);
+    ctx.fill();
+  }
+  ctx.fillStyle = stat.valueColor;
+  ctx.fillText(stat.value, x + width - 6, y);
+  ctx.restore();
+}
+
+function drawHeartIcon(x, y, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 8);
+  ctx.bezierCurveTo(x - 11, y, x - 5, y - 8, x, y - 3);
+  ctx.bezierCurveTo(x + 5, y - 8, x + 11, y, x, y + 8);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawKeyIcon(x, y, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(x - 4, y, 4.5, 0, Math.PI * 2);
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + 9, y);
+  ctx.moveTo(x + 5, y);
+  ctx.lineTo(x + 5, y + 4);
+  ctx.moveTo(x + 9, y);
+  ctx.lineTo(x + 9, y + 3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRunnerIcon(x, y, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.arc(x, y - 6, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 1, y - 2);
+  ctx.lineTo(x + 3, y + 3);
+  ctx.lineTo(x + 9, y + 3);
+  ctx.moveTo(x + 1, y);
+  ctx.lineTo(x - 7, y + 1);
+  ctx.moveTo(x + 3, y + 3);
+  ctx.lineTo(x - 2, y + 9);
+  ctx.moveTo(x + 4, y + 3);
+  ctx.lineTo(x + 9, y + 9);
+  ctx.stroke();
   ctx.restore();
 }
 

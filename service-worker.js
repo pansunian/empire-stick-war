@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v63";
+const CACHE_NAME = "stick-war-pwa-v65";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260608-manual-unit-control",
+  "./game.js?v=20260609-campaign-v-info-ui-view-reset",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];
