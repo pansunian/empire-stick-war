@@ -50,6 +50,13 @@ const manualKeys = {
   left: false,
   right: false,
 };
+const manualJoystick = {
+  pointerId: null,
+  active: false,
+  center: null,
+  knob: null,
+  vector: { x: 0, y: 0 },
+};
 
 if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
   document.documentElement.classList.add("ios-device");
@@ -1614,6 +1621,11 @@ function newGame() {
     controlledUnitId: null,
     pendingManualAction: null,
     manualMoveTarget: null,
+    selectedGroupIds: [],
+    selectedGroupType: null,
+    pendingGroupAction: null,
+    groupAttackTargetId: null,
+    groupMoveTarget: null,
     passiveGoldTimer: 2,
     towerOwner: null,
     towerCaptureSide: null,
@@ -1671,6 +1683,11 @@ function resetManualKeys() {
   manualKeys.down = false;
   manualKeys.left = false;
   manualKeys.right = false;
+  manualJoystick.pointerId = null;
+  manualJoystick.active = false;
+  manualJoystick.center = null;
+  manualJoystick.knob = null;
+  manualJoystick.vector = { x: 0, y: 0 };
 }
 
 function resetBattlefieldView() {
@@ -2711,6 +2728,7 @@ function update(dt) {
   }
 
   updateManualControlState();
+  updateGroupSelectionState();
 
   updateQueue(dt);
   updatePassiveGold(dt);
@@ -3722,6 +3740,10 @@ function updateUnits(dt) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
+    if (updateGroupAttackUnit(unit, dt)) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (shouldEnterPlayerCastle(unit)) {
       if (moveTowardCastle(unit, dt)) {
         updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -3859,6 +3881,7 @@ function updateManualControlState() {
   state.controlledUnitId = null;
   state.pendingManualAction = null;
   state.manualMoveTarget = null;
+  stopManualJoystick();
 }
 
 function isManuallyControlled(unit) {
@@ -3884,8 +3907,10 @@ function updateManualControlledUnit(unit, dt) {
   if (unit.type === "treeEnt" && unit.rooted) return;
   if (unit.type === "electricGate" || data.immobile) return;
 
-  const dx = (manualKeys.right ? 1 : 0) - (manualKeys.left ? 1 : 0);
-  const dy = (manualKeys.down ? 1 : 0) - (manualKeys.up ? 1 : 0);
+  const joystickX = Math.abs(manualJoystick.vector.x) > 0.05 ? manualJoystick.vector.x : 0;
+  const joystickY = Math.abs(manualJoystick.vector.y) > 0.05 ? manualJoystick.vector.y : 0;
+  const dx = (manualKeys.right ? 1 : 0) - (manualKeys.left ? 1 : 0) + joystickX;
+  const dy = (manualKeys.down ? 1 : 0) - (manualKeys.up ? 1 : 0) + joystickY;
   const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed ?? 0);
   unit.inCastle = false;
   unit.mineSlotId = null;
@@ -3904,6 +3929,119 @@ function updateManualControlledUnit(unit, dt) {
   unit.x += (dx / distance) * speed * getMoveFactor(unit) * dt;
   unit.y += (dy / distance) * speed * getMoveFactor(unit) * dt;
   clampUnitPosition(unit);
+}
+
+function stopManualJoystick() {
+  manualJoystick.pointerId = null;
+  manualJoystick.active = false;
+  manualJoystick.center = null;
+  manualJoystick.knob = null;
+  manualJoystick.vector = { x: 0, y: 0 };
+}
+
+function getSelectedGroupUnits() {
+  if (!state?.selectedGroupIds?.length) return [];
+  const ids = new Set(state.selectedGroupIds);
+  return state.units.filter((unit) =>
+    ids.has(unit.id) &&
+    unit.hp > 0 &&
+    unit.side === "player" &&
+    !isUnitHidden(unit) &&
+    !UNIT[unit.type]?.untargetable &&
+    (!state.selectedGroupType || unit.type === state.selectedGroupType)
+  );
+}
+
+function getGroupRepresentativeUnit() {
+  return getSelectedGroupUnits()[0] ?? null;
+}
+
+function clearSelectedGroup() {
+  if (!state) return;
+  state.selectedGroupIds = [];
+  state.selectedGroupType = null;
+  state.pendingGroupAction = null;
+  state.groupAttackTargetId = null;
+  state.groupMoveTarget = null;
+}
+
+function updateGroupSelectionState() {
+  if (!state.selectedGroupIds?.length) return;
+  const units = getSelectedGroupUnits();
+  if (!units.length) {
+    clearSelectedGroup();
+    return;
+  }
+  state.selectedGroupIds = units.map((unit) => unit.id);
+  const target = getGroupAttackTarget();
+  if (state.groupAttackTargetId && !target) state.groupAttackTargetId = null;
+}
+
+function getGroupAttackTarget() {
+  if (!state?.groupAttackTargetId) return null;
+  return state.units.find((unit) =>
+    unit.id === state.groupAttackTargetId &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !UNIT[unit.type]?.untargetable
+  ) ?? null;
+}
+
+function isSelectedGroupUnit(unit) {
+  return Boolean(unit?.id && state.selectedGroupIds?.includes(unit.id));
+}
+
+function updateGroupAttackUnit(unit, dt) {
+  if (!isSelectedGroupUnit(unit) || unit.side !== "player") return false;
+  const target = getGroupAttackTarget();
+  if (!target || target.side === unit.side) return updateGroupMoveUnit(unit, dt);
+  if (!canTarget(unit, target)) return updateGroupMoveUnit(unit, dt);
+
+  unit.inCastle = false;
+  unit.mineSlotId = null;
+  unit.mineWorkSlot = null;
+  unit.goldRushMineId = null;
+
+  const range = getUnitRange(unit);
+  if (canAttackFromDistance(unit, target, range)) {
+    attack(unit, target);
+    return true;
+  }
+
+  const data = UNIT[unit.type] ?? {};
+  const direction = unit.side === "player" ? -1 : 1;
+  const approach = Math.max(24, Math.min(Math.max(range - 8, 28), 90));
+  const x = target.x + direction * approach;
+  moveUnitTowardPoint(unit, x, target.y, unit.speed ?? data.speed ?? 0, dt, 8);
+  return true;
+}
+
+function updateGroupMoveUnit(unit, dt) {
+  if (!state.groupMoveTarget) return false;
+  const data = UNIT[unit.type] ?? {};
+  if ((unit.type === "treeEnt" && unit.rooted) || unit.type === "electricGate" || data.immobile) return true;
+  unit.inCastle = false;
+  unit.mineSlotId = null;
+  unit.mineWorkSlot = null;
+  unit.goldRushMineId = null;
+  const point = getGroupMovePoint(unit);
+  const reached = !moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed ?? 0, dt, 8);
+  if (reached && getSelectedGroupUnits().every((ally) => distanceTo(ally.x, ally.y, getGroupMovePoint(ally).x, getGroupMovePoint(ally).y) <= 14)) {
+    state.groupMoveTarget = null;
+  }
+  return true;
+}
+
+function getGroupMovePoint(unit) {
+  const target = state.groupMoveTarget ?? { x: unit.x, y: unit.y };
+  const units = getSelectedGroupUnits();
+  const index = Math.max(0, units.findIndex((ally) => ally.id === unit.id));
+  const column = index % 5;
+  const row = Math.floor(index / 5);
+  return {
+    x: target.x + (column - 2) * 18,
+    y: target.y + (row - 1) * 22,
+  };
 }
 
 function resolveUnitCollisions() {
@@ -7003,6 +7141,7 @@ function draw() {
   drawCastle("player");
   drawCastle("enemy");
   drawControlledUnitMarker();
+  drawSelectedGroupMarkers();
 
   const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
@@ -7021,6 +7160,9 @@ function draw() {
   drawCampaignMissileWarning();
   drawCampaignDarkness();
   drawManualMoveTarget();
+  drawGroupMoveTarget();
+  drawGroupSelectionDrag();
+  drawManualJoystick();
   state.floaters.forEach(drawFloater);
   drawManualControlPanel();
 
@@ -9034,10 +9176,13 @@ function drawFlatStarPath(x, y, outerRadius, innerRadius) {
 }
 
 function drawManualControlPanel() {
-  const unit = getControlledUnit();
+  const controlled = getControlledUnit();
+  const groupUnits = controlled ? [] : getSelectedGroupUnits();
+  const unit = controlled ?? groupUnits[0];
   if (!unit || isUnitHidden(unit)) return;
   const buttons = getManualControlButtons(unit);
   if (!buttons.length) return;
+  const isGroup = !controlled && groupUnits.length > 0;
   const rect = getVisibleWorldRect();
   const panel = getManualPanelRect(buttons, rect);
   ctx.save();
@@ -9051,19 +9196,20 @@ function drawManualControlPanel() {
   ctx.fillStyle = "#f8eac5";
   ctx.font = "900 16px system-ui, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(`接管：${UNIT[unit.type]?.name ?? unit.type}`, panel.x + 14, panel.y + 24);
+  ctx.fillText(isGroup ? `框选：${UNIT[unit.type]?.name ?? unit.type} x${groupUnits.length}` : `接管：${UNIT[unit.type]?.name ?? unit.type}`, panel.x + 14, panel.y + 24);
   ctx.fillStyle = "#cfc6ad";
   ctx.font = "700 12px system-ui, sans-serif";
-  ctx.fillText("方向键/WASD 或点地移动", panel.x + 14, panel.y + 42);
-  if (state.pendingManualAction) {
+  ctx.fillText(isGroup ? "点地移动，点敌人集火" : "方向键/WASD、点地或摇杆移动", panel.x + 14, panel.y + 42);
+  const pendingAction = isGroup ? state.pendingGroupAction : state.pendingManualAction;
+  if (pendingAction) {
     ctx.fillStyle = "#f5d14f";
     ctx.font = "800 13px system-ui, sans-serif";
     ctx.fillText("点击战场选择释放位置", panel.x + 14, panel.y + 58);
   }
 
   buttons.forEach((button) => {
-    const disabled = isManualButtonDisabled(unit, button);
-    ctx.fillStyle = button.id === state.pendingManualAction?.id
+    const disabled = isGroup ? isGroupButtonDisabled(button) : isManualButtonDisabled(unit, button);
+    ctx.fillStyle = button.id === pendingAction?.id
       ? "rgba(230, 184, 74, 0.86)"
       : disabled
         ? "rgba(80, 84, 88, 0.72)"
@@ -9104,6 +9250,77 @@ function drawManualMoveTarget() {
   ctx.restore();
 }
 
+function drawGroupMoveTarget() {
+  if (!state.groupMoveTarget || !getSelectedGroupUnits().length) return;
+  const target = state.groupMoveTarget;
+  ctx.save();
+  ctx.strokeStyle = "#78d4ff";
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.82;
+  ctx.beginPath();
+  ctx.ellipse(target.x, target.y + 8, 34, 12, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(target.x - 20, target.y + 8);
+  ctx.lineTo(target.x + 20, target.y + 8);
+  ctx.moveTo(target.x, target.y - 8);
+  ctx.lineTo(target.x, target.y + 24);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSelectedGroupMarkers() {
+  const units = getSelectedGroupUnits();
+  if (!units.length) return;
+  ctx.save();
+  units.forEach((unit) => {
+    ctx.strokeStyle = "rgba(120, 212, 255, 0.88)";
+    ctx.fillStyle = "rgba(120, 212, 255, 0.14)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.ellipse(unit.x, unit.y + 10, 22, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function drawGroupSelectionDrag() {
+  if (!groupDrag?.active) return;
+  const rect = normalizeRect(groupDrag.start, groupDrag.current);
+  ctx.save();
+  ctx.fillStyle = "rgba(120, 212, 255, 0.12)";
+  ctx.strokeStyle = "rgba(120, 212, 255, 0.9)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 7]);
+  ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+  ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+  ctx.restore();
+}
+
+function drawManualJoystick() {
+  if (!getControlledUnit()) return;
+  const base = getManualJoystickBase();
+  const center = manualJoystick.active && manualJoystick.center ? manualJoystick.center : base;
+  const knob = manualJoystick.active && manualJoystick.knob ? manualJoystick.knob : center;
+  ctx.save();
+  ctx.globalAlpha = manualJoystick.active ? 0.82 : 0.48;
+  ctx.fillStyle = "rgba(210, 216, 220, 0.32)";
+  ctx.strokeStyle = "rgba(245, 240, 223, 0.46)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, 54, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "rgba(230, 235, 238, 0.7)";
+  ctx.strokeStyle = "rgba(30, 34, 38, 0.52)";
+  ctx.beginPath();
+  ctx.arc(knob.x, knob.y, 24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function getUnitBasicDamage(unit) {
   const data = UNIT[unit.type] ?? {};
   if (unit.type === "mage") return data.damage;
@@ -9127,6 +9344,38 @@ function getVisibleWorldRect() {
     y: (battlefieldWrap?.scrollTop ?? 0) * scaleY,
     width: (battlefieldWrap?.clientWidth ?? rect.width) * scaleX,
     height: (battlefieldWrap?.clientHeight ?? rect.height) * scaleY,
+  };
+}
+
+function getManualJoystickBase() {
+  const rect = getVisibleWorldRect();
+  return {
+    x: rect.x + 86,
+    y: rect.y + rect.height - 102,
+  };
+}
+
+function isInsideManualJoystick(point) {
+  if (!getControlledUnit()) return false;
+  const base = getManualJoystickBase();
+  return distanceTo(point.x, point.y, base.x, base.y) <= 82;
+}
+
+function updateManualJoystick(point) {
+  const center = manualJoystick.center ?? getManualJoystickBase();
+  const maxRadius = 54;
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  const distance = Math.hypot(dx, dy);
+  const factor = distance > maxRadius ? maxRadius / distance : 1;
+  manualJoystick.center = center;
+  manualJoystick.knob = {
+    x: center.x + dx * factor,
+    y: center.y + dy * factor,
+  };
+  manualJoystick.vector = {
+    x: distance ? (dx * factor) / maxRadius : 0,
+    y: distance ? (dy * factor) / maxRadius : 0,
   };
 }
 
@@ -9281,6 +9530,7 @@ function toggleManualControl(unit) {
     state.controlledUnitId = null;
     state.pendingManualAction = null;
     state.manualMoveTarget = null;
+    stopManualJoystick();
     popText(unit.x, unit.y - 112, "解除接管", "#f5d14f");
     return true;
   }
@@ -9289,6 +9539,11 @@ function toggleManualControl(unit) {
   state.inspectedUnitTimer = 9999;
   state.pendingManualAction = null;
   state.manualMoveTarget = null;
+  state.selectedGroupIds = [];
+  state.selectedGroupType = null;
+  state.pendingGroupAction = null;
+  state.groupAttackTargetId = null;
+  state.groupMoveTarget = null;
   unit.inCastle = false;
   popText(unit.x, unit.y - 112, "手动接管", "#f5d14f");
   return true;
@@ -9417,6 +9672,145 @@ function makeManualPointTarget(point) {
     x: Math.max(FIELD.playerBase + 30, Math.min(FIELD.enemyBase - 30, point.x)),
     y: Math.max(FIELD.ground - 150, Math.min(FIELD.ground + 140, point.y)),
   };
+}
+
+function normalizeRect(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.abs(a.x - b.x),
+    height: Math.abs(a.y - b.y),
+  };
+}
+
+function isUnitInSelectionRect(unit, rect) {
+  const bodyY = unit.y - 44;
+  return unit.x >= rect.x && unit.x <= rect.x + rect.width && bodyY >= rect.y && bodyY <= rect.y + rect.height;
+}
+
+function selectGroupByRect(rect) {
+  const candidates = state.units.filter((unit) =>
+    unit.side === "player" &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !UNIT[unit.type]?.untargetable &&
+    isUnitInSelectionRect(unit, rect)
+  );
+  if (!candidates.length) {
+    clearSelectedGroup();
+    return false;
+  }
+  const counts = new Map();
+  candidates.forEach((unit) => counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1));
+  const selectedType = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const selected = candidates.filter((unit) => unit.type === selectedType);
+  setSelectedGroup(selected);
+  return true;
+}
+
+function selectVisibleGroupByUnitAt(point) {
+  const unit = findUnitAt(point);
+  if (!unit || unit.side !== "player" || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
+  const visible = getVisibleWorldRect();
+  const selected = state.units.filter((candidate) =>
+    candidate.side === "player" &&
+    candidate.type === unit.type &&
+    candidate.hp > 0 &&
+    !isUnitHidden(candidate) &&
+    candidate.x >= visible.x &&
+    candidate.x <= visible.x + visible.width &&
+    candidate.y >= visible.y &&
+    candidate.y <= visible.y + visible.height
+  );
+  setSelectedGroup(selected);
+  return true;
+}
+
+function setSelectedGroup(units) {
+  if (!units.length) {
+    clearSelectedGroup();
+    return;
+  }
+  const type = units[0].type;
+  state.selectedGroupIds = units.map((unit) => unit.id);
+  state.selectedGroupType = type;
+  state.pendingGroupAction = null;
+  state.groupAttackTargetId = null;
+  state.groupMoveTarget = null;
+  state.controlledUnitId = null;
+  state.pendingManualAction = null;
+  state.manualMoveTarget = null;
+  stopManualJoystick();
+  const centerX = units.reduce((sum, unit) => sum + unit.x, 0) / units.length;
+  const centerY = units.reduce((sum, unit) => sum + unit.y, 0) / units.length;
+  popText(centerX, centerY - 112, `框选 ${UNIT[type]?.name ?? type} x${units.length}`, "#78d4ff");
+}
+
+function isGroupButtonDisabled(button) {
+  const units = getSelectedGroupUnits();
+  if (!units.length) return true;
+  return !units.some((unit) => !isManualButtonDisabled(unit, button));
+}
+
+function handleGroupControlClick(point) {
+  const units = getSelectedGroupUnits();
+  if (!units.length || getControlledUnit()) return false;
+  const representative = units[0];
+  const button = getManualControlButtons(representative).find((candidate) => pointInRect(point, candidate));
+  if (button) {
+    if (isGroupButtonDisabled(button)) {
+      popText(representative.x, representative.y - 116, "小队暂不可用", "#d9d0b8");
+      return true;
+    }
+    if (button.mode === "direct") {
+      executeGroupAction(button, point);
+      updateHud();
+      return true;
+    }
+    state.pendingGroupAction = { id: button.id, mode: button.mode };
+    popText(representative.x, representative.y - 116, `小队选择${button.label}位置`, "#78d4ff");
+    return true;
+  }
+
+  const panel = getManualPanelRect(getManualActions(representative));
+  if (pointInRect(point, panel)) return true;
+
+  if (state.pendingGroupAction) {
+    const action = getManualActions(representative).find((candidate) => candidate.id === state.pendingGroupAction.id);
+    if (action) executeGroupAction(action, point);
+    state.pendingGroupAction = null;
+    updateHud();
+    return true;
+  }
+
+  const clicked = findUnitAt(point);
+  if (clicked && clicked.side !== "player" && clicked.hp > 0 && !isUnitHidden(clicked) && !UNIT[clicked.type]?.untargetable) {
+    state.groupAttackTargetId = clicked.id;
+    state.groupMoveTarget = null;
+    popText(clicked.x, clicked.y - 118, "小队集火", "#78d4ff");
+    return true;
+  }
+
+  state.groupAttackTargetId = null;
+  state.groupMoveTarget = makeManualPointTarget(point);
+  popText(state.groupMoveTarget.x, state.groupMoveTarget.y - 42, "小队移动", "#78d4ff");
+  return true;
+}
+
+function executeGroupAction(action, point) {
+  let used = 0;
+  const units = getSelectedGroupUnits();
+  units.forEach((unit) => {
+    if (isManualButtonDisabled(unit, action)) return;
+    executeManualAction(unit, action, point);
+    used += 1;
+  });
+  if (!used) return;
+  const centerX = units.reduce((sum, unit) => sum + unit.x, 0) / units.length;
+  const centerY = units.reduce((sum, unit) => sum + unit.y, 0) / units.length;
+  popText(centerX, centerY - 124, `小队释放 ${action.label}`, "#78d4ff");
 }
 
 function getManualActionCooldown(unit, id) {
@@ -10310,17 +10704,24 @@ mobileUnitsToggle?.addEventListener("click", toggleMobileUnitShop);
 
 canvas.addEventListener("dblclick", (event) => {
   if (state.over) return;
-  handleSpecialPress(canvasPoint(event));
+  const point = canvasPoint(event);
+  if (handleSpecialPress(point)) return;
+  selectVisibleGroupByUnitAt(point);
 });
 
 canvas.addEventListener("click", (event) => {
   if (state.over) return;
+  if (selectionDragTriggered || joystickDragTriggered) {
+    selectionDragTriggered = false;
+    joystickDragTriggered = false;
+    return;
+  }
   if (longPressTriggered) {
     longPressTriggered = false;
     return;
   }
   const point = canvasPoint(event);
-  if (handleManualControlClick(point) || handleInspectedInfoButton(point)) {
+  if (handleManualControlClick(point) || handleGroupControlClick(point) || handleInspectedInfoButton(point)) {
     updateHud();
     return;
   }
@@ -10363,9 +10764,28 @@ window.addEventListener("keyup", (event) => {
 let longPressTimer = null;
 let longPressStart = null;
 let longPressTriggered = false;
+let groupDrag = null;
+let selectionDragTriggered = false;
+let joystickDragTriggered = false;
+let lastTouchTap = null;
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (state.over || event.pointerType === "mouse") return;
+  if (state.over) return;
+  const point = canvasPoint(event);
+  if (event.pointerType !== "mouse" && isInsideManualJoystick(point)) {
+    manualJoystick.pointerId = event.pointerId;
+    manualJoystick.active = true;
+    manualJoystick.center = getManualJoystickBase();
+    updateManualJoystick(point);
+    joystickDragTriggered = false;
+    event.preventDefault();
+    return;
+  }
+  if (event.pointerType === "mouse" && event.button === 0) {
+    groupDrag = { pointerId: event.pointerId, start: point, current: point, active: false };
+    return;
+  }
+  if (event.pointerType === "mouse") return;
   longPressStart = { clientX: event.clientX, clientY: event.clientY, point: canvasPoint(event) };
   longPressTriggered = false;
   window.clearTimeout(longPressTimer);
@@ -10376,6 +10796,19 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
+  if (manualJoystick.active && manualJoystick.pointerId === event.pointerId) {
+    updateManualJoystick(canvasPoint(event));
+    joystickDragTriggered = true;
+    event.preventDefault();
+    return;
+  }
+  if (groupDrag?.pointerId === event.pointerId) {
+    groupDrag.current = canvasPoint(event);
+    if (distanceTo(groupDrag.start.x, groupDrag.start.y, groupDrag.current.x, groupDrag.current.y) > 12) {
+      groupDrag.active = true;
+    }
+    return;
+  }
   if (!longPressStart) return;
   const dx = event.clientX - longPressStart.clientX;
   const dy = event.clientY - longPressStart.clientY;
@@ -10387,7 +10820,37 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 ["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
-  canvas.addEventListener(eventName, () => {
+  canvas.addEventListener(eventName, (event) => {
+    if (manualJoystick.pointerId === event.pointerId) {
+      stopManualJoystick();
+      joystickDragTriggered = true;
+    }
+    if (groupDrag?.pointerId === event.pointerId) {
+      if (groupDrag.active) {
+        selectGroupByRect(normalizeRect(groupDrag.start, groupDrag.current));
+        selectionDragTriggered = true;
+      }
+      groupDrag = null;
+    }
+    if (eventName === "pointerup" && event.pointerType !== "mouse" && longPressStart && !longPressTriggered && !joystickDragTriggered) {
+      const point = canvasPoint(event);
+      const tapped = findUnitAt(point);
+      const now = performance.now();
+      if (
+        tapped &&
+        tapped.side === "player" &&
+        lastTouchTap &&
+        lastTouchTap.type === tapped.type &&
+        now - lastTouchTap.time <= 380 &&
+        distanceTo(point.x, point.y, lastTouchTap.x, lastTouchTap.y) <= 70
+      ) {
+        if (!handleSpecialPress(point)) selectVisibleGroupByUnitAt(point);
+        selectionDragTriggered = true;
+        lastTouchTap = null;
+      } else {
+        lastTouchTap = tapped ? { type: tapped.type, x: point.x, y: point.y, time: now } : null;
+      }
+    }
     window.clearTimeout(longPressTimer);
     longPressTimer = null;
     longPressStart = null;
