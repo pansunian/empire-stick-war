@@ -8721,7 +8721,6 @@ function drawWeapon(type, unit = null) {
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
-    ctx.restore();
     return;
   } else if (type === "fireElement" || type === "fireImp") {
     ctx.fillStyle = "#ff7a3d";
@@ -8825,7 +8824,6 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(24, -55);
     ctx.stroke();
   } else if (type === "vUnit" || type === "vClone") {
-    ctx.restore();
     return;
   } else if (type === "treeEnt") {
     ctx.strokeStyle = "#3e5f38";
