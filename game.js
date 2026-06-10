@@ -387,7 +387,7 @@ const UNIT = {
     visualScale: 1.3,
   },
   undead: {
-    name: "亡灵",
+    name: "丧尸",
     cost: 55,
     hp: 60,
     damage: 7,
@@ -397,7 +397,7 @@ const UNIT = {
     cooldown: 1.05,
   },
   machete: {
-    name: "砍刀兵",
+    name: "骷髅砍刀兵",
     cost: 100,
     hp: 130,
     damage: 11,
@@ -474,7 +474,7 @@ const UNIT = {
     flying: true,
   },
   darkKnight: {
-    name: "黑骑士",
+    name: "骷髅黑骑士",
     cost: 165,
     hp: 450,
     damage: 17,
@@ -482,6 +482,53 @@ const UNIT = {
     speed: 42,
     train: 5.8,
     cooldown: 1.05,
+  },
+  bannerBearer: {
+    name: "掌旗手",
+    cost: 220,
+    hp: 550,
+    damage: 8,
+    range: 32,
+    speed: 40,
+    train: 5.2,
+    cooldown: 1.4,
+    inspireEvery: 15,
+    inspireDuration: 3,
+    inspireBuffDuration: 12,
+    inspireUndeadDuration: 10,
+    inspireRadius: 20,
+    inspireArea: 1256,
+  },
+  graveDigger: {
+    name: "掘墓者",
+    cost: 180,
+    hp: 300,
+    damage: 12,
+    range: 34,
+    speed: 55,
+    train: 5,
+    cooldown: 1.2,
+    reviveEvery: 5,
+    reviveRadius: 150,
+    ghostEvery: 20,
+    ghostCount: 3,
+    ghostSpeed: 70,
+    ghostDuration: 12,
+    ghostFearDuration: 5,
+  },
+  boneGiant: {
+    name: "骸骨",
+    cost: 260,
+    hp: 600,
+    damage: 40,
+    range: 46,
+    speed: 38,
+    train: 6.2,
+    cooldown: 2,
+    splash: 48,
+    aoeLimit: 3,
+    rangedReduction: 0.25,
+    antiAir: true,
   },
   darkKnightBrother: {
     name: "黑骑士兄长",
@@ -906,9 +953,15 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "undead", "machete", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "executioner", "undeadMage", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "bomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "bomber"],
     mineColor: "#b7f56e",
+  },
+  undeadEmpire: {
+    name: "亡灵帝国",
+    roster: ["miner", "machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    startingUnits: ["miner", "machete", "undead"],
+    mineColor: "#b8b0a5",
   },
   element: {
     name: "元素帝国",
@@ -946,6 +999,9 @@ const UNIT_ICON = {
   medusa: "venom",
   demonArcher: "wing",
   darkKnight: "axe",
+  bannerBearer: "spartan",
+  graveDigger: "miner",
+  boneGiant: "axe",
   darkKnightBrother: "axe",
   executioner: "axe",
   undeadMage: "skull",
@@ -973,9 +1029,14 @@ const UNIT_ICON = {
   vUnit: "white-orb",
 };
 
+function normalizeUnitType(type) {
+  return type === "godVUnit" ? "vUnit" : type;
+}
+
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "undead", "machete", "medusa", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "darkKnightBrother", "executioner", "undeadMage", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "bomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -990,14 +1051,22 @@ const MODE_START_GOLD = {
 };
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
+const HIDE_EXISTING_CAMPAIGNS = true;
+const UNDEAD_BASE_UNITS = new Set(["undead", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "boneGiant"]);
+const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
+const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
+const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
+  undeadEmpire: ["machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage", "undeadMage", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
   order: 1,
   chaos: 1,
+  undeadEmpire: 1,
   element: 1,
 };
 const campaignAbilities = {
@@ -1275,7 +1344,7 @@ const CAMPAIGN_LEVELS = {
         "waterElement", "waterElement",
         "fireElement", "fireElement",
         "windElement", "windElement",
-        "vUnit", "vUnit",
+        "vUnit", "godVUnit",
       ],
       enemyRoster: ["undead", "poisonZombie"],
       enemyStart: ["miner", "undead", "poisonZombie"],
@@ -1283,7 +1352,6 @@ const CAMPAIGN_LEVELS = {
       startGold: 0,
       enemyGold: 120,
       disableEnemyBaseAttack: true,
-      godV: true,
       rewardText: "土元素、土化矿工能力与山丘",
       objective: "守护神明 V，击败亡灵与毒尸",
     },
@@ -1520,6 +1588,9 @@ function formatSpecial(type) {
   if (type === "waterScorpion") notes.push("由树精召唤；攻击使敌人中毒");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；每 ${data.boneSpikeEvery}秒骨刺 ${data.boneSpikeRange} 距离；每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，激励周围一种亡灵单位；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
+  if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
+  if (type === "boneGiant") notes.push(`巨斧范围攻击最多 ${data.aoeLimit} 人；受到远程伤害降低 ${Math.round(data.rangedReduction * 100)}%`);
   if (type === "berserker") notes.push(`附近至少 ${data.rageEnemyCount} 名敌人时释放狂暴`);
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
   if (type === "zeus") notes.push(`英雄单位；头顶雷云自动攻击；每 ${data.cloudEvery}秒召唤移动乌云；每 ${data.columnEvery}秒召唤电墙；每 ${data.gateEvery}秒召唤电门`);
@@ -1598,6 +1669,8 @@ function newGame() {
     stormClouds: [],
     tornadoes: [],
     electricColumns: [],
+    corpses: [],
+    ghosts: [],
     pendingMerges: [],
     floaters: [],
     spawnQueue: [],
@@ -1733,12 +1806,17 @@ function renderCampaignMap() {
     const available = level <= progress;
     const config = CAMPAIGN_LEVELS[faction]?.[level];
     const rewardText = config?.rewardText === "" ? "无" : (config?.rewardText ?? unitName);
+    const titleText = HIDE_EXISTING_CAMPAIGNS ? `隐藏关 ${level}` : (config?.title ?? (available ? "可挑战" : "未解锁"));
+    const unlockText = HIDE_EXISTING_CAMPAIGNS ? "隐藏奖励" : rewardText;
+    const hintText = HIDE_EXISTING_CAMPAIGNS
+      ? (available ? (config ? "点击进入隐藏关" : "隐藏关暂未开放") : `完成第 ${level - 1} 关后发现`)
+      : (available ? (config ? "点击开始战斗" : "关卡暂未设计") : `完成第 ${level - 1} 关后开启`);
     return `
       <button class="campaign-node ${available ? "available" : "locked"}" data-level="${level}" ${available ? "" : "disabled"}>
         <span class="level-tag">第 ${level} 关</span>
-        <strong>${config?.title ?? (available ? "可挑战" : "未解锁")}</strong>
-        <small>通关后解锁：${rewardText}</small>
-        <small>${available ? (config ? "点击开始战斗" : "关卡暂未设计") : `完成第 ${level - 1} 关后开启`}</small>
+        <strong>${titleText}</strong>
+        <small>通关后解锁：${unlockText}</small>
+        <small>${hintText}</small>
       </button>
     `;
   }).join("");
@@ -1846,7 +1924,8 @@ function describeCampaignMechanics(config) {
   if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
   if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
   if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
-  if (config.godV) mechanics.push(`神明 V 加入我方战斗，控制距离 ${GOD_V_CONTROL_RANGE}，若神明 V 死亡则挑战失败`);
+  const hasPlayerGodV = config.godV || config.playerStart?.includes("godVUnit");
+  if (hasPlayerGodV) mechanics.push(`神明 V 加入我方战斗，控制距离 ${GOD_V_CONTROL_RANGE}，若神明 V 死亡则挑战失败`);
   if (config.enemyGodV) mechanics.push(`敌方英雄单位神明 V 加入战斗，控制距离 ${GOD_V_CONTROL_RANGE}，被击败后会退出战场`);
   if (config.allowEarthMinerConversion) mechanics.push("土元素可以转化为矿工");
   if (config.campaignMeteor) mechanics.push(`每 ${config.campaignMeteor.every} 秒有 ${config.campaignMeteor.count} 颗陨石砸向金矿之间，每颗 ${config.campaignMeteor.damage} 点范围伤害`);
@@ -1920,9 +1999,11 @@ function renderFactionUi() {
   enemyNameEl.textContent = FACTIONS[opponentFaction()].name;
   playerCard.classList.toggle("order", selectedFaction === "order");
   playerCard.classList.toggle("chaos", selectedFaction === "chaos");
+  playerCard.classList.toggle("undead", selectedFaction === "undeadEmpire");
   playerCard.classList.toggle("element", selectedFaction === "element");
   enemyCard.classList.toggle("order", opponentFaction() === "order");
   enemyCard.classList.toggle("chaos", opponentFaction() === "chaos");
+  enemyCard.classList.toggle("undead", opponentFaction() === "undeadEmpire");
   enemyCard.classList.toggle("element", opponentFaction() === "element");
 }
 
@@ -2128,11 +2209,13 @@ function setMinerCommand(command) {
 }
 
 function spawnUnit(type, side, x) {
-  const data = UNIT[type];
+  const forceGodV = type === "godVUnit";
+  const unitType = normalizeUnitType(type);
+  const data = UNIT[unitType];
   const lane = Math.random() * 34 - 17;
   state.units.push({
     id: state.nextId++,
-    type,
+    type: unitType,
     side,
     x,
     y: FIELD.ground + lane,
@@ -2156,24 +2239,24 @@ function spawnUnit(type, side, x) {
     burnTimer: 0,
     burnDps: 0,
     burnTick: 0,
-    healTimer: UNIT[type].healEvery ?? 0,
+    healTimer: data.healEvery ?? 0,
     stunTimer: 0,
     frozenBy: null,
     frozenTimer: 0,
     frozenTick: 0,
     freezeDps: 0,
     boundTargetId: null,
-    summonTimer: UNIT[type].summonEvery ?? 0,
-    magmaTimer: UNIT[type].magmaEvery ?? 0,
-    summonCooldown: UNIT[type].summonEvery ?? 0,
-    controlTimer: UNIT[type].controlEvery ?? 0,
+    summonTimer: data.summonEvery ?? 0,
+    magmaTimer: data.magmaEvery ?? 0,
+    summonCooldown: data.summonEvery ?? 0,
+    controlTimer: data.controlEvery ?? 0,
     controlLockTimer: 0,
     blinkTimer: 0,
     blinkUsed: false,
-    cloneSpawnTimer: type === "vUnit" ? UNIT.vUnit.cloneReleaseDelay : 0,
-    prometheusSpellTimer: UNIT[type].spellEvery ?? 0,
+    cloneSpawnTimer: unitType === "vUnit" ? UNIT.vUnit.cloneReleaseDelay : 0,
+    prometheusSpellTimer: data.spellEvery ?? 0,
     prometheusSpellIndex: 0,
-    electricGateTimer: UNIT[type].duration ?? 0,
+    electricGateTimer: data.duration ?? 0,
     electricGateTick: 1,
     spearThrown: false,
     goldenSpearThrown: false,
@@ -2185,29 +2268,40 @@ function spawnUnit(type, side, x) {
     nextSpell: "blast",
     nextDreadfireSpell: "dragon",
     nextRedflameSpell: "fireball",
-    medusaPoisonTimer: UNIT[type].poisonEvery ?? 0,
+    medusaPoisonTimer: data.poisonEvery ?? 0,
     medusaSlayTimer: 0,
-    suikaiCorpseTimer: UNIT[type].corpseEvery ?? 0,
-    suikaiHookTimer: UNIT[type].hookEvery ?? 0,
-    archmageFireballTimer: UNIT[type].fireballEvery ?? 0,
+    suikaiCorpseTimer: data.corpseEvery ?? 0,
+    suikaiHookTimer: data.hookEvery ?? 0,
+    archmageFireballTimer: data.fireballEvery ?? 0,
     archmageAttackCount: 0,
-    zeusOverheadTimer: UNIT[type].overheadEvery ?? 0,
-    zeusCloudTimer: UNIT[type].cloudEvery ?? 0,
-    zeusColumnTimer: UNIT[type].columnEvery ?? 0,
-    zeusGateTimer: UNIT[type].gateEvery ?? 0,
-    berserkerRageTimer: UNIT[type].rageEvery ?? 0,
-    swordsmanRageTimer: UNIT[type].selfRageEvery ?? 0,
+    zeusOverheadTimer: data.overheadEvery ?? 0,
+    zeusCloudTimer: data.cloudEvery ?? 0,
+    zeusColumnTimer: data.columnEvery ?? 0,
+    zeusGateTimer: data.gateEvery ?? 0,
+    berserkerRageTimer: data.rageEvery ?? 0,
+    swordsmanRageTimer: data.selfRageEvery ?? 0,
     swordsmanSelfRageTimer: 0,
-    undeadBoneTimer: UNIT[type].boneSpikeEvery ?? 0,
-    hillJumpTimer: UNIT[type].jumpEvery ?? 0,
+    undeadBoneTimer: data.boneSpikeEvery ?? 0,
+    hillJumpTimer: data.jumpEvery ?? 0,
     linghanFreezeTimer: 0,
     rageTimer: 0,
-    rocketAmmo: UNIT[type].ammoPerReload ?? 0,
+    rocketAmmo: data.ammoPerReload ?? 0,
     rocketReloadTimer: 0,
     rocketFireTimer: 0,
-    shieldCastTimer: UNIT[type].shieldEvery ?? 0,
+    shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
+    inspireTimer: data.inspireEvery ?? 0,
+    inspiringTimer: 0,
+    inspiredReviveTimer: 0,
+    inspiredReviveReady: false,
+    inspiredZombieTimer: 0,
+    inspiredZombieHits: 0,
+    inspiredLifestealTimer: 0,
+    graveReviveTimer: data.reviveEvery ?? 0,
+    graveGhostTimer: data.ghostEvery ?? 0,
+    fearTimer: 0,
+    fearDamageMultiplier: 1,
     hero: Boolean(data.hero),
     spawnedClones: false,
     summonerId: null,
@@ -2215,7 +2309,7 @@ function spawnUnit(type, side, x) {
     merging: false,
     mergeId: null,
     earthMiner: false,
-    rooted: type === "treeEnt" ? false : null,
+    rooted: unitType === "treeEnt" ? false : null,
     inCastle: false,
     combatTimer: 0,
     chaosRegenTick: 0,
@@ -2225,13 +2319,14 @@ function spawnUnit(type, side, x) {
   });
 
   const unit = state.units[state.units.length - 1];
-  applyCampaignUnitModifiers(unit);
+  applyCampaignUnitModifiers(unit, { forceGodV });
   return unit;
 }
 
-function applyCampaignUnitModifiers(unit) {
-  const isPlayerGodV = activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit";
-  const isEnemyGodV = activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit";
+function applyCampaignUnitModifiers(unit, { forceGodV = false } = {}) {
+  const isForcedGodV = forceGodV && unit.type === "vUnit";
+  const isPlayerGodV = (isForcedGodV && unit.side === "player") || (activeCampaign?.godV && unit.side === "player" && unit.type === "vUnit");
+  const isEnemyGodV = (isForcedGodV && unit.side === "enemy") || (activeCampaign?.enemyGodV && unit.side === "enemy" && unit.type === "vUnit");
   if (!isPlayerGodV && !isEnemyGodV) return;
   if (isPlayerGodV) state.playerGodVAssigned = true;
   if (isEnemyGodV) state.enemyGodVAssigned = true;
@@ -2744,6 +2839,8 @@ function update(dt) {
   updateFrozenDamage(dt);
   updatePoison(dt);
   updateBurn(dt);
+  updateCorpses(dt);
+  updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
   updateStormClouds(dt);
@@ -3551,6 +3648,9 @@ function chooseEnemyUnit(affordable) {
     bomber: 0.85,
     demonArcher: 0.75,
     darkKnight: 0.65,
+    bannerBearer: 0.45,
+    graveDigger: 0.6,
+    boneGiant: 0.55,
     undeadMage: 0.6,
     enslavedGiant: 0.28,
     chaosGiant: 0.28,
@@ -3721,11 +3821,24 @@ function updateUnits(dt) {
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
+    unit.inspiredReviveTimer = Math.max(0, (unit.inspiredReviveTimer ?? 0) - dt);
+    if (unit.inspiredReviveTimer <= 0) unit.inspiredReviveReady = false;
+    unit.inspiredZombieTimer = Math.max(0, (unit.inspiredZombieTimer ?? 0) - dt);
+    if (unit.inspiredZombieTimer <= 0) unit.inspiredZombieHits = 0;
+    unit.inspiredLifestealTimer = Math.max(0, (unit.inspiredLifestealTimer ?? 0) - dt);
+    unit.fearTimer = Math.max(0, (unit.fearTimer ?? 0) - dt);
+    if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
     unit.anim += dt * 8;
 
+    if (unit.inspiringTimer > 0) {
+      unit.inspiringTimer = Math.max(0, unit.inspiringTimer - dt);
+      if (unit.inspiringTimer <= 0) finishBannerInspire(unit);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (unit.stunTimer > 0 || unit.frozenBy) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
@@ -3785,6 +3898,12 @@ function updateUnits(dt) {
     }
     if (unit.type === "undeadMage") {
       updateUndeadMage(unit, dt);
+    }
+    if (unit.type === "bannerBearer") {
+      updateBannerBearer(unit, dt);
+    }
+    if (unit.type === "graveDigger") {
+      updateGraveDigger(unit, dt);
     }
     if (unit.type === "swordsman") {
       updateSwordsman(unit, dt);
@@ -4582,6 +4701,115 @@ function killSummonedUndead(mage) {
   if (killed > 0) popText(mage.x, mage.y - 120, "亡灵消散", "#b8b0a5");
 }
 
+function updateBannerBearer(unit, dt) {
+  const data = UNIT.bannerBearer;
+  if (unit.inspiringTimer > 0) return;
+  unit.inspireTimer = Math.max(0, (unit.inspireTimer ?? data.inspireEvery) - dt);
+  if (unit.inspireTimer > 0) return;
+  const candidates = state.units
+    .filter((ally) => ally.side === unit.side && ally !== unit && ally.type !== "bannerBearer" && ally.hp > 0 && !isUnitHidden(ally) && isUndeadEmpireUnit(ally.type))
+    .filter((ally) => distanceTo(ally.x, ally.y, unit.x, unit.y) <= data.inspireRadius);
+  if (!candidates.length) {
+    unit.inspireTimer = 1;
+    return;
+  }
+  const groups = [
+    { key: "skeleton", test: (ally) => SKELETON_UNITS.has(ally.type) },
+    { key: "zombie", test: (ally) => ZOMBIE_UNITS.has(ally.type) },
+    { key: "spirit", test: (ally) => SPIRIT_UNITS.has(ally.type) },
+  ]
+    .map((group) => ({ ...group, units: candidates.filter(group.test) }))
+    .filter((group) => group.units.length > 0)
+    .sort((a, b) => b.units.length - a.units.length);
+  const group = groups[0] ?? { key: "spirit", units: candidates };
+  unit.inspiringTimer = data.inspireDuration;
+  unit.inspireTimer = data.inspireEvery + data.inspireDuration;
+  unit.inspireGroup = group.key;
+  popText(unit.x, unit.y - 128, "举旗激励", "#d8d0ff");
+  state.blasts.push({ x: unit.x, y: unit.y - 38, radius: data.inspireRadius, life: data.inspireDuration, duration: data.inspireDuration, color: "#d8d0ff" });
+}
+
+function finishBannerInspire(unit) {
+  const data = UNIT.bannerBearer;
+  const allies = state.units.filter((ally) => (
+    ally.side === unit.side
+    && ally !== unit
+    && ally.type !== "bannerBearer"
+    && ally.hp > 0
+    && !isUnitHidden(ally)
+    && distanceTo(ally.x, ally.y, unit.x, unit.y) <= data.inspireRadius
+  ));
+  allies.forEach((ally) => {
+    if (unit.inspireGroup === "skeleton" && SKELETON_UNITS.has(ally.type)) {
+      ally.inspiredReviveTimer = data.inspireBuffDuration;
+      ally.inspiredReviveReady = true;
+      popText(ally.x, ally.y - 94, "骷髅不灭", "#d8d0ff");
+    } else if (unit.inspireGroup === "zombie" && ZOMBIE_UNITS.has(ally.type)) {
+      ally.inspiredZombieTimer = data.inspireBuffDuration;
+      ally.inspiredZombieHits = 3;
+      popText(ally.x, ally.y - 94, "丧尸狂热", "#93d96b");
+    } else if (unit.inspireGroup === "spirit" && SPIRIT_UNITS.has(ally.type)) {
+      ally.inspiredLifestealTimer = data.inspireUndeadDuration;
+      popText(ally.x, ally.y - 94, "亡灵吸血", "#b8b0e8");
+    }
+  });
+  unit.inspireGroup = null;
+}
+
+function updateGraveDigger(unit, dt) {
+  const data = UNIT.graveDigger;
+  unit.graveReviveTimer = Math.max(0, (unit.graveReviveTimer ?? data.reviveEvery) - dt);
+  if (unit.graveReviveTimer <= 0) {
+    unit.graveReviveTimer = data.reviveEvery;
+    reviveNearestCorpse(unit);
+  }
+  unit.graveGhostTimer = Math.max(0, (unit.graveGhostTimer ?? data.ghostEvery) - dt);
+  if (unit.graveGhostTimer <= 0) {
+    unit.graveGhostTimer = data.ghostEvery;
+    releaseGraveGhosts(unit);
+  }
+}
+
+function reviveNearestCorpse(unit) {
+  const data = UNIT.graveDigger;
+  const corpse = state.corpses
+    .filter((item) => item.side === unit.side && item.revives < 3 && !UNDEAD_CORPSE_EXCLUDED.has(item.type))
+    .filter((item) => distanceTo(item.x, item.y, unit.x, unit.y) <= data.reviveRadius)
+    .sort((a, b) => distanceTo(a.x, a.y, unit.x, unit.y) - distanceTo(b.x, b.y, unit.x, unit.y))[0];
+  if (!corpse) return;
+  corpse.revives += 1;
+  const revived = spawnUnit(corpse.type, corpse.side, corpse.x);
+  revived.y = corpse.y;
+  const hpRatios = [0.75, 0.5, 0.25];
+  revived.hp = Math.max(1, Math.round(revived.maxHp * hpRatios[corpse.revives - 1]));
+  revived.corpseRevives = corpse.revives;
+  state.corpses = state.corpses.filter((item) => item !== corpse);
+  popText(revived.x, revived.y - 100, `掘墓复活 ${Math.round(hpRatios[corpse.revives - 1] * 100)}%`, "#b8b0a5");
+}
+
+function releaseGraveGhosts(unit) {
+  const data = UNIT.graveDigger;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.ghostCount; i += 1) {
+    state.ghosts.push({
+      x: unit.x + dir * (18 + i * 8),
+      y: unit.y - 36 + (i - 1) * 26,
+      side: unit.side,
+      dir,
+      speed: data.ghostSpeed,
+      life: data.ghostDuration,
+      duration: data.ghostDuration,
+      fearDuration: data.ghostFearDuration,
+      hitIds: new Set(),
+    });
+  }
+  popText(unit.x, unit.y - 122, "幽灵出土", "#d8d0ff");
+}
+
+function isUndeadEmpireUnit(type) {
+  return UNDEAD_BASE_UNITS.has(type) || SKELETON_UNITS.has(type) || ZOMBIE_UNITS.has(type) || SPIRIT_UNITS.has(type);
+}
+
 function updateSwordsman(unit, dt) {
   const data = UNIT.swordsman;
   unit.swordsmanRageTimer = Math.max(0, (unit.swordsmanRageTimer ?? data.selfRageEvery) - dt);
@@ -5115,6 +5343,7 @@ function getMoveFactor(unit) {
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
   }
+  if (unit.inspiredZombieTimer > 0 && ZOMBIE_UNITS.has(unit.type)) factor *= 2;
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   return factor;
@@ -5542,7 +5771,7 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "chaosGiant") {
+  if (unit.type === "chaosGiant" || unit.type === "boneGiant") {
     smashArea(unit, target);
     return;
   }
@@ -5598,6 +5827,7 @@ function attack(unit, target) {
       ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
       side: unit.side,
       damage: data.damage,
+      sourceId: unit.id,
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
       type: unit.type,
@@ -5605,7 +5835,8 @@ function attack(unit, target) {
     return;
   }
 
-  applyDamage(target, unit.damage ?? data.damage, unit.side);
+  const dealt = applyDamage(target, unit.damage ?? data.damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side });
   }
@@ -5613,6 +5844,21 @@ function attack(unit, target) {
     applyBurn(target, data.burnDps, data.burnDuration);
   }
   if (data.stunDuration) applyStun(target, data.stunDuration);
+}
+
+function handleDamageDealt(attacker, target, damage) {
+  if (!attacker || !target || damage <= 0) return;
+  if (attacker.inspiredLifestealTimer > 0 && target.kind !== "statue") {
+    const healed = Math.min(Math.round(damage * 0.5), attacker.maxHp - attacker.hp);
+    if (healed > 0) {
+      attacker.hp += healed;
+      popText(attacker.x, attacker.y - 102, `吸血 +${healed}`, "#b8b0e8");
+    }
+  }
+  if (attacker.inspiredZombieTimer > 0 && attacker.inspiredZombieHits > 0 && ZOMBIE_UNITS.has(attacker.type) && target.kind !== "statue") {
+    attacker.inspiredZombieHits -= 1;
+    applyStun(target, 2);
+  }
 }
 
 function explodeDeadCorpse(unit) {
@@ -6040,13 +6286,16 @@ function launchTornado(unit, target) {
 function smashArea(unit, target) {
   const data = UNIT[unit.type];
   if (target.kind === "statue") {
-    applyDamage(target, data.damage, unit.side);
+    const dealt = applyDamage(target, data.damage, unit.side);
+    handleDamageDealt(unit, target, dealt);
     getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit).forEach((enemy) => {
-      applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+      const splashDealt = applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+      handleDamageDealt(unit, enemy, splashDealt);
     });
   } else {
     getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit).forEach((enemy) => {
-      applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+      const dealt = applyUnitDamage(enemy, data.damage, { label: "震击", color: "#c7b0d8", yOffset: -82 });
+      handleDamageDealt(unit, enemy, dealt);
     });
   }
   state.blasts.push({ x: target.x, y: (target.y ?? FIELD.ground) - 30, radius: data.splash, life: 0.28, duration: 0.28, color: "#c7b0d8" });
@@ -6061,6 +6310,7 @@ function throwBoulder(unit, target) {
     ty: target.y ? target.y - 42 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 115,
     side: unit.side,
     damage: data.damage,
+    sourceId: unit.id,
     stun: data.stunDuration,
     splash: data.splash,
     aoeLimit: data.aoeLimit,
@@ -6269,14 +6519,16 @@ function updateArrows(dt) {
       } else if (arrow.type === "boulder" && arrow.splash) {
         explodeBoulder(arrow);
       } else if (arrow.type === "poisonZombie") {
-        applyDamage(arrow.target, arrow.damage, arrow.side);
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
         applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration);
       } else if (arrow.type === "fireElement") {
-        applyDamage(arrow.target, arrow.damage, arrow.side);
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
-        if (target) applyDamage(target, arrow.damage, arrow.side);
+        if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
       } else if (arrow.type === "campaignMissile") {
         explodeCampaignMissile(arrow);
       } else if (arrow.type === "baseVolley") {
@@ -6284,7 +6536,8 @@ function updateArrows(dt) {
       } else if (arrow.type === "rocketVolley") {
         explodeRocketArrow(arrow);
       } else {
-        applyDamage(arrow.target, arrow.damage, arrow.side);
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
         if (arrow.stun) applyStun(arrow.target, arrow.stun);
       }
     }
@@ -6292,9 +6545,15 @@ function updateArrows(dt) {
   state.arrows = state.arrows.filter((arrow) => arrow.life > 0);
 }
 
+function getArrowSource(arrow) {
+  if (!arrow.sourceId) return null;
+  return state.units.find((unit) => unit.id === arrow.sourceId && unit.hp > 0) ?? null;
+}
+
 function attachCrossbowBomb(arrow) {
   const data = UNIT.crossbow;
-  applyDamage(arrow.target, arrow.damage, arrow.side);
+  const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+  handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
   if (!arrow.target || arrow.target.kind === "statue" || arrow.target.hp <= 0 || isUnitHidden(arrow.target)) return;
   arrow.target.stickyBombs = arrow.target.stickyBombs ?? [];
   arrow.target.stickyBombs.push({
@@ -6333,7 +6592,8 @@ function explodeBoulder(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, limit).forEach((target) => {
-    applyUnitDamage(target, arrow.damage, { label: "投石", color: "#c0a36d", yOffset: -80 });
+    const dealt = applyUnitDamage(target, arrow.damage, { label: "投石", color: "#c0a36d", yOffset: -80, ranged: true });
+    handleDamageDealt(getArrowSource(arrow), target, dealt);
     if (arrow.stun) applyStun(target, arrow.stun);
   });
   state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: "#c0a36d" });
@@ -6481,6 +6741,34 @@ function updateBurn(dt) {
       applyUnitDamage(unit, unit.burnDps, { label: "燃", color: "#ff9b45", yOffset: -104 });
     }
   });
+}
+
+function updateCorpses(dt) {
+  state.corpses.forEach((corpse) => {
+    corpse.life -= dt;
+  });
+  state.corpses = state.corpses.filter((corpse) => corpse.life > 0);
+}
+
+function updateGhosts(dt) {
+  for (const ghost of state.ghosts) {
+    ghost.life -= dt;
+    ghost.x += ghost.dir * ghost.speed * dt;
+    state.units.forEach((unit) => {
+      if (unit.side === ghost.side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+      if (ghost.hitIds.has(unit.id)) return;
+      if (Math.abs(unit.x - ghost.x) > 26 || Math.abs(unit.y - ghost.y) > 62) return;
+      ghost.hitIds.add(unit.id);
+      applyFear(unit, ghost.fearDuration);
+    });
+  }
+  state.ghosts = state.ghosts.filter((ghost) => ghost.life > 0 && ghost.x > FIELD.playerGate - 120 && ghost.x < FIELD.enemyGate + 120);
+}
+
+function applyFear(unit, duration) {
+  unit.fearTimer = Math.max(unit.fearTimer ?? 0, duration);
+  unit.fearDamageMultiplier = Math.max(unit.fearDamageMultiplier ?? 1, 2);
+  popText(unit.x, unit.y - 108, "恐惧", "#d8d0ff");
 }
 
 function updateChaosRecovery(dt) {
@@ -6686,24 +6974,25 @@ function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exc
     .slice(0, limit);
 }
 
-function applyDamage(target, amount, attackerSide) {
-  if (isUnitHidden(target)) return;
+function applyDamage(target, amount, attackerSide, options = {}) {
+  if (isUnitHidden(target)) return 0;
   if (target.kind === "statue") {
     if (target.side === "enemy") state.enemyHp -= amount;
     if (target.side === "player") state.playerHp -= amount;
     popText(target.x, FIELD.ground - 145, `-${amount}`, attackerSide === "player" ? "#9fc0ff" : "#ff9b8d");
-    return;
+    return amount;
   }
 
-  const damage = getModifiedDamage(target, amount);
+  const damage = getModifiedDamage(target, amount, options);
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   target.combatTimer = 3;
   popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
+  return hpDamage;
 }
 
 function applyUnitDamage(target, amount, options = {}) {
-  const damage = options.modified === false ? amount : getModifiedDamage(target, amount);
+  const damage = options.modified === false ? amount : getModifiedDamage(target, amount, options);
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   target.combatTimer = 3;
@@ -6721,10 +7010,16 @@ function absorbShieldDamage(target, damage) {
   return overflow;
 }
 
-function getModifiedDamage(target, amount) {
+function getModifiedDamage(target, amount, options = {}) {
   if (target.kind === "statue") return amount;
   if (amount <= 0) return 0;
   let damage = isPoisoned(target) ? amount * 2 : amount;
+  if ((target.fearDamageMultiplier ?? 1) > 1) {
+    damage *= target.fearDamageMultiplier;
+  }
+  if (options.ranged && target.type === "boneGiant") {
+    damage *= 1 - (UNIT.boneGiant.rangedReduction ?? 0.25);
+  }
   if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
     damage *= 1 - activeCampaign.enemySpartanDamageReduction;
   }
@@ -6742,6 +7037,16 @@ function removeDead() {
   const deathSpawns = [];
   state.units = state.units.filter((unit) => {
     if (unit.hp > 0) return true;
+    if (unit.inspiredReviveReady && unit.inspiredReviveTimer > 0 && SKELETON_UNITS.has(unit.type)) {
+      unit.hp = Math.max(1, Math.round(unit.maxHp * 0.45));
+      unit.inspiredReviveReady = false;
+      unit.inspiredReviveTimer = 0;
+      unit.stunTimer = 0;
+      unit.frozenBy = null;
+      unit.combatTimer = 0;
+      popText(unit.x, unit.y - 100, "骷髅复活", "#d8d0ff");
+      return true;
+    }
     if (unit.type === "vUnit") {
       releaseVControl(unit);
     }
@@ -6852,11 +7157,27 @@ function removeDead() {
       state.winner = "enemy";
       statusEl.textContent = "神明V倒下，挑战失败";
     }
+    maybeLeaveUndeadCorpse(unit);
     const godVExit = unit.godV && unit.side === "enemy" && activeCampaign?.enemyGodV;
     popText(unit.x, unit.y - 35, godVExit ? "退出战场" : "倒下", godVExit ? "#d7ceff" : "#a7a7a7");
     return false;
   });
   deathSpawns.forEach(spawnDeathUnit);
+}
+
+function maybeLeaveUndeadCorpse(unit) {
+  if (factionForSide(unit.side) !== "undeadEmpire") return;
+  if (!UNDEAD_BASE_UNITS.has(unit.type)) return;
+  if (UNDEAD_CORPSE_EXCLUDED.has(unit.type) || isHeroUnit(unit)) return;
+  state.corpses.push({
+    type: unit.type,
+    side: unit.side,
+    x: unit.x,
+    y: unit.y,
+    life: 15,
+    duration: 15,
+    revives: unit.corpseRevives ?? 0,
+  });
 }
 
 function enrageSurvivingDarkKnightBrother(deadBrother) {
@@ -7131,6 +7452,7 @@ function draw() {
   drawGround();
   drawCampaignMagmaGround();
   drawIceRoadGround();
+  state.corpses.forEach(drawCorpse);
   if (isGoldRushActive()) {
     drawGoldRushMines();
   } else {
@@ -7146,6 +7468,7 @@ function draw() {
   const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
   drawInspectedUnitInfo();
+  state.ghosts.forEach(drawGhost);
   state.arrows.forEach(drawArrow);
   state.delayedSpells.forEach(drawDelayedSpell);
   state.meteors.forEach(drawMeteor);
@@ -7571,6 +7894,11 @@ function drawUnit(unit) {
   }
   if (unit.type === "medusa") {
     drawMedusaUnit(unit);
+    ctx.restore();
+    return;
+  }
+  if (unit.type === "boneGiant") {
+    drawBoneGiantUnit(unit);
     ctx.restore();
     return;
   }
@@ -8349,6 +8677,56 @@ function drawMedusaUnit(unit) {
   drawUnitHp(unit);
 }
 
+function drawBoneGiantUnit(unit) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#d8d0c8";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(0, -52);
+  ctx.lineTo(0, -8);
+  ctx.moveTo(-28, -34);
+  ctx.lineTo(28, -34);
+  ctx.moveTo(-16, -8);
+  ctx.lineTo(-29, 34);
+  ctx.moveTo(16, -8);
+  ctx.lineTo(30, 34);
+  ctx.stroke();
+  ctx.strokeStyle = "#1c1b1a";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = "#d8d0c8";
+  ctx.strokeStyle = "#1c1b1a";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, -72, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#1c1b1a";
+  ctx.beginPath();
+  ctx.arc(-7, -75, 3.5, 0, Math.PI * 2);
+  ctx.arc(7, -75, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#d8d0c8";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(18, -36);
+  ctx.lineTo(54, -70);
+  ctx.stroke();
+  ctx.fillStyle = "#6f7680";
+  ctx.strokeStyle = "#25282c";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(48, -75);
+  ctx.lineTo(78, -65);
+  ctx.lineTo(64, -38);
+  ctx.lineTo(38, -49);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  drawUnitHp(unit);
+}
+
 function drawStoneWeapon(scale = 1) {
   ctx.save();
   ctx.scale(scale, scale);
@@ -8394,6 +8772,37 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(29, -55);
     ctx.moveTo(21, -52);
     ctx.lineTo(37, -43);
+    ctx.stroke();
+  } else if (type === "graveDigger") {
+    ctx.strokeStyle = "#d8d0c8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(17, -34);
+    ctx.lineTo(45, -62);
+    ctx.stroke();
+    ctx.fillStyle = "#6f7680";
+    ctx.strokeStyle = "#25282c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(50, -66, 12, 7, -0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (type === "bannerBearer") {
+    ctx.strokeStyle = "#d8d0c8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(20, -18);
+    ctx.lineTo(20, -94);
+    ctx.stroke();
+    ctx.fillStyle = unit?.inspiringTimer > 0 ? "#d8d0ff" : "#7d6aa8";
+    ctx.strokeStyle = "#2d2948";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(22, -92);
+    ctx.lineTo(58, -82);
+    ctx.lineTo(22, -66);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
   } else if (type === "swordsman") {
     ctx.strokeStyle = "#f2f6f8";
@@ -8968,6 +9377,22 @@ function drawUnitHp(unit) {
   if (unit.stunTimer > 0) {
     ctx.fillStyle = "#d7b978";
     ctx.fillRect(-8, -98, 16, 4);
+  }
+
+  if (unit.fearTimer > 0) {
+    ctx.strokeStyle = "#d8d0ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -101, 9, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (unit.inspiredReviveReady || unit.inspiredZombieTimer > 0 || unit.inspiredLifestealTimer > 0 || unit.inspiringTimer > 0) {
+    ctx.strokeStyle = unit.inspiredZombieTimer > 0 ? "#93d96b" : "#d8d0ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -55, 31, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   if (unit.frozenBy || unit.boundTargetId) {
@@ -9963,6 +10388,54 @@ function castManualHurricaneShield(unit) {
   popText(target.x, target.y - 100, "护盾", "#d7f6ee");
 }
 
+function drawCorpse(corpse) {
+  const alpha = Math.max(0.18, Math.min(0.65, corpse.life / corpse.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(corpse.x, corpse.y);
+  ctx.fillStyle = "#3b3735";
+  ctx.strokeStyle = "#b8b0a5";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 25, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "#d8d0c8";
+  ctx.beginPath();
+  ctx.moveTo(-14, -18);
+  ctx.lineTo(14, 0);
+  ctx.moveTo(12, -18);
+  ctx.lineTo(-12, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGhost(ghost) {
+  const alpha = Math.max(0.15, Math.min(0.72, ghost.life / ghost.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(ghost.x, ghost.y);
+  ctx.scale(ghost.dir, 1);
+  ctx.fillStyle = "rgba(216, 208, 255, 0.62)";
+  ctx.strokeStyle = "#f4f0ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-18, 18);
+  ctx.quadraticCurveTo(-24, -14, 0, -24);
+  ctx.quadraticCurveTo(24, -14, 18, 18);
+  ctx.quadraticCurveTo(8, 9, 0, 20);
+  ctx.quadraticCurveTo(-8, 9, -18, 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#2d2948";
+  ctx.beginPath();
+  ctx.arc(-6, -8, 2.5, 0, Math.PI * 2);
+  ctx.arc(7, -8, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawArrow(arrow) {
   const duration = arrow.duration ?? (arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55);
   const t = 1 - arrow.life / duration;
@@ -10403,6 +10876,7 @@ function updateHud() {
       return;
     }
     const type = button.dataset.unit;
+    if (!type) return;
     button.disabled = state.gold < getUnitCost(type, selectedFaction) || state.over || !canQueueCampaignUnit(type);
   });
 }

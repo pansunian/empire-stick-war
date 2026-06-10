@@ -318,8 +318,13 @@ body {
   gap: 14px;
 }
 
-.faction-options.three {
+.faction-options.three,
+.faction-options.four {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.faction-options.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .faction-card {
@@ -341,6 +346,10 @@ body {
 
 .faction-card.chaos {
   background: linear-gradient(145deg, rgba(129, 59, 52, 0.78), rgba(28, 18, 17, 0.94));
+}
+
+.faction-card.undead {
+  background: linear-gradient(145deg, rgba(95, 83, 110, 0.78), rgba(22, 22, 25, 0.94));
 }
 
 .faction-card.element {
@@ -464,6 +473,11 @@ button {
 .player.chaos .banner,
 .enemy.chaos .banner {
   background: linear-gradient(135deg, #ff9b7f, #9f201e);
+}
+
+.player.undead .banner,
+.enemy.undead .banner {
+  background: linear-gradient(135deg, #d8d0ff, #4d435e);
 }
 
 .player.element .banner,
@@ -1529,7 +1543,8 @@ canvas {
     grid-template-columns: 1fr;
   }
 
-  .faction-options.three {
+  .faction-options.three,
+.faction-options.four {
     grid-template-columns: 1fr;
   }
 
@@ -2154,7 +2169,8 @@ canvas {
 
   .mode-options,
   .faction-options,
-  .faction-options.three {
+  .faction-options.three,
+.faction-options.four {
     gap: 8px;
   }
 
@@ -2360,7 +2376,8 @@ canvas {
     font-size: 10px;
   }
 
-  .faction-options.three {
+  .faction-options.three,
+.faction-options.four {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
@@ -2641,7 +2658,8 @@ canvas {
     font-size: 10px;
   }
 
-  .faction-options.three {
+  .faction-options.three,
+.faction-options.four {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
