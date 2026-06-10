@@ -333,7 +333,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   display: grid;
-  align-content: end;
+  grid-template-rows: 98px auto 1fr;
+  align-content: start;
   justify-items: start;
   gap: 8px;
   text-align: left;
@@ -371,22 +372,30 @@ body {
 }
 
 .crest {
-  width: 46px;
-  height: 66px;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+  width: 92px;
+  height: 92px;
+  display: block;
+  align-self: end;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.32));
 }
 
 .order .crest {
-  background: linear-gradient(135deg, #8dbbff, #244f9d);
+  background-image: url("./assets/factions/order-crest.png");
 }
 
 .chaos .crest {
-  background: linear-gradient(135deg, #ff9073, #7d1d20);
+  background-image: url("./assets/factions/chaos-crest.png");
+}
+
+.undead .crest {
+  background-image: url("./assets/factions/undead-crest.png");
 }
 
 .element .crest {
-  background: linear-gradient(135deg, #8ee0cf, #7c6a3f);
+  background-image: url("./assets/factions/element-crest.png");
 }
 
 button {

@@ -1,11 +1,15 @@
-const CACHE_NAME = "stick-war-pwa-v70";
+const CACHE_NAME = "stick-war-pwa-v71";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./game.js?v=20260610-undead-empire",
   "./manifest.webmanifest",
-  "./assets/icon.svg"
+  "./assets/icon.svg",
+  "./assets/factions/order-crest.png",
+  "./assets/factions/chaos-crest.png",
+  "./assets/factions/undead-crest.png",
+  "./assets/factions/element-crest.png"
 ];
 
 self.addEventListener("install", (event) => {
