@@ -254,8 +254,12 @@ const UNIT = {
     speed: 38,
     train: 4.4,
     healEvery: 2,
-    healAmount: 25,
+    healAmount: 30,
     healRange: 150,
+    fieldArea: 1000,
+    fieldHeal: 10,
+    fieldDuration: 10,
+    fieldCooldown: 18,
   },
   crossbow: {
     name: "弩手",
@@ -597,7 +601,7 @@ const UNIT = {
   },
   shaman: {
     name: "萨满",
-    cost: 170,
+    cost: 150,
     hp: 170,
     damage: 0,
     range: 0,
@@ -610,14 +614,13 @@ const UNIT = {
     thornSlow: 0.9,
     thornDuration: 12,
     thornCooldown: 10,
-    regenEvery: 16,
-    regenHps: 8,
-    regenDuration: 10,
-    regenRange: 625,
+    healEvery: 1,
+    healAmount: 8,
+    healRange: 625,
   },
   priest: {
     name: "祭司",
-    cost: 180,
+    cost: 170,
     hp: 150,
     damage: 20,
     range: 145,
@@ -629,12 +632,26 @@ const UNIT = {
     siphonMaxHp: 350,
     siphonDamage: 30,
     siphonCooldown: 12,
+    bloodSacrificeCooldown: 10,
+    bloodSacrificeFactor: 1.5,
   },
   apeMan: {
     name: "猿人",
-    cost: 0,
-    hp: 300,
+    cost: 140,
+    hp: 400,
     damage: 20,
+    range: 44,
+    speed: 34,
+    train: 5.8,
+    cooldown: 2,
+    knockback: 100,
+    stunDuration: 1.2,
+  },
+  summonedApeMan: {
+    name: "召唤猿人",
+    cost: 0,
+    hp: 280,
+    damage: 16,
     range: 44,
     speed: 34,
     train: 0,
@@ -817,7 +834,7 @@ const UNIT = {
     cooldown: 1.5,
   },
   undeadMage: {
-    name: "亡灵法师",
+    name: "骨巫",
     cost: 250,
     hp: 200,
     damage: 25,
@@ -829,8 +846,9 @@ const UNIT = {
     boneSpikeEvery: 10,
     boneSpikeDamage: 32,
     boneSpikeRange: 160,
-    summonEvery: 15,
-    summonCount: 4,
+    lureCooldown: 10,
+    lureDamage: 30,
+    lureDuration: 4,
   },
   suikai: {
     name: "隋凯",
@@ -1218,7 +1236,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1273,6 +1291,7 @@ const UNIT_ICON = {
   shaman: "wizard-hat",
   priest: "skull",
   apeMan: "claws",
+  summonedApeMan: "claws",
   scimitarWarrior: "machete",
   minotaur: "axe",
   rhinoMan: "axe",
@@ -1318,7 +1337,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1342,7 +1361,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1588,7 +1607,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 170,
       enemyGold: 210,
       enemyDeathsBecomePlayerUndead: true,
-      rewardText: "亡灵法师",
+      rewardText: "骨巫",
       objective: "敌军阵亡会在原地转化为我方亡灵，击败拥有连锁闪电与火球雨的大法师",
     },
     7: {
@@ -1840,15 +1859,16 @@ function formatSpecial(type) {
   if (data.antiAir) notes.push("近战可攻击空中");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
+  if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
   if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
   if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
-  if (type === "shaman") notes.push(`没有普攻；每 ${data.thornEvery}秒生成面积 ${data.thornArea} 的荆棘，持续 ${data.thornDuration}秒，每秒 ${data.thornDps} 伤害并减速 ${Math.round((1 - data.thornSlow) * 100)}%；每 ${data.regenEvery}秒让一名友军每秒恢复 ${data.regenHps} 生命，持续 ${data.regenDuration}秒`);
-  if (type === "priest") notes.push(`死亡敌人可被祭祀为祭品，收集 ${data.sacrificeNeeded} 个祭品召唤猿人；技能抽取生命值不超过 ${data.siphonMaxHp} 的敌人，造成 ${data.siphonDamage} 伤害，并将其生命值平分治疗前线友军`);
-  if (type === "apeMan") notes.push(`召唤单位；攻击击退敌人 ${data.knockback} 距离并眩晕 ${data.stunDuration}秒`);
+  if (type === "shaman") notes.push(`没有普攻；每 ${data.thornEvery}秒生成面积 ${data.thornArea} 的荆棘，持续 ${data.thornDuration}秒，每秒 ${data.thornDps} 伤害并减速 ${Math.round((1 - data.thornSlow) * 100)}%；每秒为一名友军恢复 ${data.healAmount} 生命`);
+  if (type === "priest") notes.push(`死亡敌人可被祭祀为祭品，收集 ${data.sacrificeNeeded} 个祭品召唤较弱猿人；技能抽取生命值不超过 ${data.siphonMaxHp} 的敌人，造成 ${data.siphonDamage} 伤害并治疗前线；血祭一名生物友军，将其当前生命值 x${data.bloodSacrificeFactor} 治疗前线，冷却 ${data.bloodSacrificeCooldown}秒`);
+  if (type === "apeMan" || type === "summonedApeMan") notes.push(`攻击击退敌人 ${data.knockback} 距离并眩晕 ${data.stunDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "minotaur") notes.push(`双短斧每次攻击造成 2 次 ${data.damage} 伤害；技能向前跳跃 ${data.leapDistance} 距离并眩晕敌人 ${data.leapStun}秒，冷却 ${data.leapCooldown}秒；${data.deathRageRange} 范围内牛头人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "rhinoMan") notes.push(`技能向前冲撞 ${data.chargeDistance} 距离，路途撞击敌人造成 ${data.chargeDamage} 伤害并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
@@ -1885,7 +1905,7 @@ function formatSpecial(type) {
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤；攻击使敌人中毒");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
-  if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；每 ${data.boneSpikeEvery}秒骨刺 ${data.boneSpikeRange} 距离；每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
+  if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；手动骨刺 ${data.boneSpikeRange} 距离；手动勾引一名敌人向我方前进 ${data.lureDuration}秒，造成 ${data.lureDamage} 伤害，冷却 ${data.lureCooldown}秒`);
   if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，激励周围一种亡灵单位；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
   if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
   if (type === "ghoul") notes.push(`手动技能：扑向最近敌方尸体，啃食 ${data.devourDuration}秒后恢复尸体原生命值一半，最多回满`);
@@ -1970,6 +1990,7 @@ function newGame() {
     electricColumns: [],
     groundFires: [],
     thornFields: [],
+    healingFields: [],
     landMines: [],
     corpses: [],
     ghosts: [],
@@ -2603,12 +2624,17 @@ function spawnUnit(type, side, x) {
     goblinBurrowed: false,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
     shamanThornTimer: data.thornEvery ?? 0,
-    shamanRegenTimer: data.regenEvery ?? 0,
+    shamanRegenTimer: data.healEvery ?? 0,
+    monkFieldTimer: data.fieldCooldown ?? 0,
     regenLife: 0,
     regenHps: 0,
     regenTick: 0,
     priestSiphonTimer: data.siphonCooldown ?? 0,
+    priestBloodTimer: data.bloodSacrificeCooldown ?? 0,
     priestSacrificeCount: 0,
+    undeadLureTimer: data.lureCooldown ?? 0,
+    luredTimer: 0,
+    luredBySide: null,
     armorReduction: 0,
     heavyArmorTimer: 0,
     heavyArmorReduction: 0,
@@ -3184,6 +3210,7 @@ function update(dt) {
   updateElectricWalls(dt);
   updateGroundFires(dt);
   updateThornFields(dt);
+  updateHealingFields(dt);
   updateIceFieldEffects(dt);
   updateParticles(dt);
   removeDead();
@@ -4198,8 +4225,13 @@ function updateUnits(dt) {
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
     unit.shamanThornTimer = Math.max(0, (unit.shamanThornTimer ?? 0) - dt);
     unit.shamanRegenTimer = Math.max(0, (unit.shamanRegenTimer ?? 0) - dt);
+    unit.monkFieldTimer = Math.max(0, (unit.monkFieldTimer ?? 0) - dt);
     updateUnitRegen(unit, dt);
     unit.priestSiphonTimer = Math.max(0, (unit.priestSiphonTimer ?? 0) - dt);
+    unit.priestBloodTimer = Math.max(0, (unit.priestBloodTimer ?? 0) - dt);
+    unit.undeadLureTimer = Math.max(0, (unit.undeadLureTimer ?? 0) - dt);
+    unit.luredTimer = Math.max(0, (unit.luredTimer ?? 0) - dt);
+    if (unit.luredTimer <= 0) unit.luredBySide = null;
     unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
     if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
     unit.minotaurLeapTimer = Math.max(0, (unit.minotaurLeapTimer ?? 0) - dt);
@@ -4221,6 +4253,11 @@ function updateUnits(dt) {
     }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+    if (unit.luredTimer > 0) {
+      updateLuredUnit(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -4303,10 +4340,6 @@ function updateUnits(dt) {
     if (unit.type === "scimitarWarrior") {
       updateScimitarWarrior(unit);
     }
-    if (unit.type === "rhinoMan" && updateRhinoMan(unit)) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
-      continue;
-    }
     if (unit.type === "griffinBomber") {
       updateGriffinBomber(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -4364,10 +4397,6 @@ function updateUnits(dt) {
     updateSiegeBlindTarget(unit, target);
     const statueTarget = getForcedStatueTarget(unit, target);
     const activeTarget = statueTarget ?? target;
-    if (unit.type === "minotaur" && tryMinotaurLeap(unit)) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
-      continue;
-    }
     const desiredX = getDesiredX(unit, activeTarget);
     const desiredPoint = getDesiredPoint(unit, activeTarget, desiredX);
     const distance = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y);
@@ -4904,6 +4933,29 @@ function updateMonk(unit, dt) {
   if (Math.abs(unit.x - desiredX) > 4) {
     unit.x += Math.sign(desiredX - unit.x) * UNIT.monk.speed * getMoveFactor(unit) * dt;
   }
+}
+
+function castMonkHealingField(unit) {
+  const data = UNIT.monk;
+  if ((unit.monkFieldTimer ?? 0) > 0) return false;
+  const radius = Math.max(12, Math.sqrt(data.fieldArea / Math.PI));
+  const front = getFrontAlly(unit.side);
+  const x = front ? front.x : unit.x;
+  const y = front ? front.y : unit.y;
+  state.healingFields.push({
+    side: unit.side,
+    x,
+    y,
+    radius,
+    heal: data.fieldHeal,
+    life: data.fieldDuration,
+    duration: data.fieldDuration,
+    tick: 0,
+  });
+  unit.monkFieldTimer = data.fieldCooldown;
+  state.blasts.push({ x, y: y - 30, radius: radius + 36, life: 0.42, duration: 0.42, color: "#b8f6c1" });
+  popText(unit.x, unit.y - 118, "回血区", "#b8f6c1");
+  return true;
 }
 
 function findWoundedAlly(unit) {
@@ -5454,39 +5506,8 @@ function updateSwordsman(unit, dt) {
 }
 
 function updateUndeadMage(unit, dt) {
-  const data = UNIT.undeadMage;
-  unit.undeadBoneTimer = Math.max(0, (unit.undeadBoneTimer ?? data.boneSpikeEvery) - dt);
-  if (unit.undeadBoneTimer <= 0) {
-    const target = findUndeadBoneTarget(unit);
-    if (target) {
-      unit.undeadBoneTimer = data.boneSpikeEvery;
-      castUndeadPierce(unit, target);
-    } else {
-      unit.undeadBoneTimer = 1;
-    }
-  }
-
-  unit.summonCooldown -= dt;
-  if (unit.summonCooldown > 0) return;
-
-  unit.summonCooldown = data.summonEvery;
-  summonUndeadMageWave(unit);
-}
-
-function summonUndeadMageWave(unit) {
-  const data = UNIT.undeadMage;
-  const dir = unit.side === "player" ? 1 : -1;
-  for (let i = 0; i < data.summonCount; i += 1) {
-    spawnUnit("undead", unit.side, unit.x - dir * (22 + i * 16));
-    const summoned = state.units[state.units.length - 1];
-    summoned.forceCharge = true;
-    summoned.speed = 70;
-    summoned.maxHp = 55;
-    summoned.hp = 55;
-    summoned.damage = 7;
-    summoned.summonerId = unit.id;
-  }
-  popText(unit.x, unit.y - 112, "亡灵冲锋", "#b8b0a5");
+  void unit;
+  void dt;
 }
 
 function findUndeadBoneTarget(unit) {
@@ -6480,7 +6501,7 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "apeMan") {
+  if (unit.type === "apeMan" || unit.type === "summonedApeMan") {
     attackApeMan(unit, target);
     return;
   }
@@ -6544,7 +6565,7 @@ function attack(unit, target) {
 }
 
 function attackApeMan(unit, target) {
-  const data = UNIT.apeMan;
+  const data = UNIT[unit.type];
   const dealt = applyDamage(target, data.damage, unit.side);
   handleDamageDealt(unit, target, dealt);
   if (target.kind === "statue") return;
@@ -6812,6 +6833,30 @@ function castUndeadPierce(unit, target) {
     duration: 0.34,
   });
   popText(target.x, target.y ? target.y - 80 : FIELD.ground - 130, `骨刺 -${damage}`, "#b8b0a5");
+}
+
+function castUndeadLure(unit, target) {
+  const data = UNIT.undeadMage;
+  if ((unit.undeadLureTimer ?? 0) > 0) return false;
+  if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || !canTarget(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法勾引", "#d8c8e8");
+    return false;
+  }
+  applyDamage(target, data.lureDamage, unit.side);
+  target.luredTimer = data.lureDuration;
+  target.luredBySide = unit.side;
+  target.forceCharge = false;
+  unit.undeadLureTimer = data.lureCooldown;
+  state.lightning.push({ x1: unit.x, y1: unit.y - 74, x2: target.x, y2: target.y - 58, life: 0.3, duration: 0.3, color: "#d8c8e8" });
+  popText(target.x, target.y - 106, "勾引", "#d8c8e8");
+  return true;
+}
+
+function updateLuredUnit(unit, dt) {
+  const dir = unit.luredBySide === "player" ? -1 : 1;
+  const speed = (unit.speed ?? UNIT[unit.type]?.speed ?? 35) * getMoveFactor(unit);
+  unit.x = Math.max(FIELD.playerGate + 30, Math.min(FIELD.enemyGate - 30, unit.x + dir * speed * dt));
+  unit.combatTimer = Math.max(unit.combatTimer ?? 0, 0.4);
 }
 
 function castSuikaiPierce(unit, target) {
@@ -7607,11 +7652,7 @@ function updateReaper(unit) {
 }
 
 function updateScimitarWarrior(unit) {
-  if (unit.side !== "enemy" || unit.scimitarRoarTimer > 0) return;
-  const data = UNIT.scimitarWarrior;
-  const enemies = getUnitsInRadius(unit.x, data.roarRadius, unit.side, Infinity);
-  if (!enemies.length) return;
-  castScimitarRoar(unit);
+  void unit;
 }
 
 function castScimitarRoar(unit) {
@@ -7781,16 +7822,15 @@ function castShamanRegen(unit) {
       candidate.hp > 0 &&
       !isUnitHidden(candidate) &&
       candidate.hp < candidate.maxHp &&
-      Math.abs(candidate.x - unit.x) <= data.regenRange
+      Math.abs(candidate.x - unit.x) <= data.healRange
     )
     .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-  unit.shamanRegenTimer = data.regenEvery;
+  unit.shamanRegenTimer = data.healEvery;
   if (!target) return false;
-  target.regenLife = data.regenDuration;
-  target.regenHps = data.regenHps;
-  target.regenTick = 0;
+  const healed = Math.min(data.healAmount, target.maxHp - target.hp);
+  target.hp += healed;
   state.blasts.push({ x: target.x, y: target.y - 50, radius: 46, life: 0.38, duration: 0.38, color: "#8ee88a" });
-  popText(target.x, target.y - 112, "恢复", "#8ee88a");
+  popText(target.x, target.y - 112, `萨满 +${healed}`, "#8ee88a");
   return true;
 }
 
@@ -7814,10 +7854,6 @@ function updateUnitRegen(unit, dt) {
 
 function updatePriest(unit) {
   collectPriestOffering(unit);
-  if (unit.side === "enemy" && (unit.priestSiphonTimer ?? 0) <= 0) {
-    const target = findPriestSiphonTarget(unit);
-    if (target) castPriestSiphon(unit, target);
-  }
 }
 
 function collectPriestOffering(unit) {
@@ -7840,7 +7876,7 @@ function collectPriestOffering(unit) {
 
 function summonApeMan(unit) {
   const dir = unit.side === "player" ? 1 : -1;
-  const ape = spawnUnit("apeMan", unit.side, Math.max(FIELD.playerGate + 42, Math.min(FIELD.enemyGate - 42, unit.x + dir * 42)));
+  const ape = spawnUnit("summonedApeMan", unit.side, Math.max(FIELD.playerGate + 42, Math.min(FIELD.enemyGate - 42, unit.x + dir * 42)));
   ape.y = unit.y + (Math.random() * 26 - 13);
   ape.forceCharge = unit.forceCharge;
   state.blasts.push({ x: ape.x, y: ape.y - 48, radius: 62, life: 0.42, duration: 0.42, color: "#c8a0ff" });
@@ -7870,6 +7906,30 @@ function castPriestSiphon(unit, target) {
   return true;
 }
 
+function castPriestBloodSacrifice(unit, target) {
+  const data = UNIT.priest;
+  if ((unit.priestBloodTimer ?? 0) > 0) return false;
+  if (!canPriestSacrificeAlly(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法血祭", "#d9d0b8");
+    return false;
+  }
+  const lifePool = Math.round(target.hp * data.bloodSacrificeFactor);
+  target.hp = 0;
+  unit.priestBloodTimer = data.bloodSacrificeCooldown;
+  healFrontlineAllies(unit.side, lifePool, "血祭");
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 58, life: 0.42, duration: 0.42, color: "#c8a0ff" });
+  popText(target.x, target.y - 112, "血祭", "#c8a0ff");
+  return true;
+}
+
+function canPriestSacrificeAlly(source, target) {
+  if (!target || target.kind === "statue") return false;
+  if (target.side !== source.side || target.id === source.id || target.hp <= 0 || isUnitHidden(target) || UNIT[target.type]?.untargetable) return false;
+  if (factionForSide(target.side) === "undeadEmpire" || isUndeadEmpireUnit(target.type)) return false;
+  if (UNIT[target.type]?.flying || UNIT[target.type]?.statueOnly) return false;
+  return target.type !== "miner";
+}
+
 function findPriestSiphonTarget(unit) {
   const data = UNIT.priest;
   return state.units
@@ -7883,6 +7943,18 @@ function findPriestSiphonTarget(unit) {
       canTarget(unit, target)
     )
     .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0] ?? null;
+}
+
+function healFrontlineAllies(side, total, label) {
+  const allies = getFrontlineAllies(side);
+  if (!allies.length || total <= 0) return;
+  const heal = Math.max(1, Math.floor(total / allies.length));
+  allies.forEach((ally) => {
+    const healed = Math.min(heal, ally.maxHp - ally.hp);
+    if (healed <= 0) return;
+    ally.hp += healed;
+    popText(ally.x, ally.y - 96, `${label} +${healed}`, "#c8a0ff");
+  });
 }
 
 function getFrontlineAllies(side) {
@@ -8136,7 +8208,7 @@ function updateChaosRecovery(dt) {
   const regenEvery = 2;
   const regenAmount = 5;
   state.units.forEach((unit) => {
-    if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
+    if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "undeadEmpire" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
     unit.chaosCleanseTimer -= dt;
 
@@ -8145,7 +8217,7 @@ function updateChaosRecovery(dt) {
       const healed = Math.min(regenAmount, unit.maxHp - unit.hp);
       if (healed > 0) {
         unit.hp += healed;
-        popText(unit.x, unit.y - 96, `恢复 +${healed}`, "#b7f56e");
+        popText(unit.x, unit.y - 96, `亡灵恢复 +${healed}`, "#b8b0e8");
       }
     }
 
@@ -8242,10 +8314,33 @@ function updateThornFields(dt) {
   state.thornFields = state.thornFields.filter((field) => field.life > 0);
 }
 
+function updateHealingFields(dt) {
+  for (const field of state.healingFields) {
+    field.life -= dt;
+    field.tick -= dt;
+    while (field.tick <= 0 && field.life > 0) {
+      field.tick += 1;
+      healHealingField(field);
+    }
+  }
+  state.healingFields = state.healingFields.filter((field) => field.life > 0);
+}
+
 function damageGroundFire(fire) {
   getUnitsInRadius(fire.x, fire.radius, fire.side, Infinity).forEach((unit) => {
     if (Math.abs((unit.y ?? FIELD.ground) - fire.y) > fire.radius) return;
     applyUnitDamage(unit, fire.dps, { label: "地火", color: "#ff8a3d", yOffset: -96 });
+  });
+}
+
+function healHealingField(field) {
+  state.units.forEach((unit) => {
+    if (unit.side !== field.side || unit.hp <= 0 || unit.hp >= unit.maxHp || isUnitHidden(unit)) return;
+    if (Math.abs(unit.x - field.x) > field.radius) return;
+    if (Math.abs((unit.y ?? FIELD.ground) - field.y) > field.radius) return;
+    const healed = Math.min(field.heal, unit.maxHp - unit.hp);
+    unit.hp += healed;
+    popText(unit.x, unit.y - 94, `回血区 +${healed}`, "#b8f6c1");
   });
 }
 
@@ -8792,6 +8887,7 @@ function startCampaignSecondPhase() {
   state.iceFields = [];
   state.groundFires = [];
   state.thornFields = [];
+  state.healingFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
     const unit = spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
@@ -8876,6 +8972,7 @@ function draw() {
   drawIceRoadGround();
   state.groundFires.forEach(drawGroundFire);
   state.thornFields.forEach(drawThornField);
+  state.healingFields.forEach(drawHealingField);
   state.landMines.forEach(drawLandMine);
   state.corpses.forEach(drawCorpse);
   if (isGoldRushActive()) {
@@ -9154,6 +9251,34 @@ function drawThornField(field) {
     ctx.lineTo(x + 8, -radius * 0.28);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawHealingField(field) {
+  const alpha = Math.max(0.22, Math.min(0.7, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius * (1 + Math.sin(performance.now() / 180 + field.x) * 0.05);
+  const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius + 14);
+  gradient.addColorStop(0, "rgba(220, 255, 205, 0.6)");
+  gradient.addColorStop(0.62, "rgba(136, 240, 178, 0.36)");
+  gradient.addColorStop(1, "rgba(74, 160, 104, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius + 14, (radius + 14) * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(225, 255, 216, 0.76)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, -2, radius * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.34, -2);
+  ctx.lineTo(radius * 0.34, -2);
+  ctx.moveTo(0, -radius * 0.34 - 2);
+  ctx.lineTo(0, radius * 0.34 - 2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -10138,7 +10263,7 @@ function getUnitColor(unit) {
   if (type === "goblinExpert") return "#7d9f6a";
   if (type === "shaman") return "#526f4a";
   if (type === "priest") return "#5d4b74";
-  if (type === "apeMan") return "#6c4d37";
+  if (type === "apeMan" || type === "summonedApeMan") return "#6c4d37";
   if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "minotaur") return unit.minotaurRage ? "#9a4f35" : "#7a5a42";
   if (type === "rhinoMan") return unit.rhinoRage ? "#8b5f45" : "#6f7370";
@@ -10193,7 +10318,7 @@ function getHeadColor(unit) {
   if (unit.type === "goblinExpert") return "#d8e8a8";
   if (unit.type === "shaman") return "#d7f0a8";
   if (unit.type === "priest") return "#e0c8ff";
-  if (unit.type === "apeMan") return "#c89668";
+  if (unit.type === "apeMan" || unit.type === "summonedApeMan") return "#c89668";
   if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "minotaur") return unit.minotaurRage ? "#ffb06b" : "#c89a6d";
   if (unit.type === "rhinoMan") return unit.rhinoRage ? "#ffb06b" : "#c8d0c8";
@@ -10828,7 +10953,7 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(44, -74);
     ctx.lineTo(28, -58);
     ctx.stroke();
-  } else if (type === "apeMan") {
+  } else if (type === "apeMan" || type === "summonedApeMan") {
     ctx.strokeStyle = "#3a2418";
     ctx.lineWidth = 7;
     ctx.beginPath();
@@ -11836,7 +11961,7 @@ function getManualActions(unit) {
       break;
     case "undeadMage":
       add("undeadSpike", "骨刺", "target");
-      add("summonUndead", "召唤", "direct");
+      add("undeadLure", "勾引", "target");
       break;
     case "suikai":
       add("suikaiPierce", "骨刺", "target");
@@ -11868,6 +11993,9 @@ function getManualActions(unit) {
     case "ghoul":
       add("ghoulDevour", "啃食", "direct");
       break;
+    case "monk":
+      add("monkField", "回血区", "direct");
+      break;
     case "goblin":
       actions[0].label = "待命";
       add("goblinBurrow", unit.goblinBurrowed ? "钻出" : "遁地", "direct");
@@ -11881,6 +12009,7 @@ function getManualActions(unit) {
       break;
     case "priest":
       add("priestSiphon", "献祭", "target");
+      add("priestBlood", "血祭", "target");
       break;
     case "candlelight":
       add("toggleCandleForm", unit.candleForm === "fire" ? "冰矩" : "火焰", "direct");
@@ -11933,6 +12062,9 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return true;
   if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return true;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return true;
+  if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return true;
+  if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return true;
+  if (button.id === "monkField" && unit.monkFieldTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -12035,6 +12167,9 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return `冷却 ${Math.ceil(unit.minotaurLeapTimer)}秒`;
   if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return `冷却 ${Math.ceil(unit.rhinoChargeTimer)}秒`;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return `冷却 ${Math.ceil(unit.priestSiphonTimer)}秒`;
+  if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return `冷却 ${Math.ceil(unit.priestBloodTimer)}秒`;
+  if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return `冷却 ${Math.ceil(unit.undeadLureTimer)}秒`;
+  if (button.id === "monkField" && unit.monkFieldTimer > 0) return `冷却 ${Math.ceil(unit.monkFieldTimer)}秒`;
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -12075,6 +12210,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "rhinoCharge") {
     castRhinoCharge(unit);
+    return;
+  }
+  if (action.id === "monkField") {
+    castMonkHealingField(unit);
     return;
   }
   if (action.id === "waterSacrifice") {
@@ -12138,15 +12277,23 @@ function findManualAttackTarget(unit, range) {
 }
 
 function isAllyManualTargetAction(id) {
-  return id === "goblinHeavyArmor";
+  return id === "goblinHeavyArmor" || id === "priestBlood";
 }
 
 function getManualTargetAt(unit, point, actionId = null) {
-  if (isAllyManualTargetAction(actionId)) {
+  if (actionId === "goblinHeavyArmor") {
     const clickedAlly = findUnitAt(point);
     if (clickedAlly && canReceiveGoblinExpertArmor(unit, clickedAlly)) return clickedAlly;
     return state.units
       .filter((target) => canReceiveGoblinExpertArmor(unit, target))
+      .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
+      .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
+  }
+  if (actionId === "priestBlood") {
+    const clickedAlly = findUnitAt(point);
+    if (clickedAlly && canPriestSacrificeAlly(unit, clickedAlly)) return clickedAlly;
+    return state.units
+      .filter((target) => canPriestSacrificeAlly(unit, target))
       .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
       .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
   }
@@ -12309,8 +12456,8 @@ function getManualActionCooldown(unit, id) {
   const data = UNIT[unit.type] ?? {};
   const table = {
     undeadSpike: data.boneSpikeEvery,
+    undeadLure: data.lureCooldown,
     medusaPoison: data.poisonEvery,
-    summonUndead: data.summonEvery,
     suikaiCorpses: data.corpseEvery,
     suikaiHook: data.hookEvery,
     hurricaneShield: data.shieldEvery,
@@ -12322,6 +12469,7 @@ function getManualActionCooldown(unit, id) {
     berserkerRage: data.rageEvery,
     goblinHeavyArmor: UNIT.goblinExpert.heavyArmorDuration,
     priestSiphon: UNIT.priest.siphonCooldown,
+    priestBlood: UNIT.priest.bloodSacrificeCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -12359,6 +12507,8 @@ function castManualSkill(unit, id, target) {
       return true;
     case "priestSiphon":
       return castPriestSiphon(unit, target);
+    case "priestBlood":
+      return castPriestBloodSacrifice(unit, target);
     case "vControl":
       if (!canVControl(unit, target)) {
         popText(unit.x, unit.y - 116, "无法控制", "#d7ceff");
@@ -12369,9 +12519,8 @@ function castManualSkill(unit, id, target) {
     case "undeadSpike":
       castUndeadPierce(unit, target);
       return true;
-    case "summonUndead":
-      summonUndeadMageWave(unit);
-      return true;
+    case "undeadLure":
+      return castUndeadLure(unit, target);
     case "suikaiPierce":
       castSuikaiPierce(unit, target);
       return true;

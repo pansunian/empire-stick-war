@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v85";
+const CACHE_NAME = "stick-war-pwa-v86";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260611-chaos-priest-shaman",
+  "./game.js?v=20260611-healing-priest-bonewitch",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/factions/order-crest.png",
