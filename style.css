@@ -477,15 +477,16 @@ body {
 .faction-card {
   position: relative;
   overflow: hidden;
-  min-height: 230px;
+  min-height: 188px;
   padding: 22px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   display: grid;
-  grid-template-rows: 98px auto 1fr;
+  grid-template-columns: 82px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   align-content: start;
-  justify-items: start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px 14px;
   text-align: left;
   box-shadow:
     inset 0 1px 0 rgba(255, 244, 190, 0.11),
@@ -525,19 +526,29 @@ body {
 }
 
 .faction-card strong {
+  grid-column: 2;
+  min-width: 0;
+  color: #f5d476;
   font-size: 28px;
+  line-height: 1.05;
+  text-shadow:
+    0 2px 0 rgba(15, 10, 5, 0.86),
+    0 0 12px rgba(0, 0, 0, 0.82),
+    0 0 18px rgba(245, 212, 118, 0.22);
 }
 
 .faction-card small {
+  grid-column: 1 / -1;
   color: rgba(245, 240, 223, 0.78);
   line-height: 1.5;
 }
 
 .crest {
-  width: 92px;
-  height: 92px;
+  grid-column: 1;
+  width: 82px;
+  height: 82px;
   display: block;
-  align-self: end;
+  align-self: center;
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -3028,18 +3039,19 @@ canvas {
   }
 
   .faction-card {
-    min-height: 178px;
-    grid-template-rows: 70px auto 1fr;
+    min-height: 148px;
+    grid-template-columns: 58px minmax(0, 1fr);
     padding: 14px;
+    gap: 8px 12px;
   }
 
   .crest {
-    width: 68px;
-    height: 68px;
+    width: 58px;
+    height: 58px;
   }
 
   .faction-card strong {
-    font-size: 22px;
+    font-size: 21px;
   }
 
   .faction-card small {
@@ -3085,14 +3097,15 @@ canvas {
   }
 
   .faction-card {
-    min-height: 178px;
-    grid-template-rows: 72px auto 1fr;
+    min-height: 150px;
+    grid-template-columns: 60px minmax(0, 1fr);
     padding: 14px;
+    gap: 8px 12px;
   }
 
   .crest {
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
   }
 
   .faction-card strong {
