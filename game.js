@@ -427,7 +427,7 @@ const UNIT = {
   undead: {
     name: "丧尸",
     cost: 70,
-    hp: 70,
+    hp: 80,
     damage: 8,
     range: 30,
     speed: 32,
@@ -445,8 +445,38 @@ const UNIT = {
     cooldown: 1,
     devourDuration: 3,
   },
+  candlelight: {
+    name: "烛光",
+    cost: 90,
+    hp: 115,
+    damage: 6,
+    range: 145,
+    speed: 45,
+    train: 3.4,
+    cooldown: 0.6,
+    defaultForm: "ice",
+    burnDps: 3,
+    burnDuration: 5,
+    slowDuration: 1,
+    slowFactor: 0.75,
+  },
+  reaper: {
+    name: "收割者",
+    cost: 140,
+    hp: 90,
+    damage: 16,
+    range: 36,
+    speed: 60,
+    train: 4.2,
+    cooldown: 0.9,
+    stackBonus: 0.2,
+    maxStackBonus: 1,
+    stealthDuration: 10,
+    stealthSpeed: 40,
+    ambushDamage: 50,
+  },
   machete: {
-    name: "骷髅砍刀兵",
+    name: "骷髅兵",
     cost: 100,
     hp: 130,
     damage: 11,
@@ -511,6 +541,64 @@ const UNIT = {
     burnDps: 3,
     burnDuration: 8,
   },
+  orc: {
+    name: "兽人",
+    cost: 70,
+    hp: 130,
+    damage: 6,
+    range: 34,
+    speed: 40,
+    train: 3.4,
+    cooldown: 1,
+  },
+  berserkOrc: {
+    name: "狂兽人",
+    cost: 100,
+    hp: 180,
+    damage: 10,
+    range: 38,
+    speed: 38,
+    train: 4.2,
+    cooldown: 1.15,
+  },
+  javelinThrower: {
+    name: "投矛手",
+    cost: 120,
+    hp: 60,
+    damage: 14,
+    range: 200,
+    speed: 50,
+    train: 4,
+    cooldown: 1.2,
+    poisonChance: 0.3,
+    poisonDps: 2,
+    poisonDuration: Infinity,
+  },
+  goblinVulture: {
+    name: "秃鹫",
+    cost: 150,
+    hp: 90,
+    damage: 13,
+    range: 170,
+    speed: 60,
+    train: 4.8,
+    cooldown: 1.25,
+    flying: true,
+  },
+  griffinBomber: {
+    name: "狮鹫轰炸机",
+    cost: 420,
+    hp: 400,
+    damage: 30,
+    range: 200,
+    speed: 50,
+    train: 7.5,
+    cooldown: 1.5,
+    flying: true,
+    ammo: 6,
+    bombRadius: 72,
+    bombLimit: 5,
+  },
   demonArcher: {
     name: "日蚀",
     cost: 150,
@@ -523,7 +611,7 @@ const UNIT = {
     flying: true,
   },
   darkKnight: {
-    name: "骷髅黑骑士",
+    name: "黑骑士",
     cost: 165,
     hp: 450,
     damage: 17,
@@ -679,7 +767,7 @@ const UNIT = {
     speed: 34,
     train: 4.2,
     cooldown: 1.8,
-    stunDuration: 1,
+    stunDuration: 1.5,
   },
   waterElement: {
     name: "水元素",
@@ -1002,14 +1090,14 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "bomber", "executioner", "chaosGiant", "enslavedGiant"],
-    startingUnits: ["miner", "creeper", "bomber"],
+    roster: ["miner", "creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-    startingUnits: ["miner", "machete", "undead", "ghoul"],
+    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    startingUnits: ["miner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
   element: {
@@ -1044,10 +1132,17 @@ const UNIT_ICON = {
   creeper: "claws",
   undead: "zombie-head",
   ghoul: "claws",
+  candlelight: "fire",
+  reaper: "skull",
   machete: "machete",
   deadCorpse: "venom",
   poisonZombie: "venom",
   bomber: "bomb",
+  orc: "claws",
+  berserkOrc: "axe",
+  javelinThrower: "spear",
+  goblinVulture: "wing",
+  griffinBomber: "bomb",
   medusa: "venom",
   demonArcher: "wing",
   darkKnight: "axe",
@@ -1087,8 +1182,8 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "bomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["混沌帝国", ["miner", "creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1104,15 +1199,15 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  undeadEmpire: ["machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  chaos: ["creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1612,6 +1707,11 @@ function formatSpecial(type) {
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
+  if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
+  if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
+  if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
+  if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
+  if (type === "griffinBomber") notes.push(`飞行轰炸单位，不停前进循环补弹；每轮 ${data.ammo} 颗炸弹，${data.cooldown}秒投 1 颗，${data.damage} 范围伤害，最多 ${data.bombLimit} 人；飞过基地时剩余炸弹砸向基地`);
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
   if (data.burnDps) notes.push(`灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (data.stunDuration) notes.push(`眩晕 ${data.stunDuration}秒`);
@@ -2295,6 +2395,7 @@ function spawnUnit(type, side, x) {
     burnTimer: 0,
     burnDps: 0,
     burnTick: 0,
+    stackedBurns: [],
     healTimer: data.healEvery ?? 0,
     stunTimer: 0,
     frozenBy: null,
@@ -2348,6 +2449,7 @@ function spawnUnit(type, side, x) {
     rocketAmmo: data.ammoPerReload ?? 0,
     rocketReloadTimer: 0,
     rocketFireTimer: 0,
+    griffinAmmo: data.ammo ?? 0,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -2360,6 +2462,10 @@ function spawnUnit(type, side, x) {
     inspiredLifestealTimer: 0,
     graveReviveTimer: data.reviveEvery ?? 0,
     graveGhostTimer: data.ghostEvery ?? 0,
+    candleForm: data.defaultForm ?? "ice",
+    reaperTargetId: null,
+    reaperStackBonus: 0,
+    reaperStealthTimer: 0,
     devourTargetCorpseId: null,
     devourTimer: 0,
     siegeBlindTargetId: null,
@@ -3530,6 +3636,7 @@ function updateEnemyAi(dt) {
 
   const enemyMiners = state.units.filter((unit) => unit.side === "enemy" && unit.type === "miner").length;
   const savingForV = shouldEnemySaveForV();
+  const targetEnemyMiners = getEnemyTargetMinerCount();
 
   if (opponentFaction() === "element" && state.enemyAttackMood > 34 && canMergeV("enemy") && mergeV("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 5);
@@ -3567,9 +3674,9 @@ function updateEnemyAi(dt) {
   }
 
   const minerCost = getUnitCost("miner", opponentFaction());
-  if (state.enemyMinerTimer <= 0 && enemyMiners < 3 && state.enemyGold >= minerCost) {
+  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && state.enemyGold >= minerCost) {
     state.enemyGold -= minerCost;
-    state.enemyMinerTimer = 8;
+    state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
     spawnUnit("miner", "enemy", FIELD.enemyGate + 34);
   }
 
@@ -3586,6 +3693,15 @@ function updateEnemyAi(dt) {
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnUnit(type, "enemy", FIELD.enemyGate + 12);
   }
+}
+
+function getEnemyTargetMinerCount() {
+  const pressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 520).length;
+  const enemyFighters = countFighters("enemy");
+  if (pressure >= 5 && enemyFighters < 5) return 3;
+  if (state.enemyGold > 260 || state.enemyAttackMood > 42) return 5;
+  if (state.enemyGold > 150 || state.enemyAttackMood > 24) return 4;
+  return 3;
 }
 
 function updateEnemyCommand() {
@@ -3706,8 +3822,15 @@ function chooseEnemyUnit(affordable) {
     dreadfire: 0.45,
     hurricane: 0.55,
     creeper: 1.1,
+    orc: 0.95,
+    berserkOrc: 0.8,
+    javelinThrower: 0.78,
+    goblinVulture: 0.62,
+    griffinBomber: 0.32,
     undead: 1.05,
     ghoul: 0.85,
+    candlelight: 0.82,
+    reaper: 0.72,
     machete: 0.9,
     deadCorpse: 0.75,
     poisonZombie: 0.85,
@@ -3894,6 +4017,7 @@ function updateUnits(dt) {
     unit.inspiredLifestealTimer = Math.max(0, (unit.inspiredLifestealTimer ?? 0) - dt);
     unit.fearTimer = Math.max(0, (unit.fearTimer ?? 0) - dt);
     if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
+    unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -3970,6 +4094,17 @@ function updateUnits(dt) {
     }
     if (unit.type === "graveDigger") {
       updateGraveDigger(unit, dt);
+    }
+    if (unit.type === "candlelight") {
+      updateCandlelight(unit);
+    }
+    if (unit.type === "reaper") {
+      updateReaper(unit);
+    }
+    if (unit.type === "griffinBomber") {
+      updateGriffinBomber(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
     }
     if (unit.type === "ghoul" && updateGhoul(unit, dt)) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
@@ -5565,6 +5700,10 @@ function isUnitHidden(unit) {
   return unit.inCastle && canEnterCastle(unit);
 }
 
+function isReaperStealthed(unit) {
+  return unit?.type === "reaper" && (unit.reaperStealthTimer ?? 0) > 0;
+}
+
 function shouldEnterPlayerCastle(unit) {
   return canEnterCastle(unit) && state.command === "retreat";
 }
@@ -5623,6 +5762,7 @@ function getMoveFactor(unit) {
   if (unit.inspiredZombieTimer > 0 && ZOMBIE_UNITS.has(unit.type)) factor *= 2;
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
+  if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
   return factor;
 }
 
@@ -5660,6 +5800,9 @@ function getDesiredX(unit, target) {
     const dir = unit.side === "player" ? -1 : 1;
     const retreatX = target.x + dir * (UNIT[unit.type].blindSpot + 18);
     return Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, retreatX));
+  }
+  if (target && target.kind !== "statue" && isIgnoringBlindTarget(unit, target)) {
+    return unit.x;
   }
   if (unit.side === "player") {
     if (unit.forceCharge) return FIELD.enemyBase;
@@ -5892,6 +6035,7 @@ function getAttackLaneTolerance(unit) {
 
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
+  if (isReaperStealthed(unit)) return null;
   if (UNIT[unit.type]?.statueOnly) {
     return {
       kind: "statue",
@@ -5994,6 +6138,7 @@ function nearestEnemy(unit, range) {
 
 function canTarget(attacker, target) {
   if (isUnitHidden(attacker) || isUnitHidden(target)) return false;
+  if (isReaperStealthed(target)) return false;
   if (UNIT[target.type]?.untargetable) return false;
   return !(UNIT[target.type]?.flying && isMelee(attacker) && !UNIT[attacker.type]?.antiAir);
 }
@@ -6014,6 +6159,10 @@ function attack(unit, target) {
   if (unit.cooldown > 0) return;
   if (unit.type === "ironCavalry") {
     attackIronCavalry(unit, target, Math.abs(unit.x - target.x));
+    return;
+  }
+  if (unit.type === "reaper" && isReaperStealthed(unit)) {
+    attackReaperAmbush(unit, target);
     return;
   }
   unit.cooldown = data.cooldown ?? 0.9;
@@ -6095,6 +6244,16 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "candlelight") {
+    attackCandlelight(unit, target);
+    return;
+  }
+
+  if (unit.type === "reaper") {
+    attackReaper(unit, target);
+    return;
+  }
+
   if (unit.type === "suikai") {
     castSuikaiPierce(unit, target);
     return;
@@ -6122,7 +6281,9 @@ function attack(unit, target) {
     unit.type === "poisonZombie" ||
     unit.type === "musketeer" ||
     unit.type === "demonArcher" ||
-    unit.type === "fireElement"
+    unit.type === "fireElement" ||
+    unit.type === "javelinThrower" ||
+    unit.type === "goblinVulture"
   ) {
     state.arrows.push({
       x: unit.x,
@@ -6135,6 +6296,7 @@ function attack(unit, target) {
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
       type: unit.type,
+      poison: unit.type === "javelinThrower" && Math.random() < data.poisonChance,
     });
     return;
   }
@@ -6163,6 +6325,63 @@ function handleDamageDealt(attacker, target, damage) {
     attacker.inspiredZombieHits -= 1;
     applyStun(target, 2);
   }
+}
+
+function attackCandlelight(unit, target) {
+  const data = UNIT.candlelight;
+  const dealt = applyDamage(target, data.damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  if (target.kind === "statue") return;
+  if (unit.candleForm === "fire") {
+    applyStackedBurn(target, data.burnDps, data.burnDuration);
+  } else {
+    applyCandleSlow(target, data.slowDuration, data.slowFactor);
+  }
+}
+
+function attackReaper(unit, target) {
+  const data = UNIT.reaper;
+  if (target.kind === "statue" || unit.reaperTargetId !== target.id) {
+    unit.reaperTargetId = target.kind === "statue" ? null : target.id;
+    unit.reaperStackBonus = 0;
+  } else {
+    unit.reaperStackBonus = Math.min(data.maxStackBonus, (unit.reaperStackBonus ?? 0) + data.stackBonus);
+  }
+  const damage = Math.round(data.damage * (1 + (unit.reaperStackBonus ?? 0)));
+  const dealt = applyDamage(target, damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  if ((unit.reaperStackBonus ?? 0) > 0 && target.kind !== "statue") {
+    popText(target.x, target.y - 102, `收割 +${Math.round(unit.reaperStackBonus * 100)}%`, "#d8d0c8");
+  }
+}
+
+function attackReaperAmbush(unit, target) {
+  const data = UNIT.reaper;
+  unit.reaperStealthTimer = 0;
+  unit.cooldown = data.cooldown ?? 0.9;
+  unit.combatTimer = 3;
+  markRetaliationTarget(target, unit);
+  const dealt = applyDamage(target, data.ambushDamage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  unit.reaperTargetId = target.kind === "statue" ? null : target.id;
+  unit.reaperStackBonus = 0;
+  popText(unit.x, unit.y - 112, "破隐一击", "#d8d0c8");
+}
+
+function activateReaperStealth(unit) {
+  const data = UNIT.reaper;
+  unit.reaperStealthTimer = data.stealthDuration;
+  unit.reaperTargetId = null;
+  unit.reaperStackBonus = 0;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.4);
+  popText(unit.x, unit.y - 112, "隐形", "#b8b0a5");
+  return true;
+}
+
+function toggleCandleForm(unit) {
+  unit.candleForm = unit.candleForm === "fire" ? "ice" : "fire";
+  popText(unit.x, unit.y - 112, unit.candleForm === "fire" ? "火焰形态" : "冰矩形态", unit.candleForm === "fire" ? "#ff9b45" : "#9ee8ff");
+  return true;
 }
 
 function explodeDeadCorpse(unit) {
@@ -6839,6 +7058,10 @@ function updateArrows(dt) {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
+      } else if (arrow.type === "javelinThrower") {
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side });
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
@@ -7062,6 +7285,25 @@ function applyBurn(target, dps, duration) {
   popText(target.x, target.y - 88, "灼烧", "#ff9b45");
 }
 
+function applyStackedBurn(target, dps, duration) {
+  if (isUnitHidden(target)) return;
+  if (target.kind === "statue") {
+    popText(target.x, FIELD.ground - 172, "灼烧无效", "#ff9b45");
+    return;
+  }
+
+  target.stackedBurns = target.stackedBurns ?? [];
+  target.stackedBurns.push({ dps, life: duration, tick: 1 });
+  popText(target.x, target.y - 88, "灼烧叠加", "#ff9b45");
+}
+
+function applyCandleSlow(target, duration, factor) {
+  if (isUnitHidden(target) || target.kind === "statue") return;
+  target.stormSlowTimer = Math.max(target.stormSlowTimer ?? 0, duration);
+  target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, factor);
+  popText(target.x, target.y - 92, "冰光减速", "#9ee8ff");
+}
+
 function updatePoison(dt) {
   state.units.forEach((unit) => {
     if (isUnitHidden(unit)) return;
@@ -7078,14 +7320,118 @@ function updatePoison(dt) {
 function updateBurn(dt) {
   state.units.forEach((unit) => {
     if (isUnitHidden(unit)) return;
-    if (unit.burnTimer <= 0) return;
-    unit.burnTimer -= dt;
-    unit.burnTick += dt;
-    if (unit.burnTick >= 1) {
-      unit.burnTick = 0;
-      applyUnitDamage(unit, unit.burnDps, { label: "燃", color: "#ff9b45", yOffset: -104 });
+    if (unit.burnTimer > 0) {
+      unit.burnTimer -= dt;
+      unit.burnTick += dt;
+      if (unit.burnTick >= 1) {
+        unit.burnTick = 0;
+        applyUnitDamage(unit, unit.burnDps, { label: "燃", color: "#ff9b45", yOffset: -104 });
+      }
+    }
+    if (unit.stackedBurns?.length) {
+      for (const stack of unit.stackedBurns) {
+        stack.life -= dt;
+        stack.tick -= dt;
+        while (stack.life > 0 && stack.tick <= 0) {
+          stack.tick += 1;
+          applyUnitDamage(unit, stack.dps, { label: "燃", color: "#ff9b45", yOffset: -104 });
+        }
+      }
+      unit.stackedBurns = unit.stackedBurns.filter((stack) => stack.life > 0);
     }
   });
+}
+
+function updateCandlelight(unit) {
+  if (unit.side !== "enemy") return;
+  const data = UNIT.candlelight;
+  const enemies = state.units.filter((target) =>
+    target.side !== unit.side &&
+    target.hp > 0 &&
+    !isUnitHidden(target) &&
+    !UNIT[target.type]?.untargetable &&
+    Math.abs(target.x - unit.x) <= data.range + 80
+  );
+  const burning = enemies.filter((target) => (target.stackedBurns?.length ?? 0) > 0 || target.burnTimer > 0).length;
+  unit.candleForm = enemies.length >= 3 || burning >= 2 ? "fire" : "ice";
+}
+
+function updateReaper(unit) {
+  if (unit.reaperStealthTimer > 0 && unit.side === "enemy") return;
+  if (unit.side === "enemy" && unit.hp < unit.maxHp * 0.45 && (unit.cooldown ?? 0) <= 0) {
+    activateReaperStealth(unit);
+  }
+}
+
+function updateGriffinBomber(unit, dt) {
+  const data = UNIT.griffinBomber;
+  const dir = unit.side === "player" ? 1 : -1;
+  unit.inCastle = false;
+  unit.x += dir * data.speed * dt;
+  unit.y += Math.sin(unit.anim * 0.45) * 3 * dt;
+
+  if ((unit.cooldown ?? 0) <= 0 && unit.griffinAmmo > 0) {
+    const target = findGriffinBombTarget(unit);
+    if (target) {
+      dropGriffinBomb(unit, target);
+    }
+  }
+
+  const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
+  const crossedBase = unit.side === "player" ? unit.x > enemyBase + 80 : unit.x < enemyBase - 80;
+  if (!crossedBase) return;
+
+  if (unit.griffinAmmo > 0) {
+    const target = { kind: "statue", side: unit.side === "player" ? "enemy" : "player", x: enemyBase, y: FIELD.ground - 80 };
+    const bombs = unit.griffinAmmo;
+    for (let i = 0; i < bombs; i += 1) applyDamage(target, data.damage, unit.side);
+    state.blasts.push({ x: enemyBase, y: FIELD.ground - 92, radius: data.bombRadius + 18, life: 0.45, duration: 0.45 });
+    popText(enemyBase, FIELD.ground - 190, `剩余炸弹 x${bombs}`, "#ffce7a");
+  }
+
+  unit.griffinAmmo = data.ammo;
+  unit.cooldown = data.cooldown;
+  unit.x = unit.side === "player" ? FIELD.playerBase - 180 : FIELD.enemyBase + 180;
+  unit.y = FIELD.ground + (Math.random() * 90 - 45);
+  popText(unit.side === "player" ? FIELD.playerBase + 80 : FIELD.enemyBase - 80, FIELD.ground - 155, "狮鹫补弹", "#ffce7a");
+}
+
+function findGriffinBombTarget(unit) {
+  const data = UNIT.griffinBomber;
+  const dir = unit.side === "player" ? 1 : -1;
+  const enemies = state.units
+    .filter((target) =>
+      target.side !== unit.side &&
+      target.hp > 0 &&
+      !isUnitHidden(target) &&
+      !UNIT[target.type]?.untargetable &&
+      Math.abs(target.x - unit.x) <= data.range &&
+      Math.abs(target.y - unit.y) <= 160
+    )
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x));
+  if (enemies[0]) return enemies[0];
+
+  const enemyBase = unit.side === "player" ? FIELD.enemyBase : FIELD.playerBase;
+  const approachingBase = dir * (enemyBase - unit.x) >= 0 && Math.abs(enemyBase - unit.x) <= data.range;
+  if (!approachingBase) return null;
+  return { kind: "statue", side: unit.side === "player" ? "enemy" : "player", x: enemyBase, y: FIELD.ground - 80 };
+}
+
+function dropGriffinBomb(unit, target) {
+  const data = UNIT.griffinBomber;
+  unit.griffinAmmo -= 1;
+  unit.cooldown = data.cooldown;
+  if (target.kind === "statue") {
+    applyDamage(target, data.damage, unit.side);
+    state.blasts.push({ x: target.x, y: FIELD.ground - 92, radius: data.bombRadius, life: 0.34, duration: 0.34 });
+    popText(target.x, FIELD.ground - 175, "轰炸", "#ffce7a");
+    return;
+  }
+  getUnitsInRadius(target.x, data.bombRadius, unit.side, data.bombLimit).forEach((enemy) => {
+    applyUnitDamage(enemy, data.damage, { label: "炸", color: "#ffce7a", yOffset: -76, ranged: true });
+  });
+  state.blasts.push({ x: target.x, y: target.y - 24, radius: data.bombRadius, life: 0.34, duration: 0.34 });
+  popText(unit.x, unit.y - 122, `投弹 ${unit.griffinAmmo}/${data.ammo}`, "#ffce7a");
 }
 
 function updateCorpses(dt) {
@@ -7333,13 +7679,14 @@ function stunUnitsInRadius(x, radius, attackerSide, duration) {
 
 function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null) {
   return state.units
-    .filter((unit) => (attackerSide === "neutral" || unit.side !== attackerSide) && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
+    .filter((unit) => (attackerSide === "neutral" || unit.side !== attackerSide) && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !isReaperStealthed(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
     .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))
     .slice(0, limit);
 }
 
 function applyDamage(target, amount, attackerSide, options = {}) {
   if (isUnitHidden(target)) return 0;
+  if (isReaperStealthed(target)) return 0;
   if (target.kind === "statue") {
     if (target.side === "enemy") state.enemyHp -= amount;
     if (target.side === "player") state.playerHp -= amount;
@@ -8997,6 +9344,7 @@ function drawEnslavedGiantBasket() {
 }
 
 function getUnitColor(unit) {
+  if (isReaperStealthed(unit)) return "#808080";
   if (unit.type === "archon") return "#5e89d8";
   if (unit.type === "goldenArcher") return "#e0b84f";
   if (unit.type === "goldenSpartan") return "#d7a92e";
@@ -9033,8 +9381,14 @@ function getUnitColor(unit) {
   const type = unit.type;
   if (type === "creeper") return "#9ee06b";
   if (type === "largeCreeper") return "#6fcf59";
+  if (type === "orc") return "#7faa5c";
+  if (type === "berserkOrc") return "#8d6a48";
+  if (type === "javelinThrower") return "#8fbd6b";
+  if (type === "goblinVulture") return "#756a55";
   if (type === "undead") return "#b8b0a5";
   if (type === "ghoul") return "#7f8f68";
+  if (type === "candlelight") return "#766487";
+  if (type === "reaper") return "#55505f";
   if (type === "deadCorpse") return "#72836c";
   if (type === "medusa") return "#587a5f";
   if (type === "poisonZombie") return "#6bd28f";
@@ -9051,6 +9405,7 @@ function getUnitColor(unit) {
 }
 
 function getHeadColor(unit) {
+  if (isReaperStealthed(unit)) return "#a0a0a0";
   if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (unit.type === "miner" && unit.earthMiner) return "#8a5b32";
   if (unit.type === "earthElement") return "#c0a36d";
@@ -9073,6 +9428,13 @@ function getHeadColor(unit) {
   if (unit.type === "electricGate") return "#d7f6ee";
   if (unit.type === "vUnit") return "#ffffff";
   if (unit.type === "vClone") return "#d7ceff";
+  if (unit.type === "orc") return "#b8d68a";
+  if (unit.type === "berserkOrc") return "#c8a36f";
+  if (unit.type === "javelinThrower") return "#cde69b";
+  if (unit.type === "goblinVulture") return "#d7c090";
+  if (unit.type === "griffinBomber") return "#e0b36d";
+  if (unit.type === "candlelight") return "#e8ddcf";
+  if (unit.type === "reaper") return "#d8d0c8";
   if (unit.type === "mage") return "#d7ceff";
   if (unit.type === "goldenArcher") return "#fff1a8";
   if (unit.type === "goldenSpartan") return "#fff1a8";
@@ -9433,6 +9795,64 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(50, -45);
     ctx.closePath();
     ctx.fill();
+  } else if (type === "javelinThrower") {
+    ctx.strokeStyle = "#b7d38a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(12, -36);
+    ctx.lineTo(64, -48);
+    ctx.stroke();
+    ctx.fillStyle = "#93d96b";
+    ctx.beginPath();
+    ctx.moveTo(64, -48);
+    ctx.lineTo(52, -53);
+    ctx.lineTo(55, -40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(147, 217, 107, 0.45)";
+    ctx.beginPath();
+    ctx.arc(66, -48, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "goblinVulture") {
+    ctx.strokeStyle = "#2e2d2a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, -41);
+    ctx.lineTo(45, -38);
+    ctx.moveTo(33, -50);
+    ctx.lineTo(33, -27);
+    ctx.stroke();
+    ctx.strokeStyle = "#b7d38a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-8, -54);
+    ctx.quadraticCurveTo(-38, -84, -64, -52);
+    ctx.moveTo(6, -54);
+    ctx.quadraticCurveTo(42, -86, 64, -50);
+    ctx.stroke();
+  } else if (type === "griffinBomber") {
+    ctx.strokeStyle = "#3a2a1b";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(8, -42);
+    ctx.lineTo(48, -40);
+    ctx.moveTo(35, -54);
+    ctx.lineTo(35, -28);
+    ctx.stroke();
+    ctx.strokeStyle = "#d0a05c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-12, -53);
+    ctx.quadraticCurveTo(-58, -100, -86, -54);
+    ctx.moveTo(8, -53);
+    ctx.quadraticCurveTo(58, -100, 88, -52);
+    ctx.stroke();
+    ctx.fillStyle = "#2f2c2a";
+    for (let i = 0; i < Math.min(unit?.griffinAmmo ?? 0, UNIT.griffinBomber.ammo); i += 1) {
+      ctx.beginPath();
+      ctx.arc(-27 + i * 10, -22, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (type === "monk") {
     ctx.strokeStyle = "#f4e7b7";
     ctx.beginPath();
@@ -9533,6 +9953,28 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(49, -57, 12, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "orc") {
+    ctx.strokeStyle = "#3d4d2b";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -31);
+    ctx.lineTo(42, -45);
+    ctx.stroke();
+  } else if (type === "berserkOrc") {
+    ctx.strokeStyle = "#30251f";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -27);
+    ctx.lineTo(42, -55);
+    ctx.stroke();
+    ctx.fillStyle = "#7b7f80";
+    ctx.beginPath();
+    ctx.moveTo(38, -59);
+    ctx.lineTo(57, -54);
+    ctx.lineTo(50, -36);
+    ctx.lineTo(34, -43);
+    ctx.closePath();
+    ctx.fill();
   } else if (type === "creeper" || type === "largeCreeper" || type === "ghoul") {
     ctx.strokeStyle = "#c7b08f";
     ctx.beginPath();
@@ -9548,6 +9990,40 @@ function drawWeapon(type, unit = null) {
     ctx.rotate(0.12);
     ctx.fillRect(-3, -4, 30, 8);
     ctx.restore();
+  } else if (type === "candlelight") {
+    const fire = unit?.candleForm === "fire";
+    ctx.fillStyle = "#e8ddcf";
+    ctx.strokeStyle = "#2d2135";
+    ctx.lineWidth = 2;
+    ctx.fillRect(-5, -91, 10, 17);
+    ctx.strokeRect(-5, -91, 10, 17);
+    ctx.fillStyle = fire ? "#ff9b45" : "#9ee8ff";
+    ctx.shadowColor = fire ? "#ff9b45" : "#9ee8ff";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(0, -105);
+    ctx.quadraticCurveTo(fire ? 10 : 7, -94, 0, -86);
+    ctx.quadraticCurveTo(fire ? -8 : -6, -96, 0, -105);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = fire ? "#ffce7a" : "#d7f6ff";
+    ctx.beginPath();
+    ctx.moveTo(15, -34);
+    ctx.lineTo(44, -48);
+    ctx.stroke();
+  } else if (type === "reaper") {
+    ctx.strokeStyle = unit?.reaperStealthTimer > 0 ? "#9a9a9a" : "#2d2135";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -22);
+    ctx.lineTo(35, -66);
+    ctx.stroke();
+    ctx.strokeStyle = unit?.reaperStealthTimer > 0 ? "#c2c2c2" : "#d8d0c8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(34, -66);
+    ctx.quadraticCurveTo(62, -72, 62, -43);
+    ctx.stroke();
   } else if (type === "machete") {
     ctx.strokeStyle = "#2f2832";
     ctx.lineWidth = 5;
@@ -9897,7 +10373,7 @@ function drawUnitHp(unit) {
     ctx.fill();
   }
 
-  if (unit.burnTimer > 0) {
+  if (unit.burnTimer > 0 || unit.stackedBurns?.length) {
     ctx.fillStyle = "#ff9b45";
     ctx.beginPath();
     ctx.arc(31, -84, 4, 0, Math.PI * 2);
@@ -10436,6 +10912,12 @@ function getManualActions(unit) {
     case "ghoul":
       add("ghoulDevour", "啃食", "direct");
       break;
+    case "candlelight":
+      add("toggleCandleForm", unit.candleForm === "fire" ? "冰矩" : "火焰", "direct");
+      break;
+    case "reaper":
+      add("reaperStealth", "隐形", "direct");
+      break;
     case "archmage":
       add("chainLightning", "链雷", "target");
       add("archFireballs", "火球雨", "direct");
@@ -10465,7 +10947,8 @@ function getManualActions(unit) {
 
 function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
-  if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -10563,6 +11046,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return `冷却 ${Math.ceil(unit.medusaSlayTimer)}秒`;
   if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
+  if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -10579,6 +11063,14 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "toggleRoot") {
     toggleTreeEntRoot(unit);
+    return;
+  }
+  if (action.id === "toggleCandleForm") {
+    toggleCandleForm(unit);
+    return;
+  }
+  if (action.id === "reaperStealth") {
+    activateReaperStealth(unit);
     return;
   }
   if (action.id === "waterSacrifice") {
@@ -11053,6 +11545,10 @@ function drawArrow(arrow) {
         ? "#dfe8ff"
       : arrow.type === "poisonZombie"
         ? "#93d96b"
+        : arrow.type === "javelinThrower"
+          ? (arrow.poison ? "#93d96b" : "#d7c090")
+        : arrow.type === "goblinVulture"
+          ? "#ffce7a"
         : arrow.type === "musketeer" || arrow.type === "ironCavalryMusket"
           ? "#f5f0df"
           : arrow.type === "ironCavalryBomb"
@@ -11064,7 +11560,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
