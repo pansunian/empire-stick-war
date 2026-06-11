@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v79";
+const CACHE_NAME = "stick-war-pwa-v80";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260611-chaos-scimitar-wave",
+  "./game.js?v=20260611-chaos-goblin-mines",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/factions/order-crest.png",

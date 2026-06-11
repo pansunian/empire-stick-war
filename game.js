@@ -561,6 +561,23 @@ const UNIT = {
     train: 4.2,
     cooldown: 1.15,
   },
+  goblin: {
+    name: "地精",
+    cost: 90,
+    hp: 80,
+    damage: 0,
+    range: 0,
+    speed: 52,
+    train: 3.8,
+    cooldown: 0.9,
+    mineEvery: 8,
+    minePlantDuration: 3,
+    mineAmmo: 5,
+    mineDamage: 20,
+    mineTriggerRadius: 34,
+    mineBlastRadius: 72,
+    burrowReduction: 0.9,
+  },
   scimitarWarrior: {
     name: "弯刀兵",
     cost: 190,
@@ -1103,7 +1120,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1153,6 +1170,7 @@ const UNIT_ICON = {
   bomber: "bomb",
   orc: "claws",
   berserkOrc: "axe",
+  goblin: "miner",
   scimitarWarrior: "machete",
   javelinThrower: "spear",
   goblinVulture: "wing",
@@ -1196,7 +1214,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1220,7 +1238,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1722,6 +1740,7 @@ function formatSpecial(type) {
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
+  if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
@@ -1840,6 +1859,7 @@ function newGame() {
     tornadoes: [],
     electricColumns: [],
     groundFires: [],
+    landMines: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -2466,6 +2486,10 @@ function spawnUnit(type, side, x) {
     rocketFireTimer: 0,
     griffinAmmo: data.ammo ?? 0,
     scimitarRoarTimer: data.roarCooldown ?? 0,
+    goblinMineTimer: data.mineEvery ?? 0,
+    goblinPlantTimer: 0,
+    goblinMineAmmo: data.mineAmmo ?? 0,
+    goblinBurrowed: false,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -3025,6 +3049,7 @@ function update(dt) {
   updatePoison(dt);
   updateBurn(dt);
   updateCorpses(dt);
+  updateLandMines(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -3838,6 +3863,7 @@ function chooseEnemyUnit(affordable) {
     dreadfire: 0.45,
     hurricane: 0.55,
     creeper: 1.1,
+    goblin: 0.72,
     orc: 0.95,
     berserkOrc: 0.8,
     scimitarWarrior: 0.58,
@@ -4036,6 +4062,7 @@ function updateUnits(dt) {
     if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
+    unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -4053,6 +4080,10 @@ function updateUnits(dt) {
     }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+    if (unit.type === "goblin" && updateGoblin(unit, dt)) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -6057,6 +6088,7 @@ function getAttackLaneTolerance(unit) {
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
   if (isReaperStealthed(unit)) return null;
+  if (unit.type === "goblin") return null;
   if (UNIT[unit.type]?.statueOnly) {
     return {
       kind: "statue",
@@ -7408,6 +7440,54 @@ function castScimitarRoar(unit) {
   return true;
 }
 
+function updateGoblin(unit, dt) {
+  const data = UNIT.goblin;
+  if (unit.goblinBurrowed) return true;
+
+  if (unit.goblinPlantTimer > 0) {
+    unit.goblinPlantTimer = Math.max(0, unit.goblinPlantTimer - dt);
+    if (unit.goblinPlantTimer <= 0) finishGoblinMinePlant(unit);
+    return true;
+  }
+
+  if (unit.goblinMineAmmo > 0 && unit.goblinMineTimer <= 0) {
+    unit.goblinPlantTimer = data.minePlantDuration;
+    unit.goblinMineTimer = data.mineEvery;
+    unit.cooldown = Math.max(unit.cooldown ?? 0, data.minePlantDuration);
+    popText(unit.x, unit.y - 106, "安放地雷", "#ffce7a");
+    return true;
+  }
+
+  return false;
+}
+
+function finishGoblinMinePlant(unit) {
+  const data = UNIT.goblin;
+  if (unit.hp <= 0 || unit.goblinMineAmmo <= 0) return;
+  const dir = unit.side === "player" ? 1 : -1;
+  const x = Math.max(FIELD.playerGate + 80, Math.min(FIELD.enemyGate - 80, unit.x + dir * (24 + Math.random() * 22)));
+  const y = unit.y + (Math.random() * 30 - 15);
+  state.landMines.push({
+    id: state.nextId++,
+    side: unit.side,
+    x,
+    y,
+    damage: data.mineDamage,
+    triggerRadius: data.mineTriggerRadius,
+    blastRadius: data.mineBlastRadius,
+  });
+  unit.goblinMineAmmo -= 1;
+  popText(x, y - 36, `地雷 ${unit.goblinMineAmmo}/${data.mineAmmo}`, "#ffce7a");
+}
+
+function toggleGoblinBurrow(unit) {
+  unit.goblinBurrowed = !unit.goblinBurrowed;
+  unit.goblinPlantTimer = 0;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.35);
+  popText(unit.x, unit.y - 106, unit.goblinBurrowed ? "遁地" : "钻出", unit.goblinBurrowed ? "#d0b078" : "#b7f56e");
+  return true;
+}
+
 function updateGriffinBomber(unit, dt) {
   const data = UNIT.griffinBomber;
   const dir = unit.side === "player" ? 1 : -1;
@@ -7484,6 +7564,28 @@ function updateCorpses(dt) {
     corpse.life -= dt;
   });
   state.corpses = state.corpses.filter((corpse) => corpse.life > 0);
+}
+
+function updateLandMines() {
+  const triggered = new Set();
+  for (const mine of state.landMines) {
+    const target = state.units.find((unit) =>
+      unit.side !== mine.side &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      !isReaperStealthed(unit) &&
+      !UNIT[unit.type]?.untargetable &&
+      distanceTo(unit.x, unit.y, mine.x, mine.y) <= mine.triggerRadius
+    );
+    if (!target) continue;
+    triggered.add(mine.id);
+    getUnitsInRadius(mine.x, mine.blastRadius, mine.side, AOE_TARGET_LIMIT).forEach((enemy) => {
+      applyUnitDamage(enemy, mine.damage, { label: "雷", color: "#ffce7a", yOffset: -76 });
+    });
+    state.blasts.push({ x: mine.x, y: mine.y - 20, radius: mine.blastRadius, life: 0.32, duration: 0.32, color: "#ffce7a" });
+    popText(mine.x, mine.y - 52, "地雷爆炸", "#ffce7a");
+  }
+  if (triggered.size) state.landMines = state.landMines.filter((mine) => !triggered.has(mine.id));
 }
 
 function updateGhosts(dt) {
@@ -7775,6 +7877,9 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (options.ranged && target.type === "boneGiant") {
     damage *= 1 - (UNIT.boneGiant.rangedReduction ?? 0.25);
+  }
+  if (target.type === "goblin" && target.goblinBurrowed) {
+    damage *= 1 - (UNIT.goblin.burrowReduction ?? 0.9);
   }
   if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
     damage *= 1 - activeCampaign.enemySpartanDamageReduction;
@@ -8215,6 +8320,7 @@ function draw() {
   drawCampaignMagmaGround();
   drawIceRoadGround();
   state.groundFires.forEach(drawGroundFire);
+  state.landMines.forEach(drawLandMine);
   state.corpses.forEach(drawCorpse);
   if (isGoldRushActive()) {
     drawGoldRushMines();
@@ -8465,6 +8571,23 @@ function drawGroundFire(fire) {
     ctx.quadraticCurveTo(offset, -20 - Math.sin(performance.now() / 150 + i) * 6, offset + 12, -6);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawLandMine(mine) {
+  ctx.save();
+  ctx.translate(mine.x, mine.y - 5);
+  ctx.fillStyle = mine.side === "player" ? "#2f3a32" : "#3a2c28";
+  ctx.strokeStyle = "#ffce7a";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#ffce7a";
+  ctx.beginPath();
+  ctx.arc(0, -7, 3, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -9428,6 +9551,7 @@ function getUnitColor(unit) {
   if (type === "largeCreeper") return "#6fcf59";
   if (type === "orc") return "#7faa5c";
   if (type === "berserkOrc") return "#8d6a48";
+  if (type === "goblin") return unit.goblinBurrowed ? "#5d5648" : "#9abf62";
   if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
@@ -9476,6 +9600,7 @@ function getHeadColor(unit) {
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "orc") return "#b8d68a";
   if (unit.type === "berserkOrc") return "#c8a36f";
+  if (unit.type === "goblin") return unit.goblinBurrowed ? "#7a705f" : "#cde69b";
   if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
@@ -10022,6 +10147,35 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(34, -43);
     ctx.closePath();
     ctx.fill();
+  } else if (type === "goblin") {
+    if (unit?.goblinBurrowed) {
+      ctx.fillStyle = "#4a4034";
+      ctx.beginPath();
+      ctx.ellipse(0, -20, 30, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#d0b078";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#3d4d2b";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(12, -30);
+      ctx.lineTo(36, -42);
+      ctx.stroke();
+      ctx.fillStyle = "#2f2c2a";
+      for (let i = 0; i < (unit?.goblinMineAmmo ?? 0); i += 1) {
+        ctx.beginPath();
+        ctx.arc(-20 + i * 8, -26, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (unit?.goblinPlantTimer > 0) {
+        ctx.strokeStyle = "#ffce7a";
+        ctx.beginPath();
+        ctx.arc(28, -18, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
   } else if (type === "scimitarWarrior") {
     ctx.fillStyle = "#4e463a";
     ctx.strokeStyle = "#211c18";
@@ -10983,6 +11137,10 @@ function getManualActions(unit) {
     case "ghoul":
       add("ghoulDevour", "啃食", "direct");
       break;
+    case "goblin":
+      actions[0].label = "待命";
+      add("goblinBurrow", unit.goblinBurrowed ? "钻出" : "遁地", "direct");
+      break;
     case "candlelight":
       add("toggleCandleForm", unit.candleForm === "fire" ? "冰矩" : "火焰", "direct");
       break;
@@ -11022,6 +11180,7 @@ function getManualActions(unit) {
 function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
   if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "goblinBurrow") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
@@ -11145,6 +11304,10 @@ function executeManualAction(unit, action, point) {
     toggleCandleForm(unit);
     return;
   }
+  if (action.id === "goblinBurrow") {
+    toggleGoblinBurrow(unit);
+    return;
+  }
   if (action.id === "reaperStealth") {
     activateReaperStealth(unit);
     return;
@@ -11189,6 +11352,10 @@ function executeManualAction(unit, action, point) {
 }
 
 function manualUnitAttack(unit) {
+  if (unit.type === "goblin") {
+    popText(unit.x, unit.y - 116, "地精没有普攻", "#d9d0b8");
+    return;
+  }
   const range = Math.max(getUnitRange(unit), 70);
   const target = findManualAttackTarget(unit, range);
   if (!target) {
