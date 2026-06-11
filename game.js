@@ -319,18 +319,16 @@ const UNIT = {
     hero: true,
   },
   catapult: {
-    name: "投石车",
+    name: "火炮",
     cost: 750,
-    hp: 550,
-    damage: 60,
-    range: 600,
+    hp: 600,
+    damage: 72,
+    range: 500,
     speed: 40,
     train: 8,
-    cooldown: 1.5,
-    stunDuration: 1,
-    blindSpot: 100,
+    cooldown: 4.5,
     splash: 58,
-    aoeLimit: 3,
+    aoeLimit: 5,
   },
   enslavedGiant: {
     name: "投石巨人",
@@ -1014,7 +1012,7 @@ const UNIT_ICON = {
   mage: "wizard-hat",
   berserker: "greatsword",
   archmage: "wizard-hat",
-  catapult: "earth",
+  catapult: "bomb",
   enslavedGiant: "earth",
   rocketCart: "bomb-crossbow",
   undeadCatapult: "skull",
@@ -1203,7 +1201,7 @@ const CAMPAIGN_LEVELS = {
         winByKillingType: "superGiant",
         message: "超级巨人出现，击杀它才可通关",
       },
-      rewardText: "投石车",
+      rewardText: "火炮",
       objective: "冰地会让我方单位移速下降 10%，敌方不受影响；摧毁基地后击杀超级巨人",
     },
     7: {
@@ -4241,7 +4239,7 @@ function getCollisionRadius(unit) {
   if (data.collisionRadius) return data.collisionRadius;
   if (data.giant) return 24;
   if (unit.type === "treeEnt") return 25;
-  if (unit.type === "rocketCart" || unit.type === "catapult") return 28;
+  if (unit.type === "rocketCart" || unit.type === "catapult" || unit.type === "undeadCatapult") return 28;
   return 12 * (data.visualScale ?? 1);
 }
 
@@ -4295,7 +4293,7 @@ function canLinghanFreeze(unit, target) {
   if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || isUnitHidden(target)) return false;
   const data = UNIT[target.type];
   if (!data || target.frozenBy || data.freezeImmune || data.giant || isHeroUnit(target)) return false;
-  if (target.type === "catapult" || target.type === "rocketCart" || target.type === "electricGate") return false;
+  if (isSiegeUnit(target) || target.type === "electricGate") return false;
   if (!isAheadOf(unit, target)) return false;
   return Math.abs(target.x - unit.x) <= UNIT.linghan.range;
 }
@@ -6447,9 +6445,15 @@ function throwBoulder(unit, target) {
     groundFireRadius: data.groundFireRadius,
     target,
     life: 0.8,
+    cannon: unit.type === "catapult",
     type: "boulder",
   });
-  popText(unit.x, unit.y - 138, unit.type === "undeadCatapult" ? "鬼火投石" : "投石", unit.type === "undeadCatapult" ? "#ff8a3d" : "#c0a36d");
+  popText(
+    unit.x,
+    unit.y - 138,
+    unit.type === "catapult" ? "开炮" : unit.type === "undeadCatapult" ? "鬼火投石" : "投石",
+    unit.type === "catapult" ? "#ffce7a" : unit.type === "undeadCatapult" ? "#ff8a3d" : "#c0a36d",
+  );
 }
 
 function launchRocketVolley(unit, target) {
@@ -6723,14 +6727,14 @@ function explodeBoulder(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, limit).forEach((target) => {
-    const dealt = applyUnitDamage(target, arrow.damage, { label: "投石", color: "#c0a36d", yOffset: -80, ranged: true });
+    const dealt = applyUnitDamage(target, arrow.damage, { label: arrow.cannon ? "炮击" : "投石", color: arrow.cannon ? "#ffce7a" : "#c0a36d", yOffset: -80, ranged: true });
     handleDamageDealt(getArrowSource(arrow), target, dealt);
     if (arrow.stun) applyStun(target, arrow.stun);
   });
   if (arrow.groundFireDuration) {
     createGroundFire(arrow.tx, arrow.ty + 18, arrow.side, arrow.groundFireDps, arrow.groundFireDuration, arrow.groundFireRadius ?? arrow.splash);
   }
-  state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: "#c0a36d" });
+  state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: arrow.cannon ? "#ffce7a" : "#c0a36d" });
 }
 
 function createGroundFire(x, y, side, dps, duration, radius) {
@@ -8521,6 +8525,10 @@ function drawHillUnit(unit) {
 }
 
 function drawCatapultUnit(unit) {
+  if (unit.type === "catapult") {
+    drawCannonUnit(unit);
+    return;
+  }
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -8569,6 +8577,56 @@ function drawCatapultUnit(unit) {
     ctx.stroke();
   });
 
+  ctx.restore();
+  drawUnitHp(unit);
+}
+
+function drawCannonUnit(unit) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "#5d5650";
+  ctx.strokeStyle = "#221d19";
+  ctx.lineWidth = 5;
+
+  ctx.beginPath();
+  ctx.moveTo(-38, -18);
+  ctx.lineTo(34, -18);
+  ctx.lineTo(46, -36);
+  ctx.lineTo(-28, -40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.save();
+  ctx.rotate(-0.18);
+  ctx.fillStyle = "#343235";
+  ctx.strokeStyle = "#141416";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(-8, -58, 70, 18, 7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#19191b";
+  ctx.beginPath();
+  ctx.ellipse(65, -49, 9, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = "#2c241d";
+  [-25, 25].forEach((x) => {
+    ctx.beginPath();
+    ctx.arc(x, -5, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#c0a36d";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, -5, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#221d19";
+    ctx.lineWidth = 5;
+  });
   ctx.restore();
   drawUnitHp(unit);
 }
@@ -10660,11 +10718,11 @@ function drawArrow(arrow) {
   const x = arrow.x + (arrow.tx - arrow.x) * t;
   const y = arrow.y + (arrow.ty - arrow.y) * t - (arrow.type === "campaignRain" ? 0 : Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : arrow.type === "rocketVolley" ? 52 : 34));
   if (arrow.type === "boulder") {
-    ctx.fillStyle = "#8b6f46";
+    ctx.fillStyle = arrow.cannon ? "#2b2d31" : "#8b6f46";
     ctx.beginPath();
-    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.arc(x, y, arrow.cannon ? 10 : 13, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#3f3324";
+    ctx.strokeStyle = arrow.cannon ? "#ffce7a" : "#3f3324";
     ctx.lineWidth = 3;
     ctx.stroke();
     return;
