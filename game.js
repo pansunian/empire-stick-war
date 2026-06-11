@@ -623,6 +623,23 @@ const UNIT = {
     deathRageMoveFactor: 1.2,
     deathRageAttackFactor: 1.2,
   },
+  rhinoMan: {
+    name: "犀牛人",
+    cost: 250,
+    hp: 670,
+    damage: 36,
+    range: 44,
+    speed: 27,
+    train: 7,
+    cooldown: 2,
+    chargeDistance: 160,
+    chargeDamage: 20,
+    chargeStun: 2,
+    chargeCooldown: 20,
+    deathRageRange: 1600,
+    deathRageMoveFactor: 1.2,
+    deathRageAttackFactor: 1.2,
+  },
   javelinThrower: {
     name: "投矛手",
     cost: 120,
@@ -1152,7 +1169,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1206,6 +1223,7 @@ const UNIT_ICON = {
   goblinExpert: "miner",
   scimitarWarrior: "machete",
   minotaur: "axe",
+  rhinoMan: "axe",
   javelinThrower: "spear",
   goblinVulture: "wing",
   griffinBomber: "bomb",
@@ -1248,7 +1266,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1272,7 +1290,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1778,6 +1796,7 @@ function formatSpecial(type) {
   if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "minotaur") notes.push(`双短斧每次攻击造成 2 次 ${data.damage} 伤害；距离敌人 ${data.leapRange} 内会大跳到敌人面前并眩晕 ${data.leapStun}秒；${data.deathRageRange} 范围内牛头人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
+  if (type === "rhinoMan") notes.push(`技能向前冲撞 ${data.chargeDistance} 距离，路途撞击敌人造成 ${data.chargeDamage} 伤害并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
@@ -2532,6 +2551,8 @@ function spawnUnit(type, side, x) {
     heavyArmorReduction: 0,
     minotaurRage: false,
     minotaurLeapTargetId: null,
+    rhinoRage: false,
+    rhinoChargeTimer: data.chargeCooldown ?? 0,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -3911,6 +3932,7 @@ function chooseEnemyUnit(affordable) {
     berserkOrc: 0.8,
     scimitarWarrior: 0.58,
     minotaur: 0.42,
+    rhinoMan: 0.38,
     javelinThrower: 0.78,
     goblinVulture: 0.62,
     griffinBomber: 0.32,
@@ -4110,6 +4132,7 @@ function updateUnits(dt) {
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
     unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
     if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
+    unit.rhinoChargeTimer = Math.max(0, (unit.rhinoChargeTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -4202,6 +4225,10 @@ function updateUnits(dt) {
     }
     if (unit.type === "scimitarWarrior") {
       updateScimitarWarrior(unit);
+    }
+    if (unit.type === "rhinoMan" && updateRhinoMan(unit)) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
     }
     if (unit.type === "griffinBomber") {
       updateGriffinBomber(unit, dt);
@@ -5869,6 +5896,7 @@ function getMoveFactor(unit) {
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageMoveFactor;
+  if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
   return factor;
 }
@@ -5899,6 +5927,7 @@ function getAttackSpeedFactor(unit) {
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
+  if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
 }
 
@@ -7656,6 +7685,60 @@ function enrageNearbyMinotaurs(deadUnit) {
   });
 }
 
+function getRhinoChargeTargets(unit) {
+  const data = UNIT.rhinoMan;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x;
+  const endX = unit.x + dir * data.chargeDistance;
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+  return state.units.filter((target) =>
+    target.side !== unit.side &&
+    target.hp > 0 &&
+    !isUnitHidden(target) &&
+    !isReaperStealthed(target) &&
+    !UNIT[target.type]?.untargetable &&
+    target.x >= minX &&
+    target.x <= maxX &&
+    Math.abs(target.y - unit.y) <= 90
+  );
+}
+
+function updateRhinoMan(unit) {
+  if ((unit.rhinoChargeTimer ?? 0) > 0) return false;
+  if (!getRhinoChargeTargets(unit).length) return false;
+  return castRhinoCharge(unit);
+}
+
+function castRhinoCharge(unit) {
+  const data = UNIT.rhinoMan;
+  if ((unit.rhinoChargeTimer ?? 0) > 0) return false;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x;
+  const endX = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.chargeDistance));
+  const targets = getRhinoChargeTargets(unit);
+  unit.x = endX;
+  unit.rhinoChargeTimer = data.chargeCooldown;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.6);
+  targets.forEach((target) => {
+    applyDamage(target, data.chargeDamage, unit.side);
+    applyStun(target, data.chargeStun);
+  });
+  state.blasts.push({ x: (startX + endX) / 2, y: unit.y - 28, radius: data.chargeDistance / 2, life: 0.28, duration: 0.28, color: "#c0a36d" });
+  popText(unit.x, unit.y - 124, targets.length ? "冲撞" : "冲刺", "#c0a36d");
+  return true;
+}
+
+function enrageNearbyRhinoMen(deadUnit) {
+  const data = UNIT.rhinoMan;
+  state.units.forEach((unit) => {
+    if (unit.id === deadUnit.id || unit.type !== "rhinoMan" || unit.side !== deadUnit.side || unit.hp <= 0) return;
+    if (Math.abs(unit.x - deadUnit.x) > data.deathRageRange) return;
+    unit.rhinoRage = true;
+    popText(unit.x, unit.y - 120, "犀牛狂暴", "#ff8a3d");
+  });
+}
+
 function updateGriffinBomber(unit, dt) {
   const data = UNIT.griffinBomber;
   const dir = unit.side === "player" ? 1 : -1;
@@ -8085,6 +8168,9 @@ function removeDead() {
     }
     if (unit.type === "minotaur") {
       enrageNearbyMinotaurs(unit);
+    }
+    if (unit.type === "rhinoMan") {
+      enrageNearbyRhinoMen(unit);
     }
     if (unit.type === "vClone" && unit.summonerId) {
       const summoner = state.units.find((candidate) => candidate.id === unit.summonerId && candidate.hp > 0);
@@ -9730,6 +9816,7 @@ function getUnitColor(unit) {
   if (type === "goblinExpert") return "#7d9f6a";
   if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "minotaur") return unit.minotaurRage ? "#9a4f35" : "#7a5a42";
+  if (type === "rhinoMan") return unit.rhinoRage ? "#8b5f45" : "#6f7370";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
   if (type === "undead") return "#b8b0a5";
@@ -9781,6 +9868,7 @@ function getHeadColor(unit) {
   if (unit.type === "goblinExpert") return "#d8e8a8";
   if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "minotaur") return unit.minotaurRage ? "#ffb06b" : "#c89a6d";
+  if (unit.type === "rhinoMan") return unit.rhinoRage ? "#ffb06b" : "#c8d0c8";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
   if (unit.type === "griffinBomber") return "#e0b36d";
@@ -10431,6 +10519,36 @@ function drawWeapon(type, unit = null) {
     ctx.quadraticCurveTo(-28, -90, -38, -65);
     ctx.moveTo(8, -72);
     ctx.quadraticCurveTo(30, -90, 38, -65);
+    ctx.stroke();
+  } else if (type === "rhinoMan") {
+    ctx.strokeStyle = unit?.rhinoRage ? "#ff8a3d" : "#2f3330";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(15, -30);
+    ctx.lineTo(45, -53);
+    ctx.stroke();
+    ctx.strokeStyle = "#d8d0b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(2, -78);
+    ctx.lineTo(18, -105);
+    ctx.stroke();
+    ctx.fillStyle = "#59605d";
+    ctx.strokeStyle = "#222725";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-11, -69);
+    ctx.lineTo(-31, -78);
+    ctx.lineTo(-25, -61);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(11, -69);
+    ctx.lineTo(31, -78);
+    ctx.lineTo(25, -61);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
   } else if (type === "creeper" || type === "largeCreeper" || type === "ghoul") {
     ctx.strokeStyle = "#c7b08f";
@@ -11391,6 +11509,9 @@ function getManualActions(unit) {
     case "scimitarWarrior":
       add("scimitarRoar", "战吼", "direct");
       break;
+    case "rhinoMan":
+      add("rhinoCharge", "冲撞", "direct");
+      break;
     case "archmage":
       add("chainLightning", "链雷", "target");
       add("archFireballs", "火球雨", "direct");
@@ -11424,6 +11545,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "goblinBurrow") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
+  if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -11523,6 +11645,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
+  if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return `冷却 ${Math.ceil(unit.rhinoChargeTimer)}秒`;
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -11555,6 +11678,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "scimitarRoar") {
     castScimitarRoar(unit);
+    return;
+  }
+  if (action.id === "rhinoCharge") {
+    castRhinoCharge(unit);
     return;
   }
   if (action.id === "waterSacrifice") {
