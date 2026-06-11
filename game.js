@@ -198,6 +198,27 @@ const UNIT = {
     train: 6.2,
     cooldown: 1,
   },
+  ironCavalry: {
+    name: "铁骑兵",
+    cost: 320,
+    hp: 420,
+    damage: 24,
+    range: 550,
+    speed: 85,
+    train: 7,
+    cooldown: 2,
+    spearDamage: 24,
+    spearRange: 48,
+    spearCooldown: 2,
+    musketDamage: 20,
+    musketRange: 550,
+    musketCooldown: 1,
+    bombDamage: 50,
+    bombRange: 150,
+    bombSplash: 70,
+    bombLimit: 5,
+    bombCooldown: 1.2,
+  },
   goldenSpartan: {
     name: "黄金斯巴达",
     cost: 0,
@@ -972,7 +993,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
@@ -1004,6 +1025,7 @@ const UNIT_ICON = {
   goldenArcher: "bow",
   greatsword: "greatsword",
   spartan: "spartan",
+  ironCavalry: "spear",
   goldenSpartan: "spartan",
   archon: "spartan",
   monk: "monk",
@@ -1061,7 +1083,7 @@ function normalizeUnitType(type) {
 }
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "bomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
@@ -1085,7 +1107,7 @@ const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
-  order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
+  order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
@@ -1584,6 +1606,7 @@ function formatSpecial(type) {
   if (data.antiAir) notes.push("近战可攻击空中");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
+  if (type === "ironCavalry") notes.push(`冲锋单位；${data.musketRange} 距离内边推进边用火枪 ${data.musketDamage} 伤害/秒，${data.bombRange} 距离内对每个目标先扔一次炸弹 ${data.bombDamage} 范围伤害，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
@@ -2291,6 +2314,7 @@ function spawnUnit(type, side, x) {
     spearThrown: false,
     goldenSpearThrown: false,
     spearRecoverTimer: 0,
+    ironCavalryBombedTargetId: null,
     initialClonesReleased: false,
     controlledTargetId: null,
     controlledBy: null,
@@ -3662,6 +3686,7 @@ function chooseEnemyUnit(affordable) {
     archer: 0.9,
     greatsword: 0.75,
     spartan: 0.55,
+    ironCavalry: 0.38,
     monk: 0.65,
     crossbow: 0.75,
     musketeer: 0.65,
@@ -3941,6 +3966,11 @@ function updateUnits(dt) {
       updateGraveDigger(unit, dt);
     }
     if (unit.type === "ghoul" && updateGhoul(unit, dt)) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+    if (unit.type === "ironCavalry") {
+      updateIronCavalry(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -4913,6 +4943,109 @@ function isUndeadEmpireUnit(type) {
   return UNDEAD_BASE_UNITS.has(type) || SKELETON_UNITS.has(type) || ZOMBIE_UNITS.has(type) || SPIRIT_UNITS.has(type);
 }
 
+function updateIronCavalry(unit, dt) {
+  const data = UNIT.ironCavalry;
+  const target = isPlayerRetreating(unit) ? null : findTarget(unit);
+  if (!target) {
+    unit.ironCavalryBombedTargetId = null;
+    moveUnitTowardPoint(unit, getDefaultAdvanceX(unit), unit.y, data.speed, dt, 5);
+    return;
+  }
+
+  const distance = Math.abs(unit.x - target.x);
+  if (target.kind !== "statue" && distance > data.musketRange + 80) {
+    unit.ironCavalryBombedTargetId = null;
+  }
+
+  if (unit.cooldown <= 0 && distance <= data.musketRange) {
+    attackIronCavalry(unit, target, distance);
+  }
+
+  if (target.kind === "statue") {
+    const desiredX = unit.side === "player" ? target.x - data.spearRange + 8 : target.x + data.spearRange - 8;
+    moveUnitTowardPoint(unit, desiredX, unit.y, data.speed, dt, 5);
+    return;
+  }
+
+  if (distance > data.spearRange) {
+    const desiredX = unit.side === "player" ? target.x - data.spearRange + 8 : target.x + data.spearRange - 8;
+    moveUnitTowardPoint(unit, desiredX, target.y ?? unit.y, data.speed, dt, 5);
+  }
+}
+
+function getDefaultAdvanceX(unit) {
+  if (unit.side === "player") {
+    if (state.command === "retreat") return FIELD.playerBase + 42;
+    if (state.command === "guard") return getPlayerRallyX(unit);
+    if (state.command === "attack" && state.attackIntent === "tower") return getTowerRallyX(unit, "player");
+    return FIELD.enemyBase;
+  }
+  if (state.enemyCommand === "retreat") return FIELD.enemyBase - 42;
+  if (state.enemyCommand === "guard") return getEnemyFormationX(unit);
+  if (state.enemyCommand === "attack" && state.towerOwner !== "enemy") return getTowerRallyX(unit, "enemy");
+  return FIELD.playerBase;
+}
+
+function attackIronCavalry(unit, target, distance) {
+  const data = UNIT.ironCavalry;
+  unit.combatTimer = 3;
+  markRetaliationTarget(target, unit);
+
+  if (distance <= data.spearRange) {
+    const dealt = applyDamage(target, data.spearDamage, unit.side);
+    handleDamageDealt(unit, target, dealt);
+    unit.cooldown = data.spearCooldown;
+    popText(unit.x, unit.y - 98, "长枪突刺", "#dfe8ff");
+    return;
+  }
+
+  if (target.kind !== "statue" && distance <= data.bombRange && unit.ironCavalryBombedTargetId !== target.id) {
+    unit.ironCavalryBombedTargetId = target.id;
+    throwIronCavalryBomb(unit, target);
+    unit.cooldown = data.bombCooldown;
+    return;
+  }
+
+  fireIronCavalryMusket(unit, target);
+  unit.cooldown = data.musketCooldown;
+}
+
+function fireIronCavalryMusket(unit, target) {
+  const data = UNIT.ironCavalry;
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 56,
+    tx: target.x,
+    ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
+    side: unit.side,
+    damage: data.musketDamage,
+    sourceId: unit.id,
+    target,
+    life: 0.45,
+    type: "ironCavalryMusket",
+  });
+}
+
+function throwIronCavalryBomb(unit, target) {
+  const data = UNIT.ironCavalry;
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 62,
+    tx: target.x,
+    ty: target.y ? target.y - 24 : FIELD.ground - 92,
+    side: unit.side,
+    damage: data.bombDamage,
+    splash: data.bombSplash,
+    limit: data.bombLimit,
+    sourceId: unit.id,
+    target,
+    life: 0.5,
+    duration: 0.5,
+    type: "ironCavalryBomb",
+  });
+  popText(unit.x, unit.y - 112, "投掷炸弹", "#ffce7a");
+}
+
 function updateSwordsman(unit, dt) {
   const data = UNIT.swordsman;
   unit.swordsmanRageTimer = Math.max(0, (unit.swordsmanRageTimer ?? data.selfRageEvery) - dt);
@@ -5838,6 +5971,10 @@ function attack(unit, target) {
   if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
+  if (unit.type === "ironCavalry") {
+    attackIronCavalry(unit, target, Math.abs(unit.x - target.x));
+    return;
+  }
   unit.cooldown = data.cooldown ?? 0.9;
   unit.combatTimer = 3;
   markRetaliationTarget(target, unit);
@@ -6670,6 +6807,8 @@ function updateArrows(dt) {
         explodeBaseVolleyArrow(arrow);
       } else if (arrow.type === "rocketVolley") {
         explodeRocketArrow(arrow);
+      } else if (arrow.type === "ironCavalryBomb") {
+        explodeIronCavalryBomb(arrow);
       } else {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
@@ -6760,6 +6899,19 @@ function explodeRocketArrow(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.22, duration: 0.22, color: "#ffce7a" });
+}
+
+function explodeIronCavalryBomb(arrow) {
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 5);
+  targets.forEach((target) => {
+    const dealt = applyUnitDamage(target, arrow.damage, { label: "炸弹", color: "#ffce7a", yOffset: -78, ranged: true });
+    handleDamageDealt(getArrowSource(arrow), target, dealt);
+  });
+  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= arrow.splash + 28) {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash, life: 0.3, duration: 0.3, color: "#ffce7a" });
+  popText(arrow.tx, arrow.ty - 42, "炸弹爆炸", "#ffce7a");
 }
 
 function explodeBaseVolleyArrow(arrow) {
@@ -8122,6 +8274,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "ironCavalry") {
+    drawIronCavalryUnit(unit, color, headColor);
+    ctx.restore();
+    return;
+  }
   drawRoundedStickUnit(unit, color, headColor);
 
   drawWeapon(unit.type, unit);
@@ -8482,6 +8639,88 @@ function drawZeusOverheadCloud(unit) {
   ctx.restore();
 }
 
+function drawIronCavalryUnit(unit, color, headColor) {
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const gallop = Math.sin(phase) * walk;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.fillStyle = "#4b4a4f";
+  ctx.strokeStyle = "#18181c";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.ellipse(0, -23 + Math.abs(gallop) * 0.5, 35, 17, -0.03, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#24242a";
+  ctx.lineWidth = 7;
+  [[-20, 1], [-7, -1], [11, -1], [25, 1]].forEach(([x, offset], index) => {
+    const lift = Math.sin(phase + index * 1.5) * walk;
+    ctx.beginPath();
+    ctx.moveTo(x, -12);
+    ctx.lineTo(x + lift * 2, 2 + offset);
+    ctx.lineTo(x + lift * 3.5, 13 + Math.abs(lift) * 0.5);
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = "#3a3b42";
+  ctx.beginPath();
+  ctx.ellipse(34, -32, 13, 12, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#1f2025";
+  ctx.beginPath();
+  ctx.moveTo(41, -42);
+  ctx.lineTo(51, -48);
+  ctx.lineTo(47, -36);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "#151515";
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.moveTo(-4, -43);
+  ctx.lineTo(0, -70);
+  ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 7;
+  ctx.stroke();
+  drawRoundedHead(headColor, 1, -82, 12);
+
+  ctx.strokeStyle = "#c8a35a";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(8, -59);
+  ctx.lineTo(72, -72);
+  ctx.stroke();
+  ctx.fillStyle = "#dfe8ff";
+  ctx.beginPath();
+  ctx.moveTo(72, -72);
+  ctx.lineTo(58, -76);
+  ctx.lineTo(63, -63);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "#2e2d2a";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(2, -55);
+  ctx.lineTo(47, -50);
+  ctx.stroke();
+  ctx.strokeStyle = "#c7b17a";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(11, -51);
+  ctx.lineTo(22, -43);
+  ctx.stroke();
+
+  ctx.restore();
+  drawUnitHp(unit);
+}
+
 function drawHillUnit(unit) {
   ctx.save();
   ctx.lineCap = "round";
@@ -8720,6 +8959,7 @@ function getUnitColor(unit) {
   if (unit.type === "archon") return "#5e89d8";
   if (unit.type === "goldenArcher") return "#e0b84f";
   if (unit.type === "goldenSpartan") return "#d7a92e";
+  if (unit.type === "ironCavalry") return "#5e6f7f";
   if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
@@ -8795,6 +9035,7 @@ function getHeadColor(unit) {
   if (unit.type === "mage") return "#d7ceff";
   if (unit.type === "goldenArcher") return "#fff1a8";
   if (unit.type === "goldenSpartan") return "#fff1a8";
+  if (unit.type === "ironCavalry") return "#dbe8ff";
   if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "archon") return "#dbe8ff";
@@ -10771,8 +11012,10 @@ function drawArrow(arrow) {
         ? "#dfe8ff"
       : arrow.type === "poisonZombie"
         ? "#93d96b"
-        : arrow.type === "musketeer"
+        : arrow.type === "musketeer" || arrow.type === "ironCavalryMusket"
           ? "#f5f0df"
+          : arrow.type === "ironCavalryBomb"
+            ? "#ffce7a"
           : arrow.type === "fireElement"
             ? "#ff9b45"
           : arrow.type === "demonArcher"
@@ -10780,7 +11023,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "musketeer" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
