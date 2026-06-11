@@ -1759,7 +1759,7 @@ function formatSpecial(type) {
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
   if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
-  if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，每次 +${Math.round(data.armorStepReduction * 100)}% 减伤，最高中型护甲 ${Math.round(data.armorMaxReduction * 100)}%；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
+  if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
@@ -7531,17 +7531,34 @@ function canReceiveGoblinExpertArmor(source, ally) {
 function updateGoblinExpert(unit) {
   const data = UNIT.goblinExpert;
   if (unit.goblinExpertArmorTimer > 0) return;
-  const targets = state.units
+  const candidates = state.units
     .filter((ally) => canReceiveGoblinExpertArmor(unit, ally))
-    .filter((ally) => Math.abs(ally.x - unit.x) <= data.armorRange && (ally.armorReduction ?? 0) < data.armorMaxReduction)
-    .sort((a, b) => (a.armorReduction ?? 0) - (b.armorReduction ?? 0) || Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
+    .filter((ally) => Math.abs(ally.x - unit.x) <= data.armorRange && (ally.armorReduction ?? 0) < data.armorMaxReduction);
+  const lightTargets = candidates
+    .filter((ally) => (ally.armorReduction ?? 0) < data.armorStepReduction)
+    .sort((a, b) => getGoblinExpertArmorPriority(b) - getGoblinExpertArmorPriority(a) || Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
     .slice(0, data.armorLimit);
+  const mediumTargets = lightTargets.length ? [] : candidates
+    .filter((ally) => (ally.armorReduction ?? 0) >= data.armorStepReduction)
+    .sort((a, b) => getGoblinExpertArmorPriority(b) - getGoblinExpertArmorPriority(a) || (b.hp / b.maxHp) - (a.hp / a.maxHp))
+    .slice(0, data.armorLimit);
+  const targets = lightTargets.length ? lightTargets : mediumTargets;
   if (!targets.length) {
     unit.goblinExpertArmorTimer = 2;
     return;
   }
   targets.forEach((target) => applyGoblinExpertArmor(unit, target));
   unit.goblinExpertArmorTimer = data.armorEvery;
+}
+
+function getGoblinExpertArmorPriority(unit) {
+  const data = UNIT[unit.type] ?? {};
+  const cost = data.cost ?? 0;
+  const damage = data.damage ?? 0;
+  const rangeBonus = (data.range ?? 0) > 80 ? 45 : 0;
+  const giantBonus = data.giant ? 120 : 0;
+  const rolePenalty = unit.type === "miner" || unit.type === "goblin" ? -45 : 0;
+  return cost + unit.maxHp * 0.4 + damage * 12 + rangeBonus + giantBonus + rolePenalty;
 }
 
 function applyGoblinExpertArmor(source, target) {
