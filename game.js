@@ -595,6 +595,54 @@ const UNIT = {
     heavyArmorReduction: 0.9,
     heavyArmorDuration: 15,
   },
+  shaman: {
+    name: "萨满",
+    cost: 170,
+    hp: 170,
+    damage: 0,
+    range: 0,
+    speed: 42,
+    train: 5.8,
+    cooldown: 1,
+    thornEvery: 8,
+    thornArea: 625,
+    thornDps: 4,
+    thornSlow: 0.9,
+    thornDuration: 12,
+    thornCooldown: 10,
+    regenEvery: 16,
+    regenHps: 8,
+    regenDuration: 10,
+    regenRange: 625,
+  },
+  priest: {
+    name: "祭司",
+    cost: 180,
+    hp: 150,
+    damage: 20,
+    range: 145,
+    speed: 42,
+    train: 5.4,
+    cooldown: 1.4,
+    sacrificeNeeded: 5,
+    ritualRange: 220,
+    siphonMaxHp: 350,
+    siphonDamage: 30,
+    siphonCooldown: 12,
+  },
+  apeMan: {
+    name: "猿人",
+    cost: 0,
+    hp: 300,
+    damage: 20,
+    range: 44,
+    speed: 34,
+    train: 0,
+    cooldown: 2,
+    knockback: 100,
+    stunDuration: 1.2,
+    summonOnly: true,
+  },
   scimitarWarrior: {
     name: "弯刀兵",
     cost: 190,
@@ -617,8 +665,9 @@ const UNIT = {
     speed: 30,
     train: 6.5,
     cooldown: 2,
-    leapRange: 130,
-    leapStun: 3,
+    leapDistance: 130,
+    leapStun: 2,
+    leapCooldown: 15,
     deathRageRange: 1600,
     deathRageMoveFactor: 1.2,
     deathRageAttackFactor: 1.2,
@@ -635,7 +684,7 @@ const UNIT = {
     chargeDistance: 160,
     chargeDamage: 20,
     chargeStun: 2,
-    chargeCooldown: 20,
+    chargeCooldown: 16,
     deathRageRange: 1600,
     deathRageMoveFactor: 1.2,
     deathRageAttackFactor: 1.2,
@@ -1169,7 +1218,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1221,6 +1270,9 @@ const UNIT_ICON = {
   berserkOrc: "axe",
   goblin: "miner",
   goblinExpert: "miner",
+  shaman: "wizard-hat",
+  priest: "skull",
+  apeMan: "claws",
   scimitarWarrior: "machete",
   minotaur: "axe",
   rhinoMan: "axe",
@@ -1266,7 +1318,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1290,7 +1342,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1794,8 +1846,11 @@ function formatSpecial(type) {
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
   if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
   if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
+  if (type === "shaman") notes.push(`没有普攻；每 ${data.thornEvery}秒生成面积 ${data.thornArea} 的荆棘，持续 ${data.thornDuration}秒，每秒 ${data.thornDps} 伤害并减速 ${Math.round((1 - data.thornSlow) * 100)}%；每 ${data.regenEvery}秒让一名友军每秒恢复 ${data.regenHps} 生命，持续 ${data.regenDuration}秒`);
+  if (type === "priest") notes.push(`死亡敌人可被祭祀为祭品，收集 ${data.sacrificeNeeded} 个祭品召唤猿人；技能抽取生命值不超过 ${data.siphonMaxHp} 的敌人，造成 ${data.siphonDamage} 伤害，并将其生命值平分治疗前线友军`);
+  if (type === "apeMan") notes.push(`召唤单位；攻击击退敌人 ${data.knockback} 距离并眩晕 ${data.stunDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
-  if (type === "minotaur") notes.push(`双短斧每次攻击造成 2 次 ${data.damage} 伤害；距离敌人 ${data.leapRange} 内会大跳到敌人面前并眩晕 ${data.leapStun}秒；${data.deathRageRange} 范围内牛头人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
+  if (type === "minotaur") notes.push(`双短斧每次攻击造成 2 次 ${data.damage} 伤害；技能向前跳跃 ${data.leapDistance} 距离并眩晕敌人 ${data.leapStun}秒，冷却 ${data.leapCooldown}秒；${data.deathRageRange} 范围内牛头人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "rhinoMan") notes.push(`技能向前冲撞 ${data.chargeDistance} 距离，路途撞击敌人造成 ${data.chargeDamage} 伤害并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
@@ -1914,6 +1969,7 @@ function newGame() {
     tornadoes: [],
     electricColumns: [],
     groundFires: [],
+    thornFields: [],
     landMines: [],
     corpses: [],
     ghosts: [],
@@ -2546,11 +2602,18 @@ function spawnUnit(type, side, x) {
     goblinMineAmmo: data.mineAmmo ?? 0,
     goblinBurrowed: false,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
+    shamanThornTimer: data.thornEvery ?? 0,
+    shamanRegenTimer: data.regenEvery ?? 0,
+    regenLife: 0,
+    regenHps: 0,
+    regenTick: 0,
+    priestSiphonTimer: data.siphonCooldown ?? 0,
+    priestSacrificeCount: 0,
     armorReduction: 0,
     heavyArmorTimer: 0,
     heavyArmorReduction: 0,
     minotaurRage: false,
-    minotaurLeapTargetId: null,
+    minotaurLeapTimer: data.leapCooldown ?? 0,
     rhinoRage: false,
     rhinoChargeTimer: data.chargeCooldown ?? 0,
     shieldCastTimer: data.shieldEvery ?? 0,
@@ -3120,6 +3183,7 @@ function update(dt) {
   updateTornadoes(dt);
   updateElectricWalls(dt);
   updateGroundFires(dt);
+  updateThornFields(dt);
   updateIceFieldEffects(dt);
   updateParticles(dt);
   removeDead();
@@ -3928,6 +3992,8 @@ function chooseEnemyUnit(affordable) {
     creeper: 1.1,
     goblin: 0.72,
     goblinExpert: 0.48,
+    shaman: 0.46,
+    priest: 0.52,
     orc: 0.95,
     berserkOrc: 0.8,
     scimitarWarrior: 0.58,
@@ -4130,8 +4196,13 @@ function updateUnits(dt) {
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
+    unit.shamanThornTimer = Math.max(0, (unit.shamanThornTimer ?? 0) - dt);
+    unit.shamanRegenTimer = Math.max(0, (unit.shamanRegenTimer ?? 0) - dt);
+    updateUnitRegen(unit, dt);
+    unit.priestSiphonTimer = Math.max(0, (unit.priestSiphonTimer ?? 0) - dt);
     unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
     if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
+    unit.minotaurLeapTimer = Math.max(0, (unit.minotaurLeapTimer ?? 0) - dt);
     unit.rhinoChargeTimer = Math.max(0, (unit.rhinoChargeTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
@@ -4159,6 +4230,12 @@ function updateUnits(dt) {
     }
     if (unit.type === "goblinExpert") {
       updateGoblinExpert(unit);
+    }
+    if (unit.type === "shaman") {
+      updateShaman(unit);
+    }
+    if (unit.type === "priest") {
+      updatePriest(unit);
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -4287,7 +4364,7 @@ function updateUnits(dt) {
     updateSiegeBlindTarget(unit, target);
     const statueTarget = getForcedStatueTarget(unit, target);
     const activeTarget = statueTarget ?? target;
-    if (unit.type === "minotaur" && tryMinotaurLeap(unit, activeTarget)) {
+    if (unit.type === "minotaur" && tryMinotaurLeap(unit)) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -5888,6 +5965,12 @@ function getMoveFactor(unit) {
     if (field.side === unit.side) continue;
     if (Math.abs(unit.x - field.x) <= field.radius) factor = Math.min(factor, field.slow);
   }
+  for (const field of state.thornFields) {
+    if (field.side === unit.side) continue;
+    if (Math.abs(unit.x - field.x) <= field.radius && Math.abs((unit.y ?? FIELD.ground) - field.y) <= field.radius) {
+      factor = Math.min(factor, field.slow);
+    }
+  }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
@@ -6173,7 +6256,7 @@ function getAttackLaneTolerance(unit) {
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
   if (isReaperStealthed(unit)) return null;
-  if (unit.type === "goblin" || unit.type === "goblinExpert") return null;
+  if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") return null;
   if (UNIT[unit.type]?.statueOnly) {
     return {
       kind: "statue",
@@ -6397,6 +6480,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "apeMan") {
+    attackApeMan(unit, target);
+    return;
+  }
+
   if (unit.type === "suikai") {
     castSuikaiPierce(unit, target);
     return;
@@ -6453,6 +6541,18 @@ function attack(unit, target) {
     applyBurn(target, data.burnDps, data.burnDuration);
   }
   if (data.stunDuration) applyStun(target, data.stunDuration);
+}
+
+function attackApeMan(unit, target) {
+  const data = UNIT.apeMan;
+  const dealt = applyDamage(target, data.damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  if (target.kind === "statue") return;
+  const dir = unit.side === "player" ? 1 : -1;
+  target.x = Math.max(FIELD.playerGate + 28, Math.min(FIELD.enemyGate - 28, target.x + dir * data.knockback));
+  applyStun(target, data.stunDuration);
+  state.blasts.push({ x: target.x, y: target.y - 32, radius: 38, life: 0.22, duration: 0.22, color: "#c8a0ff" });
+  popText(target.x, target.y - 104, "击退", "#c8a0ff");
 }
 
 function handleDamageDealt(attacker, target, damage) {
@@ -7645,20 +7745,192 @@ function castGoblinExpertHeavyArmor(unit, target) {
   return true;
 }
 
-function tryMinotaurLeap(unit, target) {
-  if (!target || target.kind === "statue" || !target.id) return false;
-  const data = UNIT.minotaur;
-  const distance = Math.abs(target.x - unit.x);
-  if (distance > data.leapRange || distance <= data.range + 8) return false;
-  if (unit.minotaurLeapTargetId === target.id) return false;
+function updateShaman(unit) {
+  if ((unit.shamanThornTimer ?? 0) <= 0) castShamanThorns(unit);
+  if ((unit.shamanRegenTimer ?? 0) <= 0) castShamanRegen(unit);
+}
 
-  const dir = unit.side === "player" ? -1 : 1;
-  unit.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, target.x + dir * (data.range - 4)));
-  unit.y = target.y;
-  unit.minotaurLeapTargetId = target.id;
+function castShamanThorns(unit) {
+  const data = UNIT.shaman;
+  const dir = unit.side === "player" ? 1 : -1;
+  const radius = Math.max(10, Math.sqrt(data.thornArea / Math.PI));
+  const x = Math.max(FIELD.playerGate + 28, Math.min(FIELD.enemyGate - 28, unit.x + dir * 68));
+  const y = unit.y;
+  state.thornFields.push({
+    side: unit.side,
+    x,
+    y,
+    radius,
+    dps: data.thornDps,
+    slow: data.thornSlow,
+    life: data.thornDuration,
+    tick: 0,
+  });
+  unit.shamanThornTimer = data.thornEvery;
+  state.blasts.push({ x, y: y - 18, radius: radius + 24, life: 0.34, duration: 0.34, color: "#78d36b" });
+  popText(unit.x, unit.y - 116, "荆棘", "#8ee88a");
+  return true;
+}
+
+function castShamanRegen(unit) {
+  const data = UNIT.shaman;
+  const target = state.units
+    .filter((candidate) =>
+      candidate.side === unit.side &&
+      candidate.id !== unit.id &&
+      candidate.hp > 0 &&
+      !isUnitHidden(candidate) &&
+      candidate.hp < candidate.maxHp &&
+      Math.abs(candidate.x - unit.x) <= data.regenRange
+    )
+    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+  unit.shamanRegenTimer = data.regenEvery;
+  if (!target) return false;
+  target.regenLife = data.regenDuration;
+  target.regenHps = data.regenHps;
+  target.regenTick = 0;
+  state.blasts.push({ x: target.x, y: target.y - 50, radius: 46, life: 0.38, duration: 0.38, color: "#8ee88a" });
+  popText(target.x, target.y - 112, "恢复", "#8ee88a");
+  return true;
+}
+
+function updateUnitRegen(unit, dt) {
+  if ((unit.regenLife ?? 0) <= 0) return;
+  unit.regenLife = Math.max(0, unit.regenLife - dt);
+  unit.regenTick = (unit.regenTick ?? 0) - dt;
+  while (unit.regenTick <= 0 && unit.regenLife > 0 && unit.hp > 0) {
+    unit.regenTick += 1;
+    const amount = unit.regenHps ?? 0;
+    if (amount > 0) {
+      unit.hp = Math.min(unit.maxHp, unit.hp + amount);
+      popText(unit.x, unit.y - 86, `+${amount}`, "#8ee88a");
+    }
+  }
+  if (unit.regenLife <= 0) {
+    unit.regenHps = 0;
+    unit.regenTick = 0;
+  }
+}
+
+function updatePriest(unit) {
+  collectPriestOffering(unit);
+  if (unit.side === "enemy" && (unit.priestSiphonTimer ?? 0) <= 0) {
+    const target = findPriestSiphonTarget(unit);
+    if (target) castPriestSiphon(unit, target);
+  }
+}
+
+function collectPriestOffering(unit) {
+  const data = UNIT.priest;
+  const corpse = state.corpses
+    .filter((item) => item.ritual && item.side !== unit.side)
+    .filter((item) => Math.abs(item.x - unit.x) <= data.ritualRange)
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0];
+  if (!corpse) return false;
+  state.corpses = state.corpses.filter((item) => item !== corpse);
+  unit.priestSacrificeCount = (unit.priestSacrificeCount ?? 0) + 1;
+  popText(unit.x, unit.y - 112, `祭品 ${unit.priestSacrificeCount}/${data.sacrificeNeeded}`, "#c8a0ff");
+  state.blasts.push({ x: corpse.x, y: corpse.y - 28, radius: 42, life: 0.32, duration: 0.32, color: "#b88cff" });
+  if (unit.priestSacrificeCount >= data.sacrificeNeeded) {
+    unit.priestSacrificeCount -= data.sacrificeNeeded;
+    summonApeMan(unit);
+  }
+  return true;
+}
+
+function summonApeMan(unit) {
+  const dir = unit.side === "player" ? 1 : -1;
+  const ape = spawnUnit("apeMan", unit.side, Math.max(FIELD.playerGate + 42, Math.min(FIELD.enemyGate - 42, unit.x + dir * 42)));
+  ape.y = unit.y + (Math.random() * 26 - 13);
+  ape.forceCharge = unit.forceCharge;
+  state.blasts.push({ x: ape.x, y: ape.y - 48, radius: 62, life: 0.42, duration: 0.42, color: "#c8a0ff" });
+  popText(ape.x, ape.y - 116, "召唤猿人", "#c8a0ff");
+}
+
+function castPriestSiphon(unit, target) {
+  const data = UNIT.priest;
+  if ((unit.priestSiphonTimer ?? 0) > 0) return false;
+  if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || target.hp > data.siphonMaxHp) {
+    popText(unit.x, unit.y - 116, "目标生命过高", "#d9d0b8");
+    return false;
+  }
+  const lifePool = Math.max(0, target.hp);
+  applyDamage(target, data.siphonDamage, unit.side);
+  const allies = getFrontlineAllies(unit.side);
+  if (allies.length && lifePool > 0) {
+    const heal = Math.max(1, Math.floor(lifePool / allies.length));
+    allies.forEach((ally) => {
+      ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+      popText(ally.x, ally.y - 96, `+${heal}`, "#c8a0ff");
+    });
+  }
+  unit.priestSiphonTimer = data.siphonCooldown;
+  state.lightning.push({ x1: unit.x, y1: unit.y - 74, x2: target.x, y2: target.y - 58, life: 0.3, duration: 0.3, color: "#b88cff" });
+  popText(target.x, target.y - 104, "献祭生命", "#c8a0ff");
+  return true;
+}
+
+function findPriestSiphonTarget(unit) {
+  const data = UNIT.priest;
+  return state.units
+    .filter((target) =>
+      target.side !== unit.side &&
+      target.hp > 0 &&
+      target.hp <= data.siphonMaxHp &&
+      !isUnitHidden(target) &&
+      !isReaperStealthed(target) &&
+      !UNIT[target.type]?.untargetable &&
+      canTarget(unit, target)
+    )
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0] ?? null;
+}
+
+function getFrontlineAllies(side) {
+  const units = state.units.filter((unit) => unit.side === side && unit.hp > 0 && unit.type !== "miner" && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
+  if (!units.length) return [];
+  const front = side === "player"
+    ? Math.max(...units.map((unit) => unit.x))
+    : Math.min(...units.map((unit) => unit.x));
+  return units.filter((unit) => Math.abs(unit.x - front) <= 260);
+}
+
+function getMinotaurLeapTargets(unit) {
+  const data = UNIT.minotaur;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x;
+  const endX = unit.x + dir * data.leapDistance;
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+  return state.units.filter((target) =>
+    target.side !== unit.side &&
+    target.hp > 0 &&
+    !isUnitHidden(target) &&
+    !isReaperStealthed(target) &&
+    !UNIT[target.type]?.untargetable &&
+    target.x >= minX &&
+    target.x <= maxX &&
+    Math.abs(target.y - unit.y) <= 90
+  );
+}
+
+function tryMinotaurLeap(unit) {
+  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
+  if (!getMinotaurLeapTargets(unit).length) return false;
+  return castMinotaurLeap(unit);
+}
+
+function castMinotaurLeap(unit) {
+  const data = UNIT.minotaur;
+  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
+  const targets = getMinotaurLeapTargets(unit);
+  if (!targets.length && unit.side !== "player") return false;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x;
+  unit.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.leapDistance));
+  unit.minotaurLeapTimer = data.leapCooldown;
   unit.cooldown = Math.max(unit.cooldown ?? 0, 0.45);
-  applyStun(target, data.leapStun);
-  state.blasts.push({ x: target.x, y: target.y - 26, radius: 58, life: 0.34, duration: 0.34, color: "#d0b078" });
+  targets.forEach((target) => applyStun(target, data.leapStun));
+  state.blasts.push({ x: (startX + unit.x) / 2, y: unit.y - 26, radius: data.leapDistance / 2, life: 0.34, duration: 0.34, color: "#d0b078" });
   popText(unit.x, unit.y - 126, "大跳", "#d0b078");
   return true;
 }
@@ -7958,10 +8230,29 @@ function updateGroundFires(dt) {
   state.groundFires = state.groundFires.filter((fire) => fire.life > 0);
 }
 
+function updateThornFields(dt) {
+  for (const field of state.thornFields) {
+    field.life -= dt;
+    field.tick -= dt;
+    while (field.tick <= 0 && field.life > 0) {
+      field.tick += 1;
+      damageThornField(field);
+    }
+  }
+  state.thornFields = state.thornFields.filter((field) => field.life > 0);
+}
+
 function damageGroundFire(fire) {
   getUnitsInRadius(fire.x, fire.radius, fire.side, Infinity).forEach((unit) => {
     if (Math.abs((unit.y ?? FIELD.ground) - fire.y) > fire.radius) return;
     applyUnitDamage(unit, fire.dps, { label: "地火", color: "#ff8a3d", yOffset: -96 });
+  });
+}
+
+function damageThornField(field) {
+  getUnitsInRadius(field.x, field.radius, field.side, Infinity).forEach((unit) => {
+    if (Math.abs((unit.y ?? FIELD.ground) - field.y) > field.radius) return;
+    applyUnitDamage(unit, field.dps, { label: "荆棘", color: "#8ee88a", yOffset: -96 });
   });
 }
 
@@ -8292,7 +8583,8 @@ function maybeLeaveUndeadCorpse(unit) {
   const reviveable = factionForSide(unit.side) === "undeadEmpire"
     && UNDEAD_BASE_UNITS.has(unit.type)
     && !UNDEAD_CORPSE_EXCLUDED.has(unit.type);
-  if (!reviveable && unit.type === "electricGate") return;
+  const ritual = unit.type !== "electricGate";
+  if (!reviveable && !ritual) return;
   state.corpses.push({
     id: state.nextId++,
     type: unit.type,
@@ -8303,6 +8595,7 @@ function maybeLeaveUndeadCorpse(unit) {
     life: 15,
     duration: 15,
     reviveable,
+    ritual,
     revives: unit.corpseRevives ?? 0,
   });
 }
@@ -8498,6 +8791,7 @@ function startCampaignSecondPhase() {
   state.tornadoes = [];
   state.iceFields = [];
   state.groundFires = [];
+  state.thornFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
     const unit = spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
@@ -8581,6 +8875,7 @@ function draw() {
   drawCampaignMagmaGround();
   drawIceRoadGround();
   state.groundFires.forEach(drawGroundFire);
+  state.thornFields.forEach(drawThornField);
   state.landMines.forEach(drawLandMine);
   state.corpses.forEach(drawCorpse);
   if (isGoldRushActive()) {
@@ -8830,6 +9125,33 @@ function drawGroundFire(fire) {
     ctx.beginPath();
     ctx.moveTo(offset - 10, -4);
     ctx.quadraticCurveTo(offset, -20 - Math.sin(performance.now() / 150 + i) * 6, offset + 12, -6);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawThornField(field) {
+  const alpha = Math.max(0.2, Math.min(0.68, field.life / UNIT.shaman.thornDuration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius * (1 + Math.sin(performance.now() / 160 + field.x) * 0.05);
+  const gradient = ctx.createRadialGradient(0, 0, 3, 0, 0, radius + 10);
+  gradient.addColorStop(0, "rgba(142, 232, 138, 0.58)");
+  gradient.addColorStop(0.65, "rgba(45, 118, 64, 0.36)");
+  gradient.addColorStop(1, "rgba(20, 56, 31, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius + 10, (radius + 10) * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(180, 255, 160, 0.72)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 7; i += 1) {
+    const x = (i - 3) * radius * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(x, 4);
+    ctx.lineTo(x + Math.sin(i) * 8, -radius * 0.72);
+    ctx.lineTo(x + 8, -radius * 0.28);
     ctx.stroke();
   }
   ctx.restore();
@@ -9814,6 +10136,9 @@ function getUnitColor(unit) {
   if (type === "berserkOrc") return "#8d6a48";
   if (type === "goblin") return unit.goblinBurrowed ? "#5d5648" : "#9abf62";
   if (type === "goblinExpert") return "#7d9f6a";
+  if (type === "shaman") return "#526f4a";
+  if (type === "priest") return "#5d4b74";
+  if (type === "apeMan") return "#6c4d37";
   if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "minotaur") return unit.minotaurRage ? "#9a4f35" : "#7a5a42";
   if (type === "rhinoMan") return unit.rhinoRage ? "#8b5f45" : "#6f7370";
@@ -9866,6 +10191,9 @@ function getHeadColor(unit) {
   if (unit.type === "berserkOrc") return "#c8a36f";
   if (unit.type === "goblin") return unit.goblinBurrowed ? "#7a705f" : "#cde69b";
   if (unit.type === "goblinExpert") return "#d8e8a8";
+  if (unit.type === "shaman") return "#d7f0a8";
+  if (unit.type === "priest") return "#e0c8ff";
+  if (unit.type === "apeMan") return "#c89668";
   if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "minotaur") return unit.minotaurRage ? "#ffb06b" : "#c89a6d";
   if (unit.type === "rhinoMan") return unit.rhinoRage ? "#ffb06b" : "#c8d0c8";
@@ -10463,6 +10791,54 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(38, -47, 8, 0, Math.PI * 2);
     ctx.stroke();
+  } else if (type === "shaman") {
+    ctx.strokeStyle = "#31482b";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(16, -22);
+    ctx.lineTo(34, -66);
+    ctx.stroke();
+    ctx.fillStyle = "#8ee88a";
+    ctx.strokeStyle = "#e3ffd0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(36, -70, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(142, 232, 138, 0.9)";
+    ctx.beginPath();
+    ctx.arc(36, -70, 15, Math.PI * 0.1, Math.PI * 1.85);
+    ctx.stroke();
+  } else if (type === "priest") {
+    ctx.strokeStyle = "#3e2a54";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -22);
+    ctx.lineTo(34, -62);
+    ctx.stroke();
+    ctx.fillStyle = "#c8a0ff";
+    ctx.beginPath();
+    ctx.arc(36, -66, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f1e6ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(28, -74);
+    ctx.lineTo(44, -58);
+    ctx.moveTo(44, -74);
+    ctx.lineTo(28, -58);
+    ctx.stroke();
+  } else if (type === "apeMan") {
+    ctx.strokeStyle = "#3a2418";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(20, -28);
+    ctx.lineTo(48, -38);
+    ctx.stroke();
+    ctx.fillStyle = "#8c5d3b";
+    ctx.beginPath();
+    ctx.arc(52, -40, 10, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "scimitarWarrior") {
     ctx.fillStyle = "#4e463a";
     ctx.strokeStyle = "#211c18";
@@ -11500,6 +11876,12 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("goblinHeavyArmor", "重甲", "target");
       break;
+    case "shaman":
+      actions[0].label = "待命";
+      break;
+    case "priest":
+      add("priestSiphon", "献祭", "target");
+      break;
     case "candlelight":
       add("toggleCandleForm", unit.candleForm === "fire" ? "冰矩" : "火焰", "direct");
       break;
@@ -11508,6 +11890,9 @@ function getManualActions(unit) {
       break;
     case "scimitarWarrior":
       add("scimitarRoar", "战吼", "direct");
+      break;
+    case "minotaur":
+      add("minotaurLeap", "大跳", "direct");
       break;
     case "rhinoMan":
       add("rhinoCharge", "冲撞", "direct");
@@ -11545,7 +11930,9 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "goblinBurrow") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
+  if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return true;
   if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return true;
+  if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -11645,7 +12032,9 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
+  if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return `冷却 ${Math.ceil(unit.minotaurLeapTimer)}秒`;
   if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return `冷却 ${Math.ceil(unit.rhinoChargeTimer)}秒`;
+  if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return `冷却 ${Math.ceil(unit.priestSiphonTimer)}秒`;
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -11678,6 +12067,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "scimitarRoar") {
     castScimitarRoar(unit);
+    return;
+  }
+  if (action.id === "minotaurLeap") {
+    castMinotaurLeap(unit);
     return;
   }
   if (action.id === "rhinoCharge") {
@@ -11720,7 +12113,7 @@ function executeManualAction(unit, action, point) {
 }
 
 function manualUnitAttack(unit) {
-  if (unit.type === "goblin" || unit.type === "goblinExpert") {
+  if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") {
     popText(unit.x, unit.y - 116, `${UNIT[unit.type].name}没有普攻`, "#d9d0b8");
     return;
   }
@@ -11928,6 +12321,7 @@ function getManualActionCooldown(unit, id) {
     archFireballs: data.fireballEvery,
     berserkerRage: data.rageEvery,
     goblinHeavyArmor: UNIT.goblinExpert.heavyArmorDuration,
+    priestSiphon: UNIT.priest.siphonCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -11963,6 +12357,8 @@ function castManualSkill(unit, id, target) {
       sprayMedusaPoison(unit);
       releaseMedusaCorpses(unit);
       return true;
+    case "priestSiphon":
+      return castPriestSiphon(unit, target);
     case "vControl":
       if (!canVControl(unit, target)) {
         popText(unit.x, unit.y - 116, "无法控制", "#d7ceff");
@@ -12073,19 +12469,27 @@ function drawCorpse(corpse) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(corpse.x, corpse.y);
-  ctx.fillStyle = "#3b3735";
-  ctx.strokeStyle = "#b8b0a5";
+  ctx.fillStyle = corpse.ritual && !corpse.reviveable ? "#2f243a" : "#3b3735";
+  ctx.strokeStyle = corpse.ritual && !corpse.reviveable ? "#c8a0ff" : "#b8b0a5";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.ellipse(0, -8, 25, 9, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = "#d8d0c8";
+  ctx.strokeStyle = corpse.ritual && !corpse.reviveable ? "#f1e6ff" : "#d8d0c8";
   ctx.beginPath();
-  ctx.moveTo(-14, -18);
-  ctx.lineTo(14, 0);
-  ctx.moveTo(12, -18);
-  ctx.lineTo(-12, 0);
+  if (corpse.ritual && !corpse.reviveable) {
+    ctx.arc(0, -10, 11, 0, Math.PI * 2);
+    ctx.moveTo(0, -25);
+    ctx.lineTo(0, 6);
+    ctx.moveTo(-14, -10);
+    ctx.lineTo(14, -10);
+  } else {
+    ctx.moveTo(-14, -18);
+    ctx.lineTo(14, 0);
+    ctx.moveTo(12, -18);
+    ctx.lineTo(-12, 0);
+  }
   ctx.stroke();
   ctx.restore();
 }
