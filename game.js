@@ -388,13 +388,24 @@ const UNIT = {
   },
   undead: {
     name: "丧尸",
-    cost: 55,
-    hp: 60,
-    damage: 7,
+    cost: 70,
+    hp: 70,
+    damage: 8,
     range: 30,
     speed: 32,
     train: 2.5,
-    cooldown: 1.05,
+    cooldown: 1,
+  },
+  ghoul: {
+    name: "食尸鬼",
+    cost: 80,
+    hp: 130,
+    damage: 5,
+    range: 30,
+    speed: 50,
+    train: 3.2,
+    cooldown: 1,
+    devourDuration: 3,
   },
   machete: {
     name: "骷髅砍刀兵",
@@ -519,7 +530,7 @@ const UNIT = {
   boneGiant: {
     name: "骸骨",
     cost: 260,
-    hp: 600,
+    hp: 800,
     damage: 40,
     range: 46,
     speed: 38,
@@ -647,13 +658,13 @@ const UNIT = {
   },
   fireElement: {
     name: "火元素",
-    cost: 105,
+    cost: 130,
     hp: 100,
     damage: 18,
     range: 185,
     speed: 34,
     train: 4.8,
-    cooldown: 1.25,
+    cooldown: 1.2,
     burnDps: 3,
     burnDuration: 5,
   },
@@ -959,8 +970,8 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-    startingUnits: ["miner", "machete", "undead"],
+    roster: ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    startingUnits: ["miner", "machete", "undead", "ghoul"],
     mineColor: "#b8b0a5",
   },
   element: {
@@ -992,6 +1003,7 @@ const UNIT_ICON = {
   rocketCart: "bomb-crossbow",
   creeper: "claws",
   undead: "zombie-head",
+  ghoul: "claws",
   machete: "machete",
   deadCorpse: "venom",
   poisonZombie: "venom",
@@ -1036,7 +1048,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "bomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1052,7 +1064,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["undead", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
@@ -1060,7 +1072,7 @@ const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  undeadEmpire: ["machete", "undead", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage", "undeadMage", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1590,6 +1602,7 @@ function formatSpecial(type) {
   if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；每 ${data.boneSpikeEvery}秒骨刺 ${data.boneSpikeRange} 距离；每 ${data.summonEvery}秒召唤 ${data.summonCount} 只高速亡灵`);
   if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，激励周围一种亡灵单位；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
   if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
+  if (type === "ghoul") notes.push(`手动技能：扑向最近敌方尸体，啃食 ${data.devourDuration}秒后恢复尸体原生命值一半，最多回满`);
   if (type === "boneGiant") notes.push(`巨斧范围攻击最多 ${data.aoeLimit} 人；受到远程伤害降低 ${Math.round(data.rangedReduction * 100)}%`);
   if (type === "berserker") notes.push(`附近至少 ${data.rageEnemyCount} 名敌人时释放狂暴`);
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
@@ -2300,6 +2313,8 @@ function spawnUnit(type, side, x) {
     inspiredLifestealTimer: 0,
     graveReviveTimer: data.reviveEvery ?? 0,
     graveGhostTimer: data.ghostEvery ?? 0,
+    devourTargetCorpseId: null,
+    devourTimer: 0,
     fearTimer: 0,
     fearDamageMultiplier: 1,
     hero: Boolean(data.hero),
@@ -3642,6 +3657,7 @@ function chooseEnemyUnit(affordable) {
     hurricane: 0.55,
     creeper: 1.1,
     undead: 1.05,
+    ghoul: 0.85,
     machete: 0.9,
     deadCorpse: 0.75,
     poisonZombie: 0.85,
@@ -3905,6 +3921,10 @@ function updateUnits(dt) {
     if (unit.type === "graveDigger") {
       updateGraveDigger(unit, dt);
     }
+    if (unit.type === "ghoul" && updateGhoul(unit, dt)) {
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (unit.type === "swordsman") {
       updateSwordsman(unit, dt);
     }
@@ -4018,6 +4038,7 @@ function updateManualControlledUnit(unit, dt) {
   Object.keys(unit.manualSkillCooldowns).forEach((key) => {
     unit.manualSkillCooldowns[key] = Math.max(0, unit.manualSkillCooldowns[key] - dt);
   });
+  if (unit.type === "ghoul" && updateGhoul(unit, dt)) return;
   if (unit.type === "vUnit") {
     updateVClones(unit, dt);
     updateVControlLink(unit);
@@ -4773,7 +4794,7 @@ function updateGraveDigger(unit, dt) {
 function reviveNearestCorpse(unit) {
   const data = UNIT.graveDigger;
   const corpse = state.corpses
-    .filter((item) => item.side === unit.side && item.revives < 3 && !UNDEAD_CORPSE_EXCLUDED.has(item.type))
+    .filter((item) => item.side === unit.side && item.reviveable && item.revives < 3 && !UNDEAD_CORPSE_EXCLUDED.has(item.type))
     .filter((item) => distanceTo(item.x, item.y, unit.x, unit.y) <= data.reviveRadius)
     .sort((a, b) => distanceTo(a.x, a.y, unit.x, unit.y) - distanceTo(b.x, b.y, unit.x, unit.y))[0];
   if (!corpse) return;
@@ -4804,6 +4825,68 @@ function releaseGraveGhosts(unit) {
     });
   }
   popText(unit.x, unit.y - 122, "幽灵出土", "#d8d0ff");
+}
+
+function updateGhoul(unit, dt) {
+  if (unit.devourTimer > 0) {
+    unit.devourTimer = Math.max(0, unit.devourTimer - dt);
+    if (unit.devourTimer <= 0) finishGhoulDevour(unit);
+    return true;
+  }
+
+  if (!unit.devourTargetCorpseId) return false;
+  const corpse = state.corpses.find((item) => item.id === unit.devourTargetCorpseId && item.side !== unit.side);
+  if (!corpse) {
+    unit.devourTargetCorpseId = null;
+    return false;
+  }
+
+  const distance = distanceTo(unit.x, unit.y, corpse.x, corpse.y);
+  if (distance > 12) {
+    moveUnitTowardPoint(unit, corpse.x, corpse.y, unit.speed ?? UNIT.ghoul.speed, dt, 8);
+    return true;
+  }
+
+  unit.devourTimer = UNIT.ghoul.devourDuration;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, UNIT.ghoul.devourDuration);
+  popText(unit.x, unit.y - 102, "啃食尸体", "#93d96b");
+  return true;
+}
+
+function commandGhoulDevour(unit) {
+  const corpse = findNearestEnemyCorpse(unit);
+  if (!corpse) {
+    popText(unit.x, unit.y - 116, "没有敌方尸体", "#d9d0b8");
+    return false;
+  }
+  unit.devourTargetCorpseId = corpse.id;
+  unit.devourTimer = 0;
+  unit.inCastle = false;
+  unit.mineSlotId = null;
+  unit.mineWorkSlot = null;
+  state.manualMoveTarget = null;
+  popText(unit.x, unit.y - 116, "扑向尸体", "#93d96b");
+  return true;
+}
+
+function findNearestEnemyCorpse(unit) {
+  return state.corpses
+    .filter((corpse) => corpse.side !== unit.side)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
+}
+
+function finishGhoulDevour(unit) {
+  const corpse = state.corpses.find((item) => item.id === unit.devourTargetCorpseId && item.side !== unit.side);
+  unit.devourTargetCorpseId = null;
+  if (!corpse) return;
+  const healed = Math.min(Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? 0) * 0.5), unit.maxHp - unit.hp);
+  if (healed > 0) {
+    unit.hp += healed;
+    popText(unit.x, unit.y - 104, `啃食 +${healed}`, "#93d96b");
+  } else {
+    popText(unit.x, unit.y - 104, "啃食", "#93d96b");
+  }
+  state.corpses = state.corpses.filter((item) => item !== corpse);
 }
 
 function isUndeadEmpireUnit(type) {
@@ -7166,16 +7249,21 @@ function removeDead() {
 }
 
 function maybeLeaveUndeadCorpse(unit) {
-  if (factionForSide(unit.side) !== "undeadEmpire") return;
-  if (!UNDEAD_BASE_UNITS.has(unit.type)) return;
-  if (UNDEAD_CORPSE_EXCLUDED.has(unit.type) || isHeroUnit(unit)) return;
+  if (UNIT[unit.type]?.untargetable || isHeroUnit(unit)) return;
+  const reviveable = factionForSide(unit.side) === "undeadEmpire"
+    && UNDEAD_BASE_UNITS.has(unit.type)
+    && !UNDEAD_CORPSE_EXCLUDED.has(unit.type);
+  if (!reviveable && unit.type === "electricGate") return;
   state.corpses.push({
+    id: state.nextId++,
     type: unit.type,
     side: unit.side,
     x: unit.x,
     y: unit.y,
+    maxHp: unit.maxHp ?? UNIT[unit.type]?.hp ?? 0,
     life: 15,
     duration: 15,
+    reviveable,
     revives: unit.corpseRevives ?? 0,
   });
 }
@@ -8493,6 +8581,7 @@ function getUnitColor(unit) {
   if (type === "creeper") return "#9ee06b";
   if (type === "largeCreeper") return "#6fcf59";
   if (type === "undead") return "#b8b0a5";
+  if (type === "ghoul") return "#7f8f68";
   if (type === "deadCorpse") return "#72836c";
   if (type === "medusa") return "#587a5f";
   if (type === "poisonZombie") return "#6bd28f";
@@ -8544,6 +8633,7 @@ function getHeadColor(unit) {
   if (unit.type === "suikai") return "#ece1ff";
   if (unit.type === "chaosGiant") return "#c7b0d8";
   if (unit.type === "superGiant") return "#e0c8ff";
+  if (unit.type === "ghoul") return "#d4d7a0";
   if (factionForSide(unit.side) !== "chaos") return getUnitColor(unit);
   if (unit.type === "creeper") return "#b8b0a5";
   if (unit.type === "undead") return "#9ee06b";
@@ -8988,7 +9078,7 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(49, -57, 12, 0, Math.PI * 2);
     ctx.fill();
-  } else if (type === "creeper" || type === "largeCreeper") {
+  } else if (type === "creeper" || type === "largeCreeper" || type === "ghoul") {
     ctx.strokeStyle = "#c7b08f";
     ctx.beginPath();
     ctx.moveTo(12, -29);
@@ -9888,6 +9978,9 @@ function getManualActions(unit) {
     case "windElement":
       add("windBolt", "闪电", "target");
       break;
+    case "ghoul":
+      add("ghoulDevour", "啃食", "direct");
+      break;
     case "archmage":
       add("chainLightning", "链雷", "target");
       add("archFireballs", "火球雨", "direct");
@@ -9918,6 +10011,7 @@ function getManualActions(unit) {
 function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
   if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
   if (button.id === "vControl" && (unit.controlTimer > 0 || unit.controlledTargetId)) return true;
@@ -10013,6 +10107,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return "已使用";
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return `冷却 ${Math.ceil(unit.medusaSlayTimer)}秒`;
   if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
+  if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -10041,6 +10136,13 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "scaldExplode") {
     explodeScaldStrike(unit);
+    return;
+  }
+  if (action.id === "ghoulDevour") {
+    if (commandGhoulDevour(unit)) {
+      unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+      unit.manualSkillCooldowns[action.id] = getManualActionCooldown(unit, action.id);
+    }
     return;
   }
 
@@ -10245,6 +10347,7 @@ function getManualActionCooldown(unit, id) {
     suikaiCorpses: data.corpseEvery,
     suikaiHook: data.hookEvery,
     hurricaneShield: data.shieldEvery,
+    ghoulDevour: data.devourDuration,
     zeusCloud: data.cloudEvery,
     zeusWall: data.columnEvery,
     zeusGate: data.gateEvery,
