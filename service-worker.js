@@ -1,4 +1,4 @@
-const CACHE_NAME = "stick-war-pwa-v88";
+const CACHE_NAME = "stick-war-pwa-v89";
 const APP_SHELL = [
   "./",
   "./index.html",

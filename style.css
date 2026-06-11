@@ -73,71 +73,10 @@ body {
   font-weight: 800;
 }
 
-.home-prompt {
-  width: min(520px, 100%);
-  min-height: 42px;
-  margin: -6px auto 18px;
-  padding: 7px 12px;
-  border: 1px solid rgba(230, 184, 74, 0.42);
-  border-radius: 8px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  color: #ffe3a3;
-  background: linear-gradient(145deg, rgba(12, 15, 15, 0.48), rgba(76, 52, 24, 0.34));
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
-  text-align: center;
-  letter-spacing: 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
-}
-
-.home-prompt span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.home-prompt b {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  display: inline-grid;
-  place-items: center;
-  color: #16140f;
-  background: var(--gold);
-  box-shadow: 0 0 0 2px rgba(22, 20, 15, 0.32);
-  font-size: 13px;
-}
-
-.home-prompt i {
-  height: 1px;
-  display: block;
-  background: linear-gradient(90deg, transparent, rgba(255, 227, 163, 0.78), transparent);
-  position: relative;
-}
-
-.home-prompt i::after {
-  content: "";
-  position: absolute;
-  right: 7px;
-  top: -4px;
-  width: 8px;
-  height: 8px;
-  border-top: 1px solid rgba(255, 227, 163, 0.78);
-  border-right: 1px solid rgba(255, 227, 163, 0.78);
-  transform: rotate(45deg);
-}
-
 .home-title {
   display: grid;
   justify-items: center;
-  margin: 0 auto 24px;
+  margin: 0 auto 18px;
 }
 
 .home-title img {
@@ -161,6 +100,82 @@ body {
   border: 0;
 }
 
+.selection-section {
+  position: relative;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid rgba(230, 184, 74, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(230, 184, 74, 0.1), transparent 26%, transparent 74%, rgba(230, 184, 74, 0.08)),
+    linear-gradient(145deg, rgba(13, 17, 18, 0.58), rgba(58, 39, 22, 0.3));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 190, 0.12),
+    0 16px 30px rgba(0, 0, 0, 0.22);
+}
+
+.selection-section::before,
+.selection-section::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 220, 128, 0.62), transparent);
+  pointer-events: none;
+}
+
+.selection-section::before {
+  top: 0;
+}
+
+.selection-section::after {
+  bottom: 0;
+}
+
+.selection-section.faction-section {
+  margin-bottom: 0;
+}
+
+.selection-label {
+  min-height: 32px;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffe3a3;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+}
+
+.selection-label b {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #17140b;
+  background:
+    radial-gradient(circle at 35% 25%, #fff0b5, var(--gold) 58%, #9b6d1d 100%);
+  box-shadow:
+    0 0 0 2px rgba(18, 15, 10, 0.38),
+    0 0 16px rgba(230, 184, 74, 0.3);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.selection-label span {
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.selection-label small {
+  margin-left: auto;
+  color: rgba(245, 240, 223, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .mode-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -169,6 +184,8 @@ body {
 }
 
 .mode-card {
+  position: relative;
+  overflow: hidden;
   min-height: 88px;
   padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -178,12 +195,38 @@ body {
   justify-items: start;
   gap: 6px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(90deg, rgba(230, 184, 74, 0.12), transparent 38%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(15, 17, 15, 0.58));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 190, 0.12),
+    0 12px 22px rgba(0, 0, 0, 0.18);
+}
+
+.mode-card::before,
+.faction-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-left: 3px solid rgba(230, 184, 74, 0.36);
+  pointer-events: none;
+}
+
+.mode-card > *,
+.faction-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .mode-card.active {
   border-color: rgba(230, 184, 74, 0.9);
-  background: linear-gradient(145deg, rgba(133, 97, 42, 0.8), rgba(36, 31, 24, 0.94));
+  background:
+    linear-gradient(90deg, rgba(255, 215, 114, 0.28), transparent 46%),
+    linear-gradient(145deg, rgba(133, 97, 42, 0.86), rgba(36, 31, 24, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 242, 188, 0.2),
+    0 0 0 1px rgba(230, 184, 74, 0.2),
+    0 14px 26px rgba(0, 0, 0, 0.26);
 }
 
 .mode-card:hover {
@@ -196,6 +239,23 @@ body {
 
 .mode-card small {
   color: rgba(245, 240, 223, 0.76);
+}
+
+@media (max-width: 640px) {
+  .selection-section {
+    padding: 12px;
+  }
+
+  .selection-label {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .selection-label small {
+    width: 100%;
+    margin-left: 36px;
+  }
 }
 
 .campaign-map {
@@ -409,7 +469,14 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.selection-section .mode-options,
+.selection-section .faction-options {
+  margin: 0;
+}
+
 .faction-card {
+  position: relative;
+  overflow: hidden;
   min-height: 230px;
   padding: 22px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -420,28 +487,41 @@ body {
   justify-items: start;
   gap: 8px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 190, 0.11),
+    0 14px 24px rgba(0, 0, 0, 0.18);
 }
 
 .faction-card.order {
-  background: linear-gradient(145deg, rgba(65, 95, 143, 0.78), rgba(18, 27, 40, 0.94));
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.14), transparent 44%),
+    linear-gradient(145deg, rgba(65, 95, 143, 0.78), rgba(18, 27, 40, 0.94));
 }
 
 .faction-card.chaos {
-  background: linear-gradient(145deg, rgba(129, 59, 52, 0.78), rgba(28, 18, 17, 0.94));
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.14), transparent 44%),
+    linear-gradient(145deg, rgba(129, 59, 52, 0.78), rgba(28, 18, 17, 0.94));
 }
 
 .faction-card.undead {
-  background: linear-gradient(145deg, rgba(95, 83, 110, 0.78), rgba(22, 22, 25, 0.94));
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.14), transparent 44%),
+    linear-gradient(145deg, rgba(95, 83, 110, 0.78), rgba(22, 22, 25, 0.94));
 }
 
 .faction-card.element {
-  background: linear-gradient(145deg, rgba(70, 135, 125, 0.78), rgba(35, 43, 31, 0.94));
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.14), transparent 44%),
+    linear-gradient(145deg, rgba(70, 135, 125, 0.78), rgba(35, 43, 31, 0.94));
 }
 
 .faction-card:hover {
   border-color: rgba(230, 184, 74, 0.8);
   transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 190, 0.16),
+    0 18px 30px rgba(0, 0, 0, 0.26);
 }
 
 .faction-card strong {
