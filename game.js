@@ -561,6 +561,19 @@ const UNIT = {
     train: 4.2,
     cooldown: 1.15,
   },
+  scimitarWarrior: {
+    name: "弯刀兵",
+    cost: 190,
+    hp: 400,
+    damage: 16,
+    range: 38,
+    speed: 38,
+    train: 5.6,
+    cooldown: 1.3,
+    roarCooldown: 15,
+    roarRadius: 225,
+    roarStun: 3,
+  },
   javelinThrower: {
     name: "投矛手",
     cost: 120,
@@ -1090,7 +1103,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1140,6 +1153,7 @@ const UNIT_ICON = {
   bomber: "bomb",
   orc: "claws",
   berserkOrc: "axe",
+  scimitarWarrior: "machete",
   javelinThrower: "spear",
   goblinVulture: "wing",
   griffinBomber: "bomb",
@@ -1182,7 +1196,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1206,7 +1220,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "orc", "berserkOrc", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1708,6 +1722,7 @@ function formatSpecial(type) {
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
+  if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
@@ -2450,6 +2465,7 @@ function spawnUnit(type, side, x) {
     rocketReloadTimer: 0,
     rocketFireTimer: 0,
     griffinAmmo: data.ammo ?? 0,
+    scimitarRoarTimer: data.roarCooldown ?? 0,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -3824,6 +3840,7 @@ function chooseEnemyUnit(affordable) {
     creeper: 1.1,
     orc: 0.95,
     berserkOrc: 0.8,
+    scimitarWarrior: 0.58,
     javelinThrower: 0.78,
     goblinVulture: 0.62,
     griffinBomber: 0.32,
@@ -4018,6 +4035,7 @@ function updateUnits(dt) {
     unit.fearTimer = Math.max(0, (unit.fearTimer ?? 0) - dt);
     if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
+    unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -4100,6 +4118,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "reaper") {
       updateReaper(unit);
+    }
+    if (unit.type === "scimitarWarrior") {
+      updateScimitarWarrior(unit);
     }
     if (unit.type === "griffinBomber") {
       updateGriffinBomber(unit, dt);
@@ -7363,6 +7384,30 @@ function updateReaper(unit) {
   }
 }
 
+function updateScimitarWarrior(unit) {
+  if (unit.side !== "enemy" || unit.scimitarRoarTimer > 0) return;
+  const data = UNIT.scimitarWarrior;
+  const enemies = getUnitsInRadius(unit.x, data.roarRadius, unit.side, Infinity);
+  if (!enemies.length) return;
+  castScimitarRoar(unit);
+}
+
+function castScimitarRoar(unit) {
+  const data = UNIT.scimitarWarrior;
+  if ((unit.scimitarRoarTimer ?? 0) > 0) return false;
+  const enemies = getUnitsInRadius(unit.x, data.roarRadius, unit.side, Infinity);
+  if (!enemies.length) {
+    popText(unit.x, unit.y - 112, "范围内没有敌人", "#d9d0b8");
+    return false;
+  }
+  enemies.forEach((enemy) => applyStun(enemy, data.roarStun));
+  unit.scimitarRoarTimer = data.roarCooldown;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.55);
+  state.blasts.push({ x: unit.x, y: unit.y - 45, radius: data.roarRadius, life: 0.38, duration: 0.38, color: "#d7b978" });
+  popText(unit.x, unit.y - 124, "战吼", "#d7b978");
+  return true;
+}
+
 function updateGriffinBomber(unit, dt) {
   const data = UNIT.griffinBomber;
   const dir = unit.side === "player" ? 1 : -1;
@@ -9383,6 +9428,7 @@ function getUnitColor(unit) {
   if (type === "largeCreeper") return "#6fcf59";
   if (type === "orc") return "#7faa5c";
   if (type === "berserkOrc") return "#8d6a48";
+  if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
   if (type === "undead") return "#b8b0a5";
@@ -9430,6 +9476,7 @@ function getHeadColor(unit) {
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "orc") return "#b8d68a";
   if (unit.type === "berserkOrc") return "#c8a36f";
+  if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
   if (unit.type === "griffinBomber") return "#e0b36d";
@@ -9974,6 +10021,30 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(50, -36);
     ctx.lineTo(34, -43);
     ctx.closePath();
+    ctx.fill();
+  } else if (type === "scimitarWarrior") {
+    ctx.fillStyle = "#4e463a";
+    ctx.strokeStyle = "#211c18";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-4, -55);
+    ctx.lineTo(23, -48);
+    ctx.lineTo(20, -18);
+    ctx.lineTo(-8, -25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#252024";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -30);
+    ctx.quadraticCurveTo(42, -68, 68, -49);
+    ctx.stroke();
+    ctx.fillStyle = "#8a7a88";
+    ctx.beginPath();
+    ctx.moveTo(55, -56);
+    ctx.quadraticCurveTo(76, -55, 73, -35);
+    ctx.quadraticCurveTo(64, -45, 55, -56);
     ctx.fill();
   } else if (type === "creeper" || type === "largeCreeper" || type === "ghoul") {
     ctx.strokeStyle = "#c7b08f";
@@ -10918,6 +10989,9 @@ function getManualActions(unit) {
     case "reaper":
       add("reaperStealth", "隐形", "direct");
       break;
+    case "scimitarWarrior":
+      add("scimitarRoar", "战吼", "direct");
+      break;
     case "archmage":
       add("chainLightning", "链雷", "target");
       add("archFireballs", "火球雨", "direct");
@@ -10949,6 +11023,7 @@ function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
   if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
+  if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -11047,6 +11122,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
+  if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -11071,6 +11147,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "reaperStealth") {
     activateReaperStealth(unit);
+    return;
+  }
+  if (action.id === "scimitarRoar") {
+    castScimitarRoar(unit);
     return;
   }
   if (action.id === "waterSacrifice") {
