@@ -578,6 +578,23 @@ const UNIT = {
     mineBlastRadius: 72,
     burrowReduction: 0.9,
   },
+  goblinExpert: {
+    name: "地精专家",
+    cost: 160,
+    hp: 140,
+    damage: 0,
+    range: 0,
+    speed: 46,
+    train: 5.2,
+    cooldown: 1,
+    armorEvery: 16,
+    armorRange: 625,
+    armorLimit: 5,
+    armorStepReduction: 0.25,
+    armorMaxReduction: 0.5,
+    heavyArmorReduction: 0.9,
+    heavyArmorDuration: 15,
+  },
   scimitarWarrior: {
     name: "弯刀兵",
     cost: 190,
@@ -1120,7 +1137,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1171,6 +1188,7 @@ const UNIT_ICON = {
   orc: "claws",
   berserkOrc: "axe",
   goblin: "miner",
+  goblinExpert: "miner",
   scimitarWarrior: "machete",
   javelinThrower: "spear",
   goblinVulture: "wing",
@@ -1214,7 +1232,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1238,7 +1256,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "goblinExpert", "orc", "berserkOrc", "scimitarWarrior", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1741,6 +1759,7 @@ function formatSpecial(type) {
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
   if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
+  if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，每次 +${Math.round(data.armorStepReduction * 100)}% 减伤，最高中型护甲 ${Math.round(data.armorMaxReduction * 100)}%；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
@@ -2490,6 +2509,10 @@ function spawnUnit(type, side, x) {
     goblinPlantTimer: 0,
     goblinMineAmmo: data.mineAmmo ?? 0,
     goblinBurrowed: false,
+    goblinExpertArmorTimer: data.armorEvery ?? 0,
+    armorReduction: 0,
+    heavyArmorTimer: 0,
+    heavyArmorReduction: 0,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -3864,6 +3887,7 @@ function chooseEnemyUnit(affordable) {
     hurricane: 0.55,
     creeper: 1.1,
     goblin: 0.72,
+    goblinExpert: 0.48,
     orc: 0.95,
     berserkOrc: 0.8,
     scimitarWarrior: 0.58,
@@ -4063,6 +4087,9 @@ function updateUnits(dt) {
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
+    unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
+    unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
+    if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -4086,6 +4113,9 @@ function updateUnits(dt) {
     if (unit.type === "goblin" && updateGoblin(unit, dt)) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
+    }
+    if (unit.type === "goblinExpert") {
+      updateGoblinExpert(unit);
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -6088,7 +6118,7 @@ function getAttackLaneTolerance(unit) {
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
   if (isReaperStealthed(unit)) return null;
-  if (unit.type === "goblin") return null;
+  if (unit.type === "goblin" || unit.type === "goblinExpert") return null;
   if (UNIT[unit.type]?.statueOnly) {
     return {
       kind: "statue",
@@ -7488,6 +7518,56 @@ function toggleGoblinBurrow(unit) {
   return true;
 }
 
+function canReceiveGoblinExpertArmor(source, ally) {
+  return ally &&
+    ally.side === source.side &&
+    ally.hp > 0 &&
+    ally.id !== source.id &&
+    ally.type !== "goblinExpert" &&
+    !isUnitHidden(ally) &&
+    !UNIT[ally.type]?.untargetable;
+}
+
+function updateGoblinExpert(unit) {
+  const data = UNIT.goblinExpert;
+  if (unit.goblinExpertArmorTimer > 0) return;
+  const targets = state.units
+    .filter((ally) => canReceiveGoblinExpertArmor(unit, ally))
+    .filter((ally) => Math.abs(ally.x - unit.x) <= data.armorRange && (ally.armorReduction ?? 0) < data.armorMaxReduction)
+    .sort((a, b) => (a.armorReduction ?? 0) - (b.armorReduction ?? 0) || Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
+    .slice(0, data.armorLimit);
+  if (!targets.length) {
+    unit.goblinExpertArmorTimer = 2;
+    return;
+  }
+  targets.forEach((target) => applyGoblinExpertArmor(unit, target));
+  unit.goblinExpertArmorTimer = data.armorEvery;
+}
+
+function applyGoblinExpertArmor(source, target) {
+  const data = UNIT.goblinExpert;
+  target.armorReduction = Math.min(data.armorMaxReduction, (target.armorReduction ?? 0) + data.armorStepReduction);
+  popText(target.x, target.y - 108, target.armorReduction >= data.armorMaxReduction ? "中型护甲" : "护甲", "#b7d38a");
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 34, life: 0.28, duration: 0.28, color: "#b7d38a" });
+}
+
+function castGoblinExpertHeavyArmor(unit, target) {
+  const data = UNIT.goblinExpert;
+  if (!canReceiveGoblinExpertArmor(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法穿甲", "#d9d0b8");
+    return false;
+  }
+  if (Math.abs(target.x - unit.x) > data.armorRange) {
+    popText(unit.x, unit.y - 116, "距离太远", "#d9d0b8");
+    return false;
+  }
+  target.heavyArmorTimer = data.heavyArmorDuration;
+  target.heavyArmorReduction = data.heavyArmorReduction;
+  popText(target.x, target.y - 116, "重型护甲", "#ffce7a");
+  state.blasts.push({ x: target.x, y: target.y - 45, radius: 52, life: 0.42, duration: 0.42, color: "#ffce7a" });
+  return true;
+}
+
 function updateGriffinBomber(unit, dt) {
   const data = UNIT.griffinBomber;
   const dir = unit.side === "player" ? 1 : -1;
@@ -7880,6 +7960,10 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (target.type === "goblin" && target.goblinBurrowed) {
     damage *= 1 - (UNIT.goblin.burrowReduction ?? 0.9);
+  }
+  const armorReduction = Math.max(target.armorReduction ?? 0, target.heavyArmorTimer > 0 ? target.heavyArmorReduction ?? 0 : 0);
+  if (armorReduction > 0) {
+    damage *= 1 - armorReduction;
   }
   if (activeCampaign?.enemySpartanDamageReduction && target.side === "enemy" && target.type === "spartan") {
     damage *= 1 - activeCampaign.enemySpartanDamageReduction;
@@ -9552,6 +9636,7 @@ function getUnitColor(unit) {
   if (type === "orc") return "#7faa5c";
   if (type === "berserkOrc") return "#8d6a48";
   if (type === "goblin") return unit.goblinBurrowed ? "#5d5648" : "#9abf62";
+  if (type === "goblinExpert") return "#7d9f6a";
   if (type === "scimitarWarrior") return "#6f5d48";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
@@ -9601,6 +9686,7 @@ function getHeadColor(unit) {
   if (unit.type === "orc") return "#b8d68a";
   if (unit.type === "berserkOrc") return "#c8a36f";
   if (unit.type === "goblin") return unit.goblinBurrowed ? "#7a705f" : "#cde69b";
+  if (unit.type === "goblinExpert") return "#d8e8a8";
   if (unit.type === "scimitarWarrior") return "#d0b078";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
@@ -10176,6 +10262,26 @@ function drawWeapon(type, unit = null) {
         ctx.stroke();
       }
     }
+  } else if (type === "goblinExpert") {
+    ctx.strokeStyle = "#3d4d2b";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(12, -30);
+    ctx.lineTo(36, -45);
+    ctx.stroke();
+    ctx.fillStyle = "#b7d38a";
+    ctx.strokeStyle = "#2f3a32";
+    ctx.lineWidth = 2;
+    [-14, -2, 10].forEach((x, index) => {
+      ctx.beginPath();
+      ctx.roundRect(x, -35 - index * 4, 10, 13, 3);
+      ctx.fill();
+      ctx.stroke();
+    });
+    ctx.strokeStyle = "#ffce7a";
+    ctx.beginPath();
+    ctx.arc(38, -47, 8, 0, Math.PI * 2);
+    ctx.stroke();
   } else if (type === "scimitarWarrior") {
     ctx.fillStyle = "#4e463a";
     ctx.strokeStyle = "#211c18";
@@ -10589,6 +10695,11 @@ function drawUnitHp(unit) {
   if (unit.maxShieldHp > 0 && unit.shieldHp > 0) {
     ctx.fillStyle = "#9fc0ff";
     ctx.fillRect(-19, -93, 38 * (unit.shieldHp / unit.maxShieldHp), 4);
+  }
+  if ((unit.armorReduction ?? 0) > 0 || unit.heavyArmorTimer > 0) {
+    const reduction = Math.max(unit.armorReduction ?? 0, unit.heavyArmorTimer > 0 ? unit.heavyArmorReduction ?? 0 : 0);
+    ctx.fillStyle = unit.heavyArmorTimer > 0 ? "#ffce7a" : "#b7d38a";
+    ctx.fillRect(-19, -99, 38 * Math.min(1, reduction), 4);
   }
 
   if (unit.poisonTimer > 0) {
@@ -11141,6 +11252,10 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("goblinBurrow", unit.goblinBurrowed ? "钻出" : "遁地", "direct");
       break;
+    case "goblinExpert":
+      actions[0].label = "待命";
+      add("goblinHeavyArmor", "重甲", "target");
+      break;
     case "candlelight":
       add("toggleCandleForm", unit.candleForm === "fire" ? "冰矩" : "火焰", "direct");
       break;
@@ -11336,7 +11451,7 @@ function executeManualAction(unit, action, point) {
     return;
   }
 
-  const target = action.mode === "target" ? getManualTargetAt(unit, point) : makeManualPointTarget(point);
+  const target = action.mode === "target" ? getManualTargetAt(unit, point, action.id) : makeManualPointTarget(point);
   if (action.mode === "target" && !target) {
     popText(unit.x, unit.y - 116, "没有可用目标", "#d9d0b8");
     return;
@@ -11352,8 +11467,8 @@ function executeManualAction(unit, action, point) {
 }
 
 function manualUnitAttack(unit) {
-  if (unit.type === "goblin") {
-    popText(unit.x, unit.y - 116, "地精没有普攻", "#d9d0b8");
+  if (unit.type === "goblin" || unit.type === "goblinExpert") {
+    popText(unit.x, unit.y - 116, `${UNIT[unit.type].name}没有普攻`, "#d9d0b8");
     return;
   }
   const range = Math.max(getUnitRange(unit), 70);
@@ -11376,7 +11491,19 @@ function findManualAttackTarget(unit, range) {
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
 
-function getManualTargetAt(unit, point) {
+function isAllyManualTargetAction(id) {
+  return id === "goblinHeavyArmor";
+}
+
+function getManualTargetAt(unit, point, actionId = null) {
+  if (isAllyManualTargetAction(actionId)) {
+    const clickedAlly = findUnitAt(point);
+    if (clickedAlly && canReceiveGoblinExpertArmor(unit, clickedAlly)) return clickedAlly;
+    return state.units
+      .filter((target) => canReceiveGoblinExpertArmor(unit, target))
+      .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
+      .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
+  }
   const clicked = findUnitAt(point);
   if (clicked && clicked.side !== unit.side && clicked.hp > 0 && canTarget(unit, clicked)) return clicked;
   return state.units
@@ -11547,6 +11674,7 @@ function getManualActionCooldown(unit, id) {
     zeusGate: data.gateEvery,
     archFireballs: data.fireballEvery,
     berserkerRage: data.rageEvery,
+    goblinHeavyArmor: UNIT.goblinExpert.heavyArmorDuration,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -11666,6 +11794,8 @@ function castManualSkill(unit, id, target) {
       unit.berserkerRageTimer = 0;
       updateBerserker(unit, 0);
       return true;
+    case "goblinHeavyArmor":
+      return castGoblinExpertHeavyArmor(unit, target);
     default:
       return false;
   }
