@@ -200,24 +200,27 @@ const UNIT = {
   },
   ironCavalry: {
     name: "铁骑兵",
-    cost: 320,
+    cost: 240,
     hp: 420,
     damage: 24,
-    range: 550,
-    speed: 85,
+    range: 600,
+    speed: 35,
     train: 7,
     cooldown: 2,
     spearDamage: 24,
     spearRange: 48,
     spearCooldown: 2,
     musketDamage: 20,
-    musketRange: 550,
-    musketCooldown: 1,
+    musketRange: 600,
+    musketCooldown: 2,
     bombDamage: 50,
     bombRange: 150,
     bombSplash: 70,
     bombLimit: 5,
-    bombCooldown: 1.2,
+    bombCooldown: 6,
+    chargeCooldown: 15,
+    chargeDuration: 8,
+    chargeSpeed: 80,
   },
   goldenSpartan: {
     name: "黄金斯巴达",
@@ -1606,7 +1609,7 @@ function formatSpecial(type) {
   if (data.antiAir) notes.push("近战可攻击空中");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
-  if (type === "ironCavalry") notes.push(`冲锋单位；${data.musketRange} 距离内边推进边用火枪 ${data.musketDamage} 伤害/秒，${data.bombRange} 距离内对每个目标先扔一次炸弹 ${data.bombDamage} 范围伤害，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
+  if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
@@ -2315,6 +2318,9 @@ function spawnUnit(type, side, x) {
     goldenSpearThrown: false,
     spearRecoverTimer: 0,
     ironCavalryBombedTargetId: null,
+    ironCavalryChargeTimer: 0,
+    ironCavalryChargeCooldown: 0,
+    ironCavalryBombCooldown: 0,
     initialClonesReleased: false,
     controlledTargetId: null,
     controlledBy: null,
@@ -4945,32 +4951,59 @@ function isUndeadEmpireUnit(type) {
 
 function updateIronCavalry(unit, dt) {
   const data = UNIT.ironCavalry;
+  unit.ironCavalryChargeTimer = Math.max(0, (unit.ironCavalryChargeTimer ?? 0) - dt);
+  unit.ironCavalryChargeCooldown = Math.max(0, (unit.ironCavalryChargeCooldown ?? 0) - dt);
+  unit.ironCavalryBombCooldown = Math.max(0, (unit.ironCavalryBombCooldown ?? 0) - dt);
+
   const target = isPlayerRetreating(unit) ? null : findTarget(unit);
   if (!target) {
     unit.ironCavalryBombedTargetId = null;
-    moveUnitTowardPoint(unit, getDefaultAdvanceX(unit), unit.y, data.speed, dt, 5);
+    moveUnitTowardPoint(unit, getDefaultAdvanceX(unit), unit.y, getIronCavalryMoveSpeed(unit), dt, 5);
     return;
   }
 
   const distance = Math.abs(unit.x - target.x);
+  if (unit.ironCavalryChargeTimer <= 0 && unit.ironCavalryChargeCooldown <= 0 && distance <= data.musketRange) {
+    beginIronCavalryCharge(unit);
+  }
   if (target.kind !== "statue" && distance > data.musketRange + 80) {
     unit.ironCavalryBombedTargetId = null;
   }
 
-  if (unit.cooldown <= 0 && distance <= data.musketRange) {
+  if (unit.cooldown <= 0 && distance <= getIronCavalryAttackRange(unit)) {
     attackIronCavalry(unit, target, distance);
   }
 
   if (target.kind === "statue") {
     const desiredX = unit.side === "player" ? target.x - data.spearRange + 8 : target.x + data.spearRange - 8;
-    moveUnitTowardPoint(unit, desiredX, unit.y, data.speed, dt, 5);
+    moveUnitTowardPoint(unit, desiredX, unit.y, getIronCavalryMoveSpeed(unit), dt, 5);
     return;
   }
 
   if (distance > data.spearRange) {
     const desiredX = unit.side === "player" ? target.x - data.spearRange + 8 : target.x + data.spearRange - 8;
-    moveUnitTowardPoint(unit, desiredX, target.y ?? unit.y, data.speed, dt, 5);
+    moveUnitTowardPoint(unit, desiredX, target.y ?? unit.y, getIronCavalryMoveSpeed(unit), dt, 5);
   }
+}
+
+function isIronCavalryCharging(unit) {
+  return (unit.ironCavalryChargeTimer ?? 0) > 0;
+}
+
+function beginIronCavalryCharge(unit) {
+  const data = UNIT.ironCavalry;
+  unit.ironCavalryChargeTimer = data.chargeDuration;
+  unit.ironCavalryChargeCooldown = data.chargeCooldown + data.chargeDuration;
+  unit.ironCavalryBombedTargetId = null;
+  popText(unit.x, unit.y - 116, "铁骑冲刺", "#dbe8ff");
+}
+
+function getIronCavalryMoveSpeed(unit) {
+  return isIronCavalryCharging(unit) ? UNIT.ironCavalry.chargeSpeed : UNIT.ironCavalry.speed;
+}
+
+function getIronCavalryAttackRange(unit) {
+  return isIronCavalryCharging(unit) ? UNIT.ironCavalry.musketRange : UNIT.ironCavalry.spearRange;
 }
 
 function getDefaultAdvanceX(unit) {
@@ -4999,13 +5032,21 @@ function attackIronCavalry(unit, target, distance) {
     return;
   }
 
-  if (target.kind !== "statue" && distance <= data.bombRange && unit.ironCavalryBombedTargetId !== target.id) {
+  if (
+    isIronCavalryCharging(unit)
+    && target.kind !== "statue"
+    && distance <= data.bombRange
+    && unit.ironCavalryBombCooldown <= 0
+    && unit.ironCavalryBombedTargetId !== target.id
+  ) {
     unit.ironCavalryBombedTargetId = target.id;
     throwIronCavalryBomb(unit, target);
     unit.cooldown = data.bombCooldown;
+    unit.ironCavalryBombCooldown = data.bombCooldown;
     return;
   }
 
+  if (!isIronCavalryCharging(unit)) return;
   fireIronCavalryMusket(unit, target);
   unit.cooldown = data.musketCooldown;
 }
