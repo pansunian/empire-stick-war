@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v82";
+const CACHE_NAME = "stick-war-pwa-v83";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260611-chaos-goblin-expert-armor-priority",
+  "./game.js?v=20260611-chaos-minotaur",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/factions/order-crest.png",
