@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v72";
+const CACHE_NAME = "stick-war-pwa-v73";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260611-ghoul-balance",
+  "./game.js?v=20260611-undead-catapult",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/factions/order-crest.png",

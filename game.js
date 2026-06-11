@@ -365,6 +365,22 @@ const UNIT = {
     arrowLife: 1.35,
     blindSpot: 80,
   },
+  undeadCatapult: {
+    name: "亡灵投石车",
+    cost: 320,
+    hp: 500,
+    damage: 40,
+    range: 580,
+    speed: 30,
+    train: 7,
+    cooldown: 4,
+    blindSpot: 85,
+    splash: 58,
+    aoeLimit: 3,
+    groundFireDuration: 8,
+    groundFireDps: 3,
+    groundFireRadius: 62,
+  },
   creeper: {
     name: "爬行者",
     cost: 45,
@@ -970,7 +986,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    roster: ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
     startingUnits: ["miner", "machete", "undead", "ghoul"],
     mineColor: "#b8b0a5",
   },
@@ -1001,6 +1017,7 @@ const UNIT_ICON = {
   catapult: "earth",
   enslavedGiant: "earth",
   rocketCart: "bomb-crossbow",
+  undeadCatapult: "skull",
   creeper: "claws",
   undead: "zombie-head",
   ghoul: "claws",
@@ -1048,7 +1065,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "bomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1065,14 +1082,14 @@ const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
 const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
-const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "boneGiant"]);
+const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart", "rocketCart"],
   chaos: ["machete", "creeper", "undead", "deadCorpse", "poisonZombie", "bomber", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant", "chaosGiant"],
-  undeadEmpire: ["machete", "undead", "ghoul", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1594,6 +1611,7 @@ function formatSpecial(type) {
   if (type === "superGiant") notes.push("只攻击基地，击杀后通关");
   if (data.shieldHp) notes.push(`大盾 ${data.shieldHp} 生命，先承受伤害`);
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
+  if (type === "undeadCatapult") notes.push(`攻击后留下地火 ${data.groundFireDuration}秒，每秒 ${data.groundFireDps} 伤害`);
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
   if (type === "crossbow") notes.push(`每秒发射一箭造成 ${data.damage} 伤害，并绑定炸弹；${data.bombDelay}秒后爆炸造成 ${data.splashDamage} 范围伤害，最多 ${data.bombLimit} 个敌人`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
@@ -1682,6 +1700,7 @@ function newGame() {
     stormClouds: [],
     tornadoes: [],
     electricColumns: [],
+    groundFires: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -2315,6 +2334,7 @@ function spawnUnit(type, side, x) {
     graveGhostTimer: data.ghostEvery ?? 0,
     devourTargetCorpseId: null,
     devourTimer: 0,
+    siegeBlindTargetId: null,
     fearTimer: 0,
     fearDamageMultiplier: 1,
     hero: Boolean(data.hero),
@@ -2861,6 +2881,7 @@ function update(dt) {
   updateStormClouds(dt);
   updateTornadoes(dt);
   updateElectricWalls(dt);
+  updateGroundFires(dt);
   updateIceFieldEffects(dt);
   updateParticles(dt);
   removeDead();
@@ -3965,6 +3986,7 @@ function updateUnits(dt) {
     }
 
     const target = isPlayerRetreating(unit) ? null : findTarget(unit);
+    updateSiegeBlindTarget(unit, target);
     const statueTarget = getForcedStatueTarget(unit, target);
     const activeTarget = statueTarget ?? target;
     const desiredX = getDesiredX(unit, activeTarget);
@@ -5660,9 +5682,32 @@ function isInsideBlindSpot(unit, target) {
   return Math.abs(unit.x - target.x) <= blindSpot;
 }
 
+function isSiegeUnit(unit) {
+  return unit?.type === "catapult" || unit?.type === "rocketCart" || unit?.type === "undeadCatapult";
+}
+
+function updateSiegeBlindTarget(unit, target) {
+  if (!isSiegeUnit(unit)) return;
+  if (unit.siegeBlindTargetId) {
+    const ignored = state.units.find((candidate) => candidate.id === unit.siegeBlindTargetId && candidate.hp > 0);
+    if (!ignored || Math.abs(unit.x - ignored.x) > getUnitRange(unit)) {
+      unit.siegeBlindTargetId = null;
+    }
+  }
+  if (target?.kind !== "statue" && isInsideBlindSpot(unit, target)) {
+    unit.siegeBlindTargetId = target.id;
+  }
+}
+
+function isIgnoringBlindTarget(unit, target) {
+  if (!isSiegeUnit(unit) || !target?.id || unit.siegeBlindTargetId !== target.id) return false;
+  return Math.abs(unit.x - target.x) <= getUnitRange(unit);
+}
+
 function canAttackFromDistance(unit, target, range) {
   if (!target) return false;
   if (isInsideBlindSpot(unit, target)) return false;
+  if (isIgnoringBlindTarget(unit, target)) return false;
   if (target.kind !== "statue" && Math.abs((target.y ?? unit.y) - unit.y) > getAttackLaneTolerance(unit)) return false;
   return Math.abs(unit.x - target.x) <= range;
 }
@@ -5859,7 +5904,7 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "catapult" || unit.type === "enslavedGiant") {
+  if (unit.type === "catapult" || unit.type === "enslavedGiant" || unit.type === "undeadCatapult") {
     throwBoulder(unit, target);
     return;
   }
@@ -6397,11 +6442,14 @@ function throwBoulder(unit, target) {
     stun: data.stunDuration,
     splash: data.splash,
     aoeLimit: data.aoeLimit,
+    groundFireDuration: data.groundFireDuration,
+    groundFireDps: data.groundFireDps,
+    groundFireRadius: data.groundFireRadius,
     target,
     life: 0.8,
     type: "boulder",
   });
-  popText(unit.x, unit.y - 138, "投石", "#c0a36d");
+  popText(unit.x, unit.y - 138, unit.type === "undeadCatapult" ? "鬼火投石" : "投石", unit.type === "undeadCatapult" ? "#ff8a3d" : "#c0a36d");
 }
 
 function launchRocketVolley(unit, target) {
@@ -6679,7 +6727,24 @@ function explodeBoulder(arrow) {
     handleDamageDealt(getArrowSource(arrow), target, dealt);
     if (arrow.stun) applyStun(target, arrow.stun);
   });
+  if (arrow.groundFireDuration) {
+    createGroundFire(arrow.tx, arrow.ty + 18, arrow.side, arrow.groundFireDps, arrow.groundFireDuration, arrow.groundFireRadius ?? arrow.splash);
+  }
   state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: "#c0a36d" });
+}
+
+function createGroundFire(x, y, side, dps, duration, radius) {
+  state.groundFires.push({
+    x,
+    y: Math.max(FIELD.ground - 150, Math.min(FIELD.ground + 130, y)),
+    side,
+    dps,
+    radius,
+    life: duration,
+    duration,
+    tick: 1,
+  });
+  popText(x, y - 34, "地火", "#ff8a3d");
 }
 
 function explodeRocketArrow(arrow) {
@@ -6938,6 +7003,25 @@ function updateElectricWalls(dt) {
     }
   }
   state.electricColumns = state.electricColumns.filter((wall) => wall.life > 0);
+}
+
+function updateGroundFires(dt) {
+  for (const fire of state.groundFires) {
+    fire.life -= dt;
+    fire.tick -= dt;
+    while (fire.tick <= 0 && fire.life > 0) {
+      fire.tick += 1;
+      damageGroundFire(fire);
+    }
+  }
+  state.groundFires = state.groundFires.filter((fire) => fire.life > 0);
+}
+
+function damageGroundFire(fire) {
+  getUnitsInRadius(fire.x, fire.radius, fire.side, Infinity).forEach((unit) => {
+    if (Math.abs((unit.y ?? FIELD.ground) - fire.y) > fire.radius) return;
+    applyUnitDamage(unit, fire.dps, { label: "地火", color: "#ff8a3d", yOffset: -96 });
+  });
 }
 
 function strikeElectricWall(wall) {
@@ -7458,6 +7542,7 @@ function startCampaignSecondPhase() {
   state.delayedSpells = [];
   state.tornadoes = [];
   state.iceFields = [];
+  state.groundFires = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
     const unit = spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
@@ -7540,6 +7625,7 @@ function draw() {
   drawGround();
   drawCampaignMagmaGround();
   drawIceRoadGround();
+  state.groundFires.forEach(drawGroundFire);
   state.corpses.forEach(drawCorpse);
   if (isGoldRushActive()) {
     drawGoldRushMines();
@@ -7766,6 +7852,33 @@ function drawCampaignMagmaGround() {
   ctx.restore();
 }
 
+function drawGroundFire(fire) {
+  const alpha = Math.max(0.18, Math.min(0.72, fire.life / fire.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(fire.x, fire.y);
+  const pulse = 1 + Math.sin(performance.now() / 120 + fire.x) * 0.08;
+  const radius = fire.radius * pulse;
+  const gradient = ctx.createRadialGradient(0, 0, 8, 0, 0, radius);
+  gradient.addColorStop(0, "rgba(255, 210, 92, 0.78)");
+  gradient.addColorStop(0.4, "rgba(255, 104, 45, 0.5)");
+  gradient.addColorStop(1, "rgba(110, 28, 16, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius, radius * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 198, 86, 0.6)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i += 1) {
+    const offset = (i - 1.5) * radius * 0.28;
+    ctx.beginPath();
+    ctx.moveTo(offset - 10, -4);
+    ctx.quadraticCurveTo(offset, -20 - Math.sin(performance.now() / 150 + i) * 6, offset + 12, -6);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawMine(mine, side) {
   const x = typeof mine === "number" ? mine : mine.x;
   const y = typeof mine === "number" ? FIELD.ground : mine.y;
@@ -7970,7 +8083,7 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
-  if (unit.type === "catapult") {
+  if (unit.type === "catapult" || unit.type === "undeadCatapult") {
     drawCatapultUnit(unit);
     ctx.restore();
     return;
@@ -8576,6 +8689,7 @@ function getUnitColor(unit) {
   if (unit.type === "archmage") return "#4c55b8";
   if (unit.type === "monk") return "#d8d0b2";
   if (unit.type === "catapult") return "#8b6f46";
+  if (unit.type === "undeadCatapult") return "#4a3f4f";
   if (unit.type === "enslavedGiant") return "#8b6f46";
   const type = unit.type;
   if (type === "creeper") return "#9ee06b";
@@ -8628,6 +8742,7 @@ function getHeadColor(unit) {
   if (unit.type === "archon") return "#dbe8ff";
   if (unit.type === "monk") return "#fff4d0";
   if (unit.type === "catapult") return "#c0a36d";
+  if (unit.type === "undeadCatapult") return "#d8c8e8";
   if (unit.type === "enslavedGiant") return "#c0a36d";
   if (unit.type === "undeadMage") return "#d8c8e8";
   if (unit.type === "suikai") return "#ece1ff";
@@ -11051,7 +11166,7 @@ function canMedusaSlay(medusa, target) {
   if (UNIT[target.type]?.slayImmune) return false;
   if (isHeroUnit(target)) return false;
   if (UNIT[target.type]?.giant) return false;
-  if (target.type === "catapult" || target.type === "rocketCart") return false;
+  if (isSiegeUnit(target)) return false;
   return true;
 }
 
@@ -11078,7 +11193,7 @@ function isControlImmune(unit) {
 }
 
 function isSiegeControlImmune(unit) {
-  return unit?.type === "catapult" || unit?.type === "rocketCart";
+  return isSiegeUnit(unit);
 }
 
 function beginMedusaSlay(medusa) {
