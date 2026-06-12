@@ -628,6 +628,21 @@ const UNIT = {
     heavyArmorReduction: 0.9,
     heavyArmorDuration: 15,
   },
+  arrowShieldCart: {
+    name: "遮箭车",
+    cost: 260,
+    hp: 200,
+    damage: 0,
+    range: 0,
+    speed: 30,
+    train: 6,
+    cooldown: 1,
+    arrowBoardHp: 700,
+    arrowBoardWidth: 174,
+    arrowBoardHeight: 72,
+    arrowBoardYOffset: 96,
+    arrowBoardProtectPadding: 36,
+  },
   shaman: {
     name: "萨满",
     cost: 150,
@@ -1265,7 +1280,7 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner"],
     startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
@@ -1319,6 +1334,7 @@ const UNIT_ICON = {
   berserkOrc: "axe",
   goblin: "miner",
   goblinExpert: "miner",
+  arrowShieldCart: "spartan",
   shaman: "wizard-hat",
   priest: "skull",
   apeMan: "claws",
@@ -1368,7 +1384,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1392,7 +1408,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -2578,6 +2594,8 @@ function spawnUnit(type, side, x) {
     maxHp: data.hp,
     shieldHp: data.shieldHp ?? 0,
     maxShieldHp: data.shieldHp ?? 0,
+    arrowBoardHp: data.arrowBoardHp ?? 0,
+    maxArrowBoardHp: data.arrowBoardHp ?? 0,
     cooldown: 0,
     mineTimer: 0,
     mineSlotId: null,
@@ -4054,6 +4072,7 @@ function chooseEnemyUnit(affordable) {
     creeper: 1.1,
     goblin: 0.72,
     goblinExpert: 0.48,
+    arrowShieldCart: 0.34,
     shaman: 0.46,
     priest: 0.52,
     orc: 0.95,
@@ -7355,10 +7374,111 @@ function applyStun(target, duration) {
   popText(target.x, target.y - 92, "眩晕", "#d7b978");
 }
 
+function getArrowDuration(arrow) {
+  return arrow.duration ?? (arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55);
+}
+
+function getArrowArcHeight(arrow) {
+  if (arrow.type === "campaignRain") return 0;
+  if (arrow.type === "boulder") return 70;
+  if (arrow.type === "rocketVolley") return 52;
+  return 34;
+}
+
+function getArrowPosition(arrow, life = arrow.life) {
+  const duration = getArrowDuration(arrow);
+  const t = Math.max(0, Math.min(1, 1 - life / duration));
+  return {
+    x: arrow.x + (arrow.tx - arrow.x) * t,
+    y: arrow.y + (arrow.ty - arrow.y) * t - Math.sin(t * Math.PI) * getArrowArcHeight(arrow),
+  };
+}
+
+function isArrowShieldBlockable(arrow) {
+  if (!arrow.target || arrow.target.kind === "statue") return false;
+  if (arrow.type === "boulder" || arrow.type === "campaignMissile" || arrow.type === "campaignRain" || arrow.type === "ironCavalryBomb" || arrow.type === "griffinBomb") return false;
+  return true;
+}
+
+function getArrowBoardRect(cart) {
+  const data = UNIT.arrowShieldCart;
+  const width = data.arrowBoardWidth;
+  const height = data.arrowBoardHeight;
+  const centerY = cart.y - data.arrowBoardYOffset;
+  return {
+    x1: cart.x - width / 2,
+    x2: cart.x + width / 2,
+    y1: centerY - height / 2,
+    y2: centerY + height / 2,
+  };
+}
+
+function isPointInRect(point, rect) {
+  return point.x >= rect.x1 && point.x <= rect.x2 && point.y >= rect.y1 && point.y <= rect.y2;
+}
+
+function segmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const onSegment = (p, q, r) => (
+    Math.min(p.x, r.x) <= q.x && q.x <= Math.max(p.x, r.x) &&
+    Math.min(p.y, r.y) <= q.y && q.y <= Math.max(p.y, r.y)
+  );
+  const ab1 = cross(a, b, c);
+  const ab2 = cross(a, b, d);
+  const cd1 = cross(c, d, a);
+  const cd2 = cross(c, d, b);
+  if (ab1 === 0 && onSegment(a, c, b)) return true;
+  if (ab2 === 0 && onSegment(a, d, b)) return true;
+  if (cd1 === 0 && onSegment(c, a, d)) return true;
+  if (cd2 === 0 && onSegment(c, b, d)) return true;
+  return ab1 * ab2 <= 0 && cd1 * cd2 <= 0;
+}
+
+function segmentIntersectsRect(from, to, rect) {
+  if (isPointInRect(from, rect) || isPointInRect(to, rect)) return true;
+  const topLeft = { x: rect.x1, y: rect.y1 };
+  const topRight = { x: rect.x2, y: rect.y1 };
+  const bottomRight = { x: rect.x2, y: rect.y2 };
+  const bottomLeft = { x: rect.x1, y: rect.y2 };
+  return (
+    segmentsIntersect(from, to, topLeft, topRight) ||
+    segmentsIntersect(from, to, topRight, bottomRight) ||
+    segmentsIntersect(from, to, bottomRight, bottomLeft) ||
+    segmentsIntersect(from, to, bottomLeft, topLeft)
+  );
+}
+
+function tryBlockArrowWithShieldCart(arrow, from, to) {
+  if (!isArrowShieldBlockable(arrow)) return false;
+  const protectedSide = arrow.target.side;
+  const carts = state.units.filter((unit) => unit.type === "arrowShieldCart" && unit.side === protectedSide && unit.hp > 0 && unit.arrowBoardHp > 0 && !isUnitHidden(unit));
+  for (const cart of carts) {
+    const data = UNIT.arrowShieldCart;
+    const rect = getArrowBoardRect(cart);
+    if (arrow.target.x < rect.x1 - data.arrowBoardProtectPadding || arrow.target.x > rect.x2 + data.arrowBoardProtectPadding) continue;
+    if (!segmentIntersectsRect(from, to, rect)) continue;
+
+    const damage = Math.max(1, Math.round(arrow.damage ?? 1));
+    cart.arrowBoardHp = Math.max(0, cart.arrowBoardHp - damage);
+    state.blasts.push({ x: to.x, y: to.y, radius: 18, life: 0.18, duration: 0.18, color: "#d7c090" });
+    popText(cart.x, cart.y - 140, cart.arrowBoardHp > 0 ? `挡箭 -${damage}` : "遮箭板破损", "#d7c090");
+    return true;
+  }
+  return false;
+}
+
 function updateArrows(dt) {
   for (const arrow of state.arrows) {
+    const from = getArrowPosition(arrow);
     arrow.life -= dt;
+    const to = getArrowPosition(arrow);
+    if (tryBlockArrowWithShieldCart(arrow, from, to)) {
+      arrow.life = 0;
+      arrow.blocked = true;
+      continue;
+    }
     if (arrow.life <= 0) {
+      if (arrow.blocked) continue;
       if (arrow.type === "crossbow") {
         attachCrossbowBomb(arrow);
       } else if (arrow.type === "boulder" && arrow.splash) {
@@ -9536,6 +9656,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "arrowShieldCart") {
+    drawArrowShieldCartUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "rocketCart") {
     drawRocketCartUnit(unit);
     ctx.restore();
@@ -10106,6 +10231,73 @@ function drawCatapultUnit(unit) {
     ctx.strokeStyle = "#d0a05c";
     ctx.lineWidth = 3;
     ctx.stroke();
+  });
+
+  ctx.restore();
+  drawUnitHp(unit);
+}
+
+function drawArrowShieldCartUnit(unit) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "#5c4a35";
+  ctx.strokeStyle = "#211a14";
+  ctx.lineWidth = 4.5;
+
+  ctx.beginPath();
+  ctx.moveTo(-42, -15);
+  ctx.lineTo(39, -15);
+  ctx.lineTo(29, -42);
+  ctx.lineTo(-34, -45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#8e6a3c";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-30, -45);
+  ctx.lineTo(-52, -97);
+  ctx.moveTo(28, -42);
+  ctx.lineTo(52, -97);
+  ctx.stroke();
+
+  const boardRatio = unit.maxArrowBoardHp > 0 ? Math.max(0, unit.arrowBoardHp / unit.maxArrowBoardHp) : 0;
+  ctx.fillStyle = unit.arrowBoardHp > 0 ? "#7e6241" : "#3b322a";
+  ctx.strokeStyle = unit.arrowBoardHp > 0 ? "#d7c090" : "#6a5440";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.roundRect(-68, -132, 136, 46, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 232, 172, 0.55)";
+  ctx.lineWidth = 2;
+  for (let x = -44; x <= 44; x += 22) {
+    ctx.beginPath();
+    ctx.moveTo(x, -128);
+    ctx.lineTo(x - 16, -89);
+    ctx.stroke();
+  }
+
+  if (unit.arrowBoardHp > 0) {
+    ctx.fillStyle = "rgba(0,0,0,0.52)";
+    ctx.fillRect(-38, -143, 76, 6);
+    ctx.fillStyle = boardRatio > 0.35 ? "#d7c090" : "#ff8a6b";
+    ctx.fillRect(-38, -143, 76 * boardRatio, 6);
+  }
+
+  ctx.fillStyle = "#2d251d";
+  [-27, 27].forEach((x) => {
+    ctx.beginPath();
+    ctx.arc(x, -4, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d7c090";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.strokeStyle = "#211a14";
+    ctx.lineWidth = 4.5;
   });
 
   ctx.restore();
@@ -12800,10 +12992,7 @@ function drawGhost(ghost) {
 }
 
 function drawArrow(arrow) {
-  const duration = arrow.duration ?? (arrow.type === "crossbow" ? 0.42 : arrow.type === "boulder" ? 0.8 : arrow.type === "spearThrow" ? 0.45 : arrow.type === "campaignRain" ? 0.9 : 0.55);
-  const t = 1 - arrow.life / duration;
-  const x = arrow.x + (arrow.tx - arrow.x) * t;
-  const y = arrow.y + (arrow.ty - arrow.y) * t - (arrow.type === "campaignRain" ? 0 : Math.sin(t * Math.PI) * (arrow.type === "boulder" ? 70 : arrow.type === "rocketVolley" ? 52 : 34));
+  const { x, y } = getArrowPosition(arrow);
   if (arrow.type === "boulder") {
     ctx.fillStyle = arrow.cannon ? "#2b2d31" : "#8b6f46";
     ctx.beginPath();
