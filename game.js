@@ -348,13 +348,13 @@ const UNIT = {
   },
   catapult: {
     name: "火炮",
-    cost: 750,
+    cost: 500,
     hp: 600,
-    damage: 72,
+    damage: 60,
     range: 500,
     speed: 40,
     train: 8,
-    cooldown: 4.5,
+    cooldown: 3,
     splash: 58,
     aoeLimit: 5,
   },
@@ -376,7 +376,7 @@ const UNIT = {
   },
   rocketCart: {
     name: "火箭车",
-    cost: 850,
+    cost: 550,
     hp: 500,
     damage: 6,
     range: 350,
@@ -384,7 +384,7 @@ const UNIT = {
     train: 8,
     cooldown: 0,
     reloadEvery: 6,
-    ammoPerReload: 75,
+    ammoPerReload: 35,
     fireInterval: 0.05,
     volleyRadius: 50,
     splash: 24,
@@ -393,17 +393,17 @@ const UNIT = {
   },
   undeadCatapult: {
     name: "亡灵投石车",
-    cost: 320,
+    cost: 500,
     hp: 500,
     damage: 40,
     range: 580,
     speed: 30,
     train: 7,
-    cooldown: 4,
+    cooldown: 3,
     blindSpot: 85,
     splash: 58,
     aoeLimit: 3,
-    groundFireDuration: 8,
+    groundFireDuration: 10,
     groundFireDps: 3,
     groundFireRadius: 62,
   },
@@ -575,11 +575,13 @@ const UNIT = {
     train: 3.8,
     cooldown: 0.9,
     mineEvery: 8,
-    minePlantDuration: 3,
+    minePlantDuration: 2,
     mineAmmo: 5,
+    mineLife: 70,
     mineDamage: 20,
     mineTriggerRadius: 34,
-    mineBlastRadius: 72,
+    mineBlastRadius: 90,
+    mineAoeLimit: 3,
     burrowReduction: 0.9,
   },
   goblinExpert: {
@@ -1236,8 +1238,8 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner", "chaosGiant", "enslavedGiant"],
-    startingUnits: ["miner", "creeper", "orc", "bomber"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner"],
+    startingUnits: ["miner", "creeper", "goblin", "bomber"],
     mineColor: "#b7f56e",
   },
   undeadEmpire: {
@@ -1337,7 +1339,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "chaosGiant", "enslavedGiant", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "superGiant"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1361,7 +1363,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage", "chaosGiant", "enslavedGiant"],
+  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
@@ -1864,7 +1866,7 @@ function formatSpecial(type) {
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
-  if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷造成 ${data.mineDamage} 范围伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
+  if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷最多存在 ${data.mineLife}秒，到期自动爆炸，对 ${data.mineBlastRadius} 范围内最多 ${data.mineAoeLimit} 个敌人造成 ${data.mineDamage} 伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
   if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
   if (type === "shaman") notes.push(`没有普攻；每 ${data.thornEvery}秒生成面积 ${data.thornArea} 的荆棘，持续 ${data.thornDuration}秒，每秒 ${data.thornDps} 伤害并减速 ${Math.round((1 - data.thornSlow) * 100)}%；每秒为一名友军恢复 ${data.healAmount} 生命`);
   if (type === "priest") notes.push(`死亡敌人可被祭祀为祭品，收集 ${data.sacrificeNeeded} 个祭品召唤较弱猿人；技能抽取生命值不超过 ${data.siphonMaxHp} 的敌人，造成 ${data.siphonDamage} 伤害并治疗前线；血祭一名生物友军，将其当前生命值 x${data.bloodSacrificeFactor} 治疗前线，冷却 ${data.bloodSacrificeCooldown}秒`);
@@ -7703,9 +7705,11 @@ function finishGoblinMinePlant(unit) {
     side: unit.side,
     x,
     y,
+    life: data.mineLife,
     damage: data.mineDamage,
     triggerRadius: data.mineTriggerRadius,
     blastRadius: data.mineBlastRadius,
+    aoeLimit: data.mineAoeLimit,
   });
   unit.goblinMineAmmo -= 1;
   popText(x, y - 36, `地雷 ${unit.goblinMineAmmo}/${data.mineAmmo}`, "#ffce7a");
@@ -8161,9 +8165,10 @@ function updateCorpses(dt) {
   state.corpses = state.corpses.filter((corpse) => corpse.life > 0);
 }
 
-function updateLandMines() {
+function updateLandMines(dt = 0) {
   const triggered = new Set();
   for (const mine of state.landMines) {
+    mine.life = Math.max(0, (mine.life ?? UNIT.goblin.mineLife) - dt);
     const target = state.units.find((unit) =>
       unit.side !== mine.side &&
       unit.hp > 0 &&
@@ -8172,13 +8177,13 @@ function updateLandMines() {
       !UNIT[unit.type]?.untargetable &&
       distanceTo(unit.x, unit.y, mine.x, mine.y) <= mine.triggerRadius
     );
-    if (!target) continue;
+    if (!target && mine.life > 0) continue;
     triggered.add(mine.id);
-    getUnitsInRadius(mine.x, mine.blastRadius, mine.side, AOE_TARGET_LIMIT).forEach((enemy) => {
+    getUnitsInRadius(mine.x, mine.blastRadius, mine.side, mine.aoeLimit ?? AOE_TARGET_LIMIT).forEach((enemy) => {
       applyUnitDamage(enemy, mine.damage, { label: "雷", color: "#ffce7a", yOffset: -76 });
     });
     state.blasts.push({ x: mine.x, y: mine.y - 20, radius: mine.blastRadius, life: 0.32, duration: 0.32, color: "#ffce7a" });
-    popText(mine.x, mine.y - 52, "地雷爆炸", "#ffce7a");
+    popText(mine.x, mine.y - 52, target ? "地雷爆炸" : "地雷自爆", "#ffce7a");
   }
   if (triggered.size) state.landMines = state.landMines.filter((mine) => !triggered.has(mine.id));
 }
