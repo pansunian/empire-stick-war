@@ -130,6 +130,33 @@ const UNIT = {
     goldPerSwing: 25,
     bagSize: 100,
   },
+  summoner: {
+    name: "召唤师",
+    cost: 100,
+    hp: 135,
+    damage: 5,
+    range: 160,
+    speed: 38,
+    train: 3.2,
+    cooldown: 1.4,
+    firstSummonDelay: 5,
+    summonEvery: 16,
+    summonCount: 2,
+  },
+  wraithMiner: {
+    name: "亡魂",
+    cost: 0,
+    hp: 40,
+    damage: 3,
+    range: 28,
+    speed: 46,
+    train: 0,
+    cooldown: 1,
+    goldPerSwing: 20,
+    bagSize: 80,
+    lifeDrainPerSecond: 2,
+    summonOnly: true,
+  },
   swordsman: {
     name: "剑士",
     cost: 70,
@@ -1327,8 +1354,8 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-    startingUnits: ["miner", "machete", "undead", "ghoul", "candlelight"],
+    roster: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    startingUnits: ["summoner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
   element: {
@@ -1341,6 +1368,8 @@ const FACTIONS = {
 
 const UNIT_ICON = {
   miner: "miner",
+  summoner: "wizard-hat",
+  wraithMiner: "skull",
   swordsman: "sharp-sword",
   spearman: "spear",
   archer: "bow",
@@ -1429,7 +1458,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1445,15 +1474,16 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher", "necromancer"]);
+const ECONOMY_UNITS = new Set(["miner", "summoner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  undeadEmpire: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1939,6 +1969,8 @@ function formatSpecial(type) {
   const data = UNIT[type];
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
+  if (type === "summoner") notes.push(`出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤`);
+  if (type === "wraithMiner") notes.push(`召唤单位；生命每秒减少 ${data.lifeDrainPerSecond}；挖 ${data.bagSize / data.goldPerSwing} 次可带回 ${data.bagSize} 金，死亡时未入库金币返还一半`);
   if (data.splash) notes.push(`范围 ${data.splash}`);
   if (data.splashDamage) notes.push(`溅射 ${data.splashDamage}`);
   if (data.flying) notes.push("飞行");
@@ -2020,7 +2052,7 @@ function renderStatsTable() {
     const rows = types
       .map((type) => {
         const data = UNIT[type];
-        const faction = groupName === "秩序帝国" ? "order" : groupName === "混沌帝国" ? "chaos" : "element";
+        const faction = groupName === "秩序帝国" ? "order" : groupName === "混沌帝国" ? "chaos" : groupName === "亡灵帝国" ? "undeadEmpire" : "element";
         return [
           data.name,
           getUnitCost(type, faction),
@@ -2648,6 +2680,7 @@ function spawnUnit(type, side, x) {
     mineSlotId: null,
     mineWorkSlot: null,
     carry: 0,
+    lastDamageSide: null,
     poisonTimer: 0,
     poisonDps: 0,
     poisonTick: 0,
@@ -2667,7 +2700,7 @@ function spawnUnit(type, side, x) {
     frozenTick: 0,
     freezeDps: 0,
     boundTargetId: null,
-    summonTimer: data.summonEvery ?? 0,
+    summonTimer: unitType === "summoner" ? data.firstSummonDelay : (data.summonEvery ?? 0),
     magmaTimer: data.magmaEvery ?? 0,
     summonCooldown: data.summonEvery ?? 0,
     controlTimer: data.controlEvery ?? 0,
@@ -3373,7 +3406,8 @@ function getTowerUnits(side) {
     unit.side === side
     && unit.hp > 0
     && !isUnitHidden(unit)
-    && unit.type !== "miner"
+    && !ECONOMY_UNITS.has(unit.type)
+    && unit.type !== "wraithMiner"
     && !UNIT[unit.type]?.untargetable
     && isInsideTowerCaptureArea(unit)
   ));
@@ -3587,11 +3621,11 @@ function canUseNormalMine(unit, mine) {
 function getMineOccupancy(side, mineId) {
   return state.units.filter((unit) => (
     unit.side === side
-    && unit.type === "miner"
+    && isMiningWorker(unit)
     && unit.hp > 0
     && !isUnitHidden(unit)
     && unit.mineSlotId === mineId
-    && unit.carry < UNIT.miner.bagSize
+    && unit.carry < getMiningBagSize(unit)
   )).length;
 }
 
@@ -3599,12 +3633,12 @@ function getAvailableMineWorkSlot(side, mineId) {
   for (let slot = 0; slot < MINE_WORKER_LIMIT; slot += 1) {
     const occupied = state.units.some((unit) => (
       unit.side === side
-      && unit.type === "miner"
+      && isMiningWorker(unit)
       && unit.hp > 0
       && !isUnitHidden(unit)
       && unit.mineSlotId === mineId
       && unit.mineWorkSlot === slot
-      && unit.carry < UNIT.miner.bagSize
+      && unit.carry < getMiningBagSize(unit)
     ));
     if (!occupied) return slot;
   }
@@ -3620,6 +3654,18 @@ function getMineWorkPoint(unit, mine) {
     x: mine.x + dir * xOffset,
     y: mine.y + yOffset,
   };
+}
+
+function isMiningWorker(unit) {
+  return unit.type === "miner" || unit.type === "wraithMiner";
+}
+
+function getMiningBagSize(unit) {
+  return UNIT[unit.type]?.bagSize ?? UNIT.miner.bagSize;
+}
+
+function getMiningGoldPerSwing(unit) {
+  return UNIT[unit.type]?.goldPerSwing ?? UNIT.miner.goldPerSwing;
 }
 
 function distanceTo(x1, y1, x2, y2) {
@@ -3931,7 +3977,8 @@ function updateEnemyAi(dt) {
   updateEnemyBattleLine(dt);
   if (activeCampaign?.secondPhase?.disableEnemyTraining && state.campaignPhase === 2) return;
 
-  const enemyMiners = state.units.filter((unit) => unit.side === "enemy" && unit.type === "miner").length;
+  const enemyEconomyType = opponentFaction() === "undeadEmpire" ? "summoner" : "miner";
+  const enemyMiners = state.units.filter((unit) => unit.side === "enemy" && unit.type === enemyEconomyType).length;
   const savingForV = shouldEnemySaveForV();
   const targetEnemyMiners = getEnemyTargetMinerCount();
 
@@ -3970,15 +4017,15 @@ function updateEnemyAi(dt) {
     state.enemyMinerTimer = 8;
   }
 
-  const minerCost = getUnitCost("miner", opponentFaction());
-  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && state.enemyGold >= minerCost) {
-    state.enemyGold -= minerCost;
+  const economyCost = getUnitCost(enemyEconomyType, opponentFaction());
+  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && state.enemyGold >= economyCost) {
+    state.enemyGold -= economyCost;
     state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
-    spawnUnit("miner", "enemy", FIELD.enemyGate + 34);
+    spawnUnit(enemyEconomyType, "enemy", FIELD.enemyGate + 34);
   }
 
   if (state.enemySpawnTimer <= 0) {
-    const enemyRoster = currentEnemyRoster().filter((type) => type !== "miner" && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
+    const enemyRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
     const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction()) <= state.enemyGold);
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
@@ -4070,7 +4117,7 @@ function updateEnemyBattleLine(dt) {
 
 function getArmyPower(side) {
   return state.units.reduce((sum, unit) => {
-    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || unit.type === "miner") return sum;
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || ECONOMY_UNITS.has(unit.type) || unit.type === "wraithMiner") return sum;
     const data = UNIT[unit.type];
     const rangeBonus = (data.range ?? 30) > 80 ? 1.25 : 1;
     const giantBonus = data.giant ? 1.35 : 1;
@@ -4079,11 +4126,11 @@ function getArmyPower(side) {
 }
 
 function countFighters(side) {
-  return state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && unit.type !== "miner").length;
+  return state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && !ECONOMY_UNITS.has(unit.type) && unit.type !== "wraithMiner").length;
 }
 
 function getFrontX(side) {
-  const fighters = state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && unit.type !== "miner");
+  const fighters = state.units.filter((unit) => unit.side === side && unit.hp > 0 && !isUnitHidden(unit) && !ECONOMY_UNITS.has(unit.type) && unit.type !== "wraithMiner");
   if (!fighters.length) return null;
   return fighters.reduce((front, unit) => {
     if (front === null) return unit.x;
@@ -4499,7 +4546,19 @@ function updateUnits(dt) {
       continue;
     }
 
-  if (unit.type === "miner") {
+    if (unit.type === "summoner") {
+      updateSummoner(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+
+    if (unit.type === "wraithMiner") {
+      updateWraithMiner(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+
+    if (unit.type === "miner") {
       updateMiner(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
@@ -5883,9 +5942,54 @@ function updateBerserker(unit, dt) {
   popText(unit.x, unit.y - 130, "狂暴", "#ff5a45");
 }
 
+function updateSummoner(unit, dt) {
+  if (unit.side === "player" && state.minerCommand === "attack") {
+    const target = nearestEnemy(unit, 230) ?? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
+    updateRangedEconomyAttack(unit, target, dt);
+  } else {
+    const danger = nearestEnemy(unit, getUnitRange(unit));
+    if (danger && unit.cooldown <= 0) attack(unit, danger);
+  }
+  const data = UNIT.summoner;
+  unit.summonTimer -= dt;
+  if (unit.summonTimer > 0) return;
+  unit.summonTimer += data.summonEvery;
+  summonWraithMiners(unit);
+}
+
+function updateRangedEconomyAttack(unit, target, dt) {
+  if (!target) return;
+  const range = getUnitRange(unit);
+  const desiredX = unit.side === "player" ? target.x - range + 8 : target.x + range - 8;
+  if (Math.abs(unit.x - target.x) <= range) {
+    if (unit.cooldown <= 0) attack(unit, target);
+    return;
+  }
+  moveUnitTowardPoint(unit, desiredX, target.y ?? FIELD.ground, unit.speed ?? UNIT[unit.type].speed, dt, 6);
+}
+
+function summonWraithMiners(summoner) {
+  const data = UNIT.summoner;
+  const dir = summoner.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.summonCount; i += 1) {
+    const wraith = spawnUnit("wraithMiner", summoner.side, summoner.x + dir * (24 + i * 18));
+    wraith.y = summoner.y + (i === 0 ? -12 : 12);
+    wraith.summonerId = summoner.id;
+    wraith.summoned = true;
+  }
+  popText(summoner.x, summoner.y - 108, `召唤亡魂 x${data.summonCount}`, "#7ed8ff");
+}
+
+function updateWraithMiner(unit, dt) {
+  const data = UNIT.wraithMiner;
+  unit.hp -= data.lifeDrainPerSecond * dt;
+  if (unit.hp <= 0) return;
+  updateMiner(unit, dt);
+}
+
 function updateMiner(unit, dt) {
   const isPlayer = unit.side === "player";
-  const minerCommand = isPlayer ? state.minerCommand : "mine";
+  const minerCommand = isPlayer && (unit.type === "miner" || unit.type === "wraithMiner") ? state.minerCommand : "mine";
 
   if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
     moveTowardCastle(unit, dt);
@@ -5899,7 +6003,7 @@ function updateMiner(unit, dt) {
 
   const danger = nearestEnemy(unit, 42);
   const canFight = unit.side === "enemy" || state.command !== "retreat";
-  if (danger && canFight) {
+  if ((unit.type === "miner" || unit.type === "wraithMiner") && danger && canFight) {
     if (unit.cooldown <= 0) attack(unit, danger);
     return;
   }
@@ -5911,7 +6015,8 @@ function updateMiner(unit, dt) {
 
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
   const mine = getMineForMiner(unit);
-  const mustDeposit = unit.carry >= UNIT.miner.bagSize;
+  const bagSize = getMiningBagSize(unit);
+  const mustDeposit = unit.carry >= bagSize;
   const forcedHome = isPlayer && state.command === "retreat";
   const workPoint = mine ? getMineWorkPoint(unit, mine) : null;
   const returningHome = forcedHome || mustDeposit || !workPoint;
@@ -5939,8 +6044,8 @@ function updateMiner(unit, dt) {
     unit.mineTimer += dt;
     if (unit.mineTimer >= 1) {
       unit.mineTimer = 0;
-      const space = UNIT.miner.bagSize - unit.carry;
-      const mined = Math.min(UNIT.miner.goldPerSwing, space, mine.remaining);
+      const space = bagSize - unit.carry;
+      const mined = Math.min(getMiningGoldPerSwing(unit), space, mine.remaining);
       if (mined <= 0) {
         unit.mineSlotId = null;
         unit.mineWorkSlot = null;
@@ -5948,7 +6053,7 @@ function updateMiner(unit, dt) {
       }
       unit.carry += mined;
       mine.remaining -= mined;
-      popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+      popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
       if (mine.remaining <= 0) {
         popText(mine.x, mine.y - 72, "金矿枯竭", "#d8c7a0");
         unit.mineSlotId = null;
@@ -5965,7 +6070,8 @@ function getMinerMoveSpeed(unit) {
 function updateGoldRushMiner(unit, dt) {
   const isPlayer = unit.side === "player";
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
-  const mustDeposit = unit.carry >= UNIT.miner.bagSize;
+  const bagSize = getMiningBagSize(unit);
+  const mustDeposit = unit.carry >= bagSize;
 
   if (mustDeposit) {
     unit.goldRushMineId = null;
@@ -6007,15 +6113,15 @@ function updateGoldRushMiner(unit, dt) {
   unit.mineTimer += dt;
   if (unit.mineTimer < 1) return;
   unit.mineTimer = 0;
-  const space = UNIT.miner.bagSize - unit.carry;
-  const mined = Math.min(UNIT.miner.goldPerSwing, space, mine.remaining);
+  const space = bagSize - unit.carry;
+  const mined = Math.min(getMiningGoldPerSwing(unit), space, mine.remaining);
   if (mined <= 0) {
     unit.goldRushMineId = null;
     return;
   }
   unit.carry += mined;
   mine.remaining -= mined;
-  popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${UNIT.miner.bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+  popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
   if (mine.remaining <= 0) {
     popText(mine.x, (mine.y ?? FIELD.ground) - 72, "金矿枯竭", "#d8c7a0");
     unit.goldRushMineId = null;
@@ -6041,12 +6147,12 @@ function canMineGoldRushMine(unit, mine) {
 
 function getGoldRushMineOccupyingSide(mine) {
   const miner = state.units.find((candidate) => (
-    candidate.type === "miner"
+    isMiningWorker(candidate)
     && candidate.hp > 0
     && !isUnitHidden(candidate)
     && candidate.goldRushMineId === mine.id
     && distanceTo(candidate.x, candidate.y, mine.x, mine.y ?? FIELD.ground) <= 10
-    && candidate.carry < UNIT.miner.bagSize
+    && candidate.carry < getMiningBagSize(candidate)
   ));
   return miner?.side ?? null;
 }
@@ -6687,6 +6793,7 @@ function attack(unit, target) {
     unit.type === "crossbow" ||
     unit.type === "poisonZombie" ||
     unit.type === "necromancer" ||
+    unit.type === "summoner" ||
     unit.type === "musketeer" ||
     unit.type === "demonArcher" ||
     unit.type === "fireElement" ||
@@ -6737,6 +6844,7 @@ function attackApeMan(unit, target) {
 
 function handleDamageDealt(attacker, target, damage) {
   if (!attacker || !target || damage <= 0) return;
+  if (target.kind !== "statue") target.lastDamageSide = attacker.side;
   if (attacker.inspiredLifestealTimer > 0 && target.kind !== "statue") {
     const healed = Math.min(Math.round(damage * 0.5), attacker.maxHp - attacker.hp);
     if (healed > 0) {
@@ -6748,6 +6856,26 @@ function handleDamageDealt(attacker, target, damage) {
     attacker.inspiredZombieHits -= 1;
     applyStun(target, 2);
   }
+}
+
+function grantUndeadKillGold(unit) {
+  const killerSide = unit.lastDamageSide ?? unit.poisonSourceSide;
+  if (!killerSide || killerSide === unit.side) return;
+  if (factionForSide(killerSide) !== "undeadEmpire") return;
+  const key = killerSide === "player" ? "gold" : "enemyGold";
+  state[key] += 2;
+  const labelX = killerSide === "player" ? FIELD.playerGate + 58 : FIELD.enemyGate - 58;
+  popText(labelX, FIELD.ground - 128, "亡灵收割 +2", "#b8b0e8");
+}
+
+function settleWraithMinerCarry(unit) {
+  if (unit.type !== "wraithMiner" || unit.carry <= 0) return;
+  const refund = Math.floor(unit.carry * 0.5);
+  if (refund <= 0) return;
+  if (unit.side === "player") state.gold += refund;
+  else state.enemyGold += refund;
+  popText(unit.x, unit.y - 78, `残魂带回 +${refund}`, "#7ed8ff");
+  unit.carry = 0;
 }
 
 function attackCandlelight(unit, target) {
@@ -8790,6 +8918,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
+  if ((attackerSide === "player" || attackerSide === "enemy") && hpDamage > 0) target.lastDamageSide = attackerSide;
   target.combatTimer = 3;
   popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
   return hpDamage;
@@ -8800,6 +8929,7 @@ function applyUnitDamage(target, amount, options = {}) {
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
+  if ((options.sourceSide === "player" || options.sourceSide === "enemy") && hpDamage > 0) target.lastDamageSide = options.sourceSide;
   target.combatTimer = 3;
   const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
   popText(target.x, target.y + (options.yOffset ?? -68), label, options.color ?? "#f0a36a");
@@ -8866,6 +8996,8 @@ function removeDead() {
     if (unit.type === "vUnit") {
       releaseVControl(unit);
     }
+    grantUndeadKillGold(unit);
+    settleWraithMinerCarry(unit);
     if (unit.type === "minotaur") {
       deathSpawns.push({
         type: "hornKnightRider",
@@ -9121,7 +9253,7 @@ function createUndeadVultureCrash(unit) {
   const data = UNIT.undeadVulture;
   const y = FIELD.ground - 34;
   getUnitsInRadius(unit.x, data.crashRadius, unit.side, data.crashLimit).forEach((enemy) => {
-    applyUnitDamage(enemy, data.crashDamage, { label: "坠落", color: "#7ed8ff", yOffset: -82, ranged: true });
+    applyUnitDamage(enemy, data.crashDamage, { label: "坠落", color: "#7ed8ff", yOffset: -82, ranged: true, sourceSide: unit.side });
   });
   state.blasts.push({ x: unit.x, y, radius: data.crashRadius, life: 0.32, duration: 0.32, color: "#7ed8ff" });
   popText(unit.x, unit.y - 120, "骨翼坠落", "#7ed8ff");
@@ -10661,6 +10793,8 @@ function getUnitColor(unit) {
   if (unit.type === "undeadCatapult") return "#4a3f4f";
   if (unit.type === "enslavedGiant") return "#8b6f46";
   const type = unit.type;
+  if (type === "summoner") return "#4d405f";
+  if (type === "wraithMiner") return "#7ed8ff";
   if (type === "creeper") return "#9ee06b";
   if (type === "largeCreeper") return "#6fcf59";
   if (type === "orc") return "#7faa5c";
@@ -10721,6 +10855,8 @@ function getHeadColor(unit) {
   if (unit.type === "electricGate") return "#d7f6ee";
   if (unit.type === "vUnit") return "#ffffff";
   if (unit.type === "vClone") return "#d7ceff";
+  if (unit.type === "summoner") return "#d8c8e8";
+  if (unit.type === "wraithMiner") return "#d7f6ff";
   if (unit.type === "orc") return "#b8d68a";
   if (unit.type === "berserkOrc") return "#c8a36f";
   if (unit.type === "goblin") return unit.goblinBurrowed ? "#7a705f" : "#cde69b";
@@ -10984,6 +11120,30 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(21, -52);
     ctx.lineTo(37, -43);
     ctx.stroke();
+  } else if (type === "summoner") {
+    ctx.strokeStyle = "#d8c8e8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(18, -24);
+    ctx.lineTo(42, -78);
+    ctx.stroke();
+    ctx.fillStyle = "#7ed8ff";
+    ctx.beginPath();
+    ctx.arc(44, -82, 8, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "wraithMiner") {
+    ctx.strokeStyle = "#7ed8ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(14, -34);
+    ctx.lineTo(34, -56);
+    ctx.moveTo(23, -52);
+    ctx.lineTo(42, -43);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(126, 216, 255, 0.24)";
+    ctx.beginPath();
+    ctx.ellipse(0, -28, 18, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "graveDigger") {
     ctx.strokeStyle = "#d8d0c8";
     ctx.lineWidth = 4;
@@ -12052,11 +12212,12 @@ function drawUnitHp(unit) {
     ctx.stroke();
   }
 
-  if (unit.type === "miner") {
+  if (isMiningWorker(unit)) {
+    const bagSize = getMiningBagSize(unit);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(-18, -77, 36, 5);
-    ctx.fillStyle = unit.side === "player" ? "#f5c542" : "#b7f56e";
-    ctx.fillRect(-18, -77, 36 * (unit.carry / UNIT.miner.bagSize), 5);
+    ctx.fillStyle = unit.type === "wraithMiner" ? "#7ed8ff" : unit.side === "player" ? "#f5c542" : "#b7f56e";
+    ctx.fillRect(-18, -77, 36 * (unit.carry / bagSize), 5);
   }
 }
 
@@ -13196,7 +13357,7 @@ function castDeathGodSpikes(unit) {
     const target = enemies[i % enemies.length];
     const offset = ((i % 4) - 1.5) * 14;
     const x = Math.max(minX, Math.min(maxX, target.x + offset));
-    applyUnitDamage(target, data.spikeDamage, { label: "刺", color: "#d8d0c8", yOffset: -88 });
+    applyUnitDamage(target, data.spikeDamage, { label: "刺", color: "#d8d0c8", yOffset: -88, sourceSide: unit.side });
     state.spikes.push({
       x1: x - 6,
       x2: x + 6,
@@ -13369,8 +13530,10 @@ function drawArrow(arrow) {
         ? "#f7d66b"
       : arrow.type === "spearThrow"
         ? "#dfe8ff"
-      : arrow.type === "poisonZombie"
+        : arrow.type === "poisonZombie"
         ? "#93d96b"
+        : arrow.type === "summoner"
+          ? "#7ed8ff"
         : arrow.type === "javelinThrower"
           ? (arrow.poison ? "#93d96b" : "#d7c090")
         : arrow.type === "goblinVulture"
@@ -13388,12 +13551,12 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
   ctx.stroke();
-  if (arrow.type === "undeadVulture") {
+  if (arrow.type === "undeadVulture" || arrow.type === "summoner") {
     ctx.fillStyle = "rgba(126, 216, 255, 0.75)";
     ctx.beginPath();
     ctx.arc(x + 12, y - 3, 6, 0, Math.PI * 2);
