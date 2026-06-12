@@ -789,7 +789,7 @@ const UNIT = {
     poisonDuration: Infinity,
   },
   goblinVulture: {
-    name: "秃鹫",
+    name: "持弩哨兵",
     cost: 150,
     hp: 90,
     damage: 13,
@@ -798,6 +798,22 @@ const UNIT = {
     train: 4.8,
     cooldown: 1.25,
     flying: true,
+  },
+  undeadVulture: {
+    name: "秃鹫",
+    cost: 120,
+    hp: 90,
+    damage: 16,
+    range: 180,
+    speed: 65,
+    train: 4.8,
+    cooldown: 1.6,
+    flying: true,
+    splash: 90,
+    aoeLimit: 3,
+    crashDamage: 20,
+    crashRadius: 90,
+    crashLimit: 3,
   },
   griffinBomber: {
     name: "狮鹫轰炸机",
@@ -1311,7 +1327,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
     startingUnits: ["miner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
@@ -1371,6 +1387,7 @@ const UNIT_ICON = {
   rhinoMan: "axe",
   javelinThrower: "spear",
   goblinVulture: "wing",
+  undeadVulture: "wing",
   griffinBomber: "bomb",
   medusa: "venom",
   demonArcher: "wing",
@@ -1412,7 +1429,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1428,7 +1445,7 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
@@ -1436,7 +1453,7 @@ const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher", "necromancer"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1938,6 +1955,7 @@ function formatSpecial(type) {
   if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
+  if (type === "undeadVulture") notes.push(`飞行单位，吐出能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人；死亡坠落造成 ${data.crashDamage} 范围伤害，最多 ${data.crashLimit} 人`);
   if (type === "goblin") notes.push(`没有普攻；每 ${data.mineEvery}秒花 ${data.minePlantDuration}秒安放地雷，最多携带 ${data.mineAmmo} 个；地雷最多存在 ${data.mineLife}秒，到期自动爆炸，对 ${data.mineBlastRadius} 范围内最多 ${data.mineAoeLimit} 个敌人造成 ${data.mineDamage} 伤害；遁地时原地不动并减伤 ${Math.round(data.burrowReduction * 100)}%`);
   if (type === "goblinExpert") notes.push(`没有普攻；每 ${data.armorEvery}秒为 ${data.armorRange} 范围内最多 ${data.armorLimit} 个非地精专家友军穿护甲，先给范围内单位穿轻甲 ${Math.round(data.armorStepReduction * 100)}% 减伤，再给重要单位二次升级为中甲 ${Math.round(data.armorMaxReduction * 100)}% 减伤；技能给一位友军重甲 ${Math.round(data.heavyArmorReduction * 100)}% 减伤 ${data.heavyArmorDuration}秒`);
   if (type === "shaman") notes.push(`没有普攻；每 ${data.thornEvery}秒生成面积 ${data.thornArea} 的荆棘，持续 ${data.thornDuration}秒，每秒 ${data.thornDps} 伤害并减速 ${Math.round((1 - data.thornSlow) * 100)}%；每秒为一名友军恢复 ${data.healAmount} 生命`);
@@ -4118,6 +4136,7 @@ function chooseEnemyUnit(affordable) {
     ghoul: 0.85,
     candlelight: 0.82,
     reaper: 0.72,
+    undeadVulture: 0.58,
     machete: 0.9,
     deadCorpse: 0.75,
     poisonZombie: 0.85,
@@ -6672,7 +6691,8 @@ function attack(unit, target) {
     unit.type === "demonArcher" ||
     unit.type === "fireElement" ||
     unit.type === "javelinThrower" ||
-    unit.type === "goblinVulture"
+    unit.type === "goblinVulture" ||
+    unit.type === "undeadVulture"
   ) {
     state.arrows.push({
       x: unit.x,
@@ -6685,6 +6705,8 @@ function attack(unit, target) {
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
       type: unit.type,
+      splash: data.splash,
+      aoeLimit: data.aoeLimit,
       poison: unit.type === "javelinThrower" && Math.random() < data.poisonChance,
     });
     return;
@@ -7619,6 +7641,8 @@ function updateArrows(dt) {
         attachCrossbowBomb(arrow);
       } else if (arrow.type === "boulder" && arrow.splash) {
         explodeBoulder(arrow);
+      } else if (arrow.type === "undeadVulture") {
+        explodeUndeadVultureOrb(arrow);
       } else if (arrow.type === "poisonZombie") {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
@@ -7707,6 +7731,20 @@ function explodeBoulder(arrow) {
     createGroundFire(arrow.tx, arrow.ty + 18, arrow.side, arrow.groundFireDps, arrow.groundFireDuration, arrow.groundFireRadius ?? arrow.splash);
   }
   state.blasts.push({ x: arrow.tx, y: arrow.ty + 18, radius: arrow.splash, life: 0.3, duration: 0.3, color: arrow.cannon ? "#ffce7a" : "#c0a36d" });
+}
+
+function explodeUndeadVultureOrb(arrow) {
+  const radius = arrow.splash ?? UNIT.undeadVulture.splash;
+  const limit = arrow.aoeLimit ?? UNIT.undeadVulture.aoeLimit;
+  getUnitsInRadius(arrow.tx, radius, arrow.side, limit).forEach((target) => {
+    const dealt = applyUnitDamage(target, arrow.damage, { label: "能量", color: "#7ed8ff", yOffset: -82, ranged: true });
+    handleDamageDealt(getArrowSource(arrow), target, dealt);
+  });
+  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= radius + 28) {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius, life: 0.28, duration: 0.28, color: "#7ed8ff" });
+  popText(arrow.tx, arrow.ty - 36, "能量爆裂", "#7ed8ff");
 }
 
 function createGroundFire(x, y, side, dps, duration, radius) {
@@ -8870,6 +8908,9 @@ function removeDead() {
     if (unit.type === "stormLich") {
       createStormLichDeathRain(unit);
     }
+    if (unit.type === "undeadVulture") {
+      createUndeadVultureCrash(unit);
+    }
     if (unit.type === "darkKnightBrother") {
       enrageSurvivingDarkKnightBrother(unit);
     }
@@ -9074,6 +9115,16 @@ function createStormLichDeathRain(unit) {
     heal: data.rainHeal,
   });
   popText(unit.x, unit.y - 118, "治疗雨", "#9ee8ff");
+}
+
+function createUndeadVultureCrash(unit) {
+  const data = UNIT.undeadVulture;
+  const y = FIELD.ground - 34;
+  getUnitsInRadius(unit.x, data.crashRadius, unit.side, data.crashLimit).forEach((enemy) => {
+    applyUnitDamage(enemy, data.crashDamage, { label: "坠落", color: "#7ed8ff", yOffset: -82, ranged: true });
+  });
+  state.blasts.push({ x: unit.x, y, radius: data.crashRadius, life: 0.32, duration: 0.32, color: "#7ed8ff" });
+  popText(unit.x, unit.y - 120, "骨翼坠落", "#7ed8ff");
 }
 
 function healNearbyAllies(water) {
@@ -10625,6 +10676,7 @@ function getUnitColor(unit) {
   if (type === "rhinoMan") return unit.rhinoRage ? "#8b5f45" : "#6f7370";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
+  if (type === "undeadVulture") return "#d8d0c8";
   if (type === "undead") return "#b8b0a5";
   if (type === "ghoul") return "#7f8f68";
   if (type === "candlelight") return "#766487";
@@ -10682,6 +10734,7 @@ function getHeadColor(unit) {
   if (unit.type === "rhinoMan") return unit.rhinoRage ? "#ffb06b" : "#c8d0c8";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
+  if (unit.type === "undeadVulture") return "#7ed8ff";
   if (unit.type === "griffinBomber") return "#e0b36d";
   if (unit.type === "candlelight") return "#e8ddcf";
   if (unit.type === "reaper") return "#d8d0c8";
@@ -11081,6 +11134,52 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(6, -54);
     ctx.quadraticCurveTo(42, -86, 64, -50);
     ctx.stroke();
+  } else if (type === "undeadVulture") {
+    ctx.strokeStyle = "#d8d0c8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-34, -50);
+    ctx.lineTo(-10, -42);
+    ctx.lineTo(12, -42);
+    ctx.lineTo(38, -50);
+    ctx.moveTo(-10, -42);
+    ctx.lineTo(-24, -18);
+    ctx.moveTo(12, -42);
+    ctx.lineTo(24, -18);
+    ctx.stroke();
+    ctx.strokeStyle = "#b8b0a5";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-9, -53);
+    ctx.lineTo(9, -53);
+    ctx.moveTo(-8, -47);
+    ctx.lineTo(8, -47);
+    ctx.moveTo(-7, -41);
+    ctx.lineTo(7, -41);
+    ctx.stroke();
+    ctx.strokeStyle = "#d8d0c8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < 5; i += 1) {
+      const lx = -16 - i * 10;
+      ctx.moveTo(-11, -45);
+      ctx.lineTo(lx, -67 + Math.sin(i) * 5);
+      const rx = 16 + i * 10;
+      ctx.moveTo(11, -45);
+      ctx.lineTo(rx, -67 + Math.sin(i) * 5);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(126, 216, 255, 0.6)";
+    ctx.strokeStyle = "#d7f6ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, -35, 15, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#7ed8ff";
+    ctx.beginPath();
+    ctx.arc(0, -35, 7, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "griffinBomber") {
     ctx.strokeStyle = "#3a2a1b";
     ctx.lineWidth = 5;
@@ -13276,6 +13375,8 @@ function drawArrow(arrow) {
           ? (arrow.poison ? "#93d96b" : "#d7c090")
         : arrow.type === "goblinVulture"
           ? "#ffce7a"
+        : arrow.type === "undeadVulture"
+          ? "#7ed8ff"
         : arrow.type === "musketeer" || arrow.type === "ironCavalryMusket"
           ? "#f5f0df"
           : arrow.type === "ironCavalryBomb"
@@ -13287,11 +13388,17 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
   ctx.stroke();
+  if (arrow.type === "undeadVulture") {
+    ctx.fillStyle = "rgba(126, 216, 255, 0.75)";
+    ctx.beginPath();
+    ctx.arc(x + 12, y - 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawLightning(bolt) {
