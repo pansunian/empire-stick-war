@@ -680,8 +680,8 @@ const UNIT = {
     train: 6,
     cooldown: 1,
     arrowBoardHp: 700,
-    arrowBoardWidth: 174,
-    arrowBoardHeight: 72,
+    arrowBoardWidth: 90,
+    arrowBoardHeight: 90,
     arrowBoardYOffset: 96,
     arrowBoardProtectPadding: 36,
   },
@@ -7658,6 +7658,7 @@ function isArrowShieldBlockable(arrow) {
     "demonArcher",
     "fireElement",
     "goblinVulture",
+    "undeadVulture",
     "javelinThrower",
   ]);
   if (blockableTypes.has(arrow.type)) return true;
@@ -9252,7 +9253,13 @@ function createStormLichDeathRain(unit) {
 function createUndeadVultureCrash(unit) {
   const data = UNIT.undeadVulture;
   const y = FIELD.ground - 34;
+  const from = { x: unit.x, y: unit.y - 96 };
   getUnitsInRadius(unit.x, data.crashRadius, unit.side, data.crashLimit).forEach((enemy) => {
+    const to = { x: enemy.x, y: enemy.y - 38 };
+    if (tryBlockSpecialWithShieldCart(from, to, enemy, data.crashDamage)) {
+      popText(enemy.x, enemy.y - 96, "坠落被挡", "#d7c090");
+      return;
+    }
     applyUnitDamage(enemy, data.crashDamage, { label: "坠落", color: "#7ed8ff", yOffset: -82, ranged: true, sourceSide: unit.side });
   });
   state.blasts.push({ x: unit.x, y, radius: data.crashRadius, life: 0.32, duration: 0.32, color: "#7ed8ff" });
