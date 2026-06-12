@@ -559,6 +559,21 @@ const UNIT = {
     poisonDps: 5,
     poisonDuration: Infinity,
   },
+  necromancer: {
+    name: "亡灵法师",
+    cost: 155,
+    hp: 200,
+    damage: 30,
+    range: 150,
+    speed: 32,
+    train: 5,
+    cooldown: 2,
+    convertEvery: 4,
+    corpseHpRatio: 0.25,
+    summonCooldown: 20,
+    summonCount: 4,
+    summonedSpeed: 60,
+  },
   bomber: {
     name: "炸弹客",
     cost: 80,
@@ -1296,7 +1311,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
     startingUnits: ["miner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
@@ -1339,6 +1354,7 @@ const UNIT_ICON = {
   machete: "machete",
   deadCorpse: "venom",
   poisonZombie: "venom",
+  necromancer: "wizard-hat",
   bomber: "bomb",
   orc: "claws",
   berserkOrc: "axe",
@@ -1396,7 +1412,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1412,15 +1428,15 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
-const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
+const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher", "necromancer"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1933,6 +1949,7 @@ function formatSpecial(type) {
   if (type === "rhinoMan") notes.push(`持有大盾；免疫伤害小于等于 ${data.rangedShieldThreshold} 的远程攻击；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
+  if (type === "necromancer") notes.push(`每 ${data.convertEvery}秒将敌方尸体转化为丧尸，生命为尸体原生命 ${Math.round(data.corpseHpRatio * 100)}%；远程单位尸体转化为毒尸；技能召唤 ${data.summonCount} 只移速 ${data.summonedSpeed} 的冲锋丧尸，冷却 ${data.summonCooldown}秒`);
   if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
   if (type === "griffinBomber") notes.push(`飞行轰炸单位，不停前进循环补弹；每轮 ${data.ammo} 颗炸弹，${data.cooldown}秒投 1 颗，${data.damage} 范围伤害，最多 ${data.bombLimit} 人；飞过基地时剩余炸弹砸向基地`);
@@ -2695,6 +2712,7 @@ function spawnUnit(type, side, x) {
     priestBloodTimer: data.bloodSacrificeCooldown ?? 0,
     priestSacrificeCount: 0,
     undeadLureTimer: data.lureCooldown ?? 0,
+    necromancerConvertTimer: data.convertEvery ?? 0,
     luredTimer: 0,
     luredBySide: null,
     armorReduction: 0,
@@ -4103,6 +4121,7 @@ function chooseEnemyUnit(affordable) {
     machete: 0.9,
     deadCorpse: 0.75,
     poisonZombie: 0.85,
+    necromancer: 0.58,
     bomber: 0.85,
     demonArcher: 0.75,
     darkKnight: 0.65,
@@ -4341,6 +4360,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "priest") {
       updatePriest(unit);
+    }
+    if (unit.type === "necromancer") {
+      updateNecromancer(unit, dt);
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -5568,6 +5590,57 @@ function updateUndeadMage(unit, dt) {
   void dt;
 }
 
+function updateNecromancer(unit, dt) {
+  const data = UNIT.necromancer;
+  unit.necromancerConvertTimer = Math.max(0, (unit.necromancerConvertTimer ?? data.convertEvery) - dt);
+  if (unit.necromancerConvertTimer > 0) return;
+  if (convertEnemyCorpseWithNecromancer(unit)) {
+    unit.necromancerConvertTimer = data.convertEvery;
+  } else {
+    unit.necromancerConvertTimer = 0.6;
+  }
+}
+
+function convertEnemyCorpseWithNecromancer(unit) {
+  const corpse = state.corpses
+    .filter((item) => item.side !== unit.side)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0];
+  if (!corpse) return false;
+  const type = isRangedCorpse(corpse) ? "poisonZombie" : "undead";
+  const converted = spawnUnit(type, unit.side, corpse.x);
+  converted.y = corpse.y;
+  converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * UNIT.necromancer.corpseHpRatio));
+  converted.hp = converted.maxHp;
+  converted.forceCharge = true;
+  converted.summonerId = unit.id;
+  state.corpses = state.corpses.filter((item) => item !== corpse);
+  state.blasts.push({ x: converted.x, y: converted.y - 36, radius: 46, life: 0.32, duration: 0.32, color: "#b8b0e8" });
+  popText(converted.x, converted.y - 106, type === "poisonZombie" ? "尸体转化毒尸" : "尸体转化丧尸", "#b8b0e8");
+  return true;
+}
+
+function isRangedCorpse(corpse) {
+  const data = UNIT[corpse.type] ?? {};
+  return (data.range ?? 0) > 60;
+}
+
+function summonNecromancerZombies(unit) {
+  const data = UNIT.necromancer;
+  const dir = unit.side === "player" ? 1 : -1;
+  for (let i = 0; i < data.summonCount; i += 1) {
+    const zombie = spawnUnit("undead", unit.side, unit.x + dir * (26 + i * 18));
+    zombie.y = unit.y + (i - (data.summonCount - 1) / 2) * 14;
+    zombie.speed = data.summonedSpeed;
+    zombie.forceCharge = true;
+    zombie.summonerId = unit.id;
+  }
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.necromancerSummon = data.summonCooldown;
+  state.blasts.push({ x: unit.x, y: unit.y - 48, radius: 58, life: 0.34, duration: 0.34, color: "#b8b0e8" });
+  popText(unit.x, unit.y - 122, "召唤冲锋丧尸", "#b8b0e8");
+  return true;
+}
+
 function findUndeadBoneTarget(unit) {
   const data = UNIT.undeadMage;
   return state.units
@@ -6594,6 +6667,7 @@ function attack(unit, target) {
     unit.type === "goldenArcher" ||
     unit.type === "crossbow" ||
     unit.type === "poisonZombie" ||
+    unit.type === "necromancer" ||
     unit.type === "musketeer" ||
     unit.type === "demonArcher" ||
     unit.type === "fireElement" ||
@@ -10509,6 +10583,7 @@ function getUnitColor(unit) {
   if (type === "deadCorpse") return "#72836c";
   if (type === "medusa") return "#587a5f";
   if (type === "poisonZombie") return "#6bd28f";
+  if (type === "necromancer") return "#4d405f";
   if (type === "bomber") return "#f09a47";
   if (type === "demonArcher") return "#d05b8f";
   if (type === "darkKnight") return "#55505f";
@@ -10573,6 +10648,7 @@ function getHeadColor(unit) {
   if (unit.type === "undeadCatapult") return "#d8c8e8";
   if (unit.type === "enslavedGiant") return "#c0a36d";
   if (unit.type === "undeadMage") return "#d8c8e8";
+  if (unit.type === "necromancer") return "#d8c8e8";
   if (unit.type === "suikai") return "#ece1ff";
   if (unit.type === "chaosGiant") return "#c7b0d8";
   if (unit.type === "superGiant") return "#e0c8ff";
@@ -11477,6 +11553,34 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(50, -48, 7, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "necromancer") {
+    ctx.fillStyle = "#2d2135";
+    ctx.strokeStyle = "#d8c8e8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-18, -70);
+    ctx.quadraticCurveTo(0, -88, 19, -70);
+    ctx.lineTo(12, -18);
+    ctx.quadraticCurveTo(0, -10, -13, -18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#1b1420";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -25);
+    ctx.lineTo(32, -62);
+    ctx.stroke();
+    ctx.strokeStyle = "#b8b0e8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(23, -44);
+    ctx.lineTo(52, -50);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(184, 176, 232, 0.55)";
+    ctx.beginPath();
+    ctx.arc(55, -51, 8, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "suikai") {
     ctx.strokeStyle = "#2d2135";
     ctx.lineWidth = 5;
@@ -12145,6 +12249,7 @@ function getUnitBasicDamage(unit) {
   const data = UNIT[unit.type] ?? {};
   if (unit.type === "mage") return data.damage;
   if (unit.type === "undeadMage") return data.damage;
+  if (unit.type === "necromancer") return data.damage;
   if (unit.type === "hurricane") return data.damage;
   if (unit.type === "treeEnt") return data.damage;
   return unit.damage ?? data.damage ?? 0;
@@ -12312,6 +12417,9 @@ function getManualActions(unit) {
       break;
     case "reaper":
       add("reaperStealth", "隐形", "direct");
+      break;
+    case "necromancer":
+      add("necromancerSummon", "召尸", "direct");
       break;
     case "deathGod":
       add("deathGodSpikes", "尖刺", "direct");
@@ -12507,6 +12615,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "deathGodClone") {
     summonDeathGodClone(unit);
+    return;
+  }
+  if (action.id === "necromancerSummon") {
+    summonNecromancerZombies(unit);
     return;
   }
   if (action.id === "scimitarRoar") {
@@ -12765,6 +12877,7 @@ function getManualActionCooldown(unit, id) {
     vBlink: data.blinkCooldown,
     deathGodSpikes: data.spikeCooldown,
     deathGodClone: data.cloneCooldown,
+    necromancerSummon: data.summonCooldown,
     medusaPoison: data.poisonEvery,
     suikaiCorpses: data.corpseEvery,
     suikaiHook: data.hookEvery,
