@@ -13084,8 +13084,9 @@ function updateHud() {
     const type = button.dataset.unit;
     const progress = type ? trainingProgress.get(type) : undefined;
     if (progress !== undefined) {
+      const degrees = Math.max(1, Math.round(progress * 360));
       button.dataset.training = "true";
-      button.style.setProperty("--train-progress", `${Math.round(progress * 360)}deg`);
+      button.style.setProperty("--train-progress", `${degrees}deg`);
     } else {
       delete button.dataset.training;
       button.style.removeProperty("--train-progress");
