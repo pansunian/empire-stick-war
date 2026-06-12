@@ -574,8 +574,8 @@ const UNIT = {
   },
   orc: {
     name: "兽人",
-    cost: 70,
-    hp: 130,
+    cost: 80,
+    hp: 110,
     damage: 6,
     range: 34,
     speed: 40,
@@ -584,9 +584,9 @@ const UNIT = {
   },
   berserkOrc: {
     name: "狂兽人",
-    cost: 100,
-    hp: 180,
-    damage: 10,
+    cost: 120,
+    hp: 140,
+    damage: 13,
     range: 38,
     speed: 38,
     train: 4.2,
@@ -666,8 +666,8 @@ const UNIT = {
   },
   apeMan: {
     name: "猿人",
-    cost: 140,
-    hp: 400,
+    cost: 150,
+    hp: 320,
     damage: 20,
     range: 44,
     speed: 34,
@@ -937,7 +937,7 @@ const UNIT = {
     name: "土元素",
     cost: 65,
     hp: 100,
-    damage: 6,
+    damage: 7,
     range: 36,
     speed: 34,
     train: 4.2,
@@ -1265,8 +1265,8 @@ const FACTIONS = {
   },
   chaos: {
     name: "混沌帝国",
-    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner"],
-    startingUnits: ["miner", "creeper", "goblin", "bomber"],
+    roster: ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "executioner"],
+    startingUnits: ["miner", "creeper", "orc", "bomber"],
     mineColor: "#b7f56e",
   },
   undeadEmpire: {
@@ -1368,7 +1368,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "superGiant"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1392,7 +1392,7 @@ const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+  chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
