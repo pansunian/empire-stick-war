@@ -718,20 +718,33 @@ const UNIT = {
     roarStun: 3,
   },
   minotaur: {
-    name: "牛头人",
+    name: "巨角骑士",
     cost: 140,
-    hp: 500,
-    damage: 13,
-    range: 42,
+    hp: 600,
+    damage: 30,
+    range: 48,
     speed: 30,
     train: 6.5,
-    cooldown: 2,
-    leapDistance: 130,
-    leapStun: 2,
-    leapCooldown: 15,
-    deathRageRange: 1600,
-    deathRageMoveFactor: 1.2,
-    deathRageAttackFactor: 1.2,
+    cooldown: 0.2,
+    riderHp: 200,
+    riderDamage: 10,
+    riderCooldown: 1.6,
+    beastDamage: 30,
+    beastCooldown: 2,
+    chargeDistance: 160,
+    chargeStun: 2,
+    chargeCooldown: 14,
+  },
+  hornKnightRider: {
+    name: "兽人骑士",
+    cost: 0,
+    hp: 200,
+    damage: 10,
+    range: 38,
+    speed: 35,
+    train: 0,
+    cooldown: 1.6,
+    summonOnly: true,
   },
   rhinoMan: {
     name: "犀牛人",
@@ -742,10 +755,7 @@ const UNIT = {
     speed: 27,
     train: 7,
     cooldown: 2,
-    chargeDistance: 160,
-    chargeDamage: 20,
-    chargeStun: 2,
-    chargeCooldown: 16,
+    rangedShieldThreshold: 15,
     deathRageRange: 1600,
     deathRageMoveFactor: 1.2,
     deathRageAttackFactor: 1.2,
@@ -1341,6 +1351,7 @@ const UNIT_ICON = {
   summonedApeMan: "claws",
   scimitarWarrior: "machete",
   minotaur: "axe",
+  hornKnightRider: "axe",
   rhinoMan: "axe",
   javelinThrower: "spear",
   goblinVulture: "wing",
@@ -1384,7 +1395,7 @@ function normalizeUnitType(type) {
 
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
-  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
+  ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
@@ -1917,8 +1928,9 @@ function formatSpecial(type) {
   if (type === "priest") notes.push(`死亡敌人可被祭祀为祭品，收集 ${data.sacrificeNeeded} 个祭品召唤较弱猿人；技能抽取生命值不超过 ${data.siphonMaxHp} 的敌人，造成 ${data.siphonDamage} 伤害并治疗前线；血祭一名生物友军，将其当前生命值 x${data.bloodSacrificeFactor} 治疗前线，冷却 ${data.bloodSacrificeCooldown}秒`);
   if (type === "apeMan" || type === "summonedApeMan") notes.push(`攻击击退敌人 ${data.knockback} 距离并眩晕 ${data.stunDuration}秒`);
   if (type === "scimitarWarrior") notes.push(`大盾与大砍刀；战吼眩晕 ${data.roarRadius} 范围内敌人 ${data.roarStun}秒，冷却 ${data.roarCooldown}秒`);
-  if (type === "minotaur") notes.push(`双短斧每次攻击造成 2 次 ${data.damage} 伤害；技能向前跳跃 ${data.leapDistance} 距离并眩晕敌人 ${data.leapStun}秒，冷却 ${data.leapCooldown}秒；${data.deathRageRange} 范围内牛头人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
-  if (type === "rhinoMan") notes.push(`技能向前冲撞 ${data.chargeDistance} 距离，路途撞击敌人造成 ${data.chargeDamage} 伤害并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
+  if (type === "minotaur") notes.push(`生命分为巨角兽 ${data.hp} 与兽人骑士 ${data.riderHp}；骑乘时巨角顶撞 ${data.beastDamage} 伤害/${data.beastCooldown}秒，骑士双短斧每把 ${data.riderDamage} 伤害/${data.riderCooldown}秒；巨角兽死亡后骑士下马作战；技能冲撞 ${data.chargeDistance} 距离并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒，不造成伤害`);
+  if (type === "hornKnightRider") notes.push(`巨角兽死亡后下马作战；双短斧每把 ${data.damage} 伤害，攻速 ${data.cooldown}秒`);
+  if (type === "rhinoMan") notes.push(`持有大盾；免疫伤害小于等于 ${data.rangedShieldThreshold} 的远程攻击；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
   if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
@@ -2689,9 +2701,10 @@ function spawnUnit(type, side, x) {
     heavyArmorTimer: 0,
     heavyArmorReduction: 0,
     minotaurRage: false,
-    minotaurLeapTimer: data.leapCooldown ?? 0,
+    minotaurLeapTimer: data.chargeCooldown ?? data.leapCooldown ?? 0,
+    hornBeastAttackTimer: 0,
+    hornRiderAttackTimer: 0,
     rhinoRage: false,
-    rhinoChargeTimer: data.chargeCooldown ?? 0,
     shieldCastTimer: data.shieldEvery ?? 0,
     shieldTimer: 0,
     shieldReduction: 0,
@@ -4289,7 +4302,8 @@ function updateUnits(dt) {
     unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
     if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
     unit.minotaurLeapTimer = Math.max(0, (unit.minotaurLeapTimer ?? 0) - dt);
-    unit.rhinoChargeTimer = Math.max(0, (unit.rhinoChargeTimer ?? 0) - dt);
+    unit.hornBeastAttackTimer = Math.max(0, (unit.hornBeastAttackTimer ?? 0) - dt);
+    unit.hornRiderAttackTimer = Math.max(0, (unit.hornRiderAttackTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
     unit.stormSlowTimer = Math.max(0, (unit.stormSlowTimer ?? 0) - dt);
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
@@ -6545,6 +6559,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "hornKnightRider") {
+    attackHornKnightRider(unit, target);
+    return;
+  }
+
   if (unit.type === "apeMan" || unit.type === "summonedApeMan") {
     attackApeMan(unit, target);
     return;
@@ -8113,71 +8132,8 @@ function getFrontlineAllies(side) {
   return units.filter((unit) => Math.abs(unit.x - front) <= 260);
 }
 
-function getMinotaurLeapTargets(unit) {
+function getHornKnightChargeTargets(unit) {
   const data = UNIT.minotaur;
-  const dir = unit.side === "player" ? 1 : -1;
-  const startX = unit.x;
-  const endX = unit.x + dir * data.leapDistance;
-  const minX = Math.min(startX, endX);
-  const maxX = Math.max(startX, endX);
-  return state.units.filter((target) =>
-    target.side !== unit.side &&
-    target.hp > 0 &&
-    !isUnitHidden(target) &&
-    !isReaperStealthed(target) &&
-    !UNIT[target.type]?.untargetable &&
-    target.x >= minX &&
-    target.x <= maxX &&
-    Math.abs(target.y - unit.y) <= 90
-  );
-}
-
-function tryMinotaurLeap(unit) {
-  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
-  if (!getMinotaurLeapTargets(unit).length) return false;
-  return castMinotaurLeap(unit);
-}
-
-function castMinotaurLeap(unit) {
-  const data = UNIT.minotaur;
-  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
-  const targets = getMinotaurLeapTargets(unit);
-  if (!targets.length && unit.side !== "player") return false;
-  const dir = unit.side === "player" ? 1 : -1;
-  const startX = unit.x;
-  unit.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.leapDistance));
-  unit.minotaurLeapTimer = data.leapCooldown;
-  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.45);
-  targets.forEach((target) => applyStun(target, data.leapStun));
-  state.blasts.push({ x: (startX + unit.x) / 2, y: unit.y - 26, radius: data.leapDistance / 2, life: 0.34, duration: 0.34, color: "#d0b078" });
-  popText(unit.x, unit.y - 126, "大跳", "#d0b078");
-  return true;
-}
-
-function attackMinotaur(unit, target) {
-  const data = UNIT.minotaur;
-  for (let i = 0; i < 2; i += 1) {
-    if (target.kind !== "statue" && target.hp <= 0) break;
-    const dealt = applyDamage(target, data.damage, unit.side);
-    handleDamageDealt(unit, target, dealt);
-  }
-  if (target.kind !== "statue") {
-    state.blasts.push({ x: target.x, y: target.y - 36, radius: 32, life: 0.18, duration: 0.18, color: "#d0b078" });
-  }
-}
-
-function enrageNearbyMinotaurs(deadUnit) {
-  const data = UNIT.minotaur;
-  state.units.forEach((unit) => {
-    if (unit.id === deadUnit.id || unit.type !== "minotaur" || unit.side !== deadUnit.side || unit.hp <= 0) return;
-    if (Math.abs(unit.x - deadUnit.x) > data.deathRageRange) return;
-    unit.minotaurRage = true;
-    popText(unit.x, unit.y - 120, "牛头狂暴", "#ff8a3d");
-  });
-}
-
-function getRhinoChargeTargets(unit) {
-  const data = UNIT.rhinoMan;
   const dir = unit.side === "player" ? 1 : -1;
   const startX = unit.x;
   const endX = unit.x + dir * data.chargeDistance;
@@ -8195,29 +8151,72 @@ function getRhinoChargeTargets(unit) {
   );
 }
 
-function updateRhinoMan(unit) {
-  if ((unit.rhinoChargeTimer ?? 0) > 0) return false;
-  if (!getRhinoChargeTargets(unit).length) return false;
-  return castRhinoCharge(unit);
+function tryMinotaurLeap(unit) {
+  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
+  if (!getHornKnightChargeTargets(unit).length) return false;
+  return castMinotaurLeap(unit);
 }
 
-function castRhinoCharge(unit) {
-  const data = UNIT.rhinoMan;
-  if ((unit.rhinoChargeTimer ?? 0) > 0) return false;
+function castMinotaurLeap(unit) {
+  const data = UNIT.minotaur;
+  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
+  const targets = getHornKnightChargeTargets(unit);
+  if (!targets.length && unit.side !== "player") return false;
   const dir = unit.side === "player" ? 1 : -1;
   const startX = unit.x;
-  const endX = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.chargeDistance));
-  const targets = getRhinoChargeTargets(unit);
-  unit.x = endX;
-  unit.rhinoChargeTimer = data.chargeCooldown;
-  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.6);
-  targets.forEach((target) => {
-    applyDamage(target, data.chargeDamage, unit.side);
-    applyStun(target, data.chargeStun);
-  });
-  state.blasts.push({ x: (startX + endX) / 2, y: unit.y - 28, radius: data.chargeDistance / 2, life: 0.28, duration: 0.28, color: "#c0a36d" });
-  popText(unit.x, unit.y - 124, targets.length ? "冲撞" : "冲刺", "#c0a36d");
+  unit.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.chargeDistance));
+  unit.minotaurLeapTimer = data.chargeCooldown;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.45);
+  targets.forEach((target) => applyStun(target, data.chargeStun));
+  state.blasts.push({ x: (startX + unit.x) / 2, y: unit.y - 26, radius: data.chargeDistance / 2, life: 0.34, duration: 0.34, color: "#d0b078" });
+  popText(unit.x, unit.y - 126, targets.length ? "巨角冲撞" : "冲刺", "#d0b078");
   return true;
+}
+
+function attackMinotaur(unit, target) {
+  const data = UNIT.minotaur;
+  let attacked = false;
+  if ((unit.hornBeastAttackTimer ?? 0) <= 0) {
+    const dealt = applyDamage(target, data.beastDamage, unit.side);
+    handleDamageDealt(unit, target, dealt);
+    unit.hornBeastAttackTimer = data.beastCooldown;
+    attacked = true;
+    if (target.kind !== "statue" && target.hp <= 0) return;
+  }
+  if ((unit.hornRiderAttackTimer ?? 0) <= 0) {
+    for (let i = 0; i < 2; i += 1) {
+      if (target.kind !== "statue" && target.hp <= 0) break;
+      const dealt = applyDamage(target, data.riderDamage, unit.side);
+      handleDamageDealt(unit, target, dealt);
+    }
+    unit.hornRiderAttackTimer = data.riderCooldown;
+    attacked = true;
+  }
+  if (attacked && target.kind !== "statue") {
+    state.blasts.push({ x: target.x, y: target.y - 36, radius: 32, life: 0.18, duration: 0.18, color: "#d0b078" });
+  }
+}
+
+function attackHornKnightRider(unit, target) {
+  const data = UNIT.hornKnightRider;
+  for (let i = 0; i < 2; i += 1) {
+    if (target.kind !== "statue" && target.hp <= 0) break;
+    const dealt = applyDamage(target, data.damage, unit.side);
+    handleDamageDealt(unit, target, dealt);
+  }
+  if (target.kind !== "statue") {
+    state.blasts.push({ x: target.x, y: target.y - 34, radius: 25, life: 0.16, duration: 0.16, color: "#c89a6d" });
+  }
+}
+
+function enrageNearbyMinotaurs(deadUnit) {
+  const data = UNIT.minotaur;
+  state.units.forEach((unit) => {
+    if (unit.id === deadUnit.id || unit.type !== "minotaur" || unit.side !== deadUnit.side || unit.hp <= 0) return;
+    if (Math.abs(unit.x - deadUnit.x) > data.deathRageRange) return;
+    unit.minotaurRage = true;
+    popText(unit.x, unit.y - 120, "牛头狂暴", "#ff8a3d");
+  });
 }
 
 function enrageNearbyRhinoMen(deadUnit) {
@@ -8627,6 +8626,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   }
 
   const damage = getModifiedDamage(target, amount, options);
+  if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   target.combatTimer = 3;
@@ -8636,6 +8636,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
 
 function applyUnitDamage(target, amount, options = {}) {
   const damage = options.modified === false ? amount : getModifiedDamage(target, amount, options);
+  if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   target.combatTimer = 3;
@@ -8662,6 +8663,10 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (options.ranged && target.type === "boneGiant") {
     damage *= 1 - (UNIT.boneGiant.rangedReduction ?? 0.25);
+  }
+  if (options.ranged && target.type === "rhinoMan" && amount <= (UNIT.rhinoMan.rangedShieldThreshold ?? 15)) {
+    popText(target.x, target.y - 105, "大盾格挡", "#c8d0c8");
+    return 0;
   }
   if (target.type === "goblin" && target.goblinBurrowed) {
     damage *= 1 - (UNIT.goblin.burrowReduction ?? 0.9);
@@ -8701,7 +8706,14 @@ function removeDead() {
       releaseVControl(unit);
     }
     if (unit.type === "minotaur") {
-      enrageNearbyMinotaurs(unit);
+      deathSpawns.push({
+        type: "hornKnightRider",
+        side: unit.side,
+        x: unit.x,
+        y: unit.y,
+        text: "骑士下马",
+        color: "#c89a6d",
+      });
     }
     if (unit.type === "rhinoMan") {
       enrageNearbyRhinoMen(unit);
@@ -10485,7 +10497,8 @@ function getUnitColor(unit) {
   if (type === "priest") return "#5d4b74";
   if (type === "apeMan" || type === "summonedApeMan") return "#6c4d37";
   if (type === "scimitarWarrior") return "#6f5d48";
-  if (type === "minotaur") return unit.minotaurRage ? "#9a4f35" : "#7a5a42";
+  if (type === "minotaur") return "#6d5a42";
+  if (type === "hornKnightRider") return "#7faa5c";
   if (type === "rhinoMan") return unit.rhinoRage ? "#8b5f45" : "#6f7370";
   if (type === "javelinThrower") return "#8fbd6b";
   if (type === "goblinVulture") return "#756a55";
@@ -10540,7 +10553,8 @@ function getHeadColor(unit) {
   if (unit.type === "priest") return "#e0c8ff";
   if (unit.type === "apeMan" || unit.type === "summonedApeMan") return "#c89668";
   if (unit.type === "scimitarWarrior") return "#d0b078";
-  if (unit.type === "minotaur") return unit.minotaurRage ? "#ffb06b" : "#c89a6d";
+  if (unit.type === "minotaur") return "#b8d68a";
+  if (unit.type === "hornKnightRider") return "#b8d68a";
   if (unit.type === "rhinoMan") return unit.rhinoRage ? "#ffb06b" : "#c8d0c8";
   if (unit.type === "javelinThrower") return "#cde69b";
   if (unit.type === "goblinVulture") return "#d7c090";
@@ -11209,38 +11223,96 @@ function drawWeapon(type, unit = null) {
     ctx.quadraticCurveTo(64, -45, 55, -56);
     ctx.fill();
   } else if (type === "minotaur") {
-    ctx.strokeStyle = unit?.minotaurRage ? "#ff8a3d" : "#2f2418";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.fillStyle = "#5f513b";
+    ctx.strokeStyle = "#211c18";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(-4, -35, 44, 23, -0.06, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#4f4535";
+    ctx.beginPath();
+    ctx.ellipse(36, -48, 24, 18, -0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#f0d0a0";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(51, -54);
+    ctx.quadraticCurveTo(81, -65, 92, -42);
+    ctx.moveTo(48, -43);
+    ctx.quadraticCurveTo(74, -40, 86, -18);
+    ctx.stroke();
+    ctx.strokeStyle = "#2f2418";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(13, -29);
-    ctx.lineTo(42, -50);
-    ctx.moveTo(-8, -30);
-    ctx.lineTo(-38, -50);
+    ctx.moveTo(-25, -18);
+    ctx.lineTo(-36, 5);
+    ctx.moveTo(0, -16);
+    ctx.lineTo(-5, 7);
+    ctx.moveTo(22, -18);
+    ctx.lineTo(29, 5);
+    ctx.stroke();
+    ctx.fillStyle = "#7faa5c";
+    ctx.strokeStyle = "#1f2518";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(-4, -70, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#2f2418";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-5, -58);
+    ctx.lineTo(-6, -38);
+    ctx.moveTo(-9, -52);
+    ctx.lineTo(-28, -63);
+    ctx.moveTo(0, -52);
+    ctx.lineTo(20, -63);
     ctx.stroke();
     ctx.fillStyle = "#7b7f80";
     ctx.strokeStyle = "#211c18";
     ctx.lineWidth = 2;
     [
-      [44, -52, 1],
-      [-40, -52, -1],
+      [-31, -64, -1],
+      [23, -64, 1],
     ].forEach(([x, y, dir]) => {
       ctx.beginPath();
-      ctx.moveTo(x, y - 11);
-      ctx.lineTo(x + dir * 18, y - 5);
-      ctx.lineTo(x + dir * 10, y + 12);
-      ctx.lineTo(x - dir * 7, y + 7);
+      ctx.moveTo(x, y - 10);
+      ctx.lineTo(x + dir * 16, y - 4);
+      ctx.lineTo(x + dir * 9, y + 11);
+      ctx.lineTo(x - dir * 6, y + 6);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
     });
-    ctx.strokeStyle = "#f0d0a0";
-    ctx.lineWidth = 4;
+  } else if (type === "hornKnightRider") {
+    ctx.strokeStyle = "#2f2418";
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(-8, -72);
-    ctx.quadraticCurveTo(-28, -90, -38, -65);
-    ctx.moveTo(8, -72);
-    ctx.quadraticCurveTo(30, -90, 38, -65);
+    ctx.moveTo(11, -40);
+    ctx.lineTo(38, -58);
+    ctx.moveTo(-8, -40);
+    ctx.lineTo(-36, -58);
     ctx.stroke();
+    ctx.fillStyle = "#7b7f80";
+    ctx.strokeStyle = "#211c18";
+    ctx.lineWidth = 2;
+    [
+      [41, -60, 1],
+      [-39, -60, -1],
+    ].forEach(([x, y, dir]) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 10);
+      ctx.lineTo(x + dir * 16, y - 4);
+      ctx.lineTo(x + dir * 9, y + 11);
+      ctx.lineTo(x - dir * 6, y + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
   } else if (type === "rhinoMan") {
     ctx.strokeStyle = unit?.rhinoRage ? "#ff8a3d" : "#2f3330";
     ctx.lineWidth = 6;
@@ -11256,20 +11328,22 @@ function drawWeapon(type, unit = null) {
     ctx.stroke();
     ctx.fillStyle = "#59605d";
     ctx.strokeStyle = "#222725";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(-11, -69);
-    ctx.lineTo(-31, -78);
-    ctx.lineTo(-25, -61);
+    ctx.moveTo(-18, -83);
+    ctx.quadraticCurveTo(-62, -72, -64, -36);
+    ctx.quadraticCurveTo(-48, -12, -13, -28);
+    ctx.quadraticCurveTo(-3, -56, -18, -83);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = "#c8d0c8";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(11, -69);
-    ctx.lineTo(31, -78);
-    ctx.lineTo(25, -61);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(-43, -71);
+    ctx.lineTo(-37, -25);
+    ctx.moveTo(-58, -50);
+    ctx.lineTo(-13, -44);
     ctx.stroke();
   } else if (type === "creeper" || type === "largeCreeper" || type === "ghoul") {
     ctx.strokeStyle = "#c7b08f";
@@ -11574,35 +11648,33 @@ function drawWeapon(type, unit = null) {
   } else if (type === "waterScorpion") {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#d94a42";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#2a5d7a";
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(-21, -36);
-    ctx.lineTo(-36, -47);
-    ctx.moveTo(-17, -29);
-    ctx.lineTo(-35, -28);
-    ctx.moveTo(2, -27);
-    ctx.lineTo(-10, -13);
-    ctx.moveTo(17, -29);
-    ctx.lineTo(31, -14);
-    ctx.moveTo(20, -40);
-    ctx.quadraticCurveTo(40, -51, 49, -39);
-    ctx.moveTo(47, -39);
-    ctx.lineTo(58, -45);
+    ctx.moveTo(-19, -34);
+    ctx.lineTo(-36, -43);
+    ctx.moveTo(-17, -28);
+    ctx.lineTo(-36, -27);
+    ctx.moveTo(-2, -27);
+    ctx.lineTo(-15, -12);
+    ctx.moveTo(13, -28);
+    ctx.lineTo(28, -13);
+    ctx.moveTo(20, -38);
+    ctx.quadraticCurveTo(42, -54, 50, -36);
+    ctx.moveTo(48, -36);
+    ctx.lineTo(58, -42);
     ctx.stroke();
-    ctx.fillStyle = "#2f9bd6";
+    ctx.fillStyle = "#56a8c8";
+    ctx.strokeStyle = "#17384b";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(-4, -36, 21, 13, -0.08, 0, Math.PI * 2);
+    ctx.ellipse(-5, -34, 24, 12, -0.05, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#64c7f0";
+    ctx.stroke();
+    ctx.fillStyle = "#b8f0ff";
     ctx.beginPath();
-    ctx.arc(-25, -37, 9, 0, Math.PI * 2);
-    ctx.arc(15, -37, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#d94a42";
-    ctx.beginPath();
-    ctx.arc(-39, -49, 6, 0, Math.PI * 2);
-    ctx.arc(60, -46, 5, 0, Math.PI * 2);
+    ctx.arc(-27, -36, 7, 0, Math.PI * 2);
+    ctx.arc(16, -35, 8, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "rog") {
     ctx.lineWidth = 6;
@@ -12249,9 +12321,6 @@ function getManualActions(unit) {
       add("scimitarRoar", "战吼", "direct");
       break;
     case "minotaur":
-      add("minotaurLeap", "大跳", "direct");
-      break;
-    case "rhinoMan":
       add("rhinoCharge", "冲撞", "direct");
       break;
     case "archmage":
@@ -12287,8 +12356,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "goblinBurrow") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
-  if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return true;
-  if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return true;
+  if (button.id === "rhinoCharge" && unit.minotaurLeapTimer > 0) return true;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return true;
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return true;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return true;
@@ -12394,8 +12462,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
-  if (button.id === "minotaurLeap" && unit.minotaurLeapTimer > 0) return `冷却 ${Math.ceil(unit.minotaurLeapTimer)}秒`;
-  if (button.id === "rhinoCharge" && unit.rhinoChargeTimer > 0) return `冷却 ${Math.ceil(unit.rhinoChargeTimer)}秒`;
+  if (button.id === "rhinoCharge" && unit.minotaurLeapTimer > 0) return `冷却 ${Math.ceil(unit.minotaurLeapTimer)}秒`;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return `冷却 ${Math.ceil(unit.priestSiphonTimer)}秒`;
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return `冷却 ${Math.ceil(unit.priestBloodTimer)}秒`;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return `冷却 ${Math.ceil(unit.undeadLureTimer)}秒`;
@@ -12446,12 +12513,8 @@ function executeManualAction(unit, action, point) {
     castScimitarRoar(unit);
     return;
   }
-  if (action.id === "minotaurLeap") {
-    castMinotaurLeap(unit);
-    return;
-  }
   if (action.id === "rhinoCharge") {
-    castRhinoCharge(unit);
+    castMinotaurLeap(unit);
     return;
   }
   if (action.id === "monkField") {
