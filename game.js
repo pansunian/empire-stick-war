@@ -3171,7 +3171,7 @@ function queueUnit(type) {
 
   state.gold -= cost;
   state.campaignTrainCounts[type] = getCampaignQueuedCount(type) + 1;
-  state.spawnQueue.push({ type, timer: data.train });
+  state.spawnQueue.push({ type, timer: data.train, duration: data.train });
   popText(FIELD.playerGate, FIELD.ground - 118, `训练 ${data.name}`, "#d9e8ff");
   updateHud();
 }
@@ -3283,7 +3283,10 @@ function getTowerUnits(side) {
 }
 
 function updateQueue(dt) {
-  for (const item of state.spawnQueue) item.timer -= dt;
+  for (const item of state.spawnQueue) {
+    item.timer -= dt;
+    item.duration = item.duration ?? UNIT[item.type]?.train ?? item.timer;
+  }
   const ready = state.spawnQueue.filter((item) => item.timer <= 0);
   state.spawnQueue = state.spawnQueue.filter((item) => item.timer > 0);
   ready.forEach((item, index) => {
@@ -13070,7 +13073,23 @@ function updateHud() {
   enemyGoldEl.textContent = Math.floor(state.enemyGold);
   playerHpBar.style.width = `${(state.playerHp / STATUE_MAX_HP) * 100}%`;
   enemyHpBar.style.width = `${(state.enemyHp / STATUE_MAX_HP) * 100}%`;
+  const trainingProgress = new Map();
+  state.spawnQueue.forEach((item) => {
+    const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
+    if (duration <= 0) return;
+    const progress = Math.max(0, Math.min(1, 1 - item.timer / duration));
+    trainingProgress.set(item.type, Math.max(trainingProgress.get(item.type) ?? 0, progress));
+  });
   trainButtons.forEach((button) => {
+    const type = button.dataset.unit;
+    const progress = type ? trainingProgress.get(type) : undefined;
+    if (progress !== undefined) {
+      button.dataset.training = "true";
+      button.style.setProperty("--train-progress", `${Math.round(progress * 360)}deg`);
+    } else {
+      delete button.dataset.training;
+      button.style.removeProperty("--train-progress");
+    }
     if (button.dataset.action === "convertEarth") {
       button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       return;
@@ -13119,7 +13138,6 @@ function updateHud() {
       button.disabled = state.over || state.gold < MERGE_COST || !canMergeV("player");
       return;
     }
-    const type = button.dataset.unit;
     if (!type) return;
     button.disabled = state.gold < getUnitCost(type, selectedFaction) || state.over || !canQueueCampaignUnit(type);
   });
