@@ -7489,8 +7489,10 @@ function getArrowPosition(arrow, life = arrow.life) {
 
 function isArrowShieldBlockable(arrow) {
   if (!arrow.target || arrow.target.kind === "statue") return false;
-  if (arrow.type === "boulder" || arrow.type === "campaignMissile" || arrow.type === "campaignRain" || arrow.type === "ironCavalryBomb" || arrow.type === "griffinBomb") return false;
-  return true;
+  const directTypes = new Set(["musketeer", "ironCavalryMusket", "shotgunPellet", "candlelight"]);
+  const unblockableTypes = new Set(["boulder", "campaignMissile", "campaignRain", "ironCavalryBomb", "griffinBomb"]);
+  if (directTypes.has(arrow.type) || unblockableTypes.has(arrow.type)) return false;
+  return getArrowArcHeight(arrow) > 0;
 }
 
 function getArrowBoardRect(cart) {
@@ -7552,12 +7554,16 @@ function tryBlockArrowWithShieldCart(arrow, from, to) {
     if (!segmentIntersectsRect(from, to, rect)) continue;
 
     const damage = Math.max(1, Math.round(arrow.damage ?? 1));
-    cart.arrowBoardHp = Math.max(0, cart.arrowBoardHp - damage);
-    state.blasts.push({ x: to.x, y: to.y, radius: 18, life: 0.18, duration: 0.18, color: "#d7c090" });
-    popText(cart.x, cart.y - 140, cart.arrowBoardHp > 0 ? `挡箭 -${damage}` : "遮箭板破损", "#d7c090");
+    damageArrowShieldBoard(cart, damage, to.x, to.y);
     return true;
   }
   return false;
+}
+
+function damageArrowShieldBoard(cart, damage, x = cart.x, y = cart.y - 96) {
+  cart.arrowBoardHp = Math.max(0, cart.arrowBoardHp - damage);
+  state.blasts.push({ x, y, radius: 18, life: 0.18, duration: 0.18, color: "#d7c090" });
+  popText(cart.x, cart.y - 140, cart.arrowBoardHp > 0 ? `挡箭 -${damage}` : "遮箭板破损", "#d7c090");
 }
 
 function updateArrows(dt) {
