@@ -645,7 +645,7 @@ const UNIT = {
   },
   arrowShieldCart: {
     name: "遮箭车",
-    cost: 260,
+    cost: 200,
     hp: 200,
     damage: 0,
     range: 0,
@@ -7197,6 +7197,12 @@ function castRedflamePillars(unit, target) {
 
 function summonStormCloud(unit, target) {
   const data = UNIT.stormLich;
+  const from = { x: unit.x, y: unit.y - 88 };
+  const to = { x: target.x, y: target.y ? target.y - 64 : FIELD.ground - 130 };
+  if (tryBlockSpecialWithShieldCart(from, to, target, data.boltDamage)) {
+    popText(target.x, to.y - 34, "乌云被挡", "#d7c090");
+    return;
+  }
   state.stormClouds.push({
     type: "attack",
     x: target.x,
@@ -7345,6 +7351,10 @@ function strikeLightning(unit, target) {
   const data = UNIT.windElement;
   const startY = unit.y - 92;
   const endY = target.y ? target.y - 44 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 120;
+  if (tryBlockSpecialWithShieldCart({ x: unit.x, y: startY }, { x: target.x, y: endY }, target, data.damage)) {
+    popText(target.x, endY - 28, "闪电被挡", "#d7c090");
+    return;
+  }
   applyDamage(target, data.damage, unit.side);
   state.lightning.push({ x1: unit.x, y1: startY, x2: target.x, y2: endY, life: 0.22, duration: 0.22 });
 }
@@ -7489,10 +7499,21 @@ function getArrowPosition(arrow, life = arrow.life) {
 
 function isArrowShieldBlockable(arrow) {
   if (!arrow.target || arrow.target.kind === "statue") return false;
-  const directTypes = new Set(["musketeer", "ironCavalryMusket", "shotgunPellet", "candlelight"]);
-  const unblockableTypes = new Set(["boulder", "campaignMissile", "campaignRain", "ironCavalryBomb", "griffinBomb"]);
-  if (directTypes.has(arrow.type) || unblockableTypes.has(arrow.type)) return false;
-  return getArrowArcHeight(arrow) > 0;
+  const blockableTypes = new Set([
+    "archer",
+    "goldenArcher",
+    "crossbow",
+    "rocketVolley",
+    "poisonZombie",
+    "demonArcher",
+    "fireElement",
+    "goblinVulture",
+    "javelinThrower",
+  ]);
+  if (blockableTypes.has(arrow.type)) return true;
+  if (arrow.type !== "boulder") return false;
+  const source = getArrowSource(arrow);
+  return source?.type === "undeadCatapult";
 }
 
 function getArrowBoardRect(cart) {
@@ -7554,6 +7575,22 @@ function tryBlockArrowWithShieldCart(arrow, from, to) {
     if (!segmentIntersectsRect(from, to, rect)) continue;
 
     const damage = Math.max(1, Math.round(arrow.damage ?? 1));
+    damageArrowShieldBoard(cart, damage, to.x, to.y);
+    return true;
+  }
+  return false;
+}
+
+function tryBlockSpecialWithShieldCart(from, to, target, damage) {
+  if (!target || target.kind === "statue") return false;
+  const protectedSide = target.side;
+  const carts = state.units.filter((unit) => unit.type === "arrowShieldCart" && unit.side === protectedSide && unit.hp > 0 && unit.arrowBoardHp > 0 && !isUnitHidden(unit));
+  for (const cart of carts) {
+    const data = UNIT.arrowShieldCart;
+    const rect = getArrowBoardRect(cart);
+    if (target.x < rect.x1 - data.arrowBoardProtectPadding || target.x > rect.x2 + data.arrowBoardProtectPadding) continue;
+    if (!segmentIntersectsRect(from, to, rect)) continue;
+
     damageArrowShieldBoard(cart, damage, to.x, to.y);
     return true;
   }
@@ -8371,6 +8408,12 @@ function dropGriffinBomb(unit, target) {
     applyDamage(target, data.damage, unit.side);
     state.blasts.push({ x: target.x, y: FIELD.ground - 92, radius: data.bombRadius, life: 0.34, duration: 0.34 });
     popText(target.x, FIELD.ground - 175, "轰炸", "#ffce7a");
+    return;
+  }
+  const from = { x: unit.x, y: unit.y - 84 };
+  const to = { x: target.x, y: target.y - 24 };
+  if (tryBlockSpecialWithShieldCart(from, to, target, data.damage)) {
+    popText(unit.x, unit.y - 122, `投弹被挡 ${unit.griffinAmmo}/${data.ammo}`, "#d7c090");
     return;
   }
   getUnitsInRadius(target.x, data.bombRadius, unit.side, data.bombLimit).forEach((enemy) => {
