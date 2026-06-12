@@ -479,6 +479,33 @@ const UNIT = {
     stealthSpeed: 40,
     ambushDamage: 50,
   },
+  deathGod: {
+    name: "死神",
+    cost: 500,
+    hp: 420,
+    damage: 50,
+    range: 46,
+    speed: 37,
+    train: 7,
+    cooldown: 2,
+    spikeRadius: 196,
+    spikeCount: 12,
+    spikeDamage: 13,
+    spikeCooldown: 20,
+    cloneCooldown: 16,
+  },
+  deathGodClone: {
+    name: "死神分身",
+    cost: 0,
+    hp: 220,
+    damage: 30,
+    range: 46,
+    speed: 0,
+    train: 0,
+    cooldown: 2,
+    duration: 16,
+    immobile: true,
+  },
   machete: {
     name: "骷髅兵",
     cost: 100,
@@ -1211,7 +1238,7 @@ const UNIT = {
     controlRange: 700,
     blinkHpThreshold: 100,
     blinkThreatHp: 600,
-    blinkCooldown: 20,
+    blinkCooldown: 12,
     blinkDistance: 500,
     cloneReleaseDelay: 3,
     cloneRespawnDelay: 10,
@@ -1244,7 +1271,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    roster: ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
     startingUnits: ["miner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
@@ -1282,6 +1309,8 @@ const UNIT_ICON = {
   ghoul: "claws",
   candlelight: "fire",
   reaper: "skull",
+  deathGod: "skull",
+  deathGodClone: "skull",
   machete: "machete",
   deadCorpse: "venom",
   poisonZombie: "venom",
@@ -1340,7 +1369,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "summonedApeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai", "superGiant"]],
-  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["miner", "machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1357,14 +1386,14 @@ const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
 const UNDEAD_BASE_UNITS = new Set(["undead", "ghoul", "candlelight", "reaper", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
-const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "catapult", "undeadCatapult", "boneGiant"]);
+const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
 const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
 const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "shaman", "priest", "apeMan", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -1876,6 +1905,7 @@ function formatSpecial(type) {
   if (type === "rhinoMan") notes.push(`技能向前冲撞 ${data.chargeDistance} 距离，路途撞击敌人造成 ${data.chargeDamage} 伤害并眩晕 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
+  if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
   if (type === "griffinBomber") notes.push(`飞行轰炸单位，不停前进循环补弹；每轮 ${data.ammo} 颗炸弹，${data.cooldown}秒投 1 颗，${data.damage} 范围伤害，最多 ${data.bombLimit} 人；飞过基地时剩余炸弹砸向基地`);
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
@@ -1916,7 +1946,7 @@ function formatSpecial(type) {
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
   if (type === "zeus") notes.push(`英雄单位；头顶雷云自动攻击；每 ${data.cloudEvery}秒召唤移动乌云；每 ${data.columnEvery}秒召唤电墙；每 ${data.gateEvery}秒召唤电门`);
   if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V/攻城器械单位，冷却 ${data.slayCooldown}秒`);
-  if (type === "vUnit") notes.push("出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；低血且被包围时仅闪现一次");
+  if (type === "vUnit") notes.push(`出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；手动闪现后撤，冷却 ${data.blinkCooldown}秒`);
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
   return notes.join("；") || "无";
 }
@@ -4342,6 +4372,9 @@ function updateUnits(dt) {
     if (unit.type === "reaper") {
       updateReaper(unit);
     }
+    if (unit.type === "deathGodClone") {
+      updateDeathGodClone(unit, dt);
+    }
     if (unit.type === "scimitarWarrior") {
       updateScimitarWarrior(unit);
     }
@@ -5008,19 +5041,6 @@ function getFrontAlly(side) {
 function updateV(unit, dt) {
   updateVClones(unit, dt);
   updateVControlLink(unit);
-
-  const blinkHpThreshold = unit.blinkHpThreshold ?? UNIT.vUnit.blinkHpThreshold;
-  const blinkThreatHp = unit.blinkThreatHp ?? UNIT.vUnit.blinkThreatHp;
-  const blinkDistance = unit.blinkDistance ?? UNIT.vUnit.blinkDistance;
-
-  if (!unit.blinkUsed && unit.hp <= blinkHpThreshold && nearbyEnemyHp(unit, 165) >= blinkThreatHp) {
-    const dir = unit.side === "player" ? -1 : 1;
-    const baseLimit = unit.side === "player" ? FIELD.playerGate - 80 : FIELD.enemyGate + 80;
-    unit.x += dir * blinkDistance;
-    unit.x = unit.side === "player" ? Math.max(baseLimit, unit.x) : Math.min(baseLimit, unit.x);
-    unit.blinkUsed = true;
-    popText(unit.x, unit.y - 125, "闪现后撤", "#d7ceff");
-  }
 
   if (unit.controlledTargetId) return true;
 
@@ -11095,18 +11115,21 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(15, -34);
     ctx.lineTo(44, -48);
     ctx.stroke();
-  } else if (type === "reaper") {
-    ctx.strokeStyle = unit?.reaperStealthTimer > 0 ? "#9a9a9a" : "#2d2135";
+  } else if (type === "reaper" || type === "deathGod" || type === "deathGodClone") {
+    const isClone = type === "deathGodClone";
+    const isDeathGod = type === "deathGod";
+    if (isClone) ctx.globalAlpha *= 0.72;
+    ctx.strokeStyle = unit?.reaperStealthTimer > 0 || isClone ? "#9a9a9a" : isDeathGod ? "#151018" : "#2d2135";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(14, -22);
-    ctx.lineTo(35, -66);
+    ctx.lineTo(isDeathGod ? 39 : 35, isDeathGod ? -76 : -66);
     ctx.stroke();
-    ctx.strokeStyle = unit?.reaperStealthTimer > 0 ? "#c2c2c2" : "#d8d0c8";
+    ctx.strokeStyle = unit?.reaperStealthTimer > 0 || isClone ? "#c2c2c2" : isDeathGod ? "#f1e6ff" : "#d8d0c8";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(34, -66);
-    ctx.quadraticCurveTo(62, -72, 62, -43);
+    ctx.moveTo(isDeathGod ? 38 : 34, isDeathGod ? -76 : -66);
+    ctx.quadraticCurveTo(isDeathGod ? 72 : 62, isDeathGod ? -84 : -72, isDeathGod ? 72 : 62, isDeathGod ? -49 : -43);
     ctx.stroke();
   } else if (type === "machete") {
     ctx.strokeStyle = "#2f2832";
@@ -11965,6 +11988,7 @@ function getManualActions(unit) {
       add("medusaPoison", "喷毒", "direct");
       break;
     case "vUnit":
+      add("vBlink", "闪现", "direct");
       add(unit.controlledTargetId ? "releaseV" : "vControl", unit.controlledTargetId ? "解除" : "控制", unit.controlledTargetId ? "direct" : "target");
       break;
     case "undeadMage":
@@ -12025,6 +12049,10 @@ function getManualActions(unit) {
     case "reaper":
       add("reaperStealth", "隐形", "direct");
       break;
+    case "deathGod":
+      add("deathGodSpikes", "尖刺", "direct");
+      add("deathGodClone", "分身", "direct");
+      break;
     case "scimitarWarrior":
       add("scimitarRoar", "战吼", "direct");
       break;
@@ -12077,6 +12105,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
   if (button.id === "vControl" && (unit.controlTimer > 0 || unit.controlledTargetId)) return true;
+  if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return true;
   if ((unit.manualSkillCooldowns?.[button.id] ?? 0) > 0) return true;
   return button.id !== "attack" && unit.cooldown > 0;
 }
@@ -12169,6 +12198,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return "已使用";
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return `冷却 ${Math.ceil(unit.medusaSlayTimer)}秒`;
   if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
+  if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return "分身存在";
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
@@ -12192,6 +12222,10 @@ function executeManualAction(unit, action, point) {
     releaseVControl(unit, true);
     return;
   }
+  if (action.id === "vBlink") {
+    castVBlink(unit);
+    return;
+  }
   if (action.id === "toggleRoot") {
     toggleTreeEntRoot(unit);
     return;
@@ -12206,6 +12240,14 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "reaperStealth") {
     activateReaperStealth(unit);
+    return;
+  }
+  if (action.id === "deathGodSpikes") {
+    castDeathGodSpikes(unit);
+    return;
+  }
+  if (action.id === "deathGodClone") {
+    summonDeathGodClone(unit);
     return;
   }
   if (action.id === "scimitarRoar") {
@@ -12465,6 +12507,9 @@ function getManualActionCooldown(unit, id) {
   const table = {
     undeadSpike: data.boneSpikeEvery,
     undeadLure: data.lureCooldown,
+    vBlink: data.blinkCooldown,
+    deathGodSpikes: data.spikeCooldown,
+    deathGodClone: data.cloneCooldown,
     medusaPoison: data.poisonEvery,
     suikaiCorpses: data.corpseEvery,
     suikaiHook: data.hookEvery,
@@ -12604,6 +12649,83 @@ function castManualSkill(unit, id, target) {
       return castGoblinExpertHeavyArmor(unit, target);
     default:
       return false;
+  }
+}
+
+function castVBlink(unit) {
+  const data = UNIT.vUnit;
+  const dir = unit.side === "player" ? -1 : 1;
+  const baseLimit = unit.side === "player" ? FIELD.playerGate - 80 : FIELD.enemyGate + 80;
+  unit.x += dir * (unit.blinkDistance ?? data.blinkDistance);
+  unit.x = unit.side === "player" ? Math.max(baseLimit, unit.x) : Math.min(baseLimit, unit.x);
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.vBlink = unit.blinkCooldown ?? data.blinkCooldown;
+  state.blasts.push({ x: unit.x, y: unit.y - 44, radius: 58, life: 0.32, duration: 0.32, color: "#d7ceff" });
+  popText(unit.x, unit.y - 125, "闪现", "#d7ceff");
+  return true;
+}
+
+function castDeathGodSpikes(unit) {
+  const data = UNIT.deathGod;
+  const enemies = getUnitsInRadius(unit.x, data.spikeRadius, unit.side, Infinity)
+    .filter((enemy) => enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y));
+  if (!enemies.length) {
+    popText(unit.x, unit.y - 116, "范围内没有敌人", "#d8d0c8");
+    return false;
+  }
+  const minX = unit.x - data.spikeRadius;
+  const maxX = unit.x + data.spikeRadius;
+  for (let i = 0; i < data.spikeCount; i += 1) {
+    const target = enemies[i % enemies.length];
+    const offset = ((i % 4) - 1.5) * 14;
+    const x = Math.max(minX, Math.min(maxX, target.x + offset));
+    applyUnitDamage(target, data.spikeDamage, { label: "刺", color: "#d8d0c8", yOffset: -88 });
+    state.spikes.push({
+      x1: x - 6,
+      x2: x + 6,
+      y: FIELD.ground - 10,
+      side: unit.side,
+      life: 0.42,
+      duration: 0.42,
+    });
+  }
+  state.blasts.push({ x: unit.x, y: unit.y - 28, radius: data.spikeRadius, life: 0.38, duration: 0.38, color: "#d8d0c8" });
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.deathGodSpikes = data.spikeCooldown;
+  popText(unit.x, unit.y - 122, "死神尖刺", "#d8d0c8");
+  return true;
+}
+
+function hasActiveDeathGodClone(unit) {
+  return state.units.some((candidate) => candidate.type === "deathGodClone" && candidate.summonerId === unit.id && candidate.hp > 0);
+}
+
+function summonDeathGodClone(unit) {
+  const data = UNIT.deathGod;
+  if (hasActiveDeathGodClone(unit)) {
+    popText(unit.x, unit.y - 116, "分身已存在", "#d8d0c8");
+    return false;
+  }
+  const dir = unit.side === "player" ? -1 : 1;
+  const clone = spawnUnit("deathGodClone", unit.side, Math.max(FIELD.playerGate + 42, Math.min(FIELD.enemyGate - 42, unit.x + dir * 42)));
+  clone.y = unit.y + 10;
+  clone.summonerId = unit.id;
+  clone.deathGodCloneTimer = UNIT.deathGodClone.duration;
+  clone.forceCharge = false;
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.deathGodClone = data.cloneCooldown;
+  state.blasts.push({ x: clone.x, y: clone.y - 42, radius: 68, life: 0.4, duration: 0.4, color: "#d8d0c8" });
+  popText(unit.x, unit.y - 122, "召唤分身", "#d8d0c8");
+  return true;
+}
+
+function updateDeathGodClone(unit, dt) {
+  unit.deathGodCloneTimer = Math.max(0, (unit.deathGodCloneTimer ?? UNIT.deathGodClone.duration) - dt);
+  if (unit.deathGodCloneTimer <= 0) {
+    unit.hp = 0;
+    state.blasts.push({ x: unit.x, y: unit.y - 42, radius: 44, life: 0.28, duration: 0.28, color: "#d8d0c8" });
+    popText(unit.x, unit.y - 96, "分身消散", "#d8d0c8");
   }
 }
 
