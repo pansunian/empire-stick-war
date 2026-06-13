@@ -4592,8 +4592,9 @@ function updateUnits(dt) {
   for (const unit of state.units) {
     const data = UNIT[unit.type];
     const beforeX = unit.x;
+    const beforeY = unit.y;
     if (unit.merging) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (isUnitHidden(unit)) {
@@ -4649,30 +4650,30 @@ function updateUnits(dt) {
     if (unit.inspiringTimer > 0) {
       unit.inspiringTimer = Math.max(0, unit.inspiringTimer - dt);
       if (unit.inspiringTimer <= 0) finishBannerInspire(unit);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.stunTimer > 0 || unit.frozenBy) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.spartanShieldTimer > 0) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.luredTimer > 0) {
       updateLuredUnit(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (state.fourWay) {
       if (unit.type === "goblin" && updateGoblin(unit, dt)) {
-        updateIceRoadMoveTimer(unit, beforeX, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
       if (unit.type === "goblinExpert") updateGoblinExpert(unit);
@@ -4684,11 +4685,11 @@ function updateUnits(dt) {
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
       updateFourWayUnit(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "goblin" && updateGoblin(unit, dt)) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "goblinExpert") {
@@ -4705,33 +4706,33 @@ function updateUnits(dt) {
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (updateGroupAttackUnit(unit, dt)) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (shouldEnterPlayerCastle(unit)) {
       if (moveTowardCastle(unit, dt)) {
-        updateIceRoadMoveTimer(unit, beforeX, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
     }
     if (isPlayerForcedGuarding(unit)) {
       moveTowardGuardLine(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
     if (unit.type === "waterElement" && unit.boundTargetId) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
     if (unit.type === "treeEnt") {
       updateTreeEnt(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "rog") {
@@ -4739,12 +4740,12 @@ function updateUnits(dt) {
     }
     if (unit.type === "monk") {
       updateMonk(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "vUnit") {
       if (updateV(unit, dt)) {
-        updateIceRoadMoveTimer(unit, beforeX, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
     }
@@ -4774,16 +4775,16 @@ function updateUnits(dt) {
     }
     if (unit.type === "griffinBomber") {
       updateGriffinBomber(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "ghoul" && updateGhoul(unit, dt)) {
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "ironCavalry") {
       updateIronCavalry(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
     if (unit.type === "swordsman") {
@@ -4815,25 +4816,25 @@ function updateUnits(dt) {
     }
     if (unit.type === "electricGate") {
       updateElectricGate(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
     if (unit.type === "summoner") {
       updateSummoner(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
     if (unit.type === "wraithMiner") {
       updateWraithMiner(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
     if (unit.type === "miner") {
       updateMiner(unit, dt);
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
@@ -4851,13 +4852,13 @@ function updateUnits(dt) {
 
     if (unit.type === "rocketCart") {
       if (!mustReachTowerRally && updateRocketCart(unit, activeTarget, range, dt)) {
-        updateIceRoadMoveTimer(unit, beforeX, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
       if (distance > moveTolerance) {
         moveRocketCartToward(unit, desiredPoint, dt);
       }
-      updateIceRoadMoveTimer(unit, beforeX, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
 
@@ -4873,7 +4874,7 @@ function updateUnits(dt) {
         : 5;
       moveUnitTowardPoint(unit, desiredPoint.x, desiredPoint.y, unit.speed ?? data.speed, dt, tolerance);
     }
-    updateIceRoadMoveTimer(unit, beforeX, dt);
+    updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
   }
   if (state.inspectedUnitTimer > 0) {
     if (state.inspectedUnitId !== state.controlledUnitId) {
@@ -6639,12 +6640,14 @@ function getIceRoadMoveFactor(unit) {
   return (unit.iceRoadMoveTimer ?? 0) >= road.slowDuration ? road.fastFactor : road.slowFactor;
 }
 
-function updateIceRoadMoveTimer(unit, beforeX, dt) {
+function updateIceRoadMoveTimer(unit, beforeX, beforeY, dt) {
   const dx = unit.x - beforeX;
+  const dy = unit.y - beforeY;
   unit.velocityX = dt > 0 ? dx / dt : 0;
+  unit.velocityY = dt > 0 ? dy / dt : 0;
   if (Math.abs(dx) > 0.05) unit.lastMoveDir = Math.sign(dx);
   if (!activeCampaign?.iceRoad) return;
-  if (Math.abs(dx) > 0.1) unit.iceRoadMoveTimer = (unit.iceRoadMoveTimer ?? 0) + dt;
+  if (Math.hypot(dx, dy) > 0.1) unit.iceRoadMoveTimer = (unit.iceRoadMoveTimer ?? 0) + dt;
   else unit.iceRoadMoveTimer = 0;
 }
 
@@ -10591,7 +10594,7 @@ function drawRoundedHead(headColor, x = 0, y = -64, radius = 13) {
 
 function getWalkAmount(unit) {
   if (unit.stunTimer > 0 || unit.frozenBy || unit.controlLockTimer > 0 || isUnitHidden(unit)) return 0;
-  const velocity = Math.abs(unit.velocityX ?? 0);
+  const velocity = Math.hypot(unit.velocityX ?? 0, unit.velocityY ?? 0);
   if (velocity < 5) return 0;
   return Math.min(1, velocity / 70);
 }
@@ -10999,6 +11002,13 @@ function drawIronCavalryUnit(unit, color, headColor) {
 }
 
 function drawHillUnit(unit) {
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const armSwing = Math.sin(phase + Math.PI) * walk;
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -11026,13 +11036,13 @@ function drawHillUnit(unit) {
   ctx.lineWidth = 7;
   ctx.beginPath();
   ctx.moveTo(-14, -42);
-  ctx.lineTo(-34, -28);
+  ctx.quadraticCurveTo(-25 + armSwing * 9, -35 - liftB * 4, -34 + armSwing * 12, -28 + liftB * 4);
   ctx.moveTo(20, -43);
-  ctx.lineTo(36, -32);
+  ctx.quadraticCurveTo(28 - armSwing * 8, -37 - liftA * 4, 36 - armSwing * 12, -32 + liftA * 4);
   ctx.moveTo(-10, -18);
-  ctx.lineTo(-24, 4);
+  ctx.quadraticCurveTo(-18 + step * 8, -5 - liftA * 5, -24 + step * 12, 4 - liftA * 4);
   ctx.moveTo(13, -18);
-  ctx.lineTo(29, 3);
+  ctx.quadraticCurveTo(22 + counter * 8, -5 - liftB * 5, 29 + counter * 12, 3 - liftB * 4);
   ctx.stroke();
 
   drawStoneWeapon(1.3);
@@ -11444,20 +11454,26 @@ function getHeadColor(unit) {
 }
 
 function drawTreeEntUnit(unit) {
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const sway = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#3e5f38";
   ctx.lineWidth = 9;
   ctx.beginPath();
-  ctx.moveTo(0, -6);
-  ctx.lineTo(0, -72);
+  ctx.moveTo(sway * 1.5, -6);
+  ctx.quadraticCurveTo(sway * 6, -38, sway * 2, -72);
   ctx.moveTo(-6, -38);
-  ctx.lineTo(-33, -58);
+  ctx.quadraticCurveTo(-20 + counter * 8, -50 - liftB * 5, -33 + counter * 12, -58 + liftB * 3);
   ctx.moveTo(6, -44);
-  ctx.lineTo(34, -66);
+  ctx.quadraticCurveTo(19 + sway * 8, -59 - liftA * 5, 34 + sway * 12, -66 + liftA * 3);
   ctx.moveTo(0, -24);
-  ctx.lineTo(-22, -6);
+  ctx.quadraticCurveTo(-13 + sway * 6, -13 - liftA * 5, -22 + sway * 10, -6 - liftA * 4);
   ctx.moveTo(0, -24);
-  ctx.lineTo(21, -6);
+  ctx.quadraticCurveTo(13 + counter * 6, -13 - liftB * 5, 21 + counter * 10, -6 - liftB * 4);
   ctx.stroke();
 
   ctx.fillStyle = "#6f8f4f";
@@ -11476,14 +11492,16 @@ function drawTreeEntUnit(unit) {
 }
 
 function drawHurricaneUnit(unit) {
+  const phase = getWalkPhase(unit);
+  const spin = phase * 0.18;
   ctx.lineCap = "round";
   ctx.strokeStyle = "#d7f6ee";
   ctx.lineWidth = 6;
   for (let i = 0; i < 4; i += 1) {
-    const y = -78 + i * 18;
+    const y = -78 + i * 18 + Math.sin(phase + i) * 1.8;
     const radius = 35 - i * 7;
     ctx.beginPath();
-    ctx.ellipse(0, y, radius, 8 + i * 2, -0.22, Math.PI * 0.08, Math.PI * 1.72);
+    ctx.ellipse(Math.sin(phase + i) * 2.4, y, radius, 8 + i * 2, -0.22 + spin, Math.PI * 0.08, Math.PI * 1.72);
     ctx.stroke();
   }
   ctx.strokeStyle = "#7ed8ff";
@@ -11567,19 +11585,26 @@ function drawMedusaUnit(unit) {
 }
 
 function drawBoneGiantUnit(unit) {
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const lean = step * 2;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "#d8d0c8";
   ctx.lineWidth = 8;
   ctx.beginPath();
-  ctx.moveTo(0, -52);
-  ctx.lineTo(0, -8);
+  ctx.moveTo(lean * 0.4, -52);
+  ctx.quadraticCurveTo(lean, -30, 0, -8);
   ctx.moveTo(-28, -34);
-  ctx.lineTo(28, -34);
+  ctx.quadraticCurveTo(-10 + counter * 10, -41 - liftB * 4, 28 + counter * 8, -34 + liftB * 3);
   ctx.moveTo(-16, -8);
-  ctx.lineTo(-29, 34);
+  ctx.quadraticCurveTo(-24 + step * 11, 10 - liftA * 7, -29 + step * 16, 34 - liftA * 5);
   ctx.moveTo(16, -8);
-  ctx.lineTo(30, 34);
+  ctx.quadraticCurveTo(24 + counter * 11, 10 - liftB * 7, 30 + counter * 16, 34 - liftB * 5);
   ctx.stroke();
   ctx.strokeStyle = "#1c1b1a";
   ctx.lineWidth = 3;
@@ -11600,7 +11625,7 @@ function drawBoneGiantUnit(unit) {
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(18, -36);
-  ctx.lineTo(54, -70);
+  ctx.quadraticCurveTo(35 + counter * 8, -59 - liftB * 6, 54 + counter * 10, -70 + liftB * 4);
   ctx.stroke();
   ctx.fillStyle = "#6f7680";
   ctx.strokeStyle = "#25282c";
@@ -12149,6 +12174,10 @@ function drawWeapon(type, unit = null) {
     ctx.quadraticCurveTo(64, -45, 55, -56);
     ctx.fill();
   } else if (type === "minotaur") {
+    const beastStep = Math.sin(phase) * walk;
+    const beastCounter = Math.sin(phase + Math.PI) * walk;
+    const beastLiftA = Math.max(0, Math.sin(phase)) * walk;
+    const beastLiftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.fillStyle = "#5f513b";
@@ -12175,11 +12204,11 @@ function drawWeapon(type, unit = null) {
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(-25, -18);
-    ctx.lineTo(-36, 5);
+    ctx.quadraticCurveTo(-34 + beastStep * 8, -6 - beastLiftA * 5, -36 + beastStep * 12, 5 - beastLiftA * 4);
     ctx.moveTo(0, -16);
-    ctx.lineTo(-5, 7);
+    ctx.quadraticCurveTo(-6 + beastCounter * 8, -4 - beastLiftB * 5, -5 + beastCounter * 12, 7 - beastLiftB * 4);
     ctx.moveTo(22, -18);
-    ctx.lineTo(29, 5);
+    ctx.quadraticCurveTo(30 + beastStep * 7, -5 - beastLiftA * 4, 29 + beastStep * 11, 5 - beastLiftA * 3);
     ctx.stroke();
     ctx.fillStyle = "#7faa5c";
     ctx.strokeStyle = "#1f2518";
@@ -12194,9 +12223,9 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(-5, -58);
     ctx.lineTo(-6, -38);
     ctx.moveTo(-9, -52);
-    ctx.lineTo(-28, -63);
+    ctx.quadraticCurveTo(-18 + beastCounter * 7, -62 - beastLiftB * 4, -28 + beastCounter * 10, -63 + beastLiftB * 3);
     ctx.moveTo(0, -52);
-    ctx.lineTo(20, -63);
+    ctx.quadraticCurveTo(10 + beastStep * 7, -62 - beastLiftA * 4, 20 + beastStep * 10, -63 + beastLiftA * 3);
     ctx.stroke();
     ctx.fillStyle = "#7b7f80";
     ctx.strokeStyle = "#211c18";
