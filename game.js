@@ -2020,6 +2020,19 @@ function areFourWayEnemies(a, b) {
   return getFourWayTeam(a) !== getFourWayTeam(b);
 }
 
+function getPlayerControlledSide() {
+  return state?.fourWay ? (state.fourWayPlayerSide ?? selectedFaction) : "player";
+}
+
+function isPlayerControlledSide(side) {
+  return side === getPlayerControlledSide();
+}
+
+function areHostileSides(a, b) {
+  if (!a || !b || a === b) return false;
+  return state?.fourWay ? areFourWayEnemies(a, b) : a !== b;
+}
+
 function getPreferredFourWayAlly(side) {
   const pairs = {
     order: "undeadEmpire",
@@ -2299,7 +2312,7 @@ function createTeamAiState(side, faction, gold) {
 }
 
 function applyFieldMode(fourWay) {
-  const source = fourWay ? FOUR_WAY_FIELD : DEFAULT_FIELD;
+  const source = fourWay ? createFourWayFieldConfig() : DEFAULT_FIELD;
   currentFieldModeFourWay = fourWay;
   document.body.classList.toggle("quad-watch", fourWay);
   FIELD.width = source.width;
@@ -2312,10 +2325,52 @@ function applyFieldMode(fourWay) {
   FIELD.playerMineX = source.playerMineX ?? DEFAULT_FIELD.playerMineX;
   FIELD.enemyMineX = source.enemyMineX ?? DEFAULT_FIELD.enemyMineX;
   FIELD.mineDistance = source.mineDistance ?? DEFAULT_FIELD.mineDistance;
+  if (fourWay) configureFourWayLayout(source);
   canvas.width = FIELD.width;
   canvas.height = FIELD.height;
   battlefieldZoom = getDefaultBattlefieldZoom(fourWay);
   applyBattlefieldZoom(false);
+}
+
+function createFourWayFieldConfig() {
+  const viewport = window.visualViewport;
+  const width = Math.max(960, Math.floor(battlefieldWrap?.clientWidth || viewport?.width || window.innerWidth || FOUR_WAY_FIELD.width));
+  const fallbackHeight = viewport ? viewport.height - 176 : window.innerHeight - 176;
+  const height = Math.max(540, Math.floor(battlefieldWrap?.clientHeight || fallbackHeight || FOUR_WAY_FIELD.height));
+  const marginX = Math.max(115, Math.min(210, width * 0.13));
+  const marginY = Math.max(95, Math.min(180, height * 0.2));
+  return {
+    ...FOUR_WAY_FIELD,
+    width,
+    height,
+    ground: height / 2,
+    playerBase: marginX,
+    enemyBase: width - marginX,
+    playerGate: marginX + 72,
+    enemyGate: width - marginX - 72,
+    playerMineX: marginX + 170,
+    enemyMineX: width - marginX - 170,
+    mineDistance: Math.max(140, Math.min(230, width * 0.16)),
+    baseMarginX: marginX,
+    baseMarginY: marginY,
+    minY: Math.max(40, marginY - 70),
+    maxY: height - Math.max(40, marginY - 70),
+  };
+}
+
+function configureFourWayLayout(source) {
+  const x = source.baseMarginX ?? 250;
+  const y = source.baseMarginY ?? 250;
+  FOUR_WAY_BASES.order.x = x;
+  FOUR_WAY_BASES.order.y = y;
+  FOUR_WAY_BASES.chaos.x = source.width - x;
+  FOUR_WAY_BASES.chaos.y = y;
+  FOUR_WAY_BASES.undeadEmpire.x = x;
+  FOUR_WAY_BASES.undeadEmpire.y = source.height - y;
+  FOUR_WAY_BASES.element.x = source.width - x;
+  FOUR_WAY_BASES.element.y = source.height - y;
+  FOUR_WAY_FIELD.minY = source.minY;
+  FOUR_WAY_FIELD.maxY = source.maxY;
 }
 
 function createBaseState(startGold, enemyStartGold, sideMines = createSideMines()) {
@@ -3683,6 +3738,8 @@ function update(dt) {
 
 function updateFourWayBattle(dt) {
   state.fourWayElapsed += dt;
+  updateManualControlState();
+  updateGroupSelectionState();
   updateQueue(dt);
   updateFourWayAi(dt);
   decayFourWayPressure(dt);
@@ -5259,7 +5316,7 @@ function getSelectedGroupUnits() {
   return state.units.filter((unit) =>
     ids.has(unit.id) &&
     unit.hp > 0 &&
-    unit.side === "player" &&
+    isPlayerControlledSide(unit.side) &&
     !isUnitHidden(unit) &&
     !UNIT[unit.type]?.untargetable &&
     (!state.selectedGroupType || unit.type === state.selectedGroupType)
@@ -13642,6 +13699,7 @@ function isPointInsideInspectedInfo(point) {
 
 function toggleManualControl(unit) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
+  if (!isPlayerControlledSide(unit.side)) return false;
   if (state.controlledUnitId === unit.id) {
     state.controlledUnitId = null;
     state.pendingManualAction = null;
@@ -13842,7 +13900,7 @@ function manualUnitAttack(unit) {
 
 function findManualAttackTarget(unit, range) {
   return state.units
-    .filter((target) => target.side !== unit.side && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
+    .filter((target) => areHostileSides(unit.side, target.side) && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
     .filter((target) => distanceTo(unit.x, unit.y, target.x, target.y) <= range)
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
@@ -13869,14 +13927,21 @@ function getManualTargetAt(unit, point, actionId = null) {
       .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
   }
   const clicked = findUnitAt(point);
-  if (clicked && clicked.side !== unit.side && clicked.hp > 0 && canTarget(unit, clicked)) return clicked;
+  if (clicked && areHostileSides(unit.side, clicked.side) && clicked.hp > 0 && canTarget(unit, clicked)) return clicked;
   return state.units
-    .filter((target) => target.side !== unit.side && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
+    .filter((target) => areHostileSides(unit.side, target.side) && target.hp > 0 && !isUnitHidden(target) && !UNIT[target.type]?.untargetable && canTarget(unit, target))
     .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
     .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
 }
 
 function makeManualPointTarget(point) {
+  if (state?.fourWay) {
+    return {
+      kind: "point",
+      x: Math.max(30, Math.min(FIELD.width - 30, point.x)),
+      y: Math.max(30, Math.min(FIELD.height - 30, point.y)),
+    };
+  }
   return {
     kind: "point",
     x: Math.max(FIELD.playerBase + 30, Math.min(FIELD.enemyBase - 30, point.x)),
@@ -13902,7 +13967,7 @@ function isUnitInSelectionRect(unit, rect) {
 
 function selectGroupByRect(rect) {
   const candidates = state.units.filter((unit) =>
-    unit.side === "player" &&
+    isPlayerControlledSide(unit.side) &&
     unit.hp > 0 &&
     !isUnitHidden(unit) &&
     !UNIT[unit.type]?.untargetable &&
@@ -13922,10 +13987,10 @@ function selectGroupByRect(rect) {
 
 function selectVisibleGroupByUnitAt(point) {
   const unit = findUnitAt(point);
-  if (!unit || unit.side !== "player" || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
+  if (!unit || !isPlayerControlledSide(unit.side) || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
   const visible = getVisibleWorldRect();
   const selected = state.units.filter((candidate) =>
-    candidate.side === "player" &&
+    isPlayerControlledSide(candidate.side) &&
     candidate.type === unit.type &&
     candidate.hp > 0 &&
     !isUnitHidden(candidate) &&
@@ -13996,7 +14061,7 @@ function handleGroupControlClick(point) {
   }
 
   const clicked = findUnitAt(point);
-  if (clicked && clicked.side !== "player" && clicked.hp > 0 && !isUnitHidden(clicked) && !UNIT[clicked.type]?.untargetable) {
+  if (clicked && areHostileSides(representative.side, clicked.side) && clicked.hp > 0 && !isUnitHidden(clicked) && !UNIT[clicked.type]?.untargetable) {
     state.groupAttackTargetId = clicked.id;
     state.groupMoveTarget = null;
     popText(clicked.x, clicked.y - 118, "小队集火", "#78d4ff");
@@ -14960,21 +15025,21 @@ function canvasPoint(event) {
 
 function findPlayerVAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "vUnit" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    if (!isPlayerControlledSide(unit.side) || unit.type !== "vUnit" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 42 && Math.abs(unit.y - 48 - point.y) <= 78;
   });
 }
 
 function findPlayerMedusaAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "medusa" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    if (!isPlayerControlledSide(unit.side) || unit.type !== "medusa" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 54 && Math.abs(unit.y - 48 - point.y) <= 92;
   });
 }
 
 function findPlayerGoldenSpartanAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "goldenSpartan" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    if (!isPlayerControlledSide(unit.side) || unit.type !== "goldenSpartan" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 54 && Math.abs(unit.y - 48 - point.y) <= 92;
   });
 }
@@ -15005,7 +15070,7 @@ function inspectUnitAt(point) {
 
 function canMedusaSlay(medusa, target) {
   if (!medusa || !target || medusa.hp <= 0 || target.hp <= 0) return false;
-  if (target.side === medusa.side) return false;
+  if (!areHostileSides(medusa.side, target.side)) return false;
   if (UNIT[target.type]?.slayImmune) return false;
   if (isHeroUnit(target)) return false;
   if (UNIT[target.type]?.giant) return false;
@@ -15015,7 +15080,7 @@ function canMedusaSlay(medusa, target) {
 
 function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
-  if (target.side === v.side) return false;
+  if (!areHostileSides(v.side, target.side)) return false;
   if (isControlImmune(target)) return false;
   if (isSiegeControlImmune(target) && !v.canControlAll) return false;
   if (Math.abs(target.x - v.x) > getVControlRange(v)) return false;
@@ -15150,14 +15215,14 @@ function tryManualVControl(point) {
 
 function findPlayerTreeEntAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "treeEnt" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    if (!isPlayerControlledSide(unit.side) || unit.type !== "treeEnt" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 52 && Math.abs(unit.y - 48 - point.y) <= 92;
   });
 }
 
 function findPlayerWaterElementAt(point) {
   return state.units.find((unit) => {
-    if (unit.side !== "player" || unit.type !== "waterElement" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+    if (!isPlayerControlledSide(unit.side) || unit.type !== "waterElement" || unit.hp <= 0 || isUnitHidden(unit)) return false;
     return Math.abs(unit.x - point.x) <= 46 && Math.abs(unit.y - 48 - point.y) <= 86;
   });
 }
@@ -15371,7 +15436,7 @@ canvas.addEventListener("pointermove", (event) => {
       const now = performance.now();
       if (
         tapped &&
-        tapped.side === "player" &&
+        isPlayerControlledSide(tapped.side) &&
         lastTouchTap &&
         lastTouchTap.type === tapped.type &&
         now - lastTouchTap.time <= 380 &&
@@ -15484,8 +15549,8 @@ controlModeButtons.forEach((button) => {
 });
 
 factionButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    if (!isIosDevice()) enterFullscreen();
+  button.addEventListener("click", async () => {
+    if (!isIosDevice()) await enterFullscreen();
     selectedFaction = button.dataset.faction;
     if (selectedMode === "campaign") {
       openCampaignMap();
