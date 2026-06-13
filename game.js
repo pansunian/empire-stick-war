@@ -98,6 +98,18 @@ const RALLY = {
 
 const MERGE_COST = 40;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const V_CONTROL_BLOCKED_UNITS = new Set([
+  "catapult",
+  "rocketCart",
+  "ironCavalry",
+  "minotaur",
+  "hornKnightRider",
+  "arrowShieldCart",
+  "rhinoMan",
+  "deathGod",
+  "boneGiant",
+  "bannerBearer",
+]);
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
@@ -15251,6 +15263,7 @@ function canMedusaSlay(medusa, target) {
 function canVControl(v, target) {
   if (!v || !target || v.hp <= 0 || target.hp <= 0) return false;
   if (!areHostileSides(v.side, target.side)) return false;
+  if (V_CONTROL_BLOCKED_UNITS.has(target.type)) return false;
   if (isControlImmune(target)) return false;
   if (isSiegeControlImmune(target) && !v.canControlAll) return false;
   if (Math.abs(target.x - v.x) > getVControlRange(v)) return false;
