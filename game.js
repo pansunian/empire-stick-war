@@ -1442,10 +1442,12 @@ const FOUR_WAY_STARTERS = {
 };
 const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_FACTION_SKILL = {
-  order: { cooldown: 20, duration: 10 },
-  chaos: { cooldown: 20, duration: 10, clusterRadius: 220, clusterCount: 3, factor: 1.5 },
+  order: { cooldown: 20, duration: 10, shieldDuration: 5, shieldReduction: 0.3 },
+  chaos: { cooldown: 20, duration: 10, clusterRadius: 300, clusterCount: 3, factor: 1.5, damageReduction: 0.2 },
   undeadEmpire: { cooldown: 20, duration: 10 },
 };
+const FOUR_WAY_ELEMENT_MERGE_COOLDOWN = 10;
+const FOUR_WAY_ELEMENT_V_COOLDOWN = 45;
 
 const UNIT_ICON = {
   miner: "miner",
@@ -2492,6 +2494,8 @@ function newFourWayGame() {
   state.fourWayPlayerSide = selectedFaction;
   state.fourWayTeams = createFourWayTeams(selectedFaction);
   state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
+  state.fourWayElementMergeCooldown = 0;
+  state.fourWayElementVCooldown = 0;
   state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10 };
   state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0 };
   state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
@@ -3803,6 +3807,8 @@ function updateFourWayBattle(dt) {
 
 function updateFourWayFactionSkills(dt) {
   if (!state.fourWaySkillCooldowns || !state.fourWaySkillEffects) return;
+  state.fourWayElementMergeCooldown = Math.max(0, (state.fourWayElementMergeCooldown ?? 0) - dt);
+  state.fourWayElementVCooldown = Math.max(0, (state.fourWayElementVCooldown ?? 0) - dt);
   Object.keys(state.fourWaySkillCooldowns).forEach((side) => {
     state.fourWaySkillCooldowns[side] = Math.max(0, state.fourWaySkillCooldowns[side] - dt);
   });
@@ -3831,6 +3837,7 @@ function updateFourWayAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
+      if (ai.faction === "element" && MERGE_UNITS.has(type) && !canFourWayElementAiMerge(type)) return false;
       return getFourWayUnitCost(type, ai.faction) <= ai.gold;
     });
     const livingCount = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
@@ -3844,6 +3851,7 @@ function updateFourWayAi(dt) {
     const isHighTier = cost >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
+    recordFourWayElementAiMerge(type, ai.faction);
   });
 }
 
@@ -3869,6 +3877,11 @@ function castFourWayOrderSkill(side) {
     unit.timedLife = config.duration;
     unit.noCorpse = true;
     unit.forceCharge = true;
+  });
+  state.units.forEach((unit) => {
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    unit.fourWayOrderShieldTimer = config.shieldDuration;
+    unit.fourWayOrderShieldReduction = config.shieldReduction;
   });
   spartan.spartanShieldCooldownDuration = 20;
   state.fourWaySkillCooldowns[side] = config.cooldown;
@@ -3923,6 +3936,19 @@ function countNearbyAllies(unit, radius) {
     && !UNIT[ally.type]?.untargetable
     && distanceTo(unit.x, unit.y, ally.x, ally.y) <= radius
   )).length;
+}
+
+function canFourWayElementAiMerge(type) {
+  if (!MERGE_UNITS.has(type)) return true;
+  if ((state.fourWayElementMergeCooldown ?? 0) > 0) return false;
+  if (type === "vUnit" && (state.fourWayElementVCooldown ?? 0) > 0) return false;
+  return true;
+}
+
+function recordFourWayElementAiMerge(type, faction) {
+  if (faction !== "element" || !MERGE_UNITS.has(type)) return;
+  state.fourWayElementMergeCooldown = FOUR_WAY_ELEMENT_MERGE_COOLDOWN;
+  if (type === "vUnit") state.fourWayElementVCooldown = FOUR_WAY_ELEMENT_V_COOLDOWN;
 }
 
 function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
@@ -5033,6 +5059,7 @@ function updateUnits(dt) {
       }
     }
     unit.chaosWarCryTimer = Math.max(0, (unit.chaosWarCryTimer ?? 0) - dt);
+    unit.fourWayOrderShieldTimer = Math.max(0, (unit.fourWayOrderShieldTimer ?? 0) - dt);
     unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
@@ -9823,6 +9850,12 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (target.shieldTimer > 0) {
     damage *= 1 - (target.shieldReduction ?? 0.8);
+  }
+  if (target.fourWayOrderShieldTimer > 0) {
+    damage *= 1 - (target.fourWayOrderShieldReduction ?? FOUR_WAY_FACTION_SKILL.order.shieldReduction);
+  }
+  if (target.chaosWarCryTimer > 0) {
+    damage *= 1 - (FOUR_WAY_FACTION_SKILL.chaos.damageReduction ?? 0);
   }
   if (target.spartanShieldTimer > 0) {
     damage *= 1 - (UNIT.spartan.shieldStanceReduction ?? 0.9);
