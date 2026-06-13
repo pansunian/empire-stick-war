@@ -419,7 +419,7 @@ const UNIT = {
     blindSpot: 80,
   },
   undeadCatapult: {
-    name: "亡灵投石车",
+    name: "骷髅投石车",
     cost: 500,
     hp: 500,
     damage: 40,
@@ -587,7 +587,7 @@ const UNIT = {
     poisonDuration: Infinity,
   },
   necromancer: {
-    name: "亡灵法师",
+    name: "死灵法师",
     cost: 155,
     hp: 200,
     damage: 30,
@@ -1476,9 +1476,15 @@ const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
 const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
-const SKELETON_UNITS = new Set(["machete", "darkKnight", "boneGiant"]);
-const ZOMBIE_UNITS = new Set(["undead", "deadCorpse", "poisonZombie"]);
-const SPIRIT_UNITS = new Set(["undeadMage", "demonArcher", "necromancer"]);
+const SKELETON_UNITS = new Set(["machete", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer"]);
+const ZOMBIE_UNITS = new Set(["undead", "ghoul", "deadCorpse", "poisonZombie", "necromancer"]);
+const SPIRIT_UNITS = new Set(["reaper", "candlelight", "demonArcher", "deathGod"]);
+const BANNER_INSPIRE_GROUPS = ["skeleton", "zombie", "spirit"];
+const BANNER_INSPIRE_LABELS = {
+  skeleton: "骷髅",
+  zombie: "丧尸",
+  spirit: "亡灵",
+};
 const ECONOMY_UNITS = new Set(["miner", "summoner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
@@ -2033,7 +2039,7 @@ function formatSpecial(type) {
   if (type === "waterScorpion") notes.push("由树精召唤；攻击使敌人中毒");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；手动骨刺 ${data.boneSpikeRange} 距离；手动勾引一名敌人向我方前进 ${data.lureDuration}秒，造成 ${data.lureDamage} 伤害，冷却 ${data.lureCooldown}秒`);
-  if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，激励周围一种亡灵单位；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
+  if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，可手动切换激励骷髅/丧尸/亡灵；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
   if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
   if (type === "ghoul") notes.push(`手动技能：扑向最近敌方尸体，啃食 ${data.devourDuration}秒后恢复尸体原生命值一半，最多回满`);
   if (type === "boneGiant") notes.push(`巨斧范围攻击最多 ${data.aoeLimit} 人；受到远程伤害降低 ${Math.round(data.rangedReduction * 100)}%`);
@@ -5345,20 +5351,31 @@ function updateBannerBearer(unit, dt) {
     unit.inspireTimer = 1;
     return;
   }
-  const groups = [
-    { key: "skeleton", test: (ally) => SKELETON_UNITS.has(ally.type) },
-    { key: "zombie", test: (ally) => ZOMBIE_UNITS.has(ally.type) },
-    { key: "spirit", test: (ally) => SPIRIT_UNITS.has(ally.type) },
-  ]
-    .map((group) => ({ ...group, units: candidates.filter(group.test) }))
-    .filter((group) => group.units.length > 0)
-    .sort((a, b) => b.units.length - a.units.length);
-  const group = groups[0] ?? { key: "spirit", units: candidates };
+  const groupKey = unit.bannerInspireGroup ?? "skeleton";
+  const group = { key: groupKey, units: candidates.filter((ally) => isBannerGroupUnit(groupKey, ally.type)) };
+  if (!group.units.length) {
+    unit.inspireTimer = 1;
+    return;
+  }
   unit.inspiringTimer = data.inspireDuration;
   unit.inspireTimer = data.inspireEvery + data.inspireDuration;
   unit.inspireGroup = group.key;
-  popText(unit.x, unit.y - 128, "举旗激励", "#d8d0ff");
+  popText(unit.x, unit.y - 128, `举旗激励${BANNER_INSPIRE_LABELS[group.key]}`, "#d8d0ff");
   state.blasts.push({ x: unit.x, y: unit.y - 38, radius: data.inspireRadius, life: data.inspireDuration, duration: data.inspireDuration, color: "#d8d0ff" });
+}
+
+function isBannerGroupUnit(groupKey, type) {
+  if (groupKey === "skeleton") return SKELETON_UNITS.has(type);
+  if (groupKey === "zombie") return ZOMBIE_UNITS.has(type);
+  if (groupKey === "spirit") return SPIRIT_UNITS.has(type);
+  return false;
+}
+
+function cycleBannerInspireGroup(unit) {
+  const current = unit.bannerInspireGroup ?? "skeleton";
+  const index = BANNER_INSPIRE_GROUPS.indexOf(current);
+  unit.bannerInspireGroup = BANNER_INSPIRE_GROUPS[(index + 1) % BANNER_INSPIRE_GROUPS.length];
+  popText(unit.x, unit.y - 116, `激励目标：${BANNER_INSPIRE_LABELS[unit.bannerInspireGroup]}`, "#d8d0ff");
 }
 
 function finishBannerInspire(unit) {
@@ -12748,6 +12765,9 @@ function getManualActions(unit) {
     case "necromancer":
       add("necromancerSummon", "召尸", "direct");
       break;
+    case "bannerBearer":
+      add("bannerInspireGroup", `激励:${BANNER_INSPIRE_LABELS[unit.bannerInspireGroup ?? "skeleton"]}`, "direct");
+      break;
     case "deathGod":
       add("deathGodSpikes", "尖刺", "direct");
       add("deathGodClone", "分身", "direct");
@@ -12787,7 +12807,7 @@ function getManualActions(unit) {
 
 function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
-  if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode") return false;
+  if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode" || button.id === "bannerInspireGroup") return false;
   if (button.id === "goblinBurrow") return false;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
@@ -12946,6 +12966,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "necromancerSummon") {
     summonNecromancerZombies(unit);
+    return;
+  }
+  if (action.id === "bannerInspireGroup") {
+    cycleBannerInspireGroup(unit);
     return;
   }
   if (action.id === "scimitarRoar") {
