@@ -98,6 +98,7 @@ const RALLY = {
 
 const MERGE_COST = 40;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const MERGE_COST_DISCOUNT_STEP = 8;
 const V_CONTROL_BLOCKED_UNITS = new Set([
   "catapult",
   "rocketCart",
@@ -113,6 +114,10 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
+const UNDEAD_SKELETON_TRAIT = { interval: 8, rampEvery: 80, maxCount: 5 };
+const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
+const CHAOS_KILL_GOLD = 2;
+const CHAOS_KILL_HEAL_RATIO = 0.1;
 const STATUE_MAX_HP = 3000;
 const GOD_V_CONTROL_RANGE = 1000;
 const BASE_ATTACK = {
@@ -2074,22 +2079,36 @@ function createFourWayTeams(playerSide) {
   return Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, side === playerSide || side === allySide ? teamA : teamB]));
 }
 
-function getUnitCost(type, faction) {
+function getUnitCost(type, faction, side = null) {
   if (type === "miner" && (faction === "order" || faction === "chaos")) return 65;
-  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeCost(type);
+  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeCost(type, side);
   return UNIT[type].cost;
 }
 
-function getElementMergeCost(type) {
-  return FREE_MERGE_UNITS.has(type) ? 0 : MERGE_COST;
+function getElementMergeCost(type, side = null) {
+  if (FREE_MERGE_UNITS.has(type)) return 0;
+  const discount = getElementMergeDiscount(type, side);
+  return Math.max(0, MERGE_COST - discount);
 }
 
-function getFourWayUnitCost(type, faction) {
+function getElementMergeDiscount(type, side = null) {
+  if (!side || !state?.elementMergeDiscounts?.[side]) return 0;
+  return state.elementMergeDiscounts[side][type] ?? 0;
+}
+
+function recordElementMergeDiscount(side, type) {
+  if (!side || !MERGE_UNITS.has(type) || FREE_MERGE_UNITS.has(type)) return;
+  state.elementMergeDiscounts[side] = state.elementMergeDiscounts[side] ?? {};
+  const current = state.elementMergeDiscounts[side][type] ?? 0;
+  state.elementMergeDiscounts[side][type] = Math.min(MERGE_COST, current + MERGE_COST_DISCOUNT_STEP);
+}
+
+function getFourWayUnitCost(type, faction, side = null) {
   if (faction === "element" && MERGE_UNITS.has(type)) {
     if (FREE_MERGE_UNITS.has(type)) return 0;
-    return FOUR_WAY_MERGE_COSTS[type] ?? 180;
+    return Math.max(0, (FOUR_WAY_MERGE_COSTS[type] ?? 180) - getElementMergeDiscount(type, side));
   }
-  return getUnitCost(type, faction);
+  return getUnitCost(type, faction, side);
 }
 
 function currentPlayerRoster() {
@@ -2426,6 +2445,8 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     corpses: [],
     ghosts: [],
     pendingMerges: [],
+    factionTraitTimers: {},
+    elementMergeDiscounts: {},
     floaters: [],
     spawnQueue: [],
     enemySpawnTimer: 0,
@@ -2979,13 +3000,13 @@ function renderShop() {
       <button class="train-btn ${shopGroupClass(type)}" data-unit="${type}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>${data.name}</strong>
-        <small>${getUnitCost(type, selectedFaction)} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
+        <small>${getUnitCost(type, selectedFaction, "player")} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
       </button>
     `;
   };
   const renderElementButton = (type) => {
     if (!MERGE_UNITS.has(type)) return renderTrainButton(type);
-    const mergeCost = getElementMergeCost(type);
+    const mergeCost = getElementMergeCost(type, "player");
     return `
       <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
@@ -3178,12 +3199,14 @@ function spawnUnit(type, side, x) {
     mineWorkSlot: null,
     carry: 0,
     lastDamageSide: null,
+    lastDamageUnitId: null,
     poisonTimer: 0,
     poisonDps: 0,
     poisonTick: 0,
     poisonSlow: 1,
     poisonRaisesUndead: false,
     poisonSourceSide: null,
+    poisonSourceUnitId: null,
     stormSlowTimer: 0,
     stormSlowFactor: 1,
     burnTimer: 0,
@@ -3429,7 +3452,7 @@ function mergeV(side) {
 
 function payMergeCost(side, x, color, mergeType = null) {
   const key = side === "player" ? "gold" : "enemyGold";
-  const cost = mergeType ? getElementMergeCost(mergeType) : MERGE_COST;
+  const cost = mergeType ? getElementMergeCost(mergeType, side) : MERGE_COST;
   if (cost <= 0) return true;
   if (state[key] < cost) {
     popText(x, FIELD.ground - 100, `融合需要 ${cost} 金币`, color);
@@ -3440,7 +3463,7 @@ function payMergeCost(side, x, color, mergeType = null) {
 }
 
 function refundMergeCost(side, mergeType) {
-  const cost = mergeType ? getElementMergeCost(mergeType) : MERGE_COST;
+  const cost = mergeType ? getElementMergeCost(mergeType, side) : MERGE_COST;
   if (cost <= 0) return;
   if (side === "player") state.gold += cost;
   else state.enemyGold += cost;
@@ -3452,6 +3475,7 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const dir = side === "player" ? 1 : -1;
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
+  recordElementMergeDiscount(side, resultType);
   popText(result.x, result.y - 95, text, color);
   return true;
 }
@@ -3539,6 +3563,7 @@ function completeElementMerge(merge, materials, x, y) {
   const result = spawnUnit(merge.resultType, merge.side, x);
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
+  recordElementMergeDiscount(merge.side, merge.resultType);
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
 }
 
@@ -3713,7 +3738,7 @@ function queueUnit(type) {
     return;
   }
   const data = UNIT[type];
-  const cost = getUnitCost(type, selectedFaction);
+  const cost = getUnitCost(type, selectedFaction, "player");
   if (state.gold < cost) {
     popText(FIELD.playerGate, FIELD.ground - 95, "金币不足", "#f3c963");
     return;
@@ -3750,6 +3775,7 @@ function update(dt) {
 
   updateQueue(dt);
   updatePassiveGold(dt);
+  updateFactionTraits(dt);
   updateTeamAi(dt);
   updateCenterTower(dt);
   updateCampaignRules(dt);
@@ -3786,6 +3812,7 @@ function updateFourWayBattle(dt) {
   updateManualControlState();
   updateGroupSelectionState();
   updateQueue(dt);
+  updateFactionTraits(dt);
   updateFourWayFactionSkills(dt);
   updateFourWayAi(dt);
   decayFourWayPressure(dt);
@@ -3844,7 +3871,7 @@ function updateFourWayAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
-      return getFourWayUnitCost(type, ai.faction) <= ai.gold;
+      return getFourWayUnitCost(type, ai.faction, ai.side) <= ai.gold;
     });
     const livingCount = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
     const type = chooseFourWayAiUnit(ai, roster, livingCount);
@@ -3852,11 +3879,12 @@ function updateFourWayAi(dt) {
       ai.spawnTimer = 0.85;
       return;
     }
-    const cost = getFourWayUnitCost(type, ai.faction);
+    const cost = getFourWayUnitCost(type, ai.faction, ai.side);
     ai.gold -= cost;
     const isHighTier = cost >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
+    recordElementMergeDiscount(ai.side, type);
   });
 }
 
@@ -3951,22 +3979,22 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
     return Boolean(UNIT[type]);
   });
   const highTargets = fullRoster
-    .filter((type) => getFourWayUnitCost(type, ai.faction) >= FOUR_WAY_HIGH_TIER_COST)
-    .sort((a, b) => getFourWayUnitCost(b, ai.faction) - getFourWayUnitCost(a, ai.faction));
+    .filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST)
+    .sort((a, b) => getFourWayUnitCost(b, ai.faction, ai.side) - getFourWayUnitCost(a, ai.faction, ai.side));
   const cheapestHigh = highTargets[highTargets.length - 1];
   const shouldTech = state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && livingCount >= 5 && cheapestHigh;
-  if (shouldTech && ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction)) return null;
+  if (shouldTech && ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction, ai.side)) return null;
   if (!affordableRoster.length) return null;
 
   const affordable = affordableRoster
     .slice()
-    .sort((a, b) => getFourWayUnitCost(b, ai.faction) - getFourWayUnitCost(a, ai.faction));
-  const highAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction) >= FOUR_WAY_HIGH_TIER_COST);
+    .sort((a, b) => getFourWayUnitCost(b, ai.faction, ai.side) - getFourWayUnitCost(a, ai.faction, ai.side));
+  const highAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST);
   const midAffordable = affordable.filter((type) => {
-    const cost = getFourWayUnitCost(type, ai.faction);
+    const cost = getFourWayUnitCost(type, ai.faction, ai.side);
     return cost >= 110 && cost < FOUR_WAY_HIGH_TIER_COST;
   });
-  const cheapAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction) < 110);
+  const cheapAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) < 110);
 
   if (state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && highAffordable.length && Math.random() < 0.68) {
     return highAffordable[Math.floor(Math.random() * highAffordable.length)];
@@ -3991,6 +4019,76 @@ function updatePassiveGold(dt) {
   state.passiveGoldTimer += 2;
   state.gold += 10;
   state.enemyGold += 10;
+}
+
+function updateFactionTraits(dt) {
+  const sides = state.fourWay ? FOUR_WAY_SIDES : ["player", "enemy"];
+  sides.forEach((side) => {
+    const faction = factionForSide(side);
+    if (faction === "undeadEmpire") updateUndeadSkeletonTrait(side, dt);
+    if (faction === "order") updateOrderArmorTrait(side, dt);
+  });
+}
+
+function getFactionTraitTimer(side) {
+  state.factionTraitTimers[side] = state.factionTraitTimers[side] ?? {
+    undeadSkeletonTimer: UNDEAD_SKELETON_TRAIT.interval,
+    undeadSkeletonElapsed: 0,
+    orderArmorTimer: ORDER_ARMOR_TRAIT.interval,
+  };
+  return state.factionTraitTimers[side];
+}
+
+function updateUndeadSkeletonTrait(side, dt) {
+  const timer = getFactionTraitTimer(side);
+  timer.undeadSkeletonElapsed += dt;
+  timer.undeadSkeletonTimer -= dt;
+  if (timer.undeadSkeletonTimer > 0) return;
+  timer.undeadSkeletonTimer += UNDEAD_SKELETON_TRAIT.interval;
+  const count = Math.min(
+    UNDEAD_SKELETON_TRAIT.maxCount,
+    1 + Math.floor(timer.undeadSkeletonElapsed / UNDEAD_SKELETON_TRAIT.rampEvery),
+  );
+  for (let i = 0; i < count; i += 1) {
+    const skeleton = spawnTraitUnit("machete", side, i);
+    skeleton.forceCharge = true;
+  }
+  const point = getSideTraitTextPoint(side);
+  popText(point.x, point.y, `骷髅增援 x${count}`, "#d8d0ff");
+}
+
+function updateOrderArmorTrait(side, dt) {
+  const timer = getFactionTraitTimer(side);
+  timer.orderArmorTimer -= dt;
+  if (timer.orderArmorTimer > 0) return;
+  timer.orderArmorTimer += ORDER_ARMOR_TRAIT.interval;
+  let armored = 0;
+  state.units.forEach((unit) => {
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    const before = unit.armorReduction ?? 0;
+    unit.armorReduction = Math.min(ORDER_ARMOR_TRAIT.maxReduction, before + ORDER_ARMOR_TRAIT.reductionStep);
+    if (unit.armorReduction > before) armored += 1;
+  });
+  if (!armored) return;
+  const point = getSideTraitTextPoint(side);
+  popText(point.x, point.y, `秩序护甲 +${Math.round(ORDER_ARMOR_TRAIT.reductionStep * 100)}%`, "#dfe8ff");
+}
+
+function spawnTraitUnit(type, side, index = 0) {
+  if (state.fourWay && FOUR_WAY_BASES[side]) return spawnFourWayUnit(type, side, index + 24);
+  const x = side === "player" ? FIELD.playerGate + 58 + index * 18 : FIELD.enemyGate - 58 - index * 18;
+  return spawnUnit(type, side, x);
+}
+
+function getSideTraitTextPoint(side) {
+  if (state.fourWay && FOUR_WAY_BASES[side]) {
+    const base = FOUR_WAY_BASES[side];
+    return { x: base.x, y: base.y + (base.y < FIELD.height / 2 ? -145 : 165) };
+  }
+  return {
+    x: side === "player" ? FIELD.playerGate + 78 : FIELD.enemyGate - 78,
+    y: FIELD.ground - 130,
+  };
 }
 
 function updateCenterTower(dt) {
@@ -4665,7 +4763,7 @@ function updateEnemyAi(dt) {
     state.enemyMinerTimer = 8;
   }
 
-  const economyCost = getUnitCost(enemyEconomyType, opponentFaction());
+  const economyCost = getUnitCost(enemyEconomyType, opponentFaction(), "enemy");
   if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && state.enemyGold >= economyCost) {
     state.enemyGold -= economyCost;
     state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
@@ -4674,14 +4772,15 @@ function updateEnemyAi(dt) {
 
   if (state.enemySpawnTimer <= 0) {
     const enemyRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
-    const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction()) <= state.enemyGold);
+    const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction(), "enemy") <= state.enemyGold);
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
       return;
     }
 
     const type = chooseEnemyUnit(affordable);
-    state.enemyGold -= getUnitCost(type, opponentFaction());
+    state.enemyGold -= getUnitCost(type, opponentFaction(), "enemy");
+    recordElementMergeDiscount("enemy", type);
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnUnit(type, "enemy", FIELD.enemyGate + 12);
   }
@@ -4695,7 +4794,7 @@ function updateTeamAi(dt) {
     ai.spawnTimer -= dt;
     const economyType = ai.faction === "undeadEmpire" ? "summoner" : "miner";
     const miners = state.units.filter((unit) => unit.side === ai.side && unit.type === economyType && unit.hp > 0).length;
-    const economyCost = getUnitCost(economyType, ai.faction);
+    const economyCost = getUnitCost(economyType, ai.faction, ai.side);
     if (ai.minerTimer <= 0 && miners < 5 && ai.gold >= economyCost) {
       ai.gold -= economyCost;
       ai.minerTimer = miners < 3 ? 9 : 13;
@@ -4705,13 +4804,14 @@ function updateTeamAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FACTIONS[ai.faction].roster
       .filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type) && !UNIT[type]?.summonOnly && !UNIT[type]?.statueOnly);
-    const affordable = roster.filter((type) => getUnitCost(type, ai.faction) <= ai.gold);
+    const affordable = roster.filter((type) => getUnitCost(type, ai.faction, ai.side) <= ai.gold);
     if (!affordable.length) {
       ai.spawnTimer = 0.9;
       return;
     }
     const type = affordable[Math.floor(Math.random() * affordable.length)];
-    ai.gold -= getUnitCost(type, ai.faction);
+    ai.gold -= getUnitCost(type, ai.faction, ai.side);
+    recordElementMergeDiscount(ai.side, type);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
     spawnUnit(type, ai.side, ai.side === "player" ? FIELD.playerGate - 96 : FIELD.enemyGate + 96);
   });
@@ -7657,7 +7757,7 @@ function attack(unit, target) {
   const dealt = applyDamage(target, unit.damage ?? data.damage, unit.side);
   handleDamageDealt(unit, target, dealt);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
-    applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side });
+    applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
   }
   if (unit.type === "fireImp" && target.kind !== "statue") {
     applyBurn(target, data.burnDps, data.burnDuration);
@@ -7679,7 +7779,10 @@ function attackApeMan(unit, target) {
 
 function handleDamageDealt(attacker, target, damage) {
   if (!attacker || !target || damage <= 0) return;
-  if (target.kind !== "statue") target.lastDamageSide = attacker.side;
+  if (target.kind !== "statue") {
+    target.lastDamageSide = attacker.side;
+    target.lastDamageUnitId = attacker.id;
+  }
   if (attacker.inspiredLifestealTimer > 0 && target.kind !== "statue") {
     const healed = Math.min(Math.round(damage * 0.5), attacker.maxHp - attacker.hp);
     if (healed > 0) {
@@ -7693,21 +7796,28 @@ function handleDamageDealt(attacker, target, damage) {
   }
 }
 
-function grantUndeadKillGold(unit) {
+function grantChaosKillRewards(unit) {
   const killerSide = unit.lastDamageSide ?? unit.poisonSourceSide;
   if (!killerSide || killerSide === unit.side) return;
-  if (factionForSide(killerSide) !== "undeadEmpire") return;
+  if (factionForSide(killerSide) !== "chaos") return;
   if (state.fourWay) {
     const ai = state.fourWaySides.find((item) => item.side === killerSide);
-    if (ai) ai.gold += 2;
+    if (ai) ai.gold += CHAOS_KILL_GOLD;
     const base = FOUR_WAY_BASES[killerSide];
-    popText(base.x, base.y + (base.y < FIELD.height / 2 ? -150 : 170), "亡灵收割 +2", "#b8b0e8");
-    return;
+    popText(base.x, base.y + (base.y < FIELD.height / 2 ? -150 : 170), `混沌掠夺 +${CHAOS_KILL_GOLD}`, "#ff8a3d");
+  } else {
+    const key = killerSide === "player" ? "gold" : "enemyGold";
+    state[key] += CHAOS_KILL_GOLD;
+    const labelX = killerSide === "player" ? FIELD.playerGate + 58 : FIELD.enemyGate - 58;
+    popText(labelX, FIELD.ground - 128, `混沌掠夺 +${CHAOS_KILL_GOLD}`, "#ff8a3d");
   }
-  const key = killerSide === "player" ? "gold" : "enemyGold";
-  state[key] += 2;
-  const labelX = killerSide === "player" ? FIELD.playerGate + 58 : FIELD.enemyGate - 58;
-  popText(labelX, FIELD.ground - 128, "亡灵收割 +2", "#b8b0e8");
+  const killerUnitId = unit.lastDamageUnitId ?? unit.poisonSourceUnitId;
+  const killer = state.units.find((candidate) => candidate.id === killerUnitId && candidate.hp > 0 && candidate.side === killerSide);
+  if (!killer || killer.hp >= killer.maxHp) return;
+  const healed = Math.min(Math.round((unit.maxHp ?? UNIT[unit.type]?.hp ?? 0) * CHAOS_KILL_HEAL_RATIO), killer.maxHp - killer.hp);
+  if (healed <= 0) return;
+  killer.hp += healed;
+  popText(killer.x, killer.y - 104, `吞噬 +${healed}`, "#ff8a3d");
 }
 
 function attackCandlelight(unit, target) {
@@ -7776,6 +7886,7 @@ function explodeDeadCorpse(unit) {
       slow: data.poisonSlow,
       raisesUndead: true,
       sourceSide: unit.side,
+      sourceUnitId: unit.id,
     });
   });
   state.blasts.push({ x: unit.x, y: unit.y - 34, radius: data.poisonRadius, life: 0.34, duration: 0.34, color: "#93d96b" });
@@ -8607,7 +8718,7 @@ function updateArrows(dt) {
       } else if (arrow.type === "poisonZombie") {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
-        applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration);
+        applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "fireElement") {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
@@ -8619,7 +8730,7 @@ function updateArrows(dt) {
       } else if (arrow.type === "javelinThrower") {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
-        if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side });
+        if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
@@ -8820,9 +8931,10 @@ function applyPoison(target, dps, duration, options = {}) {
   target.poisonTimer = Math.max(target.poisonTimer, duration);
   target.poisonDps = Math.max(target.poisonDps, dps);
   target.poisonSlow = Math.min(target.poisonSlow ?? 1, options.slow ?? 1);
+  if (options.sourceSide) target.poisonSourceSide = options.sourceSide;
+  if (options.sourceUnitId) target.poisonSourceUnitId = options.sourceUnitId;
   if (options.raisesUndead) {
     target.poisonRaisesUndead = true;
-    target.poisonSourceSide = options.sourceSide;
   }
   target.poisonTick = 0;
   popText(target.x, target.y - 88, "中毒", "#93d96b");
@@ -8840,6 +8952,7 @@ function clearPoison(unit, label = "解毒") {
   unit.poisonSlow = 1;
   unit.poisonRaisesUndead = false;
   unit.poisonSourceSide = null;
+  unit.poisonSourceUnitId = null;
   popText(unit.x, unit.y - 94, label, "#b8f6c1");
   return true;
 }
@@ -9869,7 +9982,7 @@ function removeDead() {
     if (unit.type === "vUnit") {
       releaseVControl(unit);
     }
-    grantUndeadKillGold(unit);
+    grantChaosKillRewards(unit);
     if (unit.type === "minotaur") {
       deathSpawns.push({
         type: "hornKnightRider",
@@ -15135,7 +15248,7 @@ function updateHud() {
     }
     if (button.dataset.action?.startsWith("merge")) {
       const mergeType = ELEMENT_MERGE_TYPE_BY_ACTION[button.dataset.action];
-      if (state.over || state.gold < getElementMergeCost(mergeType)) {
+      if (state.over || state.gold < getElementMergeCost(mergeType, "player")) {
         button.disabled = true;
         return;
       }
@@ -15143,49 +15256,49 @@ function updateHud() {
     if (button.dataset.action === "mergeTreeEnt") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasWater = state.units.some((unit) => unit.side === "player" && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId);
-      button.disabled = state.over || state.gold < getElementMergeCost("treeEnt") || !hasEarth || !hasWater;
+      button.disabled = state.over || state.gold < getElementMergeCost("treeEnt", "player") || !hasEarth || !hasWater;
       return;
     }
     if (button.dataset.action === "mergeRog") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasFire = state.units.some((unit) => unit.side === "player" && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit));
-      button.disabled = state.over || state.gold < getElementMergeCost("rog") || !hasEarth || !hasFire;
+      button.disabled = state.over || state.gold < getElementMergeCost("rog", "player") || !hasEarth || !hasFire;
       return;
     }
     if (button.dataset.action === "mergeDreadfire") {
-      button.disabled = state.over || state.gold < getElementMergeCost("dreadfire") || !canMergeDreadfire("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("dreadfire", "player") || !canMergeDreadfire("player");
       return;
     }
     if (button.dataset.action === "mergeRedflame") {
-      button.disabled = state.over || state.gold < getElementMergeCost("redflame") || !canMergeRedflame("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("redflame", "player") || !canMergeRedflame("player");
       return;
     }
     if (button.dataset.action === "mergeHurricane") {
-      button.disabled = state.over || state.gold < getElementMergeCost("hurricane") || !canMergeHurricane("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("hurricane", "player") || !canMergeHurricane("player");
       return;
     }
     if (button.dataset.action === "mergeHill") {
-      button.disabled = state.over || state.gold < getElementMergeCost("hill") || !canMergeHill("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("hill", "player") || !canMergeHill("player");
       return;
     }
     if (button.dataset.action === "mergeLinghan") {
-      button.disabled = state.over || state.gold < getElementMergeCost("linghan") || !canMergeLinghan("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("linghan", "player") || !canMergeLinghan("player");
       return;
     }
     if (button.dataset.action === "mergeScaldStrike") {
-      button.disabled = state.over || state.gold < getElementMergeCost("scaldStrike") || !canMergeScaldStrike("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("scaldStrike", "player") || !canMergeScaldStrike("player");
       return;
     }
     if (button.dataset.action === "mergeElectricGate") {
-      button.disabled = state.over || state.gold < getElementMergeCost("electricGate") || !canMergeElectricGate("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("electricGate", "player") || !canMergeElectricGate("player");
       return;
     }
     if (button.dataset.action === "mergeV") {
-      button.disabled = state.over || state.gold < getElementMergeCost("vUnit") || !canMergeV("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("vUnit", "player") || !canMergeV("player");
       return;
     }
     if (!type) return;
-    button.disabled = state.gold < getUnitCost(type, selectedFaction) || state.over || !canQueueCampaignUnit(type);
+    button.disabled = state.gold < getUnitCost(type, selectedFaction, "player") || state.over || !canQueueCampaignUnit(type);
   });
 }
 
