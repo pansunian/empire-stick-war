@@ -90,7 +90,7 @@ const RALLY = {
 
 const MERGE_COST = 30;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
-const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
+const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate", "vUnit"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
@@ -3146,7 +3146,14 @@ function mergeElectricGate(side) {
 }
 
 function mergeV(side) {
-  return beginDirectElementMerge(side, "vUnit", "合成 V", "#d7ceff");
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+  if (!payMergeCost(side, x, "#d7ceff", "vUnit")) return false;
+  const materials = getVMaterials(side);
+  if (!materials) {
+    popText(x, FIELD.ground - 100, "需要土水火风各 2 个", "#d7ceff");
+    return false;
+  }
+  return beginElementMerge(side, materials, "vUnit", "合成 V", "#d7ceff");
 }
 
 function payMergeCost(side, x, color, mergeType = null) {
@@ -3416,7 +3423,7 @@ function canMergeLinghan(side) {
 }
 
 function canMergeV(side) {
-  return true;
+  return Boolean(getVMaterials(side));
 }
 
 function queueUnit(type) {
@@ -14575,8 +14582,10 @@ function updateHud() {
     }
     if (button.dataset.action?.startsWith("merge")) {
       const mergeType = ELEMENT_MERGE_TYPE_BY_ACTION[button.dataset.action];
-      button.disabled = state.over || state.gold < getElementMergeCost(mergeType);
-      return;
+      if (state.over || state.gold < getElementMergeCost(mergeType)) {
+        button.disabled = true;
+        return;
+      }
     }
     if (button.dataset.action === "mergeTreeEnt") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
