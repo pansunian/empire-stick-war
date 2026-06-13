@@ -953,7 +953,7 @@ canvas {
 .unit-shop {
   flex: 1;
   display: grid;
-  grid-template-rows: repeat(2, 72px);
+  grid-template-rows: repeat(3, 72px);
   grid-auto-flow: column;
   grid-auto-columns: minmax(118px, 132px);
   align-items: stretch;
@@ -964,6 +964,7 @@ canvas {
   -webkit-overflow-scrolling: touch;
 }
 
+.unit-shop.element-shop,
 .unit-shop.element-shop-expanded {
   grid-template-rows: repeat(3, 72px);
   grid-auto-columns: minmax(104px, 122px);
@@ -1794,11 +1795,12 @@ canvas {
   }
 
   .unit-shop {
-    grid-template-rows: repeat(2, 70px);
+    grid-template-rows: repeat(3, 70px);
     grid-auto-flow: column;
     grid-auto-columns: minmax(104px, 116px);
   }
 
+  .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 70px);
     grid-auto-columns: minmax(96px, 108px);
@@ -2048,10 +2050,11 @@ canvas {
   }
 
   .unit-shop {
-    grid-template-rows: repeat(2, 58px);
+    grid-template-rows: repeat(3, 58px);
     grid-auto-columns: minmax(104px, 116px);
   }
 
+  .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 58px);
     grid-auto-columns: minmax(92px, 104px);
@@ -2590,7 +2593,7 @@ canvas {
 
   .unit-shop {
     display: grid;
-    grid-template-rows: repeat(2, 39px);
+    grid-template-rows: repeat(3, 39px);
     grid-auto-flow: column;
     grid-auto-columns: minmax(76px, 88px);
     gap: 4px;
@@ -3284,6 +3287,7 @@ canvas {
 }
 
 @media (min-width: 700px) {
+  .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 78px);
     grid-auto-columns: 78px;
@@ -3291,6 +3295,7 @@ canvas {
 }
 
 @media (min-width: 700px) and (max-width: 1180px) {
+  .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 78px);
     grid-auto-columns: 72px;
@@ -3298,6 +3303,7 @@ canvas {
 }
 
 @media (max-width: 932px) and (orientation: landscape) {
+  .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 62px);
     grid-auto-columns: 62px;

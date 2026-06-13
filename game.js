@@ -2480,6 +2480,14 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "electricGate", action: "mergeElectricGate" },
   { type: "vUnit", action: "mergeV" },
 ];
+const ELEMENT_MERGE_ACTION_BY_TYPE = Object.fromEntries(ELEMENT_MERGE_ACTIONS.map((merge) => [merge.type, merge.action]));
+const ELEMENT_SHOP_LAYOUT = [
+  ["earthElement", "hill", "treeEnt"],
+  ["waterElement", "linghan", "rog"],
+  ["electricGate", "vUnit", "scaldStrike"],
+  ["fireElement", "redflame", "dreadfire"],
+  ["windElement", "stormLich", "hurricane"],
+];
 
 function getAvailableElementMerges() {
   if (selectedFaction !== "element") return [];
@@ -2491,45 +2499,49 @@ function getAvailableElementMerges() {
 function renderShop() {
   const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
-  const showElementMergeButtons = allowedElementMerges.length > 0;
   const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
-  const elementShopItemCount = shopRoster.length + allowedElementMerges.length + (showElementConvertButton ? 1 : 0);
-  const elementActionButtons =
-    showElementMergeButtons || showElementConvertButton
-      ? `
-        ${showElementMergeButtons ? allowedElementMerges.map((merge) => `
-        <button class="train-btn" data-action="${merge.action}">
-          <span class="unit-icon ${UNIT_ICON[merge.type]}"></span>
-          <strong>合成${UNIT[merge.type].name}</strong>
-          <small>${MERGE_COST} 金币</small>
-        </button>
-        `).join("") : ""}
-        ${showElementConvertButton ? `
-        <button class="train-btn" data-action="convertEarth">
-          <span class="unit-icon miner"></span>
-          <strong>土化矿工</strong>
-          <small>选择一名土元素</small>
-        </button>
-        ` : ""}
-      `
-      : "";
+  const allowedElementMergeTypes = new Set(allowedElementMerges.map((merge) => merge.type));
+  const elementShopItems = selectedFaction === "element"
+    ? ELEMENT_SHOP_LAYOUT.flatMap((column) => column).filter((type) => shopRoster.includes(type) || allowedElementMergeTypes.has(type))
+    : [];
+  const elementShopItemCount = elementShopItems.length + (showElementConvertButton ? 1 : 0);
+
+  const renderTrainButton = (type) => {
+    const data = UNIT[type];
+    return `
+      <button class="train-btn" data-unit="${type}">
+        <span class="unit-icon ${UNIT_ICON[type]}"></span>
+        <strong>${data.name}</strong>
+        <small>${getUnitCost(type, selectedFaction)} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
+      </button>
+    `;
+  };
+  const renderElementButton = (type) => {
+    if (!MERGE_UNITS.has(type)) return renderTrainButton(type);
+    return `
+      <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
+        <span class="unit-icon ${UNIT_ICON[type]}"></span>
+        <strong>合成${UNIT[type].name}</strong>
+        <small>${MERGE_COST} 金币</small>
+      </button>
+    `;
+  };
+  const elementConvertButton = showElementConvertButton
+    ? `
+      <button class="train-btn" data-action="convertEarth">
+        <span class="unit-icon miner"></span>
+        <strong>土化矿工</strong>
+        <small>选择一名土元素</small>
+      </button>
+    `
+    : "";
 
   unitShop.classList.toggle("element-shop", selectedFaction === "element");
   unitShop.classList.toggle("element-shop-expanded", selectedFaction === "element" && elementShopItemCount > 12);
 
-  unitShop.innerHTML =
-    shopRoster
-    .map((type) => {
-      const data = UNIT[type];
-      return `
-        <button class="train-btn" data-unit="${type}">
-          <span class="unit-icon ${UNIT_ICON[type]}"></span>
-          <strong>${data.name}</strong>
-          <small>${getUnitCost(type, selectedFaction)} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
-        </button>
-      `;
-    })
-      .join("") + elementActionButtons;
+  unitShop.innerHTML = selectedFaction === "element"
+    ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
+    : shopRoster.map(renderTrainButton).join("");
 
   trainButtons = [...document.querySelectorAll(".train-btn")];
   trainButtons.forEach((button) => {
