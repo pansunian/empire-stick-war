@@ -557,12 +557,18 @@ body {
     linear-gradient(145deg, rgba(70, 135, 125, 0.78), rgba(35, 43, 31, 0.94));
 }
 
-.faction-card:hover {
+.faction-card:hover,
+.faction-card.active {
   border-color: rgba(230, 184, 74, 0.8);
   transform: translateY(-2px);
   box-shadow:
     inset 0 1px 0 rgba(255, 244, 190, 0.16),
     0 18px 30px rgba(0, 0, 0, 0.26);
+}
+
+.faction-card.active {
+  outline: 2px solid rgba(255, 218, 111, 0.58);
+  outline-offset: 2px;
 }
 
 .faction-card strong {
@@ -581,6 +587,47 @@ body {
   grid-column: 1 / -1;
   color: rgba(245, 240, 223, 0.78);
   line-height: 1.5;
+}
+
+.start-row {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.quick-start-btn {
+  min-width: min(100%, 320px);
+  min-height: 54px;
+  padding: 9px 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 220, 128, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255, 226, 141, 0.24), rgba(174, 104, 34, 0.18)),
+    rgba(20, 17, 13, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 190, 0.24),
+    0 12px 24px rgba(0, 0, 0, 0.26);
+}
+
+.quick-start-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 231, 155, 0.95);
+}
+
+.quick-start-btn strong,
+.quick-start-btn small {
+  display: block;
+}
+
+.quick-start-btn strong {
+  color: #ffe08a;
+  font-size: 18px;
+}
+
+.quick-start-btn small {
+  margin-top: 2px;
+  color: rgba(245, 240, 223, 0.72);
+  font-size: 12px;
 }
 
 .crest {
@@ -777,16 +824,31 @@ button {
 
 .status-panel {
   flex: 1;
-  justify-content: center;
+  justify-content: space-between;
   text-align: center;
   position: relative;
   font-weight: 700;
-  padding-right: 528px;
+  min-width: 0;
+}
+
+#gameStatus {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .icon-btn {
-  position: absolute;
-  right: 12px;
   width: 40px;
   height: 40px;
   border-radius: 8px;
@@ -800,7 +862,6 @@ button {
 .install-btn,
 .zoom-btn,
 .top-home-btn {
-  position: absolute;
   height: 40px;
   padding: 0 14px;
   border-radius: 8px;
@@ -809,44 +870,26 @@ button {
   font-weight: 800;
 }
 
-.top-home-btn {
-  right: 448px;
-}
-
-.install-btn {
-  right: 390px;
-}
-
 .zoom-btn {
   width: 40px;
   padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.22);
 }
 
-.zoom-out-btn {
-  right: 344px;
+body.quad-watch .zoom-btn:not([hidden]) {
+  display: inline-flex;
 }
 
 .zoom-fit-btn {
-  right: 286px;
   width: 52px;
-}
-
-.zoom-in-btn {
-  right: 240px;
-}
-
-.fullscreen-btn {
-  right: 172px;
 }
 
 .install-btn.hidden {
   display: none;
-}
-
-.pause-btn {
-  right: 116px;
 }
 
 .stats-btn {
@@ -1018,6 +1061,19 @@ body.quad-watch canvas {
 }
 
 body.quad-watch .health-bars {
+  display: none;
+}
+
+.top-actions > button {
+  position: static;
+  inset: auto;
+  top: auto;
+  right: auto;
+  transform: none;
+  flex: 0 0 auto;
+}
+
+.top-actions > button[hidden] {
   display: none;
 }
 
@@ -2313,9 +2369,8 @@ body.quad-watch .health-bars {
 
 	  .status-panel {
 	    font-size: 13px;
-	    padding-right: 456px;
+	    padding-right: 8px;
 	    white-space: nowrap;
-	    overflow: hidden;
 	  }
 
 	  .top-home-btn,

@@ -7,6 +7,7 @@ const factionButtons = [...document.querySelectorAll(".faction-card")];
 const modeButtons = [...document.querySelectorAll(".mode-card")];
 const teamModeButtons = [...document.querySelectorAll("[data-team-mode]")];
 const controlModeButtons = [...document.querySelectorAll("[data-control-mode]")];
+const quickStartBtn = document.querySelector("#quickStartBtn");
 const campaignMap = document.querySelector("#campaignMap");
 const campaignTitle = document.querySelector("#campaignTitle");
 const campaignProgress = document.querySelector("#campaignProgress");
@@ -2539,7 +2540,12 @@ function getDefaultBattlefieldZoom(fourWay) {
   return 1;
 }
 
+function canZoomBattlefield() {
+  return currentFieldModeFourWay;
+}
+
 function clampBattlefieldZoom(value) {
+  if (!canZoomBattlefield()) return 1;
   return Math.max(getFitBattlefieldZoom(), Math.min(BATTLEFIELD_MAX_ZOOM, value));
 }
 
@@ -2561,17 +2567,39 @@ function applyBattlefieldZoom(preserveCenter = true) {
 }
 
 function setBattlefieldZoom(nextZoom) {
+  if (!canZoomBattlefield()) {
+    battlefieldZoom = 1;
+    applyBattlefieldZoom(false);
+    return;
+  }
   battlefieldZoom = nextZoom;
   applyBattlefieldZoom(true);
 }
 
 function fitBattlefieldToView() {
+  if (!canZoomBattlefield()) {
+    setBattlefieldZoom(1);
+    resetBattlefieldView();
+    return;
+  }
   setBattlefieldZoom(getFitBattlefieldZoom());
   resetBattlefieldView();
 }
 
 function updateZoomButtons() {
   if (!zoomOutBtn || !zoomInBtn || !zoomFitBtn) return;
+  const enabled = canZoomBattlefield();
+  zoomOutBtn.hidden = !enabled;
+  zoomInBtn.hidden = !enabled;
+  zoomFitBtn.hidden = !enabled;
+  if (!enabled) {
+    zoomOutBtn.disabled = true;
+    zoomInBtn.disabled = true;
+    zoomFitBtn.disabled = true;
+    zoomFitBtn.textContent = "100%";
+    zoomFitBtn.title = "4国对战可缩放";
+    return;
+  }
   const minZoom = getFitBattlefieldZoom();
   zoomOutBtn.disabled = battlefieldZoom <= minZoom + 0.001;
   zoomInBtn.disabled = battlefieldZoom >= BATTLEFIELD_MAX_ZOOM - 0.001;
@@ -3793,8 +3821,6 @@ function updateFourWayAi(dt) {
       ai.incomeTimer += 1;
       ai.gold += 20;
     }
-    if (ai.side === state.fourWayPlayerSide) return;
-
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
@@ -14795,6 +14821,8 @@ function returnToMainMenu() {
   selectedMode = "versus";
   selectedTeamMode = "solo";
   selectedControlMode = "human";
+  selectedFaction = "order";
+  enemyFaction = "chaos";
   applyFieldMode(false);
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === selectedMode);
@@ -14805,11 +14833,29 @@ function returnToMainMenu() {
   controlModeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.controlMode === selectedControlMode);
   });
+  factionButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.faction === selectedFaction);
+  });
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
   controlDeck?.classList.remove("hidden");
   homeBtn.classList.add("hidden");
   statusEl.textContent = "选择模式与阵营，开始下一场战斗";
+}
+
+async function startSelectedBattle(faction = selectedFaction) {
+  selectedFaction = faction || "order";
+  factionButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.faction === selectedFaction);
+  });
+  if (selectedMode === "campaign") {
+    openCampaignMap();
+    return;
+  }
+  if (!isIosDevice()) await enterFullscreen();
+  activeCampaign = null;
+  factionSelect.classList.add("hidden");
+  newGame();
 }
 
 function isFullscreen() {
@@ -15508,9 +15554,15 @@ pauseBtn.addEventListener("click", () => {
 });
 
 fullscreenBtn.addEventListener("click", toggleFullscreen);
-zoomOutBtn?.addEventListener("click", () => setBattlefieldZoom(battlefieldZoom / BATTLEFIELD_ZOOM_STEP));
-zoomInBtn?.addEventListener("click", () => setBattlefieldZoom(battlefieldZoom * BATTLEFIELD_ZOOM_STEP));
-zoomFitBtn?.addEventListener("click", fitBattlefieldToView);
+zoomOutBtn?.addEventListener("click", () => {
+  if (canZoomBattlefield()) setBattlefieldZoom(battlefieldZoom / BATTLEFIELD_ZOOM_STEP);
+});
+zoomInBtn?.addEventListener("click", () => {
+  if (canZoomBattlefield()) setBattlefieldZoom(battlefieldZoom * BATTLEFIELD_ZOOM_STEP);
+});
+zoomFitBtn?.addEventListener("click", () => {
+  if (canZoomBattlefield()) fitBattlefieldToView();
+});
 window.addEventListener("resize", () => {
   applyBattlefieldZoom(true);
   if (currentFieldModeFourWay && battlefieldZoom <= getFitBattlefieldZoom() + 0.001) centerFourWayView();
@@ -15548,6 +15600,10 @@ modeButtons.forEach((button) => {
   });
 });
 
+quickStartBtn?.addEventListener("click", () => {
+  startSelectedBattle(selectedFaction || "order");
+});
+
 teamModeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedTeamMode = button.dataset.teamMode;
@@ -15567,16 +15623,12 @@ controlModeButtons.forEach((button) => {
 });
 
 factionButtons.forEach((button) => {
-  button.addEventListener("click", async () => {
-    if (!isIosDevice()) await enterFullscreen();
-    selectedFaction = button.dataset.faction;
-    if (selectedMode === "campaign") {
-      openCampaignMap();
-      return;
-    }
-    activeCampaign = null;
-    factionSelect.classList.add("hidden");
-    newGame();
+  button.addEventListener("click", () => {
+    selectedFaction = button.dataset.faction || "order";
+    factionButtons.forEach((candidate) => {
+      candidate.classList.toggle("active", candidate === button);
+    });
+    if (selectedMode === "campaign") openCampaignMap();
   });
 });
 
