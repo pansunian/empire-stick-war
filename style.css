@@ -970,6 +970,32 @@ canvas {
   grid-auto-columns: minmax(104px, 122px);
 }
 
+.unit-shop.undead-shop {
+  grid-template-rows: repeat(3, 72px);
+  grid-auto-columns: 78px;
+}
+
+.shop-spacer {
+  width: 72px;
+  height: 72px;
+}
+
+.train-btn.shop-group-economy {
+  border-color: rgba(183, 176, 165, 0.55);
+}
+
+.train-btn.shop-group-skeleton {
+  border-color: rgba(170, 202, 226, 0.52);
+}
+
+.train-btn.shop-group-zombie {
+  border-color: rgba(139, 210, 140, 0.52);
+}
+
+.train-btn.shop-group-spirit {
+  border-color: rgba(158, 164, 255, 0.55);
+}
+
 .command-btn,
 .train-btn {
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -1806,6 +1832,11 @@ canvas {
     grid-auto-columns: minmax(96px, 108px);
   }
 
+  .unit-shop.undead-shop {
+    grid-template-rows: repeat(3, 70px);
+    grid-auto-columns: 72px;
+  }
+
   .mode-options {
     grid-template-columns: 1fr;
   }
@@ -2058,6 +2089,11 @@ canvas {
   .unit-shop.element-shop-expanded {
     grid-template-rows: repeat(3, 58px);
     grid-auto-columns: minmax(92px, 104px);
+  }
+
+  .unit-shop.undead-shop {
+    grid-template-rows: repeat(3, 58px);
+    grid-auto-columns: 64px;
   }
 
   .unit-icon {
@@ -3288,7 +3324,8 @@ canvas {
 
 @media (min-width: 700px) {
   .unit-shop.element-shop,
-  .unit-shop.element-shop-expanded {
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
     grid-template-rows: repeat(3, 78px);
     grid-auto-columns: 78px;
   }
@@ -3296,7 +3333,8 @@ canvas {
 
 @media (min-width: 700px) and (max-width: 1180px) {
   .unit-shop.element-shop,
-  .unit-shop.element-shop-expanded {
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
     grid-template-rows: repeat(3, 78px);
     grid-auto-columns: 72px;
   }
@@ -3304,7 +3342,8 @@ canvas {
 
 @media (max-width: 932px) and (orientation: landscape) {
   .unit-shop.element-shop,
-  .unit-shop.element-shop-expanded {
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
     grid-template-rows: repeat(3, 62px);
     grid-auto-columns: 62px;
   }

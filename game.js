@@ -2488,6 +2488,25 @@ const ELEMENT_SHOP_LAYOUT = [
   ["fireElement", "redflame", "dreadfire"],
   ["windElement", "stormLich", "hurricane"],
 ];
+const UNDEAD_SHOP_LAYOUT = [
+  ["summoner", "undead", "candlelight"],
+  ["machete", "ghoul", "reaper"],
+  ["undeadVulture", "deadCorpse", "demonArcher"],
+  ["darkKnight", "poisonZombie", "deathGod"],
+  ["undeadMage", "necromancer", null],
+  ["graveDigger", null, null],
+  ["boneGiant", null, null],
+  ["undeadCatapult", null, null],
+  ["bannerBearer", null, null],
+];
+
+function shopGroupClass(type) {
+  if (type === "summoner") return "shop-group-economy";
+  if (SKELETON_UNITS.has(type)) return "shop-group-skeleton";
+  if (ZOMBIE_UNITS.has(type)) return "shop-group-zombie";
+  if (SPIRIT_UNITS.has(type)) return "shop-group-spirit";
+  return "";
+}
 
 function getAvailableElementMerges() {
   if (selectedFaction !== "element") return [];
@@ -2504,12 +2523,16 @@ function renderShop() {
   const elementShopItems = selectedFaction === "element"
     ? ELEMENT_SHOP_LAYOUT.flatMap((column) => column).filter((type) => shopRoster.includes(type) || allowedElementMergeTypes.has(type))
     : [];
+  const undeadShopItems = selectedFaction === "undeadEmpire"
+    ? UNDEAD_SHOP_LAYOUT.flatMap((column) => column).filter((type) => type === null || shopRoster.includes(type))
+    : [];
   const elementShopItemCount = elementShopItems.length + (showElementConvertButton ? 1 : 0);
 
   const renderTrainButton = (type) => {
+    if (!type) return `<span class="shop-spacer" aria-hidden="true"></span>`;
     const data = UNIT[type];
     return `
-      <button class="train-btn" data-unit="${type}">
+      <button class="train-btn ${shopGroupClass(type)}" data-unit="${type}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>${data.name}</strong>
         <small>${getUnitCost(type, selectedFaction)} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
@@ -2538,10 +2561,13 @@ function renderShop() {
 
   unitShop.classList.toggle("element-shop", selectedFaction === "element");
   unitShop.classList.toggle("element-shop-expanded", selectedFaction === "element" && elementShopItemCount > 12);
+  unitShop.classList.toggle("undead-shop", selectedFaction === "undeadEmpire");
 
   unitShop.innerHTML = selectedFaction === "element"
     ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
-    : shopRoster.map(renderTrainButton).join("");
+    : selectedFaction === "undeadEmpire"
+      ? undeadShopItems.map(renderTrainButton).join("")
+      : shopRoster.map(renderTrainButton).join("");
 
   trainButtons = [...document.querySelectorAll(".train-btn")];
   trainButtons.forEach((button) => {
