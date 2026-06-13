@@ -90,6 +90,7 @@ const RALLY = {
 
 const MERGE_COST = 30;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
@@ -1430,7 +1431,7 @@ const FOUR_WAY_STARTERS = {
   undeadEmpire: ["machete", "undead", "candlelight"],
   element: ["earthElement", "waterElement", "fireElement", "windElement"],
 };
-const FOUR_WAY_START_GOLD = 380;
+const FOUR_WAY_START_GOLD = 600;
 
 const UNIT_ICON = {
   miner: "miner",
@@ -1971,8 +1972,12 @@ function factionForSide(side) {
 
 function getUnitCost(type, faction) {
   if (type === "miner" && (faction === "order" || faction === "chaos")) return 65;
-  if (faction === "element" && MERGE_UNITS.has(type)) return MERGE_COST;
+  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeCost(type);
   return UNIT[type].cost;
+}
+
+function getElementMergeCost(type) {
+  return FREE_MERGE_UNITS.has(type) ? 0 : MERGE_COST;
 }
 
 function getFourWayUnitCost(type, faction) {
@@ -2651,6 +2656,7 @@ const ELEMENT_MERGE_ACTIONS = [
   { type: "vUnit", action: "mergeV" },
 ];
 const ELEMENT_MERGE_ACTION_BY_TYPE = Object.fromEntries(ELEMENT_MERGE_ACTIONS.map((merge) => [merge.type, merge.action]));
+const ELEMENT_MERGE_TYPE_BY_ACTION = Object.fromEntries(ELEMENT_MERGE_ACTIONS.map((merge) => [merge.action, merge.type]));
 const ELEMENT_SHOP_LAYOUT = [
   ["earthElement", "hill", "treeEnt"],
   ["waterElement", "linghan", "rog"],
@@ -2718,11 +2724,12 @@ function renderShop() {
   };
   const renderElementButton = (type) => {
     if (!MERGE_UNITS.has(type)) return renderTrainButton(type);
+    const mergeCost = getElementMergeCost(type);
     return `
       <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>合成${UNIT[type].name}</strong>
-        <small>${MERGE_COST} 金币</small>
+        <small>${mergeCost} 金币</small>
       </button>
     `;
   };
@@ -3125,7 +3132,7 @@ function mergeLinghan(side) {
 
 function mergeScaldStrike(side) {
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-  if (!payMergeCost(side, x, "#ffb36e")) return false;
+  if (!payMergeCost(side, x, "#ffb36e", "scaldStrike")) return false;
   const target = findFrontEnemy(side);
   const front = getFrontX(side);
   const dir = side === "player" ? 1 : -1;
@@ -3142,24 +3149,28 @@ function mergeV(side) {
   return beginDirectElementMerge(side, "vUnit", "合成 V", "#d7ceff");
 }
 
-function payMergeCost(side, x, color) {
+function payMergeCost(side, x, color, mergeType = null) {
   const key = side === "player" ? "gold" : "enemyGold";
-  if (state[key] < MERGE_COST) {
-    popText(x, FIELD.ground - 100, `融合需要 ${MERGE_COST} 金币`, color);
+  const cost = mergeType ? getElementMergeCost(mergeType) : MERGE_COST;
+  if (cost <= 0) return true;
+  if (state[key] < cost) {
+    popText(x, FIELD.ground - 100, `融合需要 ${cost} 金币`, color);
     return false;
   }
-  state[key] -= MERGE_COST;
+  state[key] -= cost;
   return true;
 }
 
-function refundMergeCost(side) {
-  if (side === "player") state.gold += MERGE_COST;
-  else state.enemyGold += MERGE_COST;
+function refundMergeCost(side, mergeType) {
+  const cost = mergeType ? getElementMergeCost(mergeType) : MERGE_COST;
+  if (cost <= 0) return;
+  if (side === "player") state.gold += cost;
+  else state.enemyGold += cost;
 }
 
 function beginDirectElementMerge(side, resultType, text, color) {
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-  if (!payMergeCost(side, x, color)) return false;
+  if (!payMergeCost(side, x, color, resultType)) return false;
   const dir = side === "player" ? 1 : -1;
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
@@ -3170,7 +3181,7 @@ function beginDirectElementMerge(side, resultType, text, color) {
 function beginElementMerge(side, materials, resultType, text, color, options = {}) {
   const liveMaterials = materials.filter((unit) => unit?.hp > 0 && !isUnitHidden(unit));
   if (liveMaterials.length !== materials.length) {
-    refundMergeCost(side);
+    refundMergeCost(side, resultType);
     return false;
   }
 
@@ -14563,51 +14574,52 @@ function updateHud() {
       return;
     }
     if (button.dataset.action?.startsWith("merge")) {
-      button.disabled = state.over || state.gold < MERGE_COST;
+      const mergeType = ELEMENT_MERGE_TYPE_BY_ACTION[button.dataset.action];
+      button.disabled = state.over || state.gold < getElementMergeCost(mergeType);
       return;
     }
     if (button.dataset.action === "mergeTreeEnt") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasWater = state.units.some((unit) => unit.side === "player" && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId);
-      button.disabled = state.over || state.gold < MERGE_COST || !hasEarth || !hasWater;
+      button.disabled = state.over || state.gold < getElementMergeCost("treeEnt") || !hasEarth || !hasWater;
       return;
     }
     if (button.dataset.action === "mergeRog") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasFire = state.units.some((unit) => unit.side === "player" && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit));
-      button.disabled = state.over || state.gold < MERGE_COST || !hasEarth || !hasFire;
+      button.disabled = state.over || state.gold < getElementMergeCost("rog") || !hasEarth || !hasFire;
       return;
     }
     if (button.dataset.action === "mergeDreadfire") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeDreadfire("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("dreadfire") || !canMergeDreadfire("player");
       return;
     }
     if (button.dataset.action === "mergeRedflame") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeRedflame("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("redflame") || !canMergeRedflame("player");
       return;
     }
     if (button.dataset.action === "mergeHurricane") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeHurricane("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("hurricane") || !canMergeHurricane("player");
       return;
     }
     if (button.dataset.action === "mergeHill") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeHill("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("hill") || !canMergeHill("player");
       return;
     }
     if (button.dataset.action === "mergeLinghan") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeLinghan("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("linghan") || !canMergeLinghan("player");
       return;
     }
     if (button.dataset.action === "mergeScaldStrike") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeScaldStrike("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("scaldStrike") || !canMergeScaldStrike("player");
       return;
     }
     if (button.dataset.action === "mergeElectricGate") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeElectricGate("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("electricGate") || !canMergeElectricGate("player");
       return;
     }
     if (button.dataset.action === "mergeV") {
-      button.disabled = state.over || state.gold < MERGE_COST || !canMergeV("player");
+      button.disabled = state.over || state.gold < getElementMergeCost("vUnit") || !canMergeV("player");
       return;
     }
     if (!type) return;
