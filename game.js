@@ -562,14 +562,14 @@ const UNIT = {
   },
   deadCorpse: {
     name: "死尸",
-    cost: 70,
+    cost: 65,
     hp: 40,
-    damage: 10,
+    damage: 0,
     range: 34,
     speed: 70,
     train: 3.4,
     cooldown: 1.15,
-    poisonDps: 8,
+    poisonDps: 7,
     poisonDuration: Infinity,
     poisonRadius: 84,
     poisonSlow: 0.65,
@@ -1993,7 +1993,7 @@ function formatSpecial(type) {
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
-  if (type === "deadCorpse") notes.push(`自爆 ${data.damage} 伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
+  if (type === "deadCorpse") notes.push(`毒爆不造成直接伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
   if (type === "undead" || type === "poisonZombie" || type === "deadCorpse") notes.push("免疫中毒");
   if (type === "javelinThrower") notes.push(`每次攻击有 ${Math.round(data.poisonChance * 100)}% 概率投出毒矛`);
   if (type === "undeadVulture") notes.push(`飞行单位，吐出能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人；死亡坠落造成 ${data.crashDamage} 范围伤害，最多 ${data.crashLimit} 人`);
@@ -7016,7 +7016,6 @@ function explodeDeadCorpse(unit) {
   unit.exploded = true;
   unit.hp = 0;
   getUnitsInRadius(unit.x, data.poisonRadius, unit.side, Infinity).forEach((enemy) => {
-    applyDamage(enemy, data.damage, unit.side);
     applyPoison(enemy, data.poisonDps, data.poisonDuration, {
       slow: data.poisonSlow,
       raisesUndead: true,
