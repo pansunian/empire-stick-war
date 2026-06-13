@@ -3861,8 +3861,11 @@ function castFourWayOrderSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.order;
   const base = FOUR_WAY_BASES[side];
   const spartan = spawnFourWayUnit("goldenSpartan", side, 14);
-  const archer = spawnFourWayUnit("goldenArcher", side, 15);
-  [spartan, archer].forEach((unit) => {
+  const archers = [
+    spawnFourWayUnit("goldenArcher", side, 15),
+    spawnFourWayUnit("goldenArcher", side, 16),
+  ];
+  [spartan, ...archers].forEach((unit) => {
     unit.timedLife = config.duration;
     unit.noCorpse = true;
     unit.forceCharge = true;
