@@ -7,6 +7,10 @@
   --blue: #4f8cff;
   --red: #d94d43;
   --gold: #e6b84a;
+  --order-money: #7fb5ff;
+  --chaos-money: #ff9b7f;
+  --undead-money: #d8d0ff;
+  --element-money: #8ee0cf;
 }
 
 * {
@@ -638,6 +642,74 @@ button {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.empire-card small {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+#gold,
+#enemyGold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--gold);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+  vertical-align: -2px;
+}
+
+.player.order #gold,
+.enemy.order #enemyGold,
+.money-chip.order {
+  color: var(--order-money);
+}
+
+.player.chaos #gold,
+.enemy.chaos #enemyGold,
+.money-chip.chaos {
+  color: var(--chaos-money);
+}
+
+.player.undead #gold,
+.enemy.undead #enemyGold,
+.money-chip.undead {
+  color: var(--undead-money);
+}
+
+.player.element #gold,
+.enemy.element #enemyGold,
+.money-chip.element {
+  color: var(--element-money);
+}
+
+.money-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+.money-chip .money-label {
+  font-size: 11px;
+  color: rgba(245, 240, 223, 0.72);
+}
+
+.money-chip .money-value {
+  font-size: 18px;
+  font-weight: 950;
 }
 
 .banner {

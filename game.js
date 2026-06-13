@@ -14635,7 +14635,13 @@ function registerServiceWorker() {
 function updateHud() {
   if (state.fourWay) {
     const alive = state.fourWaySides.filter((ai) => ai.alive);
-    goldEl.textContent = alive.map((ai) => `${FOUR_WAY_BASES[ai.side].label}:${Math.floor(ai.gold)}`).join(" ");
+    goldEl.innerHTML = alive
+      .map((ai) => {
+        const base = FOUR_WAY_BASES[ai.side];
+        const className = ai.side === "undeadEmpire" ? "undead" : ai.side;
+        return `<span class="money-chip ${className}"><span class="money-label">${base.label}</span><span class="money-value">${Math.floor(ai.gold)}</span></span>`;
+      })
+      .join("");
     enemyGoldEl.textContent = `存活 ${alive.length}/4`;
     playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
     enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
