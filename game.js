@@ -620,7 +620,7 @@ const UNIT = {
     train: 4.8,
     cooldown: 2,
     convertEvery: 4,
-    corpseHpRatio: 0.25,
+    corpseHpRatio: 0.3,
     summonCooldown: 18,
     summonCount: 4,
     summonedSpeed: 60,
@@ -906,31 +906,31 @@ const UNIT = {
   },
   bannerBearer: {
     name: "掌旗手",
-    cost: 180,
+    cost: 170,
     hp: 450,
     damage: 8,
     range: 32,
     speed: 40,
     train: 5.2,
     cooldown: 1.4,
-    inspireEvery: 15,
+    inspireEvery: 14,
     inspireDuration: 3,
-    inspireBuffDuration: 12,
-    inspireUndeadDuration: 10,
-    inspireRadius: 20,
+    inspireBuffDuration: 13,
+    inspireUndeadDuration: 11,
+    inspireRadius: 24,
     inspireArea: 1256,
   },
   graveDigger: {
     name: "掘墓者",
-    cost: 180,
-    hp: 300,
+    cost: 170,
+    hp: 320,
     damage: 12,
     range: 34,
     speed: 55,
     train: 5,
     cooldown: 1.2,
-    reviveEvery: 5,
-    reviveRadius: 150,
+    reviveEvery: 4.8,
+    reviveRadius: 165,
     ghostEvery: 20,
     ghostCount: 3,
     ghostSpeed: 70,
@@ -2180,7 +2180,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
-  if (isChaosSide(selectedFaction) && !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(type)) notes.push("混沌战团：附近有2名混沌战斗单位时，移速/攻速+6%，受伤-6%；混沌单位攻击残血目标伤害+10%");
+  if (isChaosSide(selectedFaction) && !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(type)) notes.push("混沌战团：附近有3名混沌战斗单位时，移速/攻速+6%，受伤-6%；混沌单位攻击残血目标伤害+10%");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5；跳劈使命中目标4秒内受到秩序单位伤害+20%`);
   if (type === "archer") notes.push("火箭施加燃烧标记：弩手对其伤害+15%，攻城单位对其伤害+10%");
   if (type === "spartan") notes.push("举盾保护身后远程：远程伤害减35%，秩序远程攻速+10%");
@@ -7086,7 +7086,7 @@ function countNearbyChaosWarband(unit, radius = 190) {
 }
 
 function hasChaosWarband(unit) {
-  return countNearbyChaosWarband(unit) >= 2;
+  return countNearbyChaosWarband(unit) >= 3;
 }
 
 function getChaosDamageMultiplier(target, attackerSide) {
@@ -10093,8 +10093,8 @@ function maybeLeaveUndeadCorpse(unit) {
     x: unit.x,
     y: unit.y,
     maxHp: unit.maxHp ?? UNIT[unit.type]?.hp ?? 0,
-    life: 15,
-    duration: 15,
+    life: reviveable ? 18 : 15,
+    duration: reviveable ? 18 : 15,
     reviveable,
     ritual,
     revives: unit.corpseRevives ?? 0,
