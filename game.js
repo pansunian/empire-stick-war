@@ -882,8 +882,8 @@ const UNIT = {
   },
   bannerBearer: {
     name: "掌旗手",
-    cost: 220,
-    hp: 550,
+    cost: 180,
+    hp: 450,
     damage: 8,
     range: 32,
     speed: 40,
