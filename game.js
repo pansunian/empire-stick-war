@@ -98,7 +98,7 @@ const RALLY = {
 
 const MERGE_COST = 40;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
-const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate", "vUnit"]);
+const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const STATUE_MAX_HP = 3000;
