@@ -2068,6 +2068,7 @@ function getElementMergeCost(type) {
 
 function getFourWayUnitCost(type, faction) {
   if (faction === "element" && MERGE_UNITS.has(type)) {
+    if (FREE_MERGE_UNITS.has(type)) return 0;
     return FOUR_WAY_MERGE_COSTS[type] ?? 180;
   }
   return getUnitCost(type, faction);
@@ -2969,7 +2970,7 @@ function renderShop() {
       <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>合成${UNIT[type].name}</strong>
-        <small>${mergeCost} 金币</small>
+        <small>${mergeCost > 0 ? `${mergeCost} 金币` : "无需金币"}</small>
       </button>
     `;
   };
@@ -3930,9 +3931,13 @@ function getTowerUnits(side) {
 }
 
 function updateQueue(dt) {
+  const activeTrainingKeys = new Set();
   for (const item of state.spawnQueue) {
-    item.timer -= dt;
     item.duration = item.duration ?? UNIT[item.type]?.train ?? item.timer;
+    const key = `${item.side ?? "player"}:${item.type}`;
+    if (activeTrainingKeys.has(key)) continue;
+    activeTrainingKeys.add(key);
+    item.timer -= dt;
   }
   const ready = state.spawnQueue.filter((item) => item.timer <= 0);
   state.spawnQueue = state.spawnQueue.filter((item) => item.timer > 0);
@@ -14981,7 +14986,7 @@ function updateHud() {
     const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
     if (duration <= 0) return;
     const progress = Math.max(0, Math.min(1, 1 - item.timer / duration));
-    trainingProgress.set(item.type, Math.max(trainingProgress.get(item.type) ?? 0, progress));
+    if (!trainingProgress.has(item.type)) trainingProgress.set(item.type, progress);
   });
   trainButtons.forEach((button) => {
     const type = button.dataset.unit;
