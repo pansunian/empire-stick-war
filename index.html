@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="一款可安装到主屏幕的中世纪火柴人帝国战争网页游戏。" />
     <title>帝国火柴人战争</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260613-rocketcart-reload" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260613-rule-dialog" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260613-rocketcart-reload" />
+    <link rel="stylesheet" href="./style.css?v=20260613-rule-dialog" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -47,40 +47,11 @@
             </button>
           </div>
         </div>
-        <div class="selection-section battle-section" aria-label="第 2 步：选择对局规则">
-          <div class="selection-label">
-            <b>2</b>
-            <span>选择规则</span>
-            <small>决定是否组队和 AI 队友</small>
-          </div>
-          <div class="battle-options">
-            <div class="option-group" aria-label="选择队伍模式">
-              <button class="option-card active" data-team-mode="solo">
-                <strong>单线对抗</strong>
-                <small>双方各自作战</small>
-              </button>
-              <button class="option-card" data-team-mode="duo">
-                <strong>2 打 2</strong>
-                <small>双方都有队友</small>
-              </button>
-            </div>
-            <div class="option-group" aria-label="选择控制方式">
-              <button class="option-card active" data-control-mode="human">
-                <strong>人机对战</strong>
-                <small>玩家指挥主阵营</small>
-              </button>
-              <button class="option-card" data-control-mode="humanAi">
-                <strong>人 + AI 对战</strong>
-                <small>玩家拥有 AI 队友</small>
-              </button>
-            </div>
-          </div>
-        </div>
         <div class="selection-section faction-section" aria-label="第 2 步：选择帝国">
           <div class="selection-label">
-            <b>3</b>
+            <b>2</b>
             <span>选择帝国</span>
-            <small>人机对战可直接开始</small>
+            <small>选好后进入规则确认</small>
           </div>
           <div class="faction-options four">
             <button class="faction-card order active" data-faction="order">
@@ -104,12 +75,45 @@
               <small>土元素、水元素、电门、火元素、风元素、山丘、凌寒、V、赤焰、风暴巫妖、树精、罗格、烫水击、厄火、飓风</small>
             </button>
           </div>
-          <div class="start-row">
-            <button id="quickStartBtn" class="quick-start-btn" type="button">
-              <strong>开始战斗</strong>
-              <small>未选择帝国时默认秩序帝国</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="ruleDialog" class="rule-dialog hidden" aria-label="选择对局规则">
+      <div class="rule-panel">
+        <div class="selection-label">
+          <b>3</b>
+          <span>选择规则</span>
+          <small>确认队伍和控制方式</small>
+        </div>
+        <div class="battle-options">
+          <div class="option-group" aria-label="选择队伍模式">
+            <button class="option-card active" data-team-mode="solo">
+              <strong>单线对抗</strong>
+              <small>双方各自作战</small>
+            </button>
+            <button class="option-card" data-team-mode="duo">
+              <strong>2 打 2</strong>
+              <small>双方都有队友</small>
             </button>
           </div>
+          <div class="option-group" aria-label="选择控制方式">
+            <button class="option-card active" data-control-mode="human">
+              <strong>人机对战</strong>
+              <small>玩家指挥主阵营</small>
+            </button>
+            <button class="option-card" data-control-mode="humanAi">
+              <strong>人 + AI 对战</strong>
+              <small>玩家拥有 AI 队友</small>
+            </button>
+          </div>
+        </div>
+        <div class="rule-actions">
+          <button id="ruleCancelBtn" class="rule-cancel-btn" type="button">返回选择</button>
+          <button id="ruleStartBtn" class="quick-start-btn" type="button">
+            <strong>开始战斗</strong>
+            <small>使用当前模式和帝国开战</small>
+          </button>
         </div>
       </div>
     </section>
@@ -290,6 +294,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260613-rocketcart-reload"></script>
+    <script src="./game.js?v=20260613-rule-dialog"></script>
   </body>
 </html>

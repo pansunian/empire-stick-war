@@ -7,7 +7,9 @@ const factionButtons = [...document.querySelectorAll(".faction-card")];
 const modeButtons = [...document.querySelectorAll(".mode-card")];
 const teamModeButtons = [...document.querySelectorAll("[data-team-mode]")];
 const controlModeButtons = [...document.querySelectorAll("[data-control-mode]")];
-const quickStartBtn = document.querySelector("#quickStartBtn");
+const ruleDialog = document.querySelector("#ruleDialog");
+const ruleStartBtn = document.querySelector("#ruleStartBtn");
+const ruleCancelBtn = document.querySelector("#ruleCancelBtn");
 const campaignMap = document.querySelector("#campaignMap");
 const campaignTitle = document.querySelector("#campaignTitle");
 const campaignProgress = document.querySelector("#campaignProgress");
@@ -14799,6 +14801,19 @@ function drawEndOverlay() {
   ctx.fillText("可重新开始，或回到主界面", FIELD.width / 2, 328);
 }
 
+function closeRuleDialog() {
+  ruleDialog?.classList.add("hidden");
+}
+
+function openRuleDialog() {
+  if (selectedMode === "campaign") {
+    closeRuleDialog();
+    openCampaignMap();
+    return;
+  }
+  ruleDialog?.classList.remove("hidden");
+}
+
 function returnToMainMenu() {
   state = null;
   activeCampaign = null;
@@ -14820,6 +14835,7 @@ function returnToMainMenu() {
   factionButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.faction === selectedFaction);
   });
+  closeRuleDialog();
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
   controlDeck?.classList.remove("hidden");
@@ -14838,6 +14854,7 @@ async function startSelectedBattle(faction = selectedFaction) {
   }
   if (!isIosDevice()) await enterFullscreen();
   activeCampaign = null;
+  closeRuleDialog();
   factionSelect.classList.add("hidden");
   newGame();
 }
@@ -15563,11 +15580,18 @@ modeButtons.forEach((button) => {
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    openRuleDialog();
   });
 });
 
-quickStartBtn?.addEventListener("click", () => {
+ruleStartBtn?.addEventListener("click", () => {
   startSelectedBattle(selectedFaction || "order");
+});
+
+ruleCancelBtn?.addEventListener("click", closeRuleDialog);
+
+ruleDialog?.addEventListener("click", (event) => {
+  if (event.target === ruleDialog) closeRuleDialog();
 });
 
 teamModeButtons.forEach((button) => {
@@ -15594,7 +15618,7 @@ factionButtons.forEach((button) => {
     factionButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
-    if (selectedMode === "campaign") openCampaignMap();
+    openRuleDialog();
   });
 });
 
