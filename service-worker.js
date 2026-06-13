@@ -1,10 +1,10 @@
-const CACHE_NAME = "stick-war-pwa-v109";
+const CACHE_NAME = "stick-war-pwa-v110";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260613-fourway-player-control",
-  "./game.js?v=20260613-fourway-player-control",
-  "./manifest.webmanifest?v=20260613-fourway-player-control",
+  "./style.css?v=20260613-mode-scroll-fix",
+  "./game.js?v=20260613-mode-scroll-fix",
+  "./manifest.webmanifest?v=20260613-mode-scroll-fix",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
   "./assets/factions/order-crest.png",

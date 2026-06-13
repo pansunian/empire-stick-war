@@ -3287,7 +3287,7 @@ function applyCampaignUnitModifiers(unit, { forceGodV = false } = {}) {
 }
 
 function convertEarthToMiner(side) {
-  const unit = state.units.find((candidate) => candidate.side === side && candidate.type === "earthElement" && candidate.hp > 0 && !isUnitHidden(candidate));
+  const unit = findConvertibleEarthElement(side);
   if (!unit) {
     const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
     popText(x, FIELD.ground - 100, "没有可转化的土元素", "#e8c66a");
@@ -3306,6 +3306,16 @@ function convertEarthToMiner(side) {
   unit.earthMiner = true;
   popText(unit.x, unit.y - 78, "转化矿工", "#8ee0cf");
   return true;
+}
+
+function findConvertibleEarthElement(side) {
+  return state.units.find((candidate) => (
+    candidate.side === side
+    && candidate.type === "earthElement"
+    && candidate.hp > 0
+    && !candidate.merging
+    && !isUnitHidden(candidate)
+  ));
 }
 
 function mergeTreeEnt(side) {
@@ -3660,7 +3670,7 @@ function queueUnit(type) {
 
   state.gold -= cost;
   state.campaignTrainCounts[type] = getCampaignQueuedCount(type) + 1;
-  state.spawnQueue.push({ type, timer: data.train, duration: data.train });
+  state.spawnQueue.push({ type, side: "player", timer: data.train, duration: data.train });
   popText(FIELD.playerGate, FIELD.ground - 118, `训练 ${data.name}`, "#d9e8ff");
   updateHud();
 }
@@ -3919,7 +3929,9 @@ function updateQueue(dt) {
       spawnFourWayUnit(item.type, item.side, index + Math.floor(Math.random() * 8));
       return;
     }
-    spawnUnit(item.type, "player", FIELD.playerGate - 20 + index * 12);
+    const side = item.side ?? "player";
+    const x = side === "player" ? FIELD.playerGate - 20 + index * 12 : FIELD.enemyGate + 20 - index * 12;
+    spawnUnit(item.type, side, x);
   });
 }
 
@@ -4587,12 +4599,15 @@ function updateEnemyCommand() {
   const playerPower = getArmyPower("player");
   const enemyFighters = countFighters("enemy");
   const playerPressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 430).length;
+  const playerAtGate = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 260).length;
   const underAttack = (state.enemyCounterPushTimer ?? 0) > 0;
   const canStartWave = state.enemyHoldTimer <= 0 && state.enemyAttackWaveTimer <= 0 && state.enemyAttackMood >= 18;
   const waveReady = enemyFighters >= 5 && enemyPower >= Math.max(300, playerPower * 0.98);
+  const badlyOutmatched = enemyPower < playerPower * 0.62 || enemyFighters <= Math.max(1, playerPressure - 3);
+  const baseUnderPressure = playerAtGate >= 2 || (playerPressure >= 4 && enemyPower < playerPower * 0.9);
   let nextCommand = "guard";
 
-  if (state.enemyHp < 360 && enemyPower < playerPower * 0.95) {
+  if ((state.enemyHp < 850 && baseUnderPressure) || (playerPressure >= 3 && badlyOutmatched) || (state.enemyHp < 360 && enemyPower < playerPower * 0.95)) {
     nextCommand = "retreat";
   } else if (underAttack && enemyFighters >= 3 && enemyPower >= playerPower * 0.62) {
     nextCommand = "guard";
@@ -4613,9 +4628,12 @@ function updateEnemyCommand() {
     if (nextCommand === "attack") {
       state.enemyAttackWaveTimer = 7 + Math.random() * 4;
       state.enemyHoldTimer = 10 + Math.random() * 6;
+    } else if (nextCommand === "retreat") {
+      state.enemyHoldTimer = 5 + Math.random() * 3;
+      state.enemyAttackWaveTimer = Math.max(state.enemyAttackWaveTimer, 5);
     }
   }
-  state.enemyCommandTimer = nextCommand === "attack" ? 5 + Math.random() * 2 : 3.5 + Math.random() * 2.5;
+  state.enemyCommandTimer = nextCommand === "attack" ? 5 + Math.random() * 2 : nextCommand === "retreat" ? 2 + Math.random() * 1.5 : 3.5 + Math.random() * 2.5;
 }
 
 function updateEnemyBattleLine(dt) {
@@ -6848,7 +6866,7 @@ function updateAttackingMiner(unit, dt) {
 }
 
 function canEnterCastle(unit) {
-  return unit.side === "player" && !UNIT[unit.type]?.giant;
+  return unit.side === "player" && (unit.type === "miner" || unit.type === "summoner" || unit.type === "wraithMiner");
 }
 
 function isUnitHidden(unit) {
@@ -14948,7 +14966,7 @@ function updateHud() {
       button.style.removeProperty("--train-progress");
     }
     if (button.dataset.action === "convertEarth") {
-      button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+      button.disabled = state.over || !findConvertibleEarthElement("player");
       return;
     }
     if (button.dataset.action?.startsWith("merge")) {
