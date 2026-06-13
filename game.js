@@ -5,6 +5,8 @@ const battlefieldWrap = document.querySelector(".battlefield-wrap");
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
 const modeButtons = [...document.querySelectorAll(".mode-card")];
+const teamModeButtons = [...document.querySelectorAll("[data-team-mode]")];
+const controlModeButtons = [...document.querySelectorAll("[data-control-mode]")];
 const campaignMap = document.querySelector("#campaignMap");
 const campaignTitle = document.querySelector("#campaignTitle");
 const campaignProgress = document.querySelector("#campaignProgress");
@@ -1537,13 +1539,20 @@ let lastTime = performance.now();
 let selectedFaction = "order";
 let enemyFaction = "chaos";
 let selectedMode = "versus";
+let selectedTeamMode = "solo";
+let selectedControlMode = "human";
+let playerAllyFaction = null;
+let enemyAllyFaction = null;
 let battlefieldZoom = 1;
 let currentFieldModeFourWay = false;
 const BATTLEFIELD_MAX_ZOOM = 2.25;
 const BATTLEFIELD_ZOOM_STEP = 1.22;
 const MODE_START_GOLD = {
   versus: 120,
-  brawl: 5000,
+  brawl: 1500,
+};
+const MODE_GOLD_RUSH = {
+  brawl: { columns: 6, rows: 5, mineGold: 2500 },
 };
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
@@ -1977,6 +1986,58 @@ function factionForSide(side) {
   return side === "player" ? selectedFaction : opponentFaction();
 }
 
+function isDuoBattle() {
+  if (selectedMode === "campaign" || activeCampaign) return false;
+  return selectedTeamMode === "duo" || selectedControlMode === "humanAi";
+}
+
+function getFactionKey(side) {
+  return side === "undeadEmpire" ? "undead" : side;
+}
+
+function chooseUnusedFaction(excluded = []) {
+  const blocked = new Set(excluded.filter(Boolean));
+  const available = Object.keys(FACTIONS).filter((faction) => !blocked.has(faction));
+  return available[Math.floor(Math.random() * available.length)] ?? "chaos";
+}
+
+function setupTeamFactions() {
+  playerAllyFaction = null;
+  enemyAllyFaction = null;
+  enemyFaction = activeCampaign?.enemyFaction ?? chooseUnusedFaction([selectedFaction]);
+  if (!isDuoBattle()) return;
+  playerAllyFaction = chooseUnusedFaction([selectedFaction, enemyFaction]);
+  enemyAllyFaction = chooseUnusedFaction([selectedFaction, playerAllyFaction, enemyFaction]);
+}
+
+function getFourWayTeam(side) {
+  if (!state?.fourWayTeams) return side;
+  return state.fourWayTeams[side] ?? side;
+}
+
+function areFourWayEnemies(a, b) {
+  if (!a || !b || a === b) return false;
+  return getFourWayTeam(a) !== getFourWayTeam(b);
+}
+
+function getPreferredFourWayAlly(side) {
+  const pairs = {
+    order: "undeadEmpire",
+    undeadEmpire: "order",
+    chaos: "element",
+    element: "chaos",
+  };
+  return pairs[side] ?? chooseUnusedFaction([side]);
+}
+
+function createFourWayTeams(playerSide) {
+  if (!isDuoBattle()) return Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, side]));
+  const allySide = getPreferredFourWayAlly(playerSide);
+  const teamA = `team-${playerSide}`;
+  const teamB = "team-rival";
+  return Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, side === playerSide || side === allySide ? teamA : teamB]));
+}
+
 function getUnitCost(type, faction) {
   if (type === "miner" && (faction === "order" || faction === "chaos")) return 65;
   if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeCost(type);
@@ -2180,7 +2241,7 @@ function newGame() {
     newFourWayGame();
     return;
   }
-  enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
+  setupTeamFactions();
   renderFactionUi();
   renderShop();
   controlDeck?.classList.remove("hidden");
@@ -2199,15 +2260,42 @@ function newGame() {
   playerStart.forEach((type, index) => {
     spawnUnit(type, "player", FIELD.playerGate - 28 + index * 32);
   });
+  if (isDuoBattle() && playerAllyFaction) {
+    FACTIONS[playerAllyFaction].startingUnits.forEach((type, index) => {
+      spawnUnit(type, "player", FIELD.playerGate - 132 - index * 34);
+    });
+  }
   enemyStart.forEach((type, index) => {
     spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
   });
+  if (isDuoBattle() && enemyAllyFaction) {
+    FACTIONS[enemyAllyFaction].startingUnits.forEach((type, index) => {
+      spawnUnit(type, "enemy", FIELD.enemyGate + 132 + index * 34);
+    });
+  }
+  if (isDuoBattle()) {
+    state.teamAi = [
+      playerAllyFaction ? createTeamAiState("player", playerAllyFaction, startGold * 0.65) : null,
+      enemyAllyFaction ? createTeamAiState("enemy", enemyAllyFaction, enemyStartGold * 0.65) : null,
+    ].filter(Boolean);
+  }
   spawnCampaignCenterElectricGate();
   setCommand("guard");
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
-  if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
+  if (selectedMode === "brawl") statusEl.textContent = "淘金热：双方 1500 金币开局，中央金矿可争夺";
+  if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} 2 打 2：AI 队友会自动出兵`;
   updateHud();
+}
+
+function createTeamAiState(side, faction, gold) {
+  return {
+    side,
+    faction,
+    gold,
+    spawnTimer: 2 + Math.random() * 1.6,
+    minerTimer: 7,
+  };
 }
 
 function applyFieldMode(fourWay) {
@@ -2308,7 +2396,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     campaignMissileTimer: activeCampaign?.campaignMissiles ? Math.max(0, activeCampaign.campaignMissiles.every - activeCampaign.campaignMissiles.warning) : 0,
     campaignMissileWarning: 0,
     sideMines,
-    goldRushMines: createGoldRushMines(activeCampaign?.goldRush),
+    goldRushMines: createGoldRushMines(getActiveGoldRushConfig()),
     enemyHealthGrowthTimer: activeCampaign?.enemyHealthGrowth?.every ?? 0,
     stormCloudTimer: activeCampaign?.stormClouds?.every ?? 0,
     stormCloudRemaining: 0,
@@ -2320,6 +2408,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     screenShake: 0,
     playerGodVAssigned: false,
     enemyGodVAssigned: false,
+    teamAi: [],
     nextId: 1,
   };
 }
@@ -2329,13 +2418,16 @@ function newFourWayGame() {
   enemyFaction = "chaos";
   renderFactionUi();
   renderShop();
-  controlDeck?.classList.add("hidden");
+  controlDeck?.classList.remove("hidden");
   homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
   state = createBaseState(0, 0, { player: [], enemy: [] });
   state.fourWay = true;
   state.fourWayElapsed = 0;
+  state.fourWayPlayerSide = selectedFaction;
+  state.fourWayTeams = createFourWayTeams(selectedFaction);
+  state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
   state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
     side,
     faction: side,
@@ -2349,7 +2441,9 @@ function newFourWayGame() {
   FOUR_WAY_SIDES.forEach((side) => {
     FOUR_WAY_STARTERS[side].forEach((type, index) => spawnFourWayUnit(type, side, index));
   });
-  statusEl.textContent = "四国观战：四个帝国由 AI 控制，最后一个基地获胜";
+  statusEl.textContent = isDuoBattle()
+    ? `四国 2 打 2：你指挥${FACTIONS[selectedFaction].name}，队友会自动作战`
+    : `四国对战：你指挥${FACTIONS[selectedFaction].name}，其余三方由 AI 控制`;
   updateHud();
   requestAnimationFrame(centerFourWayView);
 }
@@ -2683,11 +2777,11 @@ function renderCampaignBriefing(config) {
 
 function renderFactionUi() {
   if (selectedMode === "quad") {
-    playerNameEl.textContent = "四国观战";
-    enemyNameEl.textContent = "AI 混战";
+    playerNameEl.textContent = FACTIONS[selectedFaction].name;
+    enemyNameEl.textContent = isDuoBattle() ? "敌方同盟" : "三方 AI";
     playerCard.classList.remove("order", "chaos", "undead", "element");
     enemyCard.classList.remove("order", "chaos", "undead", "element");
-    playerCard.classList.add("order");
+    playerCard.classList.add(getFactionKey(selectedFaction));
     enemyCard.classList.add("element");
     return;
   }
@@ -3489,6 +3583,10 @@ function canMergeV(side) {
 
 function queueUnit(type) {
   if (state.over) return;
+  if (state.fourWay) {
+    queueFourWayPlayerUnit(type);
+    return;
+  }
   if (MERGE_UNITS.has(type)) {
     popText(FIELD.playerGate, FIELD.ground - 95, "进阶单位需要融合", "#f3c963");
     return;
@@ -3512,6 +3610,27 @@ function queueUnit(type) {
   updateHud();
 }
 
+function queueFourWayPlayerUnit(type) {
+  const side = state.fourWayPlayerSide ?? selectedFaction;
+  const ai = state.fourWaySides?.find((item) => item.side === side);
+  if (!ai?.alive) return;
+  if (MERGE_UNITS.has(type)) {
+    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "进阶单位需要融合", "#f3c963");
+    return;
+  }
+  if (!FACTIONS[side].roster.includes(type)) return;
+  const data = UNIT[type];
+  const cost = getFourWayUnitCost(type, side);
+  if (ai.gold < cost) {
+    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "金币不足", "#f3c963");
+    return;
+  }
+  ai.gold -= cost;
+  state.spawnQueue.push({ type, side, timer: data.train, duration: data.train });
+  popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 118, `训练 ${data.name}`, "#d9e8ff");
+  updateHud();
+}
+
 function update(dt) {
   if (!state) return;
   if (state.paused) return;
@@ -3531,6 +3650,7 @@ function update(dt) {
 
   updateQueue(dt);
   updatePassiveGold(dt);
+  updateTeamAi(dt);
   updateCenterTower(dt);
   updateCampaignRules(dt);
   updateEnemyAi(dt);
@@ -3563,7 +3683,9 @@ function update(dt) {
 
 function updateFourWayBattle(dt) {
   state.fourWayElapsed += dt;
+  updateQueue(dt);
   updateFourWayAi(dt);
+  decayFourWayPressure(dt);
   updateUnits(dt);
   updateChaosRecovery(dt);
   updateArrows(dt);
@@ -3589,6 +3711,13 @@ function updateFourWayBattle(dt) {
   updateHud();
 }
 
+function decayFourWayPressure(dt) {
+  if (!state.fourWayPressure) return;
+  Object.keys(state.fourWayPressure).forEach((side) => {
+    state.fourWayPressure[side] = Math.max(0, state.fourWayPressure[side] - dt * 0.18);
+  });
+}
+
 function updateFourWayAi(dt) {
   state.fourWaySides.forEach((ai) => {
     if (!ai.alive) return;
@@ -3597,6 +3726,7 @@ function updateFourWayAi(dt) {
       ai.incomeTimer += 1;
       ai.gold += 20;
     }
+    if (ai.side === state.fourWayPlayerSide) return;
 
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
@@ -3728,6 +3858,10 @@ function updateQueue(dt) {
   const ready = state.spawnQueue.filter((item) => item.timer <= 0);
   state.spawnQueue = state.spawnQueue.filter((item) => item.timer > 0);
   ready.forEach((item, index) => {
+    if (state.fourWay && item.side) {
+      spawnFourWayUnit(item.type, item.side, index + Math.floor(Math.random() * 8));
+      return;
+    }
     spawnUnit(item.type, "player", FIELD.playerGate - 20 + index * 12);
   });
 }
@@ -3874,8 +4008,12 @@ function createGoldRushMines(config) {
   return mines;
 }
 
+function getActiveGoldRushConfig() {
+  return activeCampaign?.goldRush ?? MODE_GOLD_RUSH[selectedMode] ?? null;
+}
+
 function isGoldRushActive() {
-  return Boolean(activeCampaign?.goldRush && state.goldRushMines?.length);
+  return Boolean(getActiveGoldRushConfig() && state.goldRushMines?.length);
 }
 
 function createSideMines() {
@@ -4344,6 +4482,36 @@ function updateEnemyAi(dt) {
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnUnit(type, "enemy", FIELD.enemyGate + 12);
   }
+}
+
+function updateTeamAi(dt) {
+  if (!state.teamAi?.length || state.over) return;
+  state.teamAi.forEach((ai) => {
+    ai.gold += 5 * dt;
+    ai.minerTimer -= dt;
+    ai.spawnTimer -= dt;
+    const economyType = ai.faction === "undeadEmpire" ? "summoner" : "miner";
+    const miners = state.units.filter((unit) => unit.side === ai.side && unit.type === economyType && unit.hp > 0).length;
+    const economyCost = getUnitCost(economyType, ai.faction);
+    if (ai.minerTimer <= 0 && miners < 5 && ai.gold >= economyCost) {
+      ai.gold -= economyCost;
+      ai.minerTimer = miners < 3 ? 9 : 13;
+      spawnUnit(economyType, ai.side, ai.side === "player" ? FIELD.playerGate - 70 : FIELD.enemyGate + 70);
+      return;
+    }
+    if (ai.spawnTimer > 0) return;
+    const roster = FACTIONS[ai.faction].roster
+      .filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type) && !UNIT[type]?.summonOnly && !UNIT[type]?.statueOnly);
+    const affordable = roster.filter((type) => getUnitCost(type, ai.faction) <= ai.gold);
+    if (!affordable.length) {
+      ai.spawnTimer = 0.9;
+      return;
+    }
+    const type = affordable[Math.floor(Math.random() * affordable.length)];
+    ai.gold -= getUnitCost(type, ai.faction);
+    ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
+    spawnUnit(type, ai.side, ai.side === "player" ? FIELD.playerGate - 96 : FIELD.enemyGate + 96);
+  });
 }
 
 function getEnemyTargetMinerCount() {
@@ -4967,6 +5135,7 @@ function updateFourWayUnit(unit, dt) {
 
   const target = findFourWayTarget(unit);
   if (!target) return;
+  unit.fourWayFocusSide = target.kind === "statue" ? target.side : target.side ?? null;
   const range = target.kind === "statue" ? getStatueAttackReach(unit) : getUnitRange(unit);
   if (canAttackFromDistance(unit, target, range)) {
     attack(unit, target);
@@ -4984,7 +5153,7 @@ function findFourWayTarget(unit) {
   let nearest = null;
   let nearestDistance = Infinity;
   for (const other of state.units) {
-    if (other.side === unit.side || other.hp <= 0 || isUnitHidden(other) || !canTarget(unit, other)) continue;
+    if (!areFourWayEnemies(unit.side, other.side) || other.hp <= 0 || isUnitHidden(other) || !canTarget(unit, other)) continue;
     const distance = distanceTo(unit.x, unit.y, other.x, other.y);
     if (distance < nearestDistance) {
       nearest = other;
@@ -4993,18 +5162,28 @@ function findFourWayTarget(unit) {
   }
   const baseTarget = findNearestEnemyBaseTarget(unit);
   if (!nearest) return baseTarget;
+  if (!baseTarget) return nearest;
   const baseDistance = distanceTo(unit.x, unit.y, baseTarget.x, baseTarget.y);
   return nearestDistance <= Math.max(360, getUnitRange(unit) + 60) || nearestDistance < baseDistance ? nearest : baseTarget;
 }
 
 function findNearestEnemyBaseTarget(unit) {
-  const enemies = state.fourWaySides.filter((ai) => ai.side !== unit.side && ai.alive);
+  const enemies = state.fourWaySides.filter((ai) => areFourWayEnemies(unit.side, ai.side) && ai.alive);
   const target = enemies
     .map((ai) => ({ ai, base: FOUR_WAY_BASES[ai.side], hp: state.fourWayBaseHp[ai.side] ?? 0 }))
     .filter((item) => item.hp > 0)
-    .sort((a, b) => distanceTo(unit.x, unit.y, a.base.x, a.base.y) - distanceTo(unit.x, unit.y, b.base.x, b.base.y))[0];
+    .sort((a, b) => getFourWayBaseTargetScore(unit, a) - getFourWayBaseTargetScore(unit, b))[0];
   if (!target) return null;
+  state.fourWayPressure[target.ai.side] = (state.fourWayPressure[target.ai.side] ?? 0) + 0.02;
   return { kind: "statue", side: target.ai.side, x: target.base.x, y: target.base.y };
+}
+
+function getFourWayBaseTargetScore(unit, item) {
+  const distance = distanceTo(unit.x, unit.y, item.base.x, item.base.y);
+  const hpRatio = Math.max(0, Math.min(1, item.hp / STATUE_MAX_HP));
+  const pressure = state.fourWayPressure?.[item.ai.side] ?? 0;
+  const teamCount = state.units.filter((other) => other.side === unit.side && other.hp > 0 && other.fourWayFocusSide === item.ai.side).length;
+  return distance + hpRatio * 180 + pressure * 90 + teamCount * 75 + Math.random() * 80;
 }
 
 function getFourWayApproachPoint(unit, target, range) {
@@ -9818,11 +9997,14 @@ function checkFourWayWin() {
     popText(base.x, base.y - 130, `${FACTIONS[ai.faction].name}出局`, "#ffce7a");
   });
   const alive = state.fourWaySides.filter((ai) => ai.alive);
-  if (alive.length > 1 || state.over) return;
+  const aliveTeams = new Set(alive.map((ai) => getFourWayTeam(ai.side)));
+  if ((isDuoBattle() ? aliveTeams.size > 1 : alive.length > 1) || state.over) return;
   state.over = true;
   state.winner = alive[0]?.side ?? null;
-  const winnerName = alive[0] ? FACTIONS[alive[0].faction].name : "无人";
-  statusEl.textContent = `四国观战结束：${winnerName}获胜`;
+  const winnerName = alive.length > 1
+    ? alive.map((ai) => FACTIONS[ai.faction].name).join("、")
+    : alive[0] ? FACTIONS[alive[0].faction].name : "无人";
+  statusEl.textContent = `四国对战结束：${winnerName}获胜`;
   homeBtn.classList.remove("hidden");
 }
 
@@ -14528,9 +14710,17 @@ function returnToMainMenu() {
   state = null;
   activeCampaign = null;
   selectedMode = "versus";
+  selectedTeamMode = "solo";
+  selectedControlMode = "human";
   applyFieldMode(false);
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === selectedMode);
+  });
+  teamModeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.teamMode === selectedTeamMode);
+  });
+  controlModeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.controlMode === selectedControlMode);
   });
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
@@ -14645,8 +14835,28 @@ function updateHud() {
     enemyGoldEl.textContent = `存活 ${alive.length}/4`;
     playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
     enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
+    const playerSide = state.fourWayPlayerSide ?? selectedFaction;
+    const playerAi = state.fourWaySides.find((ai) => ai.side === playerSide);
     trainButtons.forEach((button) => {
-      button.disabled = true;
+      const type = button.dataset.unit;
+      if (!type || button.dataset.action) {
+        button.disabled = true;
+        return;
+      }
+      const progressItems = state.spawnQueue.filter((item) => item.side === playerSide && item.type === type);
+      const progress = progressItems.reduce((max, item) => {
+        const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
+        if (duration <= 0) return max;
+        return Math.max(max, Math.max(0, Math.min(1, 1 - item.timer / duration)));
+      }, 0);
+      if (progress > 0) {
+        button.dataset.training = "true";
+        button.style.setProperty("--train-progress", `${Math.max(1, Math.round(progress * 360))}deg`);
+      } else {
+        delete button.dataset.training;
+        button.style.removeProperty("--train-progress");
+      }
+      button.disabled = !playerAi?.alive || !FACTIONS[playerSide].roster.includes(type) || playerAi.gold < getFourWayUnitCost(type, playerSide);
     });
     return;
   }
@@ -15252,11 +15462,24 @@ modeButtons.forEach((button) => {
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
-    if (selectedMode === "quad") {
-      if (!isIosDevice()) enterFullscreen();
-      factionSelect.classList.add("hidden");
-      newGame();
-    }
+  });
+});
+
+teamModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedTeamMode = button.dataset.teamMode;
+    teamModeButtons.forEach((candidate) => {
+      candidate.classList.toggle("active", candidate === button);
+    });
+  });
+});
+
+controlModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedControlMode = button.dataset.controlMode;
+    controlModeButtons.forEach((candidate) => {
+      candidate.classList.toggle("active", candidate === button);
+    });
   });
 });
 

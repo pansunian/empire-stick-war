@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="一款可安装到主屏幕的中世纪火柴人帝国战争网页游戏。" />
     <title>帝国火柴人战争</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260613-desktop-free-orientation" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260613-team-modes" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260613-desktop-free-orientation" />
+    <link rel="stylesheet" href="./style.css?v=20260613-team-modes" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -34,12 +34,12 @@
               <small>人机对战，正常开局金币</small>
             </button>
             <button class="mode-card" data-mode="brawl">
-              <strong>大乱斗模式</strong>
-              <small>人机对战，双方开局 5000 金币</small>
+              <strong>淘金热</strong>
+              <small>双方开局 1500 金币，中央金矿争夺</small>
             </button>
             <button class="mode-card" data-mode="quad">
-              <strong>四国观战</strong>
-              <small>四个帝国 AI 混战，基地占据四角</small>
+              <strong>四国对战</strong>
+              <small>四个帝国占据四角，可混战或 2 打 2</small>
             </button>
             <button class="mode-card" data-mode="campaign">
               <strong>战役模式</strong>
@@ -47,9 +47,38 @@
             </button>
           </div>
         </div>
-        <div class="selection-section faction-section" aria-label="第 2 步：选择帝国">
+        <div class="selection-section battle-section" aria-label="第 2 步：选择对局规则">
           <div class="selection-label">
             <b>2</b>
+            <span>选择规则</span>
+            <small>决定是否组队和 AI 队友</small>
+          </div>
+          <div class="battle-options">
+            <div class="option-group" aria-label="选择队伍模式">
+              <button class="option-card active" data-team-mode="solo">
+                <strong>单线对抗</strong>
+                <small>双方各自作战</small>
+              </button>
+              <button class="option-card" data-team-mode="duo">
+                <strong>2 打 2</strong>
+                <small>双方都有队友</small>
+              </button>
+            </div>
+            <div class="option-group" aria-label="选择控制方式">
+              <button class="option-card active" data-control-mode="human">
+                <strong>人机对战</strong>
+                <small>玩家指挥主阵营</small>
+              </button>
+              <button class="option-card" data-control-mode="humanAi">
+                <strong>人 + AI 对战</strong>
+                <small>玩家拥有 AI 队友</small>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="selection-section faction-section" aria-label="第 2 步：选择帝国">
+          <div class="selection-label">
+            <b>3</b>
             <span>选择帝国</span>
             <small>再确定你的军团路线</small>
           </div>
@@ -253,6 +282,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260613-desktop-free-orientation"></script>
+    <script src="./game.js?v=20260613-team-modes"></script>
   </body>
 </html>
