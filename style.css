@@ -673,7 +673,7 @@ button {
   text-align: center;
   position: relative;
   font-weight: 700;
-  padding-right: 348px;
+  padding-right: 528px;
 }
 
 .icon-btn {
@@ -690,6 +690,7 @@ button {
 .stats-btn,
 .fullscreen-btn,
 .install-btn,
+.zoom-btn,
 .top-home-btn {
   position: absolute;
   height: 40px;
@@ -701,11 +702,31 @@ button {
 }
 
 .top-home-btn {
-  right: 286px;
+  right: 448px;
 }
 
 .install-btn {
-  right: 228px;
+  right: 390px;
+}
+
+.zoom-btn {
+  width: 40px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.zoom-out-btn {
+  right: 344px;
+}
+
+.zoom-fit-btn {
+  right: 286px;
+  width: 52px;
+}
+
+.zoom-in-btn {
+  right: 240px;
 }
 
 .fullscreen-btn {
@@ -857,9 +878,9 @@ button {
   background: #1b241f;
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.38);
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   scrollbar-color: rgba(230, 184, 74, 0.8) rgba(0, 0, 0, 0.28);
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -867,9 +888,9 @@ canvas {
   display: block;
   width: 3600px;
   max-width: none;
-  height: 100%;
-  min-height: 360px;
-  touch-action: pan-x;
+  height: 800px;
+  min-height: 0;
+  touch-action: pan-x pan-y;
 }
 
 body.quad-watch .battlefield-wrap {
@@ -878,10 +899,10 @@ body.quad-watch .battlefield-wrap {
 }
 
 body.quad-watch canvas {
-  width: 2000px !important;
-  height: 2000px !important;
-  min-width: 2000px;
-  min-height: 2000px;
+  width: 2000px;
+  height: 2000px;
+  min-width: 0;
+  min-height: 0;
   max-width: none;
   max-height: none;
   aspect-ratio: 1 / 1;
@@ -1914,11 +1935,12 @@ body.quad-watch .health-bars {
     text-overflow: ellipsis;
   }
 
-  .top-home-btn,
-  .install-btn,
-  .fullscreen-btn,
-  .pause-btn,
-  .stats-btn,
+	  .top-home-btn,
+	  .install-btn,
+	  .zoom-btn,
+	  .fullscreen-btn,
+	  .pause-btn,
+	  .stats-btn,
   .icon-btn {
     position: static;
     transform: none;
@@ -2181,49 +2203,63 @@ body.quad-watch .health-bars {
     font-size: 11px;
   }
 
-  .status-panel {
-    font-size: 13px;
-    padding-right: 334px;
-    white-space: nowrap;
-    overflow: hidden;
-  }
+	  .status-panel {
+	    font-size: 13px;
+	    padding-right: 456px;
+	    white-space: nowrap;
+	    overflow: hidden;
+	  }
 
-  .top-home-btn,
-  .install-btn,
-  .fullscreen-btn,
-  .pause-btn,
-  .stats-btn,
+	  .top-home-btn,
+	  .install-btn,
+	  .zoom-btn,
+	  .fullscreen-btn,
+	  .pause-btn,
+	  .stats-btn,
   .icon-btn {
     height: 34px;
     top: 50%;
     transform: translateY(-50%);
   }
 
-  .top-home-btn {
-    right: 270px;
-  }
+	  .top-home-btn {
+	    right: 386px;
+	  }
 
-  .install-btn {
-    right: 218px;
-  }
+	  .install-btn {
+	    right: 334px;
+	  }
 
-  .fullscreen-btn {
-    right: 166px;
-  }
+	  .zoom-out-btn {
+	    right: 288px;
+	  }
 
-  .pause-btn {
-    right: 110px;
-  }
+	  .zoom-fit-btn {
+	    right: 236px;
+	    width: 46px;
+	  }
 
-  .stats-btn {
-    right: 56px;
-  }
+	  .zoom-in-btn {
+	    right: 190px;
+	  }
 
-  .icon-btn {
-    width: 36px;
-    right: 10px;
-    font-size: 21px;
-  }
+	  .fullscreen-btn {
+	    right: 138px;
+	  }
+
+	  .pause-btn {
+	    right: 88px;
+	  }
+
+	  .stats-btn {
+	    right: 42px;
+	  }
+
+	  .icon-btn {
+	    width: 36px;
+	    right: 4px;
+	    font-size: 21px;
+	  }
 
   .battlefield-wrap {
     min-height: 0;
@@ -2312,11 +2348,12 @@ body.quad-watch .health-bars {
     height: 28px;
   }
 
-  .top-home-btn,
-  .install-btn,
-  .fullscreen-btn,
-  .pause-btn,
-  .stats-btn,
+	  .top-home-btn,
+	  .install-btn,
+	  .zoom-btn,
+	  .fullscreen-btn,
+	  .pause-btn,
+	  .stats-btn,
   .icon-btn {
     height: 30px;
     padding-left: 10px;
@@ -2385,11 +2422,12 @@ body.quad-watch .health-bars {
     text-overflow: ellipsis;
   }
 
-  .top-home-btn,
-  .install-btn,
-  .fullscreen-btn,
-  .pause-btn,
-  .stats-btn,
+	  .top-home-btn,
+	  .install-btn,
+	  .zoom-btn,
+	  .fullscreen-btn,
+	  .pause-btn,
+	  .stats-btn,
   .icon-btn {
     position: static;
     transform: none;
@@ -2574,11 +2612,12 @@ body.quad-watch .health-bars {
     text-overflow: ellipsis;
   }
 
-  .top-home-btn,
-  .install-btn,
-  .fullscreen-btn,
-  .pause-btn,
-  .stats-btn,
+	  .top-home-btn,
+	  .install-btn,
+	  .zoom-btn,
+	  .fullscreen-btn,
+	  .pause-btn,
+	  .stats-btn,
   .icon-btn {
     position: static;
     transform: none;

@@ -31,6 +31,9 @@ const installGuide = document.querySelector("#installGuide");
 const installGuideText = document.querySelector("#installGuideText");
 const closeInstallGuideBtn = document.querySelector("#closeInstallGuideBtn");
 const fullscreenBtn = document.querySelector("#fullscreenBtn");
+const zoomOutBtn = document.querySelector("#zoomOutBtn");
+const zoomFitBtn = document.querySelector("#zoomFitBtn");
+const zoomInBtn = document.querySelector("#zoomInBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const statsBtn = document.querySelector("#statsBtn");
 const homeBtn = document.querySelector("#homeBtn");
@@ -1534,6 +1537,10 @@ let lastTime = performance.now();
 let selectedFaction = "order";
 let enemyFaction = "chaos";
 let selectedMode = "versus";
+let battlefieldZoom = 1;
+let currentFieldModeFourWay = false;
+const BATTLEFIELD_MAX_ZOOM = 2.25;
+const BATTLEFIELD_ZOOM_STEP = 1.22;
 const MODE_START_GOLD = {
   versus: 120,
   brawl: 5000,
@@ -2205,6 +2212,7 @@ function newGame() {
 
 function applyFieldMode(fourWay) {
   const source = fourWay ? FOUR_WAY_FIELD : DEFAULT_FIELD;
+  currentFieldModeFourWay = fourWay;
   document.body.classList.toggle("quad-watch", fourWay);
   FIELD.width = source.width;
   FIELD.height = source.height;
@@ -2218,8 +2226,8 @@ function applyFieldMode(fourWay) {
   FIELD.mineDistance = source.mineDistance ?? DEFAULT_FIELD.mineDistance;
   canvas.width = FIELD.width;
   canvas.height = FIELD.height;
-  canvas.style.width = fourWay ? `${FIELD.width}px` : "";
-  canvas.style.height = fourWay ? `${FIELD.height}px` : "";
+  battlefieldZoom = getDefaultBattlefieldZoom(fourWay);
+  applyBattlefieldZoom(false);
 }
 
 function createBaseState(startGold, enemyStartGold, sideMines = createSideMines()) {
@@ -2366,8 +2374,61 @@ function resetBattlefieldView() {
 
 function centerFourWayView() {
   if (!battlefieldWrap) return;
-  battlefieldWrap.scrollLeft = Math.max(0, (FIELD.width - battlefieldWrap.clientWidth) / 2);
-  battlefieldWrap.scrollTop = Math.max(0, (FIELD.height - battlefieldWrap.clientHeight) / 2);
+  battlefieldWrap.scrollLeft = Math.max(0, (FIELD.width * battlefieldZoom - battlefieldWrap.clientWidth) / 2);
+  battlefieldWrap.scrollTop = Math.max(0, (FIELD.height * battlefieldZoom - battlefieldWrap.clientHeight) / 2);
+}
+
+function getFitBattlefieldZoom() {
+  if (!battlefieldWrap) return 1;
+  if (battlefieldWrap.clientWidth <= 0 || battlefieldWrap.clientHeight <= 0) return 0.2;
+  const fitX = battlefieldWrap.clientWidth / Math.max(1, FIELD.width);
+  const fitY = battlefieldWrap.clientHeight / Math.max(1, FIELD.height);
+  return Math.max(0.12, Math.min(1, fitX, fitY));
+}
+
+function getDefaultBattlefieldZoom(fourWay) {
+  return 1;
+}
+
+function clampBattlefieldZoom(value) {
+  return Math.max(getFitBattlefieldZoom(), Math.min(BATTLEFIELD_MAX_ZOOM, value));
+}
+
+function applyBattlefieldZoom(preserveCenter = true) {
+  if (!battlefieldWrap) return;
+  const oldWidth = Math.max(1, canvas.getBoundingClientRect().width || FIELD.width * battlefieldZoom);
+  const oldHeight = Math.max(1, canvas.getBoundingClientRect().height || FIELD.height * battlefieldZoom);
+  const centerX = (battlefieldWrap.scrollLeft + battlefieldWrap.clientWidth / 2) / oldWidth;
+  const centerY = (battlefieldWrap.scrollTop + battlefieldWrap.clientHeight / 2) / oldHeight;
+  battlefieldZoom = clampBattlefieldZoom(battlefieldZoom);
+  const displayWidth = Math.max(1, FIELD.width * battlefieldZoom);
+  const displayHeight = Math.max(1, FIELD.height * battlefieldZoom);
+  canvas.style.width = `${displayWidth}px`;
+  canvas.style.height = `${displayHeight}px`;
+  updateZoomButtons();
+  if (!preserveCenter) return;
+  battlefieldWrap.scrollLeft = Math.max(0, centerX * displayWidth - battlefieldWrap.clientWidth / 2);
+  battlefieldWrap.scrollTop = Math.max(0, centerY * displayHeight - battlefieldWrap.clientHeight / 2);
+}
+
+function setBattlefieldZoom(nextZoom) {
+  battlefieldZoom = nextZoom;
+  applyBattlefieldZoom(true);
+}
+
+function fitBattlefieldToView() {
+  setBattlefieldZoom(getFitBattlefieldZoom());
+  resetBattlefieldView();
+}
+
+function updateZoomButtons() {
+  if (!zoomOutBtn || !zoomInBtn || !zoomFitBtn) return;
+  const minZoom = getFitBattlefieldZoom();
+  zoomOutBtn.disabled = battlefieldZoom <= minZoom + 0.001;
+  zoomInBtn.disabled = battlefieldZoom >= BATTLEFIELD_MAX_ZOOM - 0.001;
+  zoomFitBtn.disabled = Math.abs(battlefieldZoom - minZoom) <= 0.001;
+  zoomFitBtn.textContent = `${Math.round(battlefieldZoom * 100)}%`;
+  zoomFitBtn.title = "全图观看";
 }
 
 function spawnCampaignCenterElectricGate() {
@@ -15148,6 +15209,13 @@ pauseBtn.addEventListener("click", () => {
 });
 
 fullscreenBtn.addEventListener("click", toggleFullscreen);
+zoomOutBtn?.addEventListener("click", () => setBattlefieldZoom(battlefieldZoom / BATTLEFIELD_ZOOM_STEP));
+zoomInBtn?.addEventListener("click", () => setBattlefieldZoom(battlefieldZoom * BATTLEFIELD_ZOOM_STEP));
+zoomFitBtn?.addEventListener("click", fitBattlefieldToView);
+window.addEventListener("resize", () => {
+  applyBattlefieldZoom(true);
+  if (currentFieldModeFourWay && battlefieldZoom <= getFitBattlefieldZoom() + 0.001) centerFourWayView();
+});
 document.addEventListener("fullscreenchange", updateFullscreenButton);
 document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
 

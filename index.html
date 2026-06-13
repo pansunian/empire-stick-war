@@ -13,7 +13,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260613-unit-walk-motion" />
+    <link rel="stylesheet" href="./style.css?v=20260613-battlefield-zoom" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -123,6 +123,9 @@
           <span id="gameStatus">集结军队，摧毁敌方基地</span>
           <button id="topHomeBtn" class="top-home-btn" title="回到主界面">主界面</button>
           <button id="installBtn" class="install-btn hidden" title="安装到主屏幕">安装</button>
+          <button id="zoomOutBtn" class="zoom-btn zoom-out-btn" title="缩小战场">−</button>
+          <button id="zoomFitBtn" class="zoom-btn zoom-fit-btn" title="全图观看">全图</button>
+          <button id="zoomInBtn" class="zoom-btn zoom-in-btn" title="放大战场">+</button>
           <button id="fullscreenBtn" class="fullscreen-btn" title="进入全屏">全屏</button>
           <button id="pauseBtn" class="pause-btn" title="暂停战斗">暂停</button>
           <button id="statsBtn" class="stats-btn" title="查看单位数值">数值</button>
@@ -250,6 +253,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260613-unit-walk-motion"></script>
+    <script src="./game.js?v=20260613-battlefield-zoom"></script>
   </body>
 </html>
