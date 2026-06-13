@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v104";
+const CACHE_NAME = "stick-war-pwa-v105";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./game.js?v=20260612-vulture-shield",
+  "./game.js?v=20260613-summoner-miner-command",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

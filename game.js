@@ -140,8 +140,9 @@ const UNIT = {
     train: 3.2,
     cooldown: 1.4,
     firstSummonDelay: 5,
-    summonEvery: 16,
+    summonEvery: 25,
     summonCount: 2,
+    maxWraiths: 4,
   },
   wraithMiner: {
     name: "亡魂",
@@ -152,9 +153,8 @@ const UNIT = {
     speed: 46,
     train: 0,
     cooldown: 1,
-    goldPerSwing: 20,
-    bagSize: 80,
-    lifeDrainPerSecond: 2,
+    goldPerSwing: 12,
+    bagSize: 60,
     summonOnly: true,
   },
   swordsman: {
@@ -1969,8 +1969,8 @@ function formatSpecial(type) {
   const data = UNIT[type];
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
-  if (type === "summoner") notes.push(`出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤`);
-  if (type === "wraithMiner") notes.push(`召唤单位；生命每秒减少 ${data.lifeDrainPerSecond}；挖 ${data.bagSize / data.goldPerSwing} 次可带回 ${data.bagSize} 金，死亡时未入库金币返还一半`);
+  if (type === "summoner") notes.push(`矿工类单位；出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤；每名召唤师最多召唤 ${data.maxWraiths} 个亡魂`);
+  if (type === "wraithMiner") notes.push(`召唤单位，矿工类指令；挖 ${data.bagSize / data.goldPerSwing} 次可带回 ${data.bagSize} 金`);
   if (data.splash) notes.push(`范围 ${data.splash}`);
   if (data.splashDamage) notes.push(`溅射 ${data.splashDamage}`);
   if (data.flying) notes.push("飞行");
@@ -2645,7 +2645,7 @@ function setMinerCommand(command) {
   state.minerCommand = command;
   if (command !== "retreat" && state.command !== "retreat") {
     state.units.forEach((unit) => {
-      if (unit.side === "player" && unit.type === "miner" && unit.inCastle) unit.inCastle = false;
+      if (unit.side === "player" && (unit.type === "miner" || unit.type === "summoner" || unit.type === "wraithMiner") && unit.inCastle) unit.inCastle = false;
     });
   }
   minerCommandButtons.forEach((button) => {
@@ -5943,18 +5943,39 @@ function updateBerserker(unit, dt) {
 }
 
 function updateSummoner(unit, dt) {
+  const isPlayer = unit.side === "player";
+  const minerCommand = isPlayer ? state.minerCommand : "mine";
+  if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
+    moveTowardCastle(unit, dt);
+    return;
+  }
+
   if (unit.side === "player" && state.minerCommand === "attack") {
     const target = nearestEnemy(unit, 230) ?? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
     updateRangedEconomyAttack(unit, target, dt);
   } else {
     const danger = nearestEnemy(unit, getUnitRange(unit));
     if (danger && unit.cooldown <= 0) attack(unit, danger);
+    if (!danger) updateSummonerMinePatrol(unit, dt);
   }
   const data = UNIT.summoner;
   unit.summonTimer -= dt;
   if (unit.summonTimer > 0) return;
+  if ((unit.totalWraithsSummoned ?? 0) >= data.maxWraiths) return;
   unit.summonTimer += data.summonEvery;
   summonWraithMiners(unit);
+}
+
+function updateSummonerMinePatrol(unit, dt) {
+  const mines = getSideMines(unit.side).filter((mine) => mine.remaining > 0);
+  const mine = mines
+    .map((candidate) => ({ mine: candidate, distance: distanceTo(unit.x, unit.y, candidate.x, candidate.y) }))
+    .sort((a, b) => a.distance - b.distance)[0]?.mine;
+  if (!mine) return;
+  if (!unit.summonerPatrolOffset || Math.abs(unit.x - (mine.x + unit.summonerPatrolOffset)) < 8) {
+    unit.summonerPatrolOffset = (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 22);
+  }
+  moveUnitTowardPoint(unit, mine.x + unit.summonerPatrolOffset, mine.y, unit.speed ?? UNIT.summoner.speed, dt, 6);
 }
 
 function updateRangedEconomyAttack(unit, target, dt) {
@@ -5970,20 +5991,21 @@ function updateRangedEconomyAttack(unit, target, dt) {
 
 function summonWraithMiners(summoner) {
   const data = UNIT.summoner;
+  const remaining = Math.max(0, data.maxWraiths - (summoner.totalWraithsSummoned ?? 0));
+  const count = Math.min(data.summonCount, remaining);
+  if (count <= 0) return;
   const dir = summoner.side === "player" ? 1 : -1;
-  for (let i = 0; i < data.summonCount; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     const wraith = spawnUnit("wraithMiner", summoner.side, summoner.x + dir * (24 + i * 18));
     wraith.y = summoner.y + (i === 0 ? -12 : 12);
     wraith.summonerId = summoner.id;
     wraith.summoned = true;
   }
-  popText(summoner.x, summoner.y - 108, `召唤亡魂 x${data.summonCount}`, "#7ed8ff");
+  summoner.totalWraithsSummoned = (summoner.totalWraithsSummoned ?? 0) + count;
+  popText(summoner.x, summoner.y - 108, `召唤亡魂 x${count}`, "#7ed8ff");
 }
 
 function updateWraithMiner(unit, dt) {
-  const data = UNIT.wraithMiner;
-  unit.hp -= data.lifeDrainPerSecond * dt;
-  if (unit.hp <= 0) return;
   updateMiner(unit, dt);
 }
 
@@ -6866,16 +6888,6 @@ function grantUndeadKillGold(unit) {
   state[key] += 2;
   const labelX = killerSide === "player" ? FIELD.playerGate + 58 : FIELD.enemyGate - 58;
   popText(labelX, FIELD.ground - 128, "亡灵收割 +2", "#b8b0e8");
-}
-
-function settleWraithMinerCarry(unit) {
-  if (unit.type !== "wraithMiner" || unit.carry <= 0) return;
-  const refund = Math.floor(unit.carry * 0.5);
-  if (refund <= 0) return;
-  if (unit.side === "player") state.gold += refund;
-  else state.enemyGold += refund;
-  popText(unit.x, unit.y - 78, `残魂带回 +${refund}`, "#7ed8ff");
-  unit.carry = 0;
 }
 
 function attackCandlelight(unit, target) {
@@ -8998,7 +9010,6 @@ function removeDead() {
       releaseVControl(unit);
     }
     grantUndeadKillGold(unit);
-    settleWraithMinerCarry(unit);
     if (unit.type === "minotaur") {
       deathSpawns.push({
         type: "hornKnightRider",
