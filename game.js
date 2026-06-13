@@ -2492,6 +2492,8 @@ function renderShop() {
   const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
   const showElementMergeButtons = allowedElementMerges.length > 0;
+  const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
+  const elementShopItemCount = shopRoster.length + allowedElementMerges.length + (showElementConvertButton ? 1 : 0);
   const elementActionButtons =
     showElementMergeButtons || showElementConvertButton
       ? `
@@ -2511,7 +2513,9 @@ function renderShop() {
         ` : ""}
       `
       : "";
-  const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
+
+  unitShop.classList.toggle("element-shop", selectedFaction === "element");
+  unitShop.classList.toggle("element-shop-expanded", selectedFaction === "element" && elementShopItemCount > 12);
 
   unitShop.innerHTML =
     shopRoster

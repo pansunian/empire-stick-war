@@ -964,6 +964,11 @@ canvas {
   -webkit-overflow-scrolling: touch;
 }
 
+.unit-shop.element-shop-expanded {
+  grid-template-rows: repeat(3, 72px);
+  grid-auto-columns: minmax(104px, 122px);
+}
+
 .command-btn,
 .train-btn {
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -1794,6 +1799,11 @@ canvas {
     grid-auto-columns: minmax(104px, 116px);
   }
 
+  .unit-shop.element-shop-expanded {
+    grid-template-rows: repeat(3, 70px);
+    grid-auto-columns: minmax(96px, 108px);
+  }
+
   .mode-options {
     grid-template-columns: 1fr;
   }
@@ -2040,6 +2050,11 @@ canvas {
   .unit-shop {
     grid-template-rows: repeat(2, 58px);
     grid-auto-columns: minmax(104px, 116px);
+  }
+
+  .unit-shop.element-shop-expanded {
+    grid-template-rows: repeat(3, 58px);
+    grid-auto-columns: minmax(92px, 104px);
   }
 
   .unit-icon {
@@ -3265,5 +3280,26 @@ canvas {
 
   .train-btn small {
     display: none;
+  }
+}
+
+@media (min-width: 700px) {
+  .unit-shop.element-shop-expanded {
+    grid-template-rows: repeat(3, 78px);
+    grid-auto-columns: 78px;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) {
+  .unit-shop.element-shop-expanded {
+    grid-template-rows: repeat(3, 78px);
+    grid-auto-columns: 72px;
+  }
+}
+
+@media (max-width: 932px) and (orientation: landscape) {
+  .unit-shop.element-shop-expanded {
+    grid-template-rows: repeat(3, 62px);
+    grid-auto-columns: 62px;
   }
 }
