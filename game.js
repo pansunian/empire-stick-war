@@ -1357,7 +1357,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
+    roster: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
     startingUnits: ["summoner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
@@ -1461,7 +1461,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "executioner", "darkKnightBrother", "suikai"]],
-  ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1477,11 +1477,11 @@ const MODE_START_GOLD = {
 const CAMPAIGN_START_GOLD = 200;
 const CAMPAIGN_LEVEL_COUNT = 15;
 const HIDE_EXISTING_CAMPAIGNS = true;
-const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "demonArcher", "undeadMage", "bannerBearer", "graveDigger"]);
+const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "darkKnight", "deadCorpse", "poisonZombie", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
-const SKELETON_UNITS = new Set(["machete", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer"]);
+const SKELETON_UNITS = new Set(["machete", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "bannerBearer"]);
 const ZOMBIE_UNITS = new Set(["undead", "ghoul", "deadCorpse", "poisonZombie", "necromancer"]);
-const SPIRIT_UNITS = new Set(["reaper", "candlelight", "demonArcher", "deathGod"]);
+const SPIRIT_UNITS = new Set(["reaper", "candlelight", "deathGod"]);
 const BANNER_INSPIRE_GROUPS = ["skeleton", "zombie", "spirit"];
 const BANNER_INSPIRE_LABELS = {
   skeleton: "骷髅",
@@ -1492,7 +1492,7 @@ const ECONOMY_UNITS = new Set(["miner", "summoner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "scimitarWarrior", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "demonArcher", "darkKnight", "undeadMage"],
-  undeadEmpire: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "undeadCatapult", "bannerBearer", "poisonZombie", "deadCorpse", "demonArcher", "darkKnight", "undeadMage"],
+  undeadEmpire: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -2491,12 +2491,11 @@ const ELEMENT_SHOP_LAYOUT = [
 const UNDEAD_SHOP_LAYOUT = [
   ["summoner", "undead", "candlelight"],
   ["machete", "ghoul", "reaper"],
-  ["undeadVulture", "deadCorpse", "demonArcher"],
-  ["darkKnight", "poisonZombie", "deathGod"],
+  ["undeadVulture", "deadCorpse", "deathGod"],
+  ["darkKnight", "poisonZombie", null],
   ["undeadMage", "necromancer", null],
   ["graveDigger", null, null],
   ["boneGiant", null, null],
-  ["undeadCatapult", null, null],
   ["bannerBearer", null, null],
 ];
 
