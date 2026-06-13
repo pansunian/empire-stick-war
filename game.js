@@ -457,7 +457,7 @@ const UNIT = {
   },
   undead: {
     name: "丧尸",
-    cost: 70,
+    cost: 60,
     hp: 80,
     damage: 8,
     range: 30,
@@ -535,9 +535,9 @@ const UNIT = {
   },
   machete: {
     name: "骷髅兵",
-    cost: 100,
-    hp: 130,
-    damage: 11,
+    cost: 40,
+    hp: 50,
+    damage: 6,
     range: 34,
     speed: 60,
     train: 3.9,
@@ -858,24 +858,27 @@ const UNIT = {
   },
   demonArcher: {
     name: "日蚀",
-    cost: 150,
+    cost: 140,
     hp: 125,
-    damage: 17,
+    damage: 14,
     range: 180,
     speed: 58,
     train: 4.7,
-    cooldown: 1.35,
+    cooldown: 1.6,
     flying: true,
   },
   darkKnight: {
     name: "黑骑士",
-    cost: 165,
-    hp: 450,
+    cost: 130,
+    hp: 350,
     damage: 17,
     range: 38,
     speed: 42,
     train: 5.8,
     cooldown: 1.05,
+    chargeDistance: 160,
+    chargeStun: 2,
+    chargeCooldown: 15,
   },
   bannerBearer: {
     name: "掌旗手",
@@ -2005,6 +2008,7 @@ function formatSpecial(type) {
   if (type === "rhinoMan") notes.push(`持有大盾；免疫伤害小于等于 ${data.rangedShieldThreshold} 的远程攻击；${data.deathRageRange} 范围内犀牛人死亡会狂暴，移速/攻速 x${data.deathRageMoveFactor}`);
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
+  if (type === "darkKnight") notes.push(`技能冲刺 ${data.chargeDistance} 距离，眩晕路径敌人 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒，不造成伤害`);
   if (type === "necromancer") notes.push(`每 ${data.convertEvery}秒将敌方尸体转化为丧尸，生命为尸体原生命 ${Math.round(data.corpseHpRatio * 100)}%；远程单位尸体转化为毒尸；技能召唤 ${data.summonCount} 只移速 ${data.summonedSpeed} 的冲锋丧尸，冷却 ${data.summonCooldown}秒`);
   if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
@@ -2777,6 +2781,7 @@ function spawnUnit(type, side, x) {
     heavyArmorReduction: 0,
     minotaurRage: false,
     minotaurLeapTimer: data.chargeCooldown ?? data.leapCooldown ?? 0,
+    darkKnightChargeTimer: 0,
     hornBeastAttackTimer: 0,
     hornRiderAttackTimer: 0,
     rhinoRage: false,
@@ -4393,6 +4398,7 @@ function updateUnits(dt) {
     unit.heavyArmorTimer = Math.max(0, (unit.heavyArmorTimer ?? 0) - dt);
     if (unit.heavyArmorTimer <= 0) unit.heavyArmorReduction = 0;
     unit.minotaurLeapTimer = Math.max(0, (unit.minotaurLeapTimer ?? 0) - dt);
+    unit.darkKnightChargeTimer = Math.max(0, (unit.darkKnightChargeTimer ?? 0) - dt);
     unit.hornBeastAttackTimer = Math.max(0, (unit.hornBeastAttackTimer ?? 0) - dt);
     unit.hornRiderAttackTimer = Math.max(0, (unit.hornRiderAttackTimer ?? 0) - dt);
     unit.shieldTimer = Math.max(0, (unit.shieldTimer ?? 0) - dt);
@@ -8447,9 +8453,13 @@ function getFrontlineAllies(side) {
 
 function getHornKnightChargeTargets(unit) {
   const data = UNIT.minotaur;
+  return getChargePathTargets(unit, data.chargeDistance);
+}
+
+function getChargePathTargets(unit, distance) {
   const dir = unit.side === "player" ? 1 : -1;
   const startX = unit.x;
-  const endX = unit.x + dir * data.chargeDistance;
+  const endX = unit.x + dir * distance;
   const minX = Math.min(startX, endX);
   const maxX = Math.max(startX, endX);
   return state.units.filter((target) =>
@@ -8462,6 +8472,22 @@ function getHornKnightChargeTargets(unit) {
     target.x <= maxX &&
     Math.abs(target.y - unit.y) <= 90
   );
+}
+
+function castDarkKnightCharge(unit) {
+  const data = UNIT.darkKnight;
+  if ((unit.darkKnightChargeTimer ?? 0) > 0) return false;
+  const targets = getChargePathTargets(unit, data.chargeDistance);
+  if (!targets.length && unit.side !== "player") return false;
+  const dir = unit.side === "player" ? 1 : -1;
+  const startX = unit.x;
+  unit.x = Math.max(FIELD.playerGate + 34, Math.min(FIELD.enemyGate - 34, unit.x + dir * data.chargeDistance));
+  unit.darkKnightChargeTimer = data.chargeCooldown;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.45);
+  targets.forEach((target) => applyStun(target, data.chargeStun));
+  state.blasts.push({ x: (startX + unit.x) / 2, y: unit.y - 26, radius: data.chargeDistance / 2, life: 0.34, duration: 0.34, color: "#7d6aa8" });
+  popText(unit.x, unit.y - 126, targets.length ? "黑骑冲刺" : "冲刺", "#d8d0ff");
+  return true;
 }
 
 function tryMinotaurLeap(unit) {
@@ -12768,6 +12794,9 @@ function getManualActions(unit) {
     case "bannerBearer":
       add("bannerInspireGroup", `激励:${BANNER_INSPIRE_LABELS[unit.bannerInspireGroup ?? "skeleton"]}`, "direct");
       break;
+    case "darkKnight":
+      add("darkKnightCharge", "冲刺", "direct");
+      break;
     case "deathGod":
       add("deathGodSpikes", "尖刺", "direct");
       add("deathGodClone", "分身", "direct");
@@ -12812,6 +12841,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
   if (button.id === "rhinoCharge" && unit.minotaurLeapTimer > 0) return true;
+  if (button.id === "darkKnightCharge" && unit.darkKnightChargeTimer > 0) return true;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return true;
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return true;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return true;
@@ -12918,6 +12948,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
   if (button.id === "rhinoCharge" && unit.minotaurLeapTimer > 0) return `冷却 ${Math.ceil(unit.minotaurLeapTimer)}秒`;
+  if (button.id === "darkKnightCharge" && unit.darkKnightChargeTimer > 0) return `冷却 ${Math.ceil(unit.darkKnightChargeTimer)}秒`;
   if (button.id === "priestSiphon" && unit.priestSiphonTimer > 0) return `冷却 ${Math.ceil(unit.priestSiphonTimer)}秒`;
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return `冷却 ${Math.ceil(unit.priestBloodTimer)}秒`;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return `冷却 ${Math.ceil(unit.undeadLureTimer)}秒`;
@@ -12978,6 +13009,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "rhinoCharge") {
     castMinotaurLeap(unit);
+    return;
+  }
+  if (action.id === "darkKnightCharge") {
+    castDarkKnightCharge(unit);
     return;
   }
   if (action.id === "monkField") {
@@ -13228,6 +13263,7 @@ function getManualActionCooldown(unit, id) {
     vBlink: data.blinkCooldown,
     deathGodSpikes: data.spikeCooldown,
     deathGodClone: data.cloneCooldown,
+    darkKnightCharge: data.chargeCooldown,
     necromancerSummon: data.summonCooldown,
     medusaPoison: data.poisonEvery,
     suikaiCorpses: data.corpseEvery,
