@@ -641,22 +641,22 @@ const UNIT = {
   orc: {
     name: "兽人",
     cost: 80,
-    hp: 110,
-    damage: 6,
+    hp: 125,
+    damage: 7,
     range: 34,
-    speed: 40,
+    speed: 42,
     train: 3.4,
     cooldown: 1,
   },
   berserkOrc: {
     name: "狂兽人",
     cost: 120,
-    hp: 140,
-    damage: 13,
+    hp: 160,
+    damage: 15,
     range: 38,
-    speed: 38,
+    speed: 40,
     train: 4.2,
-    cooldown: 1.15,
+    cooldown: 1.1,
   },
   goblin: {
     name: "地精",
@@ -712,7 +712,7 @@ const UNIT = {
   shaman: {
     name: "萨满",
     cost: 150,
-    hp: 170,
+    hp: 180,
     damage: 0,
     range: 0,
     speed: 42,
@@ -720,25 +720,25 @@ const UNIT = {
     cooldown: 1,
     thornEvery: 8,
     thornArea: 625,
-    thornDps: 4,
-    thornSlow: 0.9,
+    thornDps: 5,
+    thornSlow: 0.86,
     thornDuration: 12,
     thornCooldown: 10,
     healEvery: 1,
-    healAmount: 8,
+    healAmount: 10,
     healRange: 625,
   },
   priest: {
     name: "祭司",
     cost: 170,
-    hp: 150,
+    hp: 165,
     damage: 20,
     range: 145,
     speed: 42,
     train: 5.4,
-    cooldown: 1.4,
-    sacrificeNeeded: 5,
-    ritualRange: 220,
+    cooldown: 1.3,
+    sacrificeNeeded: 4,
+    ritualRange: 260,
     siphonMaxHp: 350,
     siphonDamage: 30,
     siphonCooldown: 12,
@@ -748,7 +748,7 @@ const UNIT = {
   apeMan: {
     name: "猿人",
     cost: 150,
-    hp: 320,
+    hp: 340,
     damage: 20,
     range: 44,
     speed: 34,
@@ -786,11 +786,11 @@ const UNIT = {
   minotaur: {
     name: "巨角骑士",
     cost: 140,
-    hp: 600,
+    hp: 640,
     damage: 30,
     range: 48,
-    speed: 30,
-    train: 6.5,
+    speed: 32,
+    train: 6.2,
     cooldown: 0.2,
     riderHp: 200,
     riderDamage: 10,
@@ -814,12 +814,12 @@ const UNIT = {
   },
   rhinoMan: {
     name: "犀牛人",
-    cost: 250,
-    hp: 670,
-    damage: 36,
+    cost: 240,
+    hp: 700,
+    damage: 38,
     range: 44,
     speed: 27,
-    train: 7,
+    train: 6.8,
     cooldown: 2,
     rangedShieldThreshold: 15,
     deathRageRange: 1600,
@@ -828,23 +828,23 @@ const UNIT = {
   },
   javelinThrower: {
     name: "投矛手",
-    cost: 120,
-    hp: 60,
+    cost: 110,
+    hp: 70,
     damage: 14,
-    range: 200,
+    range: 215,
     speed: 50,
     train: 4,
     cooldown: 1.2,
-    poisonChance: 0.3,
+    poisonChance: 0.35,
     poisonDps: 2,
     poisonDuration: Infinity,
   },
   goblinVulture: {
     name: "持弩哨兵",
-    cost: 150,
-    hp: 90,
-    damage: 13,
-    range: 170,
+    cost: 140,
+    hp: 105,
+    damage: 14,
+    range: 185,
     speed: 60,
     train: 4.8,
     cooldown: 1.25,
@@ -1416,7 +1416,7 @@ const FOUR_WAY_BASES = {
 };
 const FOUR_WAY_AI_ROSTER = {
   order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
+  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
 };
@@ -2011,12 +2011,22 @@ function isOrderSide(side) {
   return getSideFaction(side) === "order";
 }
 
+function isChaosSide(side) {
+  return getSideFaction(side) === "chaos";
+}
+
 function isOrderRangedUnit(type) {
   return ["archer", "goldenArcher", "crossbow", "musketeer", "mage", "catapult", "rocketCart"].includes(type);
 }
 
 function isOrderMeleeUnit(type) {
   return ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon"].includes(type);
+}
+
+function isChaosCombatUnit(unit) {
+  if (!unit || !isChaosSide(unit.side)) return false;
+  if (unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
+  return !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(unit.type);
 }
 
 function chooseUnusedFaction(excluded = []) {
@@ -2170,6 +2180,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
+  if (isChaosSide(selectedFaction) && !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(type)) notes.push("混沌战团：附近有2名混沌战斗单位时，移速/攻速+8%，受伤-8%；混沌单位攻击残血目标伤害+12%");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5；跳劈使命中目标4秒内受到秩序单位伤害+20%`);
   if (type === "archer") notes.push("火箭施加燃烧标记：弩手对其伤害+15%，攻城单位对其伤害+10%");
   if (type === "spartan") notes.push("举盾保护身后远程：远程伤害减35%，秩序远程攻速+10%");
@@ -3884,6 +3895,9 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
   if (livingCount < 5 && cheapAffordable.length) {
     return cheapAffordable[Math.floor(Math.random() * cheapAffordable.length)];
   }
+  if (ai.faction === "chaos") {
+    return chooseFactionAiUnit(ai.faction, affordable);
+  }
   const weighted = [
     ...highAffordable,
     ...highAffordable,
@@ -4616,11 +4630,39 @@ function updateTeamAi(dt) {
       ai.spawnTimer = 0.9;
       return;
     }
-    const type = affordable[Math.floor(Math.random() * affordable.length)];
+    const type = chooseFactionAiUnit(ai.faction, affordable);
     ai.gold -= getUnitCost(type, ai.faction);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
     spawnUnit(type, ai.side, ai.side === "player" ? FIELD.playerGate - 96 : FIELD.enemyGate + 96);
   });
+}
+
+function chooseFactionAiUnit(faction, affordable) {
+  if (faction !== "chaos") return affordable[Math.floor(Math.random() * affordable.length)];
+  const weights = {
+    orc: 1.2,
+    berserkOrc: 1.15,
+    javelinThrower: 1,
+    shaman: 0.9,
+    goblinExpert: 0.78,
+    priest: 0.72,
+    goblinVulture: 0.82,
+    minotaur: 0.82,
+    rhinoMan: 0.7,
+    arrowShieldCart: 0.55,
+    griffinBomber: 0.55,
+    bomber: 0.78,
+    apeMan: 0.72,
+    creeper: 0.9,
+    goblin: 0.55,
+  };
+  const total = affordable.reduce((sum, type) => sum + (weights[type] ?? 0.65), 0);
+  let roll = Math.random() * total;
+  for (const type of affordable) {
+    roll -= weights[type] ?? 0.65;
+    if (roll <= 0) return type;
+  }
+  return affordable[affordable.length - 1];
 }
 
 function getEnemyTargetMinerCount() {
@@ -4755,20 +4797,20 @@ function chooseEnemyUnit(affordable) {
     windElement: 0.75,
     dreadfire: 0.45,
     hurricane: 0.55,
-    creeper: 1.1,
-    goblin: 0.72,
-    goblinExpert: 0.48,
-    arrowShieldCart: 0.34,
-    shaman: 0.46,
-    priest: 0.52,
-    orc: 0.95,
-    berserkOrc: 0.8,
+    creeper: 1.05,
+    goblin: 0.58,
+    goblinExpert: 0.72,
+    arrowShieldCart: 0.5,
+    shaman: 0.82,
+    priest: 0.72,
+    orc: 1.15,
+    berserkOrc: 1.05,
     scimitarWarrior: 0.58,
-    minotaur: 0.42,
-    rhinoMan: 0.38,
-    javelinThrower: 0.78,
-    goblinVulture: 0.62,
-    griffinBomber: 0.32,
+    minotaur: 0.72,
+    rhinoMan: 0.58,
+    javelinThrower: 0.95,
+    goblinVulture: 0.78,
+    griffinBomber: 0.48,
     undead: 1.05,
     ghoul: 0.85,
     candlelight: 0.82,
@@ -6989,6 +7031,7 @@ function getMoveFactor(unit) {
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   if (unit.orderMoraleTimer > 0 && isOrderSide(unit.side)) factor *= 1.1;
+  if (hasChaosWarband(unit)) factor *= 1.08;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageMoveFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
@@ -7025,9 +7068,39 @@ function getAttackSpeedFactor(unit) {
   if (unit.orderBlessTimer > 0 && isOrderSide(unit.side) && isOrderRangedUnit(unit.type)) factor *= 1.1;
   if (unit.orderMoraleTimer > 0 && isOrderSide(unit.side)) factor *= 1.08;
   if (isProtectedBySpartanShieldWall(unit) && isOrderRangedUnit(unit.type)) factor *= 1.1;
+  if (hasChaosWarband(unit)) factor *= 1.08;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
+}
+
+function countNearbyChaosWarband(unit, radius = 190) {
+  if (!isChaosCombatUnit(unit)) return 0;
+  return state.units.filter((ally) =>
+    ally.id !== unit.id &&
+    ally.side === unit.side &&
+    isChaosCombatUnit(ally) &&
+    Math.abs(ally.x - unit.x) <= radius &&
+    Math.abs((ally.y ?? FIELD.ground) - (unit.y ?? FIELD.ground)) <= 95
+  ).length;
+}
+
+function hasChaosWarband(unit) {
+  return countNearbyChaosWarband(unit) >= 2;
+}
+
+function getChaosDamageMultiplier(target, attackerSide) {
+  if (!target || target.kind === "statue" || !isChaosSide(attackerSide)) return 1;
+  let multiplier = 1;
+  if (target.hp <= target.maxHp * 0.45) multiplier *= 1.12;
+  const nearby = state.units.filter((ally) =>
+    ally.side === attackerSide &&
+    isChaosCombatUnit(ally) &&
+    Math.abs(ally.x - target.x) <= 150 &&
+    Math.abs((ally.y ?? FIELD.ground) - (target.y ?? FIELD.ground)) <= 95
+  ).length;
+  if (nearby >= 3) multiplier *= 1.08;
+  return multiplier;
 }
 
 function hasOrderDamageMark(target) {
@@ -9773,7 +9846,8 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   }
 
   const orderMultiplier = getOrderDamageMultiplier(target, attackerSide, options.sourceType, options);
-  const damage = getModifiedDamage(target, amount * orderMultiplier, options);
+  const chaosMultiplier = getChaosDamageMultiplier(target, attackerSide);
+  const damage = getModifiedDamage(target, amount * orderMultiplier * chaosMultiplier, options);
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
@@ -9785,7 +9859,8 @@ function applyDamage(target, amount, attackerSide, options = {}) {
 
 function applyUnitDamage(target, amount, options = {}) {
   const orderMultiplier = getOrderDamageMultiplier(target, options.sourceSide, options.sourceType, options);
-  const baseAmount = amount * orderMultiplier;
+  const chaosMultiplier = getChaosDamageMultiplier(target, options.sourceSide);
+  const baseAmount = amount * orderMultiplier * chaosMultiplier;
   const damage = options.modified === false ? baseAmount : getModifiedDamage(target, baseAmount, options);
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
@@ -9841,6 +9916,9 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (options.ranged && isProtectedBySpartanShieldWall(target)) {
     damage *= 0.65;
+  }
+  if (hasChaosWarband(target)) {
+    damage *= 0.92;
   }
   return Math.max(1, Math.round(damage * 10) / 10);
 }
