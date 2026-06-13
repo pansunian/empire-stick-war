@@ -388,7 +388,7 @@ const UNIT = {
   },
   catapult: {
     name: "火炮",
-    cost: 500,
+    cost: 350,
     hp: 600,
     damage: 60,
     range: 500,
@@ -416,7 +416,7 @@ const UNIT = {
   },
   rocketCart: {
     name: "火箭车",
-    cost: 550,
+    cost: 400,
     hp: 500,
     damage: 6,
     range: 350,
