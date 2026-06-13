@@ -1442,9 +1442,10 @@ const FOUR_WAY_STARTERS = {
 };
 const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_FACTION_SKILL = {
-  order: { cooldown: 20, duration: 10 },
-  chaos: { cooldown: 20, duration: 10, clusterRadius: 220, clusterCount: 3, factor: 1.5 },
-  undeadEmpire: { cooldown: 20, duration: 10 },
+  order: { cooldown: 30, duration: 15 },
+  chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
+  undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "undeadMage", "necromancer", "graveDigger"] },
+  element: { cooldown: 30, duration: 15, summons: ["vUnit", "earthElement", "waterElement", "fireElement", "windElement"] },
 };
 
 const UNIT_ICON = {
@@ -2492,8 +2493,8 @@ function newFourWayGame() {
   state.fourWayPlayerSide = selectedFaction;
   state.fourWayTeams = createFourWayTeams(selectedFaction);
   state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
-  state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10 };
-  state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0 };
+  state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10, element: 13 };
+  state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0, element: 0 };
   state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
     side,
     faction: side,
@@ -3854,6 +3855,7 @@ function tryCastFourWayFactionSkill(ai) {
   if (side === "order") return castFourWayOrderSkill(side);
   if (side === "chaos") return castFourWayChaosSkill(side);
   if (side === "undeadEmpire") return castFourWayUndeadSkill(side);
+  if (side === "element") return castFourWayElementSkill(side);
   return false;
 }
 
@@ -3880,39 +3882,45 @@ function castFourWayOrderSkill(side) {
 
 function castFourWayChaosSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.chaos;
-  const buffed = state.units.filter((unit) => {
-    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
-    return countNearbyAllies(unit, config.clusterRadius) >= config.clusterCount;
-  });
-  if (!buffed.length) {
-    state.fourWaySkillCooldowns[side] = 1.5;
-    return false;
-  }
-  buffed.forEach((unit) => {
-    unit.chaosWarCryTimer = config.duration;
-    state.blasts.push({ x: unit.x, y: unit.y - 30, radius: 34, life: 0.25, duration: 0.25, color: "#ff6a3d" });
-  });
+  const summons = summonFourWaySkillUnits(side, config.summons, config.duration, 20);
   state.fourWaySkillCooldowns[side] = config.cooldown;
   state.fourWaySkillEffects[side] = config.duration;
   const base = FOUR_WAY_BASES[side];
-  popText(base.x, base.y - 128, `混沌战吼 x${buffed.length}`, "#ff8a3d");
+  state.blasts.push({ x: base.x, y: base.y, radius: 104, life: 0.45, duration: 0.45, color: "#ff6a3d" });
+  popText(base.x, base.y - 128, `混沌巨援 x${summons.length}`, "#ff8a3d");
   return true;
 }
 
 function castFourWayUndeadSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.undeadEmpire;
-  const hasCaster = state.units.some((unit) => unit.side === side && unit.type === "necromancer" && unit.hp > 0 && !isUnitHidden(unit));
-  const hasEnemyCorpse = state.corpses.some((corpse) => corpse.side !== side);
-  if (!hasCaster && !hasEnemyCorpse) {
-    state.fourWaySkillCooldowns[side] = 1.5;
-    return false;
-  }
+  const summons = summonFourWaySkillUnits(side, config.summons, config.duration, 20);
+  state.fourWaySkillCooldowns[side] = config.cooldown;
+  state.fourWaySkillEffects[side] = 0;
+  const base = FOUR_WAY_BASES[side];
+  state.blasts.push({ x: base.x, y: base.y, radius: 96, life: 0.45, duration: 0.45, color: "#b8b0e8" });
+  popText(base.x, base.y - 128, `亡灵增援 x${summons.length}`, "#d8c8ff");
+  return true;
+}
+
+function castFourWayElementSkill(side) {
+  const config = FOUR_WAY_FACTION_SKILL.element;
+  const summons = summonFourWaySkillUnits(side, config.summons, config.duration, 18);
   state.fourWaySkillCooldowns[side] = config.cooldown;
   state.fourWaySkillEffects[side] = config.duration;
   const base = FOUR_WAY_BASES[side];
-  state.blasts.push({ x: base.x, y: base.y, radius: 96, life: 0.45, duration: 0.45, color: "#b8b0e8" });
-  popText(base.x, base.y - 128, "完整转化", "#d8c8ff");
+  state.blasts.push({ x: base.x, y: base.y, radius: 110, life: 0.45, duration: 0.45, color: "#9ee8ff" });
+  popText(base.x, base.y - 128, `元素降临 x${summons.length}`, "#bff7ff");
   return true;
+}
+
+function summonFourWaySkillUnits(side, types, duration, startIndex = 0) {
+  return types.map((type, offset) => {
+    const unit = spawnFourWayUnit(type, side, startIndex + offset);
+    unit.timedLife = duration;
+    unit.noCorpse = true;
+    unit.forceCharge = true;
+    return unit;
+  });
 }
 
 function countNearbyAllies(unit, radius) {
@@ -6473,9 +6481,7 @@ function convertEnemyCorpseWithNecromancer(unit) {
   const type = isRangedCorpse(corpse) ? "poisonZombie" : "undead";
   const converted = spawnUnit(type, unit.side, corpse.x);
   converted.y = corpse.y;
-  const hpRatio = state.fourWay && unit.side === "undeadEmpire" && (state.fourWaySkillEffects?.undeadEmpire ?? 0) > 0
-    ? 1
-    : UNIT.necromancer.corpseHpRatio;
+  const hpRatio = UNIT.necromancer.corpseHpRatio;
   converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * hpRatio));
   converted.hp = converted.maxHp;
   converted.forceCharge = true;
