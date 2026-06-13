@@ -2849,7 +2849,7 @@ body.quad-watch .health-bars {
   display: none;
 }
 
-@media (max-width: 600px) and (orientation: portrait) {
+@media (hover: none) and (pointer: coarse) and (max-width: 600px) and (orientation: portrait) {
   .rotate-notice {
     position: fixed;
     inset: 0;
@@ -2885,7 +2885,7 @@ body.quad-watch .health-bars {
   }
 }
 
-@media (max-width: 932px) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
   html,
   body {
     position: fixed;
@@ -3127,7 +3127,7 @@ body.quad-watch .health-bars {
   }
 }
 
-@media (max-width: 932px) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
   .game-shell {
     grid-template-rows: 42px minmax(260px, 1fr) 58px;
   }
@@ -3426,7 +3426,7 @@ body.quad-watch .health-bars {
   }
 }
 
-@media (max-width: 932px) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
   .unit-shop {
     grid-auto-columns: 62px;
   }
@@ -3471,7 +3471,7 @@ body.quad-watch .health-bars {
   }
 }
 
-@media (max-width: 932px) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
