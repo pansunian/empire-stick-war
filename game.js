@@ -1407,8 +1407,23 @@ const FOUR_WAY_AI_ROSTER = {
   order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
-  element: ["earthElement", "waterElement", "fireElement", "windElement"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
 };
+const FOUR_WAY_MERGE_COSTS = {
+  electricGate: 150,
+  hill: 160,
+  linghan: 170,
+  redflame: 190,
+  stormLich: 210,
+  treeEnt: 190,
+  rog: 230,
+  dreadfire: 260,
+  hurricane: 230,
+  scaldStrike: 180,
+  vUnit: 260,
+};
+const FOUR_WAY_TECH_UNLOCK = 32;
+const FOUR_WAY_HIGH_TIER_COST = 180;
 const FOUR_WAY_STARTERS = {
   order: ["swordsman", "archer", "spearman"],
   chaos: ["creeper", "orc", "bomber"],
@@ -1960,6 +1975,13 @@ function getUnitCost(type, faction) {
   return UNIT[type].cost;
 }
 
+function getFourWayUnitCost(type, faction) {
+  if (faction === "element" && MERGE_UNITS.has(type)) {
+    return FOUR_WAY_MERGE_COSTS[type] ?? 180;
+  }
+  return getUnitCost(type, faction);
+}
+
 function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
@@ -2178,6 +2200,7 @@ function newGame() {
 
 function applyFieldMode(fourWay) {
   const source = fourWay ? FOUR_WAY_FIELD : DEFAULT_FIELD;
+  document.body.classList.toggle("quad-watch", fourWay);
   FIELD.width = source.width;
   FIELD.height = source.height;
   FIELD.ground = source.ground ?? DEFAULT_FIELD.ground;
@@ -2190,6 +2213,8 @@ function applyFieldMode(fourWay) {
   FIELD.mineDistance = source.mineDistance ?? DEFAULT_FIELD.mineDistance;
   canvas.width = FIELD.width;
   canvas.height = FIELD.height;
+  canvas.style.width = fourWay ? `${FIELD.width}px` : "";
+  canvas.style.height = fourWay ? `${FIELD.height}px` : "";
 }
 
 function createBaseState(startGold, enemyStartGold, sideMines = createSideMines()) {
@@ -2313,6 +2338,7 @@ function newFourWayGame() {
   });
   statusEl.textContent = "四国观战：四个帝国由 AI 控制，最后一个基地获胜";
   updateHud();
+  requestAnimationFrame(centerFourWayView);
 }
 
 function resetManualKeys() {
@@ -2331,6 +2357,12 @@ function resetBattlefieldView() {
   if (!battlefieldWrap) return;
   battlefieldWrap.scrollLeft = 0;
   battlefieldWrap.scrollTop = 0;
+}
+
+function centerFourWayView() {
+  if (!battlefieldWrap) return;
+  battlefieldWrap.scrollLeft = Math.max(0, (FIELD.width - battlefieldWrap.clientWidth) / 2);
+  battlefieldWrap.scrollTop = Math.max(0, (FIELD.height - battlefieldWrap.clientHeight) / 2);
 }
 
 function spawnCampaignCenterElectricGate() {
@@ -3484,27 +3516,66 @@ function updateFourWayAi(dt) {
     ai.incomeTimer -= dt;
     while (ai.incomeTimer <= 0) {
       ai.incomeTimer += 1;
-      ai.gold += 18;
+      ai.gold += 20;
     }
 
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
-      return getUnitCost(type, ai.faction) <= ai.gold;
+      return getFourWayUnitCost(type, ai.faction) <= ai.gold;
     });
-    if (!roster.length) {
-      ai.spawnTimer = 0.7;
+    const livingCount = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
+    const type = chooseFourWayAiUnit(ai, roster, livingCount);
+    if (!type) {
+      ai.spawnTimer = 0.85;
       return;
     }
-    const pressure = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
-    const affordable = roster.sort((a, b) => getUnitCost(b, ai.faction) - getUnitCost(a, ai.faction));
-    const pool = pressure < 8 ? affordable.slice(-Math.min(5, affordable.length)) : affordable;
-    const type = pool[Math.floor(Math.random() * pool.length)];
-    ai.gold -= getUnitCost(type, ai.faction);
-    ai.spawnTimer = ai.faction === "element" ? 1.9 + Math.random() * 1.5 : 1.15 + Math.random() * 1.2;
+    const cost = getFourWayUnitCost(type, ai.faction);
+    ai.gold -= cost;
+    const isHighTier = cost >= FOUR_WAY_HIGH_TIER_COST;
+    ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
   });
+}
+
+function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
+  const fullRoster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
+    if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
+    return Boolean(UNIT[type]);
+  });
+  const highTargets = fullRoster
+    .filter((type) => getFourWayUnitCost(type, ai.faction) >= FOUR_WAY_HIGH_TIER_COST)
+    .sort((a, b) => getFourWayUnitCost(b, ai.faction) - getFourWayUnitCost(a, ai.faction));
+  const cheapestHigh = highTargets[highTargets.length - 1];
+  const shouldTech = state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && livingCount >= 5 && cheapestHigh;
+  if (shouldTech && ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction)) return null;
+  if (!affordableRoster.length) return null;
+
+  const affordable = affordableRoster
+    .slice()
+    .sort((a, b) => getFourWayUnitCost(b, ai.faction) - getFourWayUnitCost(a, ai.faction));
+  const highAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction) >= FOUR_WAY_HIGH_TIER_COST);
+  const midAffordable = affordable.filter((type) => {
+    const cost = getFourWayUnitCost(type, ai.faction);
+    return cost >= 110 && cost < FOUR_WAY_HIGH_TIER_COST;
+  });
+  const cheapAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction) < 110);
+
+  if (state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && highAffordable.length && Math.random() < 0.68) {
+    return highAffordable[Math.floor(Math.random() * highAffordable.length)];
+  }
+  if (livingCount < 5 && cheapAffordable.length) {
+    return cheapAffordable[Math.floor(Math.random() * cheapAffordable.length)];
+  }
+  const weighted = [
+    ...highAffordable,
+    ...highAffordable,
+    ...midAffordable,
+    ...midAffordable,
+    ...cheapAffordable,
+  ];
+  return weighted[Math.floor(Math.random() * weighted.length)] ?? affordable[0];
 }
 
 function updatePassiveGold(dt) {

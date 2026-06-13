@@ -872,6 +872,26 @@ canvas {
   touch-action: pan-x;
 }
 
+body.quad-watch .battlefield-wrap {
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
+
+body.quad-watch canvas {
+  width: 2000px !important;
+  height: 2000px !important;
+  min-width: 2000px;
+  min-height: 2000px;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  touch-action: pan-x pan-y;
+}
+
+body.quad-watch .health-bars {
+  display: none;
+}
+
 .health-bars {
   display: none;
 }
