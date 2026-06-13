@@ -39,6 +39,7 @@ const statsOverlay = document.querySelector("#statsOverlay");
 const statsTable = document.querySelector("#statsTable");
 const armyCommandButtons = [...document.querySelectorAll(".command-btn[data-command]")];
 const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")];
+const controlDeck = document.querySelector(".control-deck");
 const unitShop = document.querySelector(".unit-shop");
 const mobileUnitsToggle = document.querySelector("#mobileUnitsToggle");
 let trainButtons = [...document.querySelectorAll(".train-btn")];
@@ -74,6 +75,7 @@ const FIELD = {
   enemyMineX: 3030,
   mineDistance: 300,
 };
+const DEFAULT_FIELD = { ...FIELD };
 const MINE_LANES = [-205, -72, 72, 185];
 const NORMAL_MINE_COLUMNS = [0, 170];
 const NORMAL_MINE_CAPACITY = 2500;
@@ -1380,6 +1382,41 @@ const FACTIONS = {
   },
 };
 
+const FOUR_WAY_SIDES = ["order", "chaos", "undeadEmpire", "element"];
+const FOUR_WAY_FIELD = {
+  width: 2000,
+  height: 2000,
+  ground: 1200,
+  playerBase: 90,
+  enemyBase: 1910,
+  playerGate: 160,
+  enemyGate: 1840,
+  playerMineX: 420,
+  enemyMineX: 1580,
+  mineDistance: 260,
+  minY: 170,
+  maxY: 1830,
+};
+const FOUR_WAY_BASES = {
+  order: { x: 250, y: 250, label: "秩序", color: "#5f82bd" },
+  chaos: { x: 1750, y: 250, label: "混沌", color: "#a55246" },
+  undeadEmpire: { x: 250, y: 1750, label: "亡灵", color: "#8f88a8" },
+  element: { x: 1750, y: 1750, label: "元素", color: "#5e9f92" },
+};
+const FOUR_WAY_AI_ROSTER = {
+  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement"],
+};
+const FOUR_WAY_STARTERS = {
+  order: ["swordsman", "archer", "spearman"],
+  chaos: ["creeper", "orc", "bomber"],
+  undeadEmpire: ["machete", "undead", "candlelight"],
+  element: ["earthElement", "waterElement", "fireElement", "windElement"],
+};
+const FOUR_WAY_START_GOLD = 380;
+
 const UNIT_ICON = {
   miner: "miner",
   summoner: "wizard-hat",
@@ -1913,6 +1950,7 @@ function opponentFaction() {
 }
 
 function factionForSide(side) {
+  if (FOUR_WAY_SIDES.includes(side)) return side;
   return side === "player" ? selectedFaction : opponentFaction();
 }
 
@@ -2102,10 +2140,16 @@ function renderStatsTable() {
 
 function newGame() {
   resetManualKeys();
+  applyFieldMode(selectedMode === "quad");
   resetBattlefieldView();
+  if (selectedMode === "quad") {
+    newFourWayGame();
+    return;
+  }
   enemyFaction = activeCampaign?.enemyFaction ?? chooseEnemyFaction();
   renderFactionUi();
   renderShop();
+  controlDeck?.classList.remove("hidden");
   homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
@@ -2113,7 +2157,43 @@ function newGame() {
   const enemyStartGold = activeCampaign ? (activeCampaign.enemyGold ?? CAMPAIGN_START_GOLD) : startGold;
   const sideMines = createSideMines();
 
-  state = {
+  state = createBaseState(startGold, enemyStartGold, sideMines);
+
+  const playerStart = activeCampaign?.playerStart ?? FACTIONS[selectedFaction].startingUnits;
+  const enemyStart = activeCampaign?.enemyStart ?? FACTIONS[opponentFaction()].startingUnits;
+
+  playerStart.forEach((type, index) => {
+    spawnUnit(type, "player", FIELD.playerGate - 28 + index * 32);
+  });
+  enemyStart.forEach((type, index) => {
+    spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
+  });
+  spawnCampaignCenterElectricGate();
+  setCommand("guard");
+  setMinerCommand("mine");
+  if (activeCampaign) statusEl.textContent = activeCampaign.title;
+  if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
+  updateHud();
+}
+
+function applyFieldMode(fourWay) {
+  const source = fourWay ? FOUR_WAY_FIELD : DEFAULT_FIELD;
+  FIELD.width = source.width;
+  FIELD.height = source.height;
+  FIELD.ground = source.ground ?? DEFAULT_FIELD.ground;
+  FIELD.playerBase = source.playerBase ?? DEFAULT_FIELD.playerBase;
+  FIELD.enemyBase = source.enemyBase ?? DEFAULT_FIELD.enemyBase;
+  FIELD.playerGate = source.playerGate ?? DEFAULT_FIELD.playerGate;
+  FIELD.enemyGate = source.enemyGate ?? DEFAULT_FIELD.enemyGate;
+  FIELD.playerMineX = source.playerMineX ?? DEFAULT_FIELD.playerMineX;
+  FIELD.enemyMineX = source.enemyMineX ?? DEFAULT_FIELD.enemyMineX;
+  FIELD.mineDistance = source.mineDistance ?? DEFAULT_FIELD.mineDistance;
+  canvas.width = FIELD.width;
+  canvas.height = FIELD.height;
+}
+
+function createBaseState(startGold, enemyStartGold, sideMines = createSideMines()) {
+  return {
     gold: startGold,
     enemyGold: enemyStartGold,
     command: "guard",
@@ -2204,21 +2284,34 @@ function newGame() {
     enemyGodVAssigned: false,
     nextId: 1,
   };
+}
 
-  const playerStart = activeCampaign?.playerStart ?? FACTIONS[selectedFaction].startingUnits;
-  const enemyStart = activeCampaign?.enemyStart ?? FACTIONS[opponentFaction()].startingUnits;
-
-  playerStart.forEach((type, index) => {
-    spawnUnit(type, "player", FIELD.playerGate - 28 + index * 32);
+function newFourWayGame() {
+  activeCampaign = null;
+  enemyFaction = "chaos";
+  renderFactionUi();
+  renderShop();
+  controlDeck?.classList.add("hidden");
+  homeBtn.classList.add("hidden");
+  pauseBtn.classList.remove("active");
+  pauseBtn.textContent = "暂停";
+  state = createBaseState(0, 0, { player: [], enemy: [] });
+  state.fourWay = true;
+  state.fourWayElapsed = 0;
+  state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
+    side,
+    faction: side,
+    gold: FOUR_WAY_START_GOLD,
+    hp: STATUE_MAX_HP,
+    spawnTimer: 1 + Math.random() * 1.2,
+    incomeTimer: 1,
+    alive: true,
+  }));
+  state.fourWayBaseHp = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, STATUE_MAX_HP]));
+  FOUR_WAY_SIDES.forEach((side) => {
+    FOUR_WAY_STARTERS[side].forEach((type, index) => spawnFourWayUnit(type, side, index));
   });
-  enemyStart.forEach((type, index) => {
-    spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
-  });
-  spawnCampaignCenterElectricGate();
-  setCommand("guard");
-  setMinerCommand("mine");
-  if (activeCampaign) statusEl.textContent = activeCampaign.title;
-  if (selectedMode === "brawl") statusEl.textContent = "大乱斗开局，双方各有 5000 金币";
+  statusEl.textContent = "四国观战：四个帝国由 AI 控制，最后一个基地获胜";
   updateHud();
 }
 
@@ -2248,6 +2341,31 @@ function spawnCampaignCenterElectricGate() {
   gate.electricGateTimer = Infinity;
   gate.campaignCenterGate = true;
   popText(gate.x, gate.y - 120, "无敌电门", "#9ee8ff");
+}
+
+function spawnFourWayUnit(type, side, index = 0) {
+  const base = FOUR_WAY_BASES[side];
+  const unit = spawnUnit(type, side, base.x);
+  const center = { x: FIELD.width / 2, y: FIELD.height / 2 };
+  const dx = center.x - base.x;
+  const dy = center.y - base.y;
+  const distance = Math.hypot(dx, dy) || 1;
+  const nx = dx / distance;
+  const ny = dy / distance;
+  const px = -ny;
+  const py = nx;
+  const row = index % 5;
+  const column = Math.floor(index / 5);
+  const sideOffset = (row - 2) * 28;
+  const forward = 70 + column * 34;
+  unit.x = base.x + nx * forward + px * sideOffset;
+  unit.y = base.y + ny * forward + py * sideOffset;
+  unit.rallyX = unit.x;
+  unit.rallyY = unit.y;
+  unit.forceCharge = true;
+  unit.inCastle = false;
+  clampUnitPosition(unit);
+  return unit;
 }
 
 function chooseEnemyFaction() {
@@ -2466,6 +2584,15 @@ function renderCampaignBriefing(config) {
 }
 
 function renderFactionUi() {
+  if (selectedMode === "quad") {
+    playerNameEl.textContent = "四国观战";
+    enemyNameEl.textContent = "AI 混战";
+    playerCard.classList.remove("order", "chaos", "undead", "element");
+    enemyCard.classList.remove("order", "chaos", "undead", "element");
+    playerCard.classList.add("order");
+    enemyCard.classList.add("element");
+    return;
+  }
   playerNameEl.textContent = FACTIONS[selectedFaction].name;
   enemyNameEl.textContent = FACTIONS[opponentFaction()].name;
   playerCard.classList.toggle("order", selectedFaction === "order");
@@ -2526,6 +2653,14 @@ function getAvailableElementMerges() {
 }
 
 function renderShop() {
+  if (selectedMode === "quad") {
+    unitShop.innerHTML = `<span class="shop-spacer">四国 AI 自动出兵</span>`;
+    trainButtons = [...unitShop.querySelectorAll(".train-btn")];
+    unitShop.classList.remove("element-shop", "element-shop-expanded", "undead-shop");
+    mobileUnitsToggle.classList.add("hidden");
+    return;
+  }
+  mobileUnitsToggle.classList.remove("hidden");
   const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
   const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
@@ -3275,6 +3410,11 @@ function update(dt) {
     return;
   }
 
+  if (state.fourWay) {
+    updateFourWayBattle(dt);
+    return;
+  }
+
   updateManualControlState();
   updateGroupSelectionState();
 
@@ -3308,6 +3448,63 @@ function update(dt) {
   removeDead();
   checkWin();
   updateHud();
+}
+
+function updateFourWayBattle(dt) {
+  state.fourWayElapsed += dt;
+  updateFourWayAi(dt);
+  updateUnits(dt);
+  updateChaosRecovery(dt);
+  updateArrows(dt);
+  updateStickyBombs(dt);
+  updateFrozenDamage(dt);
+  updatePoison(dt);
+  updateBurn(dt);
+  updateCorpses(dt);
+  updateLandMines(dt);
+  updateGhosts(dt);
+  updateDelayedSpells(dt);
+  updateMeteors(dt);
+  updateStormClouds(dt);
+  updateTornadoes(dt);
+  updateElectricWalls(dt);
+  updateGroundFires(dt);
+  updateThornFields(dt);
+  updateHealingFields(dt);
+  updateIceFieldEffects(dt);
+  updateParticles(dt);
+  removeDead();
+  checkFourWayWin();
+  updateHud();
+}
+
+function updateFourWayAi(dt) {
+  state.fourWaySides.forEach((ai) => {
+    if (!ai.alive) return;
+    ai.incomeTimer -= dt;
+    while (ai.incomeTimer <= 0) {
+      ai.incomeTimer += 1;
+      ai.gold += 18;
+    }
+
+    ai.spawnTimer -= dt;
+    if (ai.spawnTimer > 0) return;
+    const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
+      if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
+      return getUnitCost(type, ai.faction) <= ai.gold;
+    });
+    if (!roster.length) {
+      ai.spawnTimer = 0.7;
+      return;
+    }
+    const pressure = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
+    const affordable = roster.sort((a, b) => getUnitCost(b, ai.faction) - getUnitCost(a, ai.faction));
+    const pool = pressure < 8 ? affordable.slice(-Math.min(5, affordable.length)) : affordable;
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    ai.gold -= getUnitCost(type, ai.faction);
+    ai.spawnTimer = ai.faction === "element" ? 1.9 + Math.random() * 1.5 : 1.15 + Math.random() * 1.2;
+    spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
+  });
 }
 
 function updatePassiveGold(dt) {
@@ -4384,6 +4581,23 @@ function updateUnits(dt) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
+    if (state.fourWay) {
+      if (unit.type === "goblin" && updateGoblin(unit, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, dt);
+        continue;
+      }
+      if (unit.type === "goblinExpert") updateGoblinExpert(unit);
+      if (unit.type === "shaman") updateShaman(unit);
+      if (unit.type === "priest") updatePriest(unit);
+      if (unit.type === "necromancer") updateNecromancer(unit, dt);
+      if (unit.type === "bannerBearer") updateBannerBearer(unit, dt);
+      if (unit.type === "graveDigger") updateGraveDigger(unit, dt);
+      if (unit.type === "candlelight") updateCandlelight(unit);
+      if (unit.type === "reaper") updateReaper(unit);
+      updateFourWayUnit(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
     if (unit.type === "goblin" && updateGoblin(unit, dt)) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
@@ -4594,6 +4808,65 @@ function updateManualControlState() {
   stopManualJoystick();
 }
 
+function updateFourWayUnit(unit, dt) {
+  const data = UNIT[unit.type] ?? {};
+  if (unit.type === "treeEnt" && unit.rooted) return;
+  if (unit.type === "electricGate" || data.immobile) return;
+  if (UNIT[unit.type]?.statueOnly) return;
+
+  const target = findFourWayTarget(unit);
+  if (!target) return;
+  const range = target.kind === "statue" ? getStatueAttackReach(unit) : getUnitRange(unit);
+  if (canAttackFromDistance(unit, target, range)) {
+    attack(unit, target);
+    return;
+  }
+  const point = getFourWayApproachPoint(unit, target, range);
+  unit.facingDir = point.x >= unit.x ? 1 : -1;
+  moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed ?? 0, dt, 6);
+  clampUnitPosition(unit);
+}
+
+function findFourWayTarget(unit) {
+  if (isUnitHidden(unit) || isReaperStealthed(unit)) return null;
+  if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") return findNearestEnemyBaseTarget(unit);
+  let nearest = null;
+  let nearestDistance = Infinity;
+  for (const other of state.units) {
+    if (other.side === unit.side || other.hp <= 0 || isUnitHidden(other) || !canTarget(unit, other)) continue;
+    const distance = distanceTo(unit.x, unit.y, other.x, other.y);
+    if (distance < nearestDistance) {
+      nearest = other;
+      nearestDistance = distance;
+    }
+  }
+  const baseTarget = findNearestEnemyBaseTarget(unit);
+  if (!nearest) return baseTarget;
+  const baseDistance = distanceTo(unit.x, unit.y, baseTarget.x, baseTarget.y);
+  return nearestDistance <= Math.max(360, getUnitRange(unit) + 60) || nearestDistance < baseDistance ? nearest : baseTarget;
+}
+
+function findNearestEnemyBaseTarget(unit) {
+  const enemies = state.fourWaySides.filter((ai) => ai.side !== unit.side && ai.alive);
+  const target = enemies
+    .map((ai) => ({ ai, base: FOUR_WAY_BASES[ai.side], hp: state.fourWayBaseHp[ai.side] ?? 0 }))
+    .filter((item) => item.hp > 0)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.base.x, a.base.y) - distanceTo(unit.x, unit.y, b.base.x, b.base.y))[0];
+  if (!target) return null;
+  return { kind: "statue", side: target.ai.side, x: target.base.x, y: target.base.y };
+}
+
+function getFourWayApproachPoint(unit, target, range) {
+  const dx = target.x - unit.x;
+  const dy = (target.y ?? unit.y) - unit.y;
+  const distance = Math.hypot(dx, dy) || 1;
+  const stop = Math.max(24, Math.min(range - 4, target.kind === "statue" ? 85 : 70));
+  return {
+    x: target.x - (dx / distance) * stop,
+    y: (target.y ?? unit.y) - (dy / distance) * stop,
+  };
+}
+
 function isManuallyControlled(unit) {
   return Boolean(unit?.id && state.controlledUnitId === unit.id);
 }
@@ -4800,6 +5073,11 @@ function isAnchoredForCollision(unit) {
 
 function clampUnitPosition(unit) {
   const pad = getCollisionRadius(unit);
+  if (state?.fourWay) {
+    unit.x = Math.max(pad + 30, Math.min(FIELD.width - pad - 30, unit.x));
+    unit.y = Math.max(FOUR_WAY_FIELD.minY, Math.min(FOUR_WAY_FIELD.maxY, unit.y));
+    return;
+  }
   unit.x = Math.max(FIELD.playerBase + pad, Math.min(FIELD.enemyBase - pad, unit.x));
   unit.y = Math.max(FIELD.ground - 170, Math.min(FIELD.ground + 150, unit.y));
 }
@@ -6523,6 +6801,7 @@ function canAttackFromDistance(unit, target, range) {
   if (!target) return false;
   if (isInsideBlindSpot(unit, target)) return false;
   if (isIgnoringBlindTarget(unit, target)) return false;
+  if (state?.fourWay) return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= range;
   if (target.kind !== "statue" && Math.abs((target.y ?? unit.y) - unit.y) > getAttackLaneTolerance(unit)) return false;
   return Math.abs(unit.x - target.x) <= range;
 }
@@ -6649,6 +6928,7 @@ function isMelee(unit) {
 }
 
 function isAheadOf(unit, target) {
+  if (state?.fourWay) return true;
   return unit.side === "player" ? target.x > unit.x : target.x < unit.x;
 }
 
@@ -6865,6 +7145,13 @@ function grantUndeadKillGold(unit) {
   const killerSide = unit.lastDamageSide ?? unit.poisonSourceSide;
   if (!killerSide || killerSide === unit.side) return;
   if (factionForSide(killerSide) !== "undeadEmpire") return;
+  if (state.fourWay) {
+    const ai = state.fourWaySides.find((item) => item.side === killerSide);
+    if (ai) ai.gold += 2;
+    const base = FOUR_WAY_BASES[killerSide];
+    popText(base.x, base.y + (base.y < FIELD.height / 2 ? -150 : 170), "亡灵收割 +2", "#b8b0e8");
+    return;
+  }
   const key = killerSide === "player" ? "gold" : "enemyGold";
   state[key] += 2;
   const labelX = killerSide === "player" ? FIELD.playerGate + 58 : FIELD.enemyGate - 58;
@@ -7888,7 +8175,7 @@ function createGroundFire(x, y, side, dps, duration, radius) {
 }
 
 function explodeRocketArrow(arrow) {
-  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, 3);
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, 3, null, arrow.ty);
   targets.forEach((target) => {
     applyDamage(target, arrow.damage, arrow.side);
   });
@@ -7899,7 +8186,7 @@ function explodeRocketArrow(arrow) {
 }
 
 function explodeIronCavalryBomb(arrow) {
-  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 5);
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 5, null, arrow.ty);
   targets.forEach((target) => {
     const dealt = applyUnitDamage(target, arrow.damage, { label: "炸弹", color: "#ffce7a", yOffset: -78, ranged: true });
     handleDamageDealt(getArrowSource(arrow), target, dealt);
@@ -7912,7 +8199,7 @@ function explodeIronCavalryBomb(arrow) {
 }
 
 function explodeBaseVolleyArrow(arrow) {
-  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 2);
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 2, null, arrow.ty);
   targets.forEach((target) => {
     applyUnitDamage(target, arrow.damage, { label: "爆箭", color: "#ffce7a", yOffset: -78 });
   });
@@ -7923,7 +8210,7 @@ function explodeBaseVolleyArrow(arrow) {
 }
 
 function explodeCampaignMissile(arrow) {
-  const targets = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, arrow.limit ?? 3);
+  const targets = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, arrow.limit ?? 3, null, arrow.ty);
   targets.forEach((target) => {
     applyUnitDamage(target, arrow.damage, { label: "导弹", color: "#ff6b4a", yOffset: -82 });
   });
@@ -7940,7 +8227,7 @@ function explodeBolt(arrow) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
 
-  getUnitsInRadius(arrow.tx, data.splash, arrow.side, unitLimit, arrow.target).forEach((unit) => {
+  getUnitsInRadius(arrow.tx, data.splash, arrow.side, unitLimit, arrow.target, arrow.ty).forEach((unit) => {
     applyUnitDamage(unit, data.splashDamage, { label: "爆", color: "#ffce7a", yOffset: -76 });
   });
 
@@ -7952,7 +8239,7 @@ function explodeBolt(arrow) {
 }
 
 function explodeAt(x, y, attackerSide, damage, radius, label, options = {}) {
-  getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
+  getUnitsInRadius(x, radius, attackerSide, AOE_TARGET_LIMIT, null, y).forEach((unit) => {
     const finalDamage = applyUnitDamage(unit, damage, { label, color: "#ffb45e", yOffset: -76 });
     if (options.burnDps) applyBurn(unit, options.burnDps, options.burnDuration);
   });
@@ -8915,10 +9202,17 @@ function stunUnitsInRadius(x, radius, attackerSide, duration) {
   });
 }
 
-function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null) {
+function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null, y = null) {
   return state.units
-    .filter((unit) => (attackerSide === "neutral" || unit.side !== attackerSide) && unit.hp > 0 && unit !== exclude && !isUnitHidden(unit) && !isReaperStealthed(unit) && !UNIT[unit.type]?.untargetable && Math.abs(unit.x - x) <= radius)
-    .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))
+    .filter((unit) => {
+      if ((attackerSide !== "neutral" && unit.side === attackerSide) || unit.hp <= 0 || unit === exclude || isUnitHidden(unit) || isReaperStealthed(unit) || UNIT[unit.type]?.untargetable) return false;
+      if (!state?.fourWay || y === null) return Math.abs(unit.x - x) <= radius;
+      return distanceTo(unit.x, unit.y, x, y) <= radius;
+    })
+    .sort((a, b) => {
+      if (!state?.fourWay || y === null) return Math.abs(a.x - x) - Math.abs(b.x - x);
+      return distanceTo(a.x, a.y, x, y) - distanceTo(b.x, b.y, x, y);
+    })
     .slice(0, limit);
 }
 
@@ -8926,6 +9220,12 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   if (isUnitHidden(target)) return 0;
   if (isReaperStealthed(target)) return 0;
   if (target.kind === "statue") {
+    if (state?.fourWay) {
+      state.fourWayBaseHp[target.side] = Math.max(0, (state.fourWayBaseHp[target.side] ?? STATUE_MAX_HP) - amount);
+      const base = FOUR_WAY_BASES[target.side] ?? target;
+      popText(base.x, base.y + (base.y < FIELD.height / 2 ? -120 : 145), `-${amount}`, FOUR_WAY_BASES[attackerSide]?.color ?? "#ff9b8d");
+      return amount;
+    }
     if (target.side === "enemy") state.enemyHp -= amount;
     if (target.side === "player") state.playerHp -= amount;
     popText(target.x, FIELD.ground - 145, `-${amount}`, attackerSide === "player" ? "#9fc0ff" : "#ff9b8d");
@@ -9312,6 +9612,10 @@ function healNearbyAllies(water) {
 }
 
 function checkWin() {
+  if (state.fourWay) {
+    checkFourWayWin();
+    return;
+  }
   state.playerHp = Math.max(0, state.playerHp);
   state.enemyHp = Math.max(0, state.enemyHp);
 
@@ -9346,6 +9650,27 @@ function checkWin() {
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}基地已被摧毁` : "失败，我方基地倒塌";
     homeBtn.classList.remove("hidden");
   }
+}
+
+function checkFourWayWin() {
+  state.fourWaySides.forEach((ai) => {
+    if (!ai.alive) return;
+    const hp = state.fourWayBaseHp[ai.side] ?? 0;
+    if (hp > 0) return;
+    ai.alive = false;
+    state.units.forEach((unit) => {
+      if (unit.side === ai.side) unit.hp = 0;
+    });
+    const base = FOUR_WAY_BASES[ai.side];
+    popText(base.x, base.y - 130, `${FACTIONS[ai.faction].name}出局`, "#ffce7a");
+  });
+  const alive = state.fourWaySides.filter((ai) => ai.alive);
+  if (alive.length > 1 || state.over) return;
+  state.over = true;
+  state.winner = alive[0]?.side ?? null;
+  const winnerName = alive[0] ? FACTIONS[alive[0].faction].name : "无人";
+  statusEl.textContent = `四国观战结束：${winnerName}获胜`;
+  homeBtn.classList.remove("hidden");
 }
 
 function completeCampaignVictory() {
@@ -9481,15 +9806,21 @@ function draw() {
   state.healingFields.forEach(drawHealingField);
   state.landMines.forEach(drawLandMine);
   state.corpses.forEach(drawCorpse);
-  if (isGoldRushActive()) {
+  if (state.fourWay) {
+    drawFourWayCenter();
+  } else if (isGoldRushActive()) {
     drawGoldRushMines();
   } else {
     getSideMines("player").forEach((mine) => drawMine(mine, "player"));
     getSideMines("enemy").forEach((mine) => drawMine(mine, "enemy"));
   }
-  drawCenterTower();
-  drawCastle("player");
-  drawCastle("enemy");
+  if (!state.fourWay) drawCenterTower();
+  if (state.fourWay) {
+    FOUR_WAY_SIDES.forEach(drawFourWayCastle);
+  } else {
+    drawCastle("player");
+    drawCastle("enemy");
+  }
   drawControlledUnitMarker();
   drawSelectedGroupMarkers();
 
@@ -9656,6 +9987,22 @@ function drawMountain(offset, base, color) {
 }
 
 function drawGround() {
+  if (state?.fourWay) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, FIELD.height);
+    gradient.addColorStop(0, "#6d954f");
+    gradient.addColorStop(0.5, "#47723c");
+    gradient.addColorStop(1, "#244a28");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+    ctx.fillStyle = "rgba(18, 45, 24, 0.22)";
+    for (let x = 140; x < FIELD.width; x += 220) ctx.fillRect(x, 0, 18, FIELD.height);
+    for (let y = 140; y < FIELD.height; y += 220) ctx.fillRect(0, y, FIELD.width, 18);
+    ctx.fillStyle = "rgba(225, 210, 128, 0.16)";
+    ctx.beginPath();
+    ctx.arc(FIELD.width / 2, FIELD.height / 2, 280, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
   const top = 350;
   const gradient = ctx.createLinearGradient(0, top, 0, FIELD.height);
   gradient.addColorStop(0, "#78a055");
@@ -9679,6 +10026,20 @@ function drawGround() {
     ctx.fillStyle = "rgba(180, 210, 105, 0.2)";
     ctx.fillRect(x, FIELD.ground - 142 + (x % 288 === 0 ? 86 : 0), 16, 3);
   }
+}
+
+function drawFourWayCenter() {
+  ctx.save();
+  ctx.strokeStyle = "rgba(248, 234, 197, 0.42)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(FIELD.width / 2, FIELD.height / 2, 120, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.beginPath();
+  ctx.arc(FIELD.width / 2, FIELD.height / 2, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawCampaignMagmaGround() {
@@ -9952,6 +10313,58 @@ function drawCastle(side) {
   drawCastleHpBar(baseX, hp, isPlayer);
 }
 
+function drawFourWayCastle(side) {
+  const base = FOUR_WAY_BASES[side];
+  const hp = state.fourWayBaseHp?.[side] ?? STATUE_MAX_HP;
+  const centerAngle = Math.atan2(FIELD.height / 2 - base.y, FIELD.width / 2 - base.x);
+  ctx.save();
+  ctx.translate(base.x, base.y);
+  ctx.rotate(centerAngle + Math.PI / 2);
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0, 78, 116, 34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#2d2f30";
+  ctx.fillRect(-64, -56, 128, 132);
+  ctx.fillStyle = base.color;
+  ctx.fillRect(-48, -94, 96, 45);
+  ctx.fillRect(-86, -25, 34, 101);
+  ctx.fillRect(52, -25, 34, 101);
+  ctx.fillStyle = "#17191a";
+  ctx.fillRect(-22, 22, 44, 54);
+  ctx.fillStyle = hp <= 0 ? "#5e5146" : "#d7d2bd";
+  ctx.beginPath();
+  ctx.arc(0, -38, 28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = base.color;
+  ctx.fillRect(-20, -4, 40, 12);
+  ctx.restore();
+
+  drawFourWayCastleHpBar(side);
+}
+
+function drawFourWayCastleHpBar(side) {
+  const base = FOUR_WAY_BASES[side];
+  const hp = state.fourWayBaseHp?.[side] ?? 0;
+  const width = 170;
+  const x = base.x - width / 2;
+  const y = base.y + (base.y < FIELD.height / 2 ? -155 : 132);
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
+  ctx.fillRect(x, y, width, 16);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.34)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, width, 16);
+  ctx.fillStyle = base.color;
+  ctx.fillRect(x + 2, y + 2, (width - 4) * Math.max(0, hp / STATUE_MAX_HP), 12);
+  ctx.fillStyle = "#f8eac5";
+  ctx.font = "700 15px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`${base.label} ${Math.max(0, Math.ceil(hp))}`, base.x, y - 8);
+  ctx.restore();
+}
+
 function drawCastleHpBar(baseX, hp, isPlayer) {
   const width = 175;
   const y = FIELD.ground - 238;
@@ -9973,7 +10386,7 @@ function drawCastleHpBar(baseX, hp, isPlayer) {
 function drawUnit(unit) {
   const color = getUnitColor(unit);
   const headColor = getHeadColor(unit);
-  const dir = unit.side === "player" ? 1 : -1;
+  const dir = state?.fourWay ? (unit.facingDir ?? (unit.x < FIELD.width / 2 ? 1 : -1)) : (unit.side === "player" ? 1 : -1);
   const bob = getUnitBodyBob(unit);
   const flightOffset = UNIT[unit.type]?.flying ? -42 : 0;
   const size = UNIT[unit.type]?.visualScale ?? (UNIT[unit.type]?.giant ? 1.55 : 1);
@@ -13924,7 +14337,9 @@ function drawEndOverlay() {
   ctx.fillStyle = "#fff1c8";
   ctx.font = "800 54px system-ui, sans-serif";
   ctx.textAlign = "center";
-  const winnerName = state.winner === "player" ? FACTIONS[selectedFaction].name : FACTIONS[opponentFaction()].name;
+  const winnerName = state.fourWay
+    ? (state.winner ? FACTIONS[state.winner].name : "无人")
+    : state.winner === "player" ? FACTIONS[selectedFaction].name : FACTIONS[opponentFaction()].name;
   ctx.fillText(`${winnerName}胜利`, FIELD.width / 2, 285);
   ctx.font = "500 22px system-ui, sans-serif";
   ctx.fillText("可重新开始，或回到主界面", FIELD.width / 2, 328);
@@ -13934,11 +14349,13 @@ function returnToMainMenu() {
   state = null;
   activeCampaign = null;
   selectedMode = "versus";
+  applyFieldMode(false);
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === selectedMode);
   });
   campaignMap.classList.add("hidden");
   factionSelect.classList.remove("hidden");
+  controlDeck?.classList.remove("hidden");
   homeBtn.classList.add("hidden");
   statusEl.textContent = "选择模式与阵营，开始下一场战斗";
 }
@@ -14037,6 +14454,17 @@ function registerServiceWorker() {
 }
 
 function updateHud() {
+  if (state.fourWay) {
+    const alive = state.fourWaySides.filter((ai) => ai.alive);
+    goldEl.textContent = alive.map((ai) => `${FOUR_WAY_BASES[ai.side].label}:${Math.floor(ai.gold)}`).join(" ");
+    enemyGoldEl.textContent = `存活 ${alive.length}/4`;
+    playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
+    enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
+    trainButtons.forEach((button) => {
+      button.disabled = true;
+    });
+    return;
+  }
   goldEl.textContent = Math.floor(state.gold);
   enemyGoldEl.textContent = Math.floor(state.enemyGold);
   playerHpBar.style.width = `${(state.playerHp / STATUE_MAX_HP) * 100}%`;
@@ -14629,6 +15057,11 @@ modeButtons.forEach((button) => {
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    if (selectedMode === "quad") {
+      if (!isIosDevice()) enterFullscreen();
+      factionSelect.classList.add("hidden");
+      newGame();
+    }
   });
 });
 
