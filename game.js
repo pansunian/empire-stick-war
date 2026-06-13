@@ -141,22 +141,22 @@ const UNIT = {
   },
   summoner: {
     name: "召唤师",
-    cost: 95,
-    hp: 145,
+    cost: 100,
+    hp: 135,
     damage: 5,
     range: 160,
     speed: 38,
-    train: 3,
+    train: 3.2,
     cooldown: 1.4,
-    firstSummonDelay: 4.5,
-    summonEvery: 23,
+    firstSummonDelay: 5,
+    summonEvery: 25,
     summonCount: 2,
     maxWraiths: 4,
   },
   wraithMiner: {
     name: "亡魂",
     cost: 0,
-    hp: 45,
+    hp: 40,
     damage: 3,
     range: 28,
     speed: 46,
@@ -600,28 +600,28 @@ const UNIT = {
   },
   poisonZombie: {
     name: "毒尸",
-    cost: 115,
-    hp: 235,
+    cost: 120,
+    hp: 225,
     damage: 8,
     range: 135,
     speed: 30,
     train: 4.8,
-    cooldown: 1.45,
+    cooldown: 1.55,
     poisonDps: 5,
     poisonDuration: Infinity,
   },
   necromancer: {
     name: "死灵法师",
     cost: 155,
-    hp: 215,
+    hp: 200,
     damage: 30,
     range: 150,
     speed: 32,
-    train: 4.8,
+    train: 5,
     cooldown: 2,
     convertEvery: 4,
     corpseHpRatio: 0.25,
-    summonCooldown: 18,
+    summonCooldown: 20,
     summonCount: 4,
     summonedSpeed: 60,
   },
@@ -1424,16 +1424,16 @@ const FOUR_WAY_MERGE_COSTS = {
   electricGate: 150,
   hill: 160,
   linghan: 170,
-  redflame: 205,
-  stormLich: 230,
+  redflame: 190,
+  stormLich: 210,
   treeEnt: 190,
-  rog: 245,
-  dreadfire: 280,
-  hurricane: 250,
+  rog: 230,
+  dreadfire: 260,
+  hurricane: 230,
   scaldStrike: 180,
-  vUnit: 275,
+  vUnit: 260,
 };
-const FOUR_WAY_TECH_UNLOCK = 35;
+const FOUR_WAY_TECH_UNLOCK = 32;
 const FOUR_WAY_HIGH_TIER_COST = 180;
 const FOUR_WAY_STARTERS = {
   order: ["swordsman", "archer", "spearman"],
@@ -2181,7 +2181,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
-  if (isChaosSide(selectedFaction) && !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(type)) notes.push("混沌战团：附近有2名混沌战斗单位时，移速/攻速+6%，受伤-6%；混沌单位攻击残血目标伤害+10%");
+  if (isChaosSide(selectedFaction) && !["miner", "goblin", "goblinExpert", "shaman", "priest", "arrowShieldCart"].includes(type)) notes.push("混沌战团：附近有2名混沌战斗单位时，移速/攻速+8%，受伤-8%；混沌单位攻击残血目标伤害+12%");
   if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5；跳劈使命中目标4秒内受到秩序单位伤害+20%`);
   if (type === "archer") notes.push("火箭施加燃烧标记：弩手对其伤害+15%，攻城单位对其伤害+10%");
   if (type === "spartan") notes.push("举盾保护身后远程：远程伤害减35%，秩序远程攻速+10%");
@@ -7030,7 +7030,7 @@ function getMoveFactor(unit) {
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
   if (unit.orderMoraleTimer > 0 && isOrderSide(unit.side)) factor *= 1.1;
-  if (hasChaosWarband(unit)) factor *= 1.06;
+  if (hasChaosWarband(unit)) factor *= 1.08;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageMoveFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
@@ -7067,7 +7067,7 @@ function getAttackSpeedFactor(unit) {
   if (unit.orderBlessTimer > 0 && isOrderSide(unit.side) && isOrderRangedUnit(unit.type)) factor *= 1.1;
   if (unit.orderMoraleTimer > 0 && isOrderSide(unit.side)) factor *= 1.08;
   if (isProtectedBySpartanShieldWall(unit) && isOrderRangedUnit(unit.type)) factor *= 1.1;
-  if (hasChaosWarband(unit)) factor *= 1.06;
+  if (hasChaosWarband(unit)) factor *= 1.08;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
@@ -7091,7 +7091,7 @@ function hasChaosWarband(unit) {
 function getChaosDamageMultiplier(target, attackerSide) {
   if (!target || target.kind === "statue" || !isChaosSide(attackerSide)) return 1;
   let multiplier = 1;
-  if (target.hp <= target.maxHp * 0.45) multiplier *= 1.1;
+  if (target.hp <= target.maxHp * 0.45) multiplier *= 1.12;
   const nearby = state.units.filter((ally) =>
     ally.side === attackerSide &&
     isChaosCombatUnit(ally) &&
@@ -9917,7 +9917,7 @@ function getModifiedDamage(target, amount, options = {}) {
     damage *= 0.65;
   }
   if (hasChaosWarband(target)) {
-    damage *= 0.94;
+    damage *= 0.92;
   }
   return Math.max(1, Math.round(damage * 10) / 10);
 }
