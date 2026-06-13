@@ -1050,13 +1050,13 @@ body.quad-watch .battlefield-wrap {
 }
 
 body.quad-watch canvas {
-  width: 2000px;
-  height: 2000px;
+  width: 3000px;
+  height: 1800px;
   min-width: 0;
   min-height: 0;
   max-width: none;
   max-height: none;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 5 / 3;
   touch-action: pan-x pan-y;
 }
 

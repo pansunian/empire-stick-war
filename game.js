@@ -1395,24 +1395,24 @@ const FACTIONS = {
 
 const FOUR_WAY_SIDES = ["order", "chaos", "undeadEmpire", "element"];
 const FOUR_WAY_FIELD = {
-  width: 2000,
-  height: 2000,
-  ground: 1200,
-  playerBase: 90,
-  enemyBase: 1910,
-  playerGate: 160,
-  enemyGate: 1840,
-  playerMineX: 420,
-  enemyMineX: 1580,
-  mineDistance: 260,
-  minY: 170,
-  maxY: 1830,
+  width: 3000,
+  height: 1800,
+  ground: 900,
+  playerBase: 130,
+  enemyBase: 2870,
+  playerGate: 230,
+  enemyGate: 2770,
+  playerMineX: 520,
+  enemyMineX: 2480,
+  mineDistance: 330,
+  minY: 160,
+  maxY: 1640,
 };
 const FOUR_WAY_BASES = {
-  order: { x: 250, y: 250, label: "秩序", color: "#5f82bd" },
-  chaos: { x: 1750, y: 250, label: "混沌", color: "#a55246" },
-  undeadEmpire: { x: 250, y: 1750, label: "亡灵", color: "#8f88a8" },
-  element: { x: 1750, y: 1750, label: "元素", color: "#5e9f92" },
+  order: { x: 330, y: 250, label: "秩序", color: "#5f82bd" },
+  chaos: { x: 2670, y: 250, label: "混沌", color: "#a55246" },
+  undeadEmpire: { x: 330, y: 1550, label: "亡灵", color: "#8f88a8" },
+  element: { x: 2670, y: 1550, label: "元素", color: "#5e9f92" },
 };
 const FOUR_WAY_AI_ROSTER = {
   order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
@@ -1551,6 +1551,7 @@ let enemyAllyFaction = null;
 let battlefieldZoom = 1;
 let currentFieldModeFourWay = false;
 const BATTLEFIELD_MAX_ZOOM = 2.25;
+const BATTLEFIELD_MIN_ZOOM = 0.05;
 const BATTLEFIELD_ZOOM_STEP = 1.22;
 const MODE_START_GOLD = {
   versus: 120,
@@ -2371,28 +2372,26 @@ function applyFieldMode(fourWay) {
 }
 
 function createFourWayFieldConfig() {
-  const viewport = window.visualViewport;
-  const width = Math.max(960, Math.floor(battlefieldWrap?.clientWidth || viewport?.width || window.innerWidth || FOUR_WAY_FIELD.width));
-  const fallbackHeight = viewport ? viewport.height - 176 : window.innerHeight - 176;
-  const height = Math.max(540, Math.floor(battlefieldWrap?.clientHeight || fallbackHeight || FOUR_WAY_FIELD.height));
-  const marginX = Math.max(115, Math.min(210, width * 0.13));
-  const marginY = Math.max(95, Math.min(180, height * 0.2));
+  const width = FOUR_WAY_FIELD.width;
+  const height = FOUR_WAY_FIELD.height;
+  const marginX = 330;
+  const marginY = 250;
   return {
     ...FOUR_WAY_FIELD,
     width,
     height,
-    ground: height / 2,
-    playerBase: marginX,
-    enemyBase: width - marginX,
-    playerGate: marginX + 72,
-    enemyGate: width - marginX - 72,
-    playerMineX: marginX + 170,
-    enemyMineX: width - marginX - 170,
-    mineDistance: Math.max(140, Math.min(230, width * 0.16)),
+    ground: FOUR_WAY_FIELD.ground,
+    playerBase: FOUR_WAY_FIELD.playerBase,
+    enemyBase: FOUR_WAY_FIELD.enemyBase,
+    playerGate: FOUR_WAY_FIELD.playerGate,
+    enemyGate: FOUR_WAY_FIELD.enemyGate,
+    playerMineX: FOUR_WAY_FIELD.playerMineX,
+    enemyMineX: FOUR_WAY_FIELD.enemyMineX,
+    mineDistance: FOUR_WAY_FIELD.mineDistance,
     baseMarginX: marginX,
     baseMarginY: marginY,
-    minY: Math.max(40, marginY - 70),
-    maxY: height - Math.max(40, marginY - 70),
+    minY: FOUR_WAY_FIELD.minY,
+    maxY: FOUR_WAY_FIELD.maxY,
   };
 }
 
@@ -2567,10 +2566,10 @@ function centerFourWayView() {
 
 function getFitBattlefieldZoom() {
   if (!battlefieldWrap) return 1;
-  if (battlefieldWrap.clientWidth <= 0 || battlefieldWrap.clientHeight <= 0) return 0.2;
+  if (battlefieldWrap.clientWidth <= 0 || battlefieldWrap.clientHeight <= 0) return BATTLEFIELD_MIN_ZOOM;
   const fitX = battlefieldWrap.clientWidth / Math.max(1, FIELD.width);
   const fitY = battlefieldWrap.clientHeight / Math.max(1, FIELD.height);
-  return Math.max(0.12, Math.min(1, fitX, fitY));
+  return Math.max(BATTLEFIELD_MIN_ZOOM, Math.min(1, fitX, fitY));
 }
 
 function getDefaultBattlefieldZoom(fourWay) {
