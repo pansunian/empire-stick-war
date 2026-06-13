@@ -170,6 +170,10 @@ const UNIT = {
     selfRageRange: 115,
     selfRageEnemyCount: 2,
     selfRageHpCost: 10,
+    jumpSlashDistance: 80,
+    jumpSlashDamageMultiplier: 2,
+    jumpSlashStun: 2,
+    jumpSlashCooldown: 12,
   },
   spearman: {
     name: "长矛兵",
@@ -193,6 +197,8 @@ const UNIT = {
     speed: 44,
     train: 4.4,
     cooldown: 1.35,
+    fireArrowBurnDps: 3,
+    fireArrowBurnDuration: 5,
   },
   goldenArcher: {
     name: "黄金弓箭手",
@@ -224,6 +230,9 @@ const UNIT = {
     speed: 55,
     train: 6.2,
     cooldown: 1,
+    shieldStanceDuration: 10,
+    shieldStanceReduction: 0.9,
+    shieldStanceCooldown: 10,
   },
   ironCavalry: {
     name: "铁骑兵",
@@ -301,13 +310,15 @@ const UNIT = {
     splashDamage: 18,
     bombDelay: 2,
     bombLimit: 5,
+    deathCrashDamage: 20,
+    deathCrashLimit: 5,
     flying: true,
   },
   musketeer: {
     name: "火枪手",
     cost: 150,
     hp: 100,
-    damage: 40,
+    damage: 45,
     range: 350,
     speed: 34,
     train: 5.2,
@@ -2038,7 +2049,7 @@ function formatSpecial(type) {
   if (data.blindSpot) notes.push(`盲区 ${data.blindSpot}，敌人太近时会后撤`);
   if (type === "undeadCatapult") notes.push(`攻击后留下地火 ${data.groundFireDuration}秒，每秒 ${data.groundFireDps} 伤害`);
   if (type === "rocketCart") notes.push(`本轮 ${data.ammoPerReload} 发箭射完后装填 ${data.reloadEvery}秒；有目标时每 ${data.fireInterval}秒发射一发小范围爆炸箭`);
-  if (type === "crossbow") notes.push(`每秒发射一箭造成 ${data.damage} 伤害，并绑定炸弹；${data.bombDelay}秒后爆炸造成 ${data.splashDamage} 范围伤害，最多 ${data.bombLimit} 个敌人`);
+  if (type === "crossbow") notes.push(`每秒发射一箭造成 ${data.damage} 伤害，并绑定炸弹；${data.bombDelay}秒后爆炸造成 ${data.splashDamage} 范围伤害，最多 ${data.bombLimit} 个敌人；死亡坠地造成 ${data.deathCrashDamage} 范围伤害，最多 ${data.deathCrashLimit} 个敌人`);
   if (type === "treeEnt") notes.push(`不推进，每 ${data.summonEvery}秒召唤水蝎子，上限 ${data.summonLimit}；命中回血 ${data.healOnHit}`);
   if (type === "waterScorpion") notes.push("由树精召唤；攻击使敌人中毒");
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
@@ -2790,6 +2801,8 @@ function spawnUnit(type, side, x) {
     berserkerRageTimer: data.rageEvery ?? 0,
     swordsmanRageTimer: data.selfRageEvery ?? 0,
     swordsmanSelfRageTimer: 0,
+    spartanShieldTimer: 0,
+    spartanShieldCooldown: 0,
     undeadBoneTimer: data.boneSpikeEvery ?? 0,
     hillJumpTimer: data.jumpEvery ?? 0,
     linghanFreezeTimer: 0,
@@ -4311,6 +4324,11 @@ function updateUnits(dt) {
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
+    unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
+    if (unit.spartanShieldTimer > 0) {
+      unit.spartanShieldTimer = Math.max(0, unit.spartanShieldTimer - dt);
+      if (unit.spartanShieldTimer <= 0) finishSpartanShield(unit);
+    }
     unit.inspiredReviveTimer = Math.max(0, (unit.inspiredReviveTimer ?? 0) - dt);
     if (unit.inspiredReviveTimer <= 0) unit.inspiredReviveReady = false;
     unit.inspiredZombieTimer = Math.max(0, (unit.inspiredZombieTimer ?? 0) - dt);
@@ -4354,6 +4372,10 @@ function updateUnits(dt) {
     }
     if (unit.controlLockTimer > 0) {
       unit.controlLockTimer = Math.max(0, unit.controlLockTimer - dt);
+      updateIceRoadMoveTimer(unit, beforeX, dt);
+      continue;
+    }
+    if (unit.spartanShieldTimer > 0) {
       updateIceRoadMoveTimer(unit, beforeX, dt);
       continue;
     }
@@ -7622,6 +7644,7 @@ function isArrowShieldBlockable(arrow) {
   const blockableTypes = new Set([
     "archer",
     "goldenArcher",
+    "archerFire",
     "crossbow",
     "rocketVolley",
     "poisonZombie",
@@ -7750,6 +7773,10 @@ function updateArrows(dt) {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
+      } else if (arrow.type === "archerFire") {
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        applyBurn(arrow.target, arrow.burnDps, arrow.burnDuration);
       } else if (arrow.type === "javelinThrower") {
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
         handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
@@ -8963,6 +8990,9 @@ function getModifiedDamage(target, amount, options = {}) {
   if (target.shieldTimer > 0) {
     damage *= 1 - (target.shieldReduction ?? 0.8);
   }
+  if (target.spartanShieldTimer > 0) {
+    damage *= 1 - (UNIT.spartan.shieldStanceReduction ?? 0.9);
+  }
   return Math.max(1, Math.round(damage * 10) / 10);
 }
 
@@ -9032,6 +9062,9 @@ function removeDead() {
     }
     if (unit.type === "undeadVulture") {
       createUndeadVultureCrash(unit);
+    }
+    if (unit.type === "crossbow") {
+      createCrossbowCrash(unit);
     }
     if (unit.type === "darkKnightBrother") {
       enrageSurvivingDarkKnightBrother(unit);
@@ -9253,6 +9286,17 @@ function createUndeadVultureCrash(unit) {
   });
   state.blasts.push({ x: unit.x, y, radius: data.crashRadius, life: 0.32, duration: 0.32, color: "#7ed8ff" });
   popText(unit.x, unit.y - 120, "骨翼坠落", "#7ed8ff");
+}
+
+function createCrossbowCrash(unit) {
+  const data = UNIT.crossbow;
+  const radius = data.splash;
+  const y = FIELD.ground - 34;
+  getUnitsInRadius(unit.x, radius, unit.side, data.deathCrashLimit).forEach((enemy) => {
+    applyUnitDamage(enemy, data.deathCrashDamage, { label: "坠地", color: "#ffce7a", yOffset: -82, ranged: true, sourceSide: unit.side });
+  });
+  state.blasts.push({ x: unit.x, y, radius, life: 0.3, duration: 0.3, color: "#ffce7a" });
+  popText(unit.x, unit.y - 118, "弩手坠地", "#ffce7a");
 }
 
 function healNearbyAllies(water) {
@@ -12642,8 +12686,17 @@ function getManualActions(unit) {
   const actions = [{ id: "attack", label: "普攻", mode: "direct" }];
   const add = (id, label, mode = "point") => actions.push({ id, label, mode });
   switch (unit.type) {
+    case "swordsman":
+      add("jumpSlash", "跳劈", "target");
+      break;
     case "spearman":
       if (!unit.spearThrown) add("throwSpear", "投矛", "target");
+      break;
+    case "archer":
+      add("fireArrow", "火箭", "target");
+      break;
+    case "spartan":
+      add("spartanShield", unit.spartanShieldTimer > 0 ? "收盾" : "举盾", "direct");
       break;
     case "goldenSpartan":
       add("goldenSpear", "黄金矛", "direct");
@@ -12773,6 +12826,7 @@ function isManualButtonDisabled(unit, button) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return true;
   if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode" || button.id === "bannerInspireGroup") return false;
   if (button.id === "goblinBurrow") return false;
+  if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
   if (button.id === "rhinoCharge" && unit.minotaurLeapTimer > 0) return true;
@@ -12888,6 +12942,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return `冷却 ${Math.ceil(unit.priestBloodTimer)}秒`;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return `冷却 ${Math.ceil(unit.undeadLureTimer)}秒`;
   if (button.id === "monkField" && unit.monkFieldTimer > 0) return `冷却 ${Math.ceil(unit.monkFieldTimer)}秒`;
+  if (button.id === "spartanShield" && unit.spartanShieldCooldown > 0) return `冷却 ${Math.ceil(unit.spartanShieldCooldown)}秒`;
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -12916,6 +12971,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "goblinBurrow") {
     toggleGoblinBurrow(unit);
+    return;
+  }
+  if (action.id === "spartanShield") {
+    toggleSpartanShield(unit);
     return;
   }
   if (action.id === "reaperStealth") {
@@ -13213,6 +13272,8 @@ function getManualActionCooldown(unit, id) {
     goblinHeavyArmor: UNIT.goblinExpert.heavyArmorDuration,
     priestSiphon: UNIT.priest.siphonCooldown,
     priestBlood: UNIT.priest.bloodSacrificeCooldown,
+    jumpSlash: data.jumpSlashCooldown,
+    fireArrow: data.fireArrowCooldown ?? data.cooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -13222,6 +13283,10 @@ function castManualSkill(unit, id, target) {
     case "throwSpear":
       throwSpear(unit, target);
       return true;
+    case "jumpSlash":
+      return castSwordsmanJumpSlash(unit, target);
+    case "fireArrow":
+      return shootArcherFireArrow(unit, target);
     case "freeze":
       bindFreeze(unit, target);
       return true;
@@ -13340,6 +13405,82 @@ function castManualSkill(unit, id, target) {
     default:
       return false;
   }
+}
+
+function toggleSpartanShield(unit) {
+  const data = UNIT.spartan;
+  if (unit.spartanShieldTimer > 0) {
+    finishSpartanShield(unit);
+    popText(unit.x, unit.y - 116, "收盾", "#d7c090");
+    return true;
+  }
+  if (unit.spartanShieldCooldown > 0) {
+    popText(unit.x, unit.y - 116, `冷却 ${Math.ceil(unit.spartanShieldCooldown)}秒`, "#d9d0b8");
+    return false;
+  }
+  unit.spartanShieldTimer = data.shieldStanceDuration;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, data.shieldStanceDuration);
+  unit.combatTimer = data.shieldStanceDuration;
+  state.manualMoveTarget = null;
+  state.blasts.push({ x: unit.x, y: unit.y - 44, radius: 48, life: 0.28, duration: 0.28, color: "#d7c090" });
+  popText(unit.x, unit.y - 116, "举盾", "#d7c090");
+  return true;
+}
+
+function finishSpartanShield(unit) {
+  unit.spartanShieldTimer = 0;
+  unit.spartanShieldCooldown = UNIT.spartan.shieldStanceCooldown;
+}
+
+function castSwordsmanJumpSlash(unit, target) {
+  const data = UNIT.swordsman;
+  if (!target || target.kind === "statue" || target.hp <= 0 || isUnitHidden(target) || !canTarget(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法跳劈", "#f5d14f");
+    return false;
+  }
+  if (Math.abs(target.x - unit.x) > data.jumpSlashDistance) {
+    popText(unit.x, unit.y - 116, "距离太远", "#d9d0b8");
+    return false;
+  }
+  const dir = unit.side === "player" ? 1 : -1;
+  const stopDistance = Math.max(22, getUnitRange(unit) - 4);
+  unit.x = Math.max(FIELD.playerGate + 25, Math.min(FIELD.enemyGate - 25, target.x - dir * stopDistance));
+  unit.y = target.y;
+  const damage = Math.round((unit.damage ?? data.damage) * data.jumpSlashDamageMultiplier);
+  const dealt = applyDamage(target, damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  applyStun(target, data.jumpSlashStun);
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 42, life: 0.24, duration: 0.24, color: "#f5d14f" });
+  popText(target.x, target.y - 92, "跳劈", "#f5d14f");
+  return true;
+}
+
+function shootArcherFireArrow(unit, target) {
+  const data = UNIT.archer;
+  if (!target || target.kind === "statue" || target.hp <= 0 || isUnitHidden(target) || !canTarget(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法射击", "#ff9b45");
+    return false;
+  }
+  if (!canAttackFromDistance(unit, target, getUnitRange(unit))) {
+    popText(unit.x, unit.y - 116, "距离太远", "#d9d0b8");
+    return false;
+  }
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 62,
+    tx: target.x,
+    ty: target.y - 48,
+    side: unit.side,
+    damage: unit.damage ?? data.damage,
+    target,
+    sourceId: unit.id,
+    life: 0.55,
+    type: "archerFire",
+    burnDps: data.fireArrowBurnDps,
+    burnDuration: data.fireArrowBurnDuration,
+  });
+  popText(unit.x, unit.y - 112, "火箭", "#ff9b45");
+  return true;
 }
 
 function castVBlink(unit) {
@@ -13543,10 +13684,12 @@ function drawArrow(arrow) {
         ? "#f7d66b"
       : arrow.type === "spearThrow"
         ? "#dfe8ff"
-        : arrow.type === "poisonZombie"
+      : arrow.type === "poisonZombie"
         ? "#93d96b"
-        : arrow.type === "summoner"
-          ? "#7ed8ff"
+      : arrow.type === "archerFire"
+        ? "#ff9b45"
+      : arrow.type === "summoner"
+        ? "#7ed8ff"
         : arrow.type === "javelinThrower"
           ? (arrow.poison ? "#93d96b" : "#d7c090")
         : arrow.type === "goblinVulture"
@@ -13564,7 +13707,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
@@ -13573,6 +13716,12 @@ function drawArrow(arrow) {
     ctx.fillStyle = "rgba(126, 216, 255, 0.75)";
     ctx.beginPath();
     ctx.arc(x + 12, y - 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (arrow.type === "archerFire") {
+    ctx.fillStyle = "#ff6a3a";
+    ctx.beginPath();
+    ctx.arc(x + 12, y - 3, 4, 0, Math.PI * 2);
     ctx.fill();
   }
 }
