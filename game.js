@@ -1441,6 +1441,11 @@ const FOUR_WAY_STARTERS = {
   element: ["earthElement", "waterElement", "fireElement", "windElement"],
 };
 const FOUR_WAY_START_GOLD = 600;
+const FOUR_WAY_FACTION_SKILL = {
+  order: { cooldown: 20, duration: 10 },
+  chaos: { cooldown: 20, duration: 10, clusterRadius: 220, clusterCount: 3, factor: 1.5 },
+  undeadEmpire: { cooldown: 20, duration: 10 },
+};
 
 const UNIT_ICON = {
   miner: "miner",
@@ -2487,6 +2492,8 @@ function newFourWayGame() {
   state.fourWayPlayerSide = selectedFaction;
   state.fourWayTeams = createFourWayTeams(selectedFaction);
   state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
+  state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10 };
+  state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0 };
   state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
     side,
     faction: side,
@@ -3766,6 +3773,7 @@ function updateFourWayBattle(dt) {
   updateManualControlState();
   updateGroupSelectionState();
   updateQueue(dt);
+  updateFourWayFactionSkills(dt);
   updateFourWayAi(dt);
   decayFourWayPressure(dt);
   updateUnits(dt);
@@ -3793,6 +3801,16 @@ function updateFourWayBattle(dt) {
   updateHud();
 }
 
+function updateFourWayFactionSkills(dt) {
+  if (!state.fourWaySkillCooldowns || !state.fourWaySkillEffects) return;
+  Object.keys(state.fourWaySkillCooldowns).forEach((side) => {
+    state.fourWaySkillCooldowns[side] = Math.max(0, state.fourWaySkillCooldowns[side] - dt);
+  });
+  Object.keys(state.fourWaySkillEffects).forEach((side) => {
+    state.fourWaySkillEffects[side] = Math.max(0, state.fourWaySkillEffects[side] - dt);
+  });
+}
+
 function decayFourWayPressure(dt) {
   if (!state.fourWayPressure) return;
   Object.keys(state.fourWayPressure).forEach((side) => {
@@ -3808,6 +3826,7 @@ function updateFourWayAi(dt) {
       ai.incomeTimer += 1;
       ai.gold += 20;
     }
+    tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
@@ -3826,6 +3845,81 @@ function updateFourWayAi(dt) {
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
   });
+}
+
+function tryCastFourWayFactionSkill(ai) {
+  const side = ai.side;
+  if (!FOUR_WAY_FACTION_SKILL[side]) return false;
+  if ((state.fourWaySkillCooldowns?.[side] ?? 0) > 0) return false;
+  if (side === "order") return castFourWayOrderSkill(side);
+  if (side === "chaos") return castFourWayChaosSkill(side);
+  if (side === "undeadEmpire") return castFourWayUndeadSkill(side);
+  return false;
+}
+
+function castFourWayOrderSkill(side) {
+  const config = FOUR_WAY_FACTION_SKILL.order;
+  const base = FOUR_WAY_BASES[side];
+  const spartan = spawnFourWayUnit("goldenSpartan", side, 14);
+  const archer = spawnFourWayUnit("goldenArcher", side, 15);
+  [spartan, archer].forEach((unit) => {
+    unit.timedLife = config.duration;
+    unit.noCorpse = true;
+    unit.forceCharge = true;
+  });
+  spartan.spartanShieldCooldownDuration = 20;
+  state.fourWaySkillCooldowns[side] = config.cooldown;
+  state.fourWaySkillEffects[side] = config.duration;
+  state.blasts.push({ x: base.x, y: base.y, radius: 92, life: 0.45, duration: 0.45, color: "#ffe08a" });
+  popText(base.x, base.y - 128, "秩序援军", "#ffe08a");
+  return true;
+}
+
+function castFourWayChaosSkill(side) {
+  const config = FOUR_WAY_FACTION_SKILL.chaos;
+  const buffed = state.units.filter((unit) => {
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return false;
+    return countNearbyAllies(unit, config.clusterRadius) >= config.clusterCount;
+  });
+  if (!buffed.length) {
+    state.fourWaySkillCooldowns[side] = 1.5;
+    return false;
+  }
+  buffed.forEach((unit) => {
+    unit.chaosWarCryTimer = config.duration;
+    state.blasts.push({ x: unit.x, y: unit.y - 30, radius: 34, life: 0.25, duration: 0.25, color: "#ff6a3d" });
+  });
+  state.fourWaySkillCooldowns[side] = config.cooldown;
+  state.fourWaySkillEffects[side] = config.duration;
+  const base = FOUR_WAY_BASES[side];
+  popText(base.x, base.y - 128, `混沌战吼 x${buffed.length}`, "#ff8a3d");
+  return true;
+}
+
+function castFourWayUndeadSkill(side) {
+  const config = FOUR_WAY_FACTION_SKILL.undeadEmpire;
+  const hasCaster = state.units.some((unit) => unit.side === side && unit.type === "necromancer" && unit.hp > 0 && !isUnitHidden(unit));
+  const hasEnemyCorpse = state.corpses.some((corpse) => corpse.side !== side);
+  if (!hasCaster && !hasEnemyCorpse) {
+    state.fourWaySkillCooldowns[side] = 1.5;
+    return false;
+  }
+  state.fourWaySkillCooldowns[side] = config.cooldown;
+  state.fourWaySkillEffects[side] = config.duration;
+  const base = FOUR_WAY_BASES[side];
+  state.blasts.push({ x: base.x, y: base.y, radius: 96, life: 0.45, duration: 0.45, color: "#b8b0e8" });
+  popText(base.x, base.y - 128, "完整转化", "#d8c8ff");
+  return true;
+}
+
+function countNearbyAllies(unit, radius) {
+  return state.units.filter((ally) => (
+    ally.side === unit.side
+    && ally.hp > 0
+    && !isUnitHidden(ally)
+    && !UNIT[ally.type]?.untargetable
+    && distanceTo(unit.x, unit.y, ally.x, ally.y) <= radius
+  )).length;
 }
 
 function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
@@ -4928,6 +5022,14 @@ function updateUnits(dt) {
     unit.controlTimer = Math.max(0, (unit.controlTimer ?? 0) - dt);
     unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     unit.combatTimer = Math.max(0, unit.combatTimer - dt);
+    if (unit.timedLife !== undefined) {
+      unit.timedLife = Math.max(0, unit.timedLife - dt);
+      if (unit.timedLife <= 0) {
+        unit.expired = true;
+        unit.hp = 0;
+      }
+    }
+    unit.chaosWarCryTimer = Math.max(0, (unit.chaosWarCryTimer ?? 0) - dt);
     unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
@@ -6368,13 +6470,16 @@ function convertEnemyCorpseWithNecromancer(unit) {
   const type = isRangedCorpse(corpse) ? "poisonZombie" : "undead";
   const converted = spawnUnit(type, unit.side, corpse.x);
   converted.y = corpse.y;
-  converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * UNIT.necromancer.corpseHpRatio));
+  const hpRatio = state.fourWay && unit.side === "undeadEmpire" && (state.fourWaySkillEffects?.undeadEmpire ?? 0) > 0
+    ? 1
+    : UNIT.necromancer.corpseHpRatio;
+  converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * hpRatio));
   converted.hp = converted.maxHp;
   converted.forceCharge = true;
   converted.summonerId = unit.id;
   state.corpses = state.corpses.filter((item) => item !== corpse);
   state.blasts.push({ x: converted.x, y: converted.y - 36, radius: 46, life: 0.32, duration: 0.32, color: "#b8b0e8" });
-  popText(converted.x, converted.y - 106, type === "poisonZombie" ? "尸体转化毒尸" : "尸体转化丧尸", "#b8b0e8");
+  popText(converted.x, converted.y - 106, hpRatio >= 1 ? "完整转化" : (type === "poisonZombie" ? "尸体转化毒尸" : "尸体转化丧尸"), "#b8b0e8");
   return true;
 }
 
@@ -6958,6 +7063,7 @@ function getMoveFactor(unit) {
   if (unit.inspiredZombieTimer > 0 && ZOMBIE_UNITS.has(unit.type)) factor *= 2;
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
+  if (unit.chaosWarCryTimer > 0) factor *= FOUR_WAY_FACTION_SKILL.chaos.factor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageMoveFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
@@ -6991,6 +7097,7 @@ function getAttackSpeedFactor(unit) {
   }
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
+  if (unit.chaosWarCryTimer > 0) factor *= FOUR_WAY_FACTION_SKILL.chaos.factor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
@@ -9877,6 +9984,7 @@ function removeDead() {
 }
 
 function maybeLeaveUndeadCorpse(unit) {
+  if (unit.noCorpse) return;
   if (UNIT[unit.type]?.untargetable || isHeroUnit(unit)) return;
   const reviveable = factionForSide(unit.side) === "undeadEmpire"
     && UNDEAD_BASE_UNITS.has(unit.type)
@@ -13566,6 +13674,7 @@ function getManualActions(unit) {
       break;
     case "goldenSpartan":
       add("goldenSpear", "黄金矛", "direct");
+      add("spartanShield", unit.spartanShieldTimer > 0 ? "收盾" : "举盾", "direct");
       break;
     case "waterElement":
       add("freeze", "冰冻", "target");
@@ -14303,7 +14412,7 @@ function toggleSpartanShield(unit) {
 
 function finishSpartanShield(unit) {
   unit.spartanShieldTimer = 0;
-  unit.spartanShieldCooldown = UNIT.spartan.shieldStanceCooldown;
+  unit.spartanShieldCooldown = unit.spartanShieldCooldownDuration ?? UNIT.spartan.shieldStanceCooldown;
 }
 
 function castSwordsmanJumpSlash(unit, target) {
