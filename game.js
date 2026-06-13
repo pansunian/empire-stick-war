@@ -3705,23 +3705,7 @@ function queueUnit(type) {
 
 function queueFourWayPlayerUnit(type) {
   const side = state.fourWayPlayerSide ?? selectedFaction;
-  const ai = state.fourWaySides?.find((item) => item.side === side);
-  if (!ai?.alive) return;
-  if (MERGE_UNITS.has(type)) {
-    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "进阶单位需要融合", "#f3c963");
-    return;
-  }
-  if (!FACTIONS[side].roster.includes(type)) return;
-  const data = UNIT[type];
-  const cost = getFourWayUnitCost(type, side);
-  if (ai.gold < cost) {
-    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "金币不足", "#f3c963");
-    return;
-  }
-  ai.gold -= cost;
-  state.spawnQueue.push({ type, side, timer: data.train, duration: data.train });
-  popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 118, `训练 ${data.name}`, "#d9e8ff");
-  updateHud();
+  popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "AI 会自行造兵", "#f3c963");
 }
 
 function update(dt) {
@@ -14964,28 +14948,10 @@ function updateHud() {
     enemyGoldEl.textContent = `存活 ${alive.length}/4`;
     playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
     enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
-    const playerSide = state.fourWayPlayerSide ?? selectedFaction;
-    const playerAi = state.fourWaySides.find((ai) => ai.side === playerSide);
     trainButtons.forEach((button) => {
-      const type = button.dataset.unit;
-      if (!type || button.dataset.action) {
-        button.disabled = true;
-        return;
-      }
-      const progressItems = state.spawnQueue.filter((item) => item.side === playerSide && item.type === type);
-      const progress = progressItems.reduce((max, item) => {
-        const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
-        if (duration <= 0) return max;
-        return Math.max(max, Math.max(0, Math.min(1, 1 - item.timer / duration)));
-      }, 0);
-      if (progress > 0) {
-        button.dataset.training = "true";
-        button.style.setProperty("--train-progress", `${Math.max(1, Math.round(progress * 360))}deg`);
-      } else {
-        delete button.dataset.training;
-        button.style.removeProperty("--train-progress");
-      }
-      button.disabled = !playerAi?.alive || !FACTIONS[playerSide].roster.includes(type) || playerAi.gold < getFourWayUnitCost(type, playerSide);
+      button.disabled = true;
+      delete button.dataset.training;
+      button.style.removeProperty("--train-progress");
     });
     return;
   }
