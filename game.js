@@ -2019,14 +2019,14 @@ function formatSpecial(type) {
   if (data.healOnDeath) notes.push(`死亡治疗 ${data.healOnDeath}`);
   if (type === "waterElement") notes.push(`冰冻敌人 ${data.freezeDps}/秒`);
   if (data.lightning) notes.push("必中闪电");
-  if (type === "dreadfire") notes.push(`火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
-  if (type === "redflame") notes.push(`2 个火元素融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
-  if (type === "stormLich") notes.push(`2 个风元素融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
-  if (type === "hurricane") notes.push(`每 ${data.cooldown}秒发射龙卷风 ${data.damage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
-  if (type === "hill") notes.push(`由 2 个土元素合成；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
-  if (type === "linghan") notes.push(`由 2 个水元素合成；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
-  if (type === "scaldStrike") notes.push(`一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
-  if (type === "electricGate") notes.push(`持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
+  if (type === "dreadfire") notes.push(`拥有合成入口后可直接融合；火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
+  if (type === "redflame") notes.push(`拥有合成入口后可直接融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
+  if (type === "stormLich") notes.push(`拥有合成入口后可直接融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
+  if (type === "hurricane") notes.push(`拥有合成入口后可直接融合；每 ${data.cooldown}秒发射龙卷风 ${data.damage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
+  if (type === "hill") notes.push(`拥有合成入口后可直接融合；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
+  if (type === "linghan") notes.push(`拥有合成入口后可直接融合；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
+  if (type === "scaldStrike") notes.push(`拥有合成入口后可直接释放；一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
+  if (type === "electricGate") notes.push(`拥有合成入口后可直接融合；持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`按顺序释放魔爆 / 冰地 / 电墙；电墙每秒 ${data.electricWallDamage} 伤害，持续 ${data.electricWallDuration}秒`);
   if (type === "goldenSpartan") notes.push(`英雄单位；双击后向最前方敌人投出一次黄金长矛，造成 ${data.goldenSpearDamage} 点伤害`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
@@ -2912,163 +2912,54 @@ function convertEarthToMiner(side) {
 }
 
 function mergeTreeEnt(side) {
-  const { earth, water } = getTreeEntMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#8ee0cf")) return false;
-  if (!earth || !water) {
-    popText(x, FIELD.ground - 100, "需要土元素和空闲水元素", "#8ee0cf");
-    refundMergeCost(side);
-    return false;
-  }
-
-  releaseFrozenTarget(water);
-  return beginElementMerge(side, [earth, water], "treeEnt", "合成树精", "#8ee0cf");
+  return beginDirectElementMerge(side, "treeEnt", "合成树精", "#8ee0cf");
 }
 
 function mergeRog(side) {
-  const { earth, fire } = getRogMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#ff9b45")) return false;
-  if (!earth || !fire) {
-    popText(x, FIELD.ground - 100, "需要土元素和火元素", "#ff9b45");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, [earth, fire], "rog", "合成罗格", "#ff9b45");
+  return beginDirectElementMerge(side, "rog", "合成罗格", "#ff9b45");
 }
 
 function mergeDreadfire(side) {
-  const { fire, wind } = getDreadfireMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#ff7a3d")) return false;
-  if (!fire || !wind) {
-    popText(x, FIELD.ground - 100, "需要火元素和风元素", "#ff7a3d");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, [fire, wind], "dreadfire", "合成厄火", "#ff7a3d");
+  return beginDirectElementMerge(side, "dreadfire", "合成厄火", "#ff7a3d");
 }
 
 function mergeRedflame(side) {
-  const materials = getRedflameMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#ff6a3d")) return false;
-  if (!materials) {
-    popText(x, FIELD.ground - 100, "需要 2 个火元素", "#ff6a3d");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, materials, "redflame", "合成赤炎", "#ff6a3d");
+  return beginDirectElementMerge(side, "redflame", "合成赤炎", "#ff6a3d");
 }
 
 function mergeStormLich(side) {
-  const materials = getStormLichMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#9ee8ff")) return false;
-  if (!materials) {
-    popText(x, FIELD.ground - 100, "需要 2 个风元素", "#9ee8ff");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, materials, "stormLich", "合成风暴巫妖", "#9ee8ff");
+  return beginDirectElementMerge(side, "stormLich", "合成风暴巫妖", "#9ee8ff");
 }
 
 function mergeHurricane(side) {
-  const { water, wind } = getHurricaneMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#9ee8ff")) return false;
-  if (!water || !wind) {
-    popText(x, FIELD.ground - 100, "需要空闲水元素和风元素", "#9ee8ff");
-    refundMergeCost(side);
-    return false;
-  }
-
-  releaseFrozenTarget(water);
-  return beginElementMerge(side, [water, wind], "hurricane", "合成飓风", "#9ee8ff");
+  return beginDirectElementMerge(side, "hurricane", "合成飓风", "#9ee8ff");
 }
 
 function mergeHill(side) {
-  const materials = getHillMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#c0a36d")) return false;
-  if (!materials) {
-    popText(x, FIELD.ground - 100, "需要 2 个土元素", "#c0a36d");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, materials, "hill", "合成山丘", "#c0a36d");
+  return beginDirectElementMerge(side, "hill", "合成山丘", "#c0a36d");
 }
 
 function mergeLinghan(side) {
-  const materials = getLinghanMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#9ee8ff")) return false;
-  if (!materials) {
-    popText(x, FIELD.ground - 100, "需要 2 个空闲水元素", "#9ee8ff");
-    refundMergeCost(side);
-    return false;
-  }
-
-  materials.forEach(releaseFrozenTarget);
-  return beginElementMerge(side, materials, "linghan", "合成凌寒", "#9ee8ff");
+  return beginDirectElementMerge(side, "linghan", "合成凌寒", "#9ee8ff");
 }
 
 function mergeScaldStrike(side) {
-  const { water, fire } = getScaldStrikeMaterials(side);
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
   if (!payMergeCost(side, x, "#ffb36e")) return false;
-  if (!water || !fire) {
-    popText(x, FIELD.ground - 100, "需要空闲水元素和火元素", "#ffb36e");
-    refundMergeCost(side);
-    return false;
-  }
-
-  releaseFrozenTarget(water);
-  return beginElementMerge(side, [water, fire], null, "烫水爆裂", "#ffb36e", {
-    onComplete: (merge, x, y) => detonateScaldStrike(side, x, y),
-  });
+  const target = findFrontEnemy(side);
+  const front = getFrontX(side);
+  const dir = side === "player" ? 1 : -1;
+  const blastX = target?.x ?? front ?? x + dir * 220;
+  detonateScaldStrike(side, Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX)), FIELD.ground);
+  return true;
 }
 
 function mergeElectricGate(side) {
-  const { earth, wind } = getElectricGateMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#9ee8ff")) return false;
-  if (!earth || !wind) {
-    popText(x, FIELD.ground - 100, "需要土元素和风元素", "#9ee8ff");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, [earth, wind], "electricGate", "合成电门", "#9ee8ff");
+  return beginDirectElementMerge(side, "electricGate", "合成电门", "#9ee8ff");
 }
 
 function mergeV(side) {
-  const materials = getVMaterials(side);
-  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-
-  if (!payMergeCost(side, x, "#d7ceff")) return false;
-  if (!materials) {
-    popText(x, FIELD.ground - 100, "需要土水火风各 2 个", "#d7ceff");
-    refundMergeCost(side);
-    return false;
-  }
-
-  return beginElementMerge(side, materials, "vUnit", "合成 V", "#d7ceff");
+  return beginDirectElementMerge(side, "vUnit", "合成 V", "#d7ceff");
 }
 
 function payMergeCost(side, x, color) {
@@ -3084,6 +2975,16 @@ function payMergeCost(side, x, color) {
 function refundMergeCost(side) {
   if (side === "player") state.gold += MERGE_COST;
   else state.enemyGold += MERGE_COST;
+}
+
+function beginDirectElementMerge(side, resultType, text, color) {
+  const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
+  if (!payMergeCost(side, x, color)) return false;
+  const dir = side === "player" ? 1 : -1;
+  const spawnX = x + dir * 60;
+  const result = spawnUnit(resultType, side, spawnX);
+  popText(result.x, result.y - 95, text, color);
+  return true;
 }
 
 function beginElementMerge(side, materials, resultType, text, color, options = {}) {
@@ -3284,53 +3185,47 @@ function getVMaterials(side) {
 }
 
 function canMergeTreeEnt(side) {
-  const { earth, water } = getTreeEntMaterials(side);
-  return Boolean(earth && water);
+  return true;
 }
 
 function canMergeRog(side) {
-  const { earth, fire } = getRogMaterials(side);
-  return Boolean(earth && fire);
+  return true;
 }
 
 function canMergeDreadfire(side) {
-  const { fire, wind } = getDreadfireMaterials(side);
-  return Boolean(fire && wind);
+  return true;
 }
 
 function canMergeRedflame(side) {
-  return Boolean(getRedflameMaterials(side));
+  return true;
 }
 
 function canMergeStormLich(side) {
-  return Boolean(getStormLichMaterials(side));
+  return true;
 }
 
 function canMergeHurricane(side) {
-  const { water, wind } = getHurricaneMaterials(side);
-  return Boolean(water && wind);
+  return true;
 }
 
 function canMergeScaldStrike(side) {
-  const { water, fire } = getScaldStrikeMaterials(side);
-  return Boolean(water && fire);
+  return true;
 }
 
 function canMergeElectricGate(side) {
-  const { earth, wind } = getElectricGateMaterials(side);
-  return Boolean(earth && wind);
+  return true;
 }
 
 function canMergeHill(side) {
-  return Boolean(getHillMaterials(side));
+  return true;
 }
 
 function canMergeLinghan(side) {
-  return Boolean(getLinghanMaterials(side));
+  return true;
 }
 
 function canMergeV(side) {
-  return Boolean(getVMaterials(side));
+  return true;
 }
 
 function queueUnit(type) {
@@ -4037,31 +3932,31 @@ function updateEnemyAi(dt) {
   if (opponentFaction() === "element" && state.enemyAttackMood > 34 && canMergeV("enemy") && mergeV("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 5);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 18 && canMergeTreeEnt("enemy") && canSpendVMaterials(["earthElement", "waterElement"], savingForV) && mergeTreeEnt("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 18 && canMergeTreeEnt("enemy") && mergeTreeEnt("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 24 && canMergeRog("enemy") && canSpendVMaterials(["earthElement", "fireElement"], savingForV) && mergeRog("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 24 && canMergeRog("enemy") && mergeRog("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 28 && canMergeDreadfire("enemy") && canSpendVMaterials(["fireElement", "windElement"], savingForV) && mergeDreadfire("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 28 && canMergeDreadfire("enemy") && mergeDreadfire("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 26 && canMergeRedflame("enemy") && canSpendVMaterials(["fireElement", "fireElement"], savingForV) && mergeRedflame("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 26 && canMergeRedflame("enemy") && mergeRedflame("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 27 && canMergeStormLich("enemy") && canSpendVMaterials(["windElement", "windElement"], savingForV) && mergeStormLich("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 27 && canMergeStormLich("enemy") && mergeStormLich("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && canSpendVMaterials(["waterElement", "windElement"], savingForV) && mergeHurricane("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && mergeHurricane("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 20 && canMergeHill("enemy") && canSpendVMaterials(["earthElement", "earthElement"], savingForV) && mergeHill("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 20 && canMergeHill("enemy") && mergeHill("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeScaldStrike("enemy") && canSpendVMaterials(["waterElement", "fireElement"], savingForV) && mergeScaldStrike("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeScaldStrike("enemy") && mergeScaldStrike("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeElectricGate("enemy") && canSpendVMaterials(["earthElement", "windElement"], savingForV) && mergeElectricGate("enemy")) {
+  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeElectricGate("enemy") && mergeElectricGate("enemy")) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
   }
 
@@ -14017,6 +13912,10 @@ function updateHud() {
     }
     if (button.dataset.action === "convertEarth") {
       button.disabled = state.over || !state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+      return;
+    }
+    if (button.dataset.action?.startsWith("merge")) {
+      button.disabled = state.over || state.gold < MERGE_COST;
       return;
     }
     if (button.dataset.action === "mergeTreeEnt") {
