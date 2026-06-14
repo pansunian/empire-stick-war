@@ -213,7 +213,7 @@ const UNIT = {
     cost: 120,
     hp: 100,
     damage: 12,
-    range: 42,
+    range: 70,
     speed: 54,
     train: 4.2,
     cooldown: 0.95,
@@ -12786,13 +12786,13 @@ function drawWeapon(type, unit = null) {
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(15, -34);
-    ctx.lineTo(58, -54);
+    ctx.lineTo(79, -64);
     ctx.stroke();
     ctx.fillStyle = "#dfe8ff";
     ctx.beginPath();
-    ctx.moveTo(58, -54);
-    ctx.lineTo(46, -57);
-    ctx.lineTo(50, -45);
+    ctx.moveTo(79, -64);
+    ctx.lineTo(66, -67);
+    ctx.lineTo(70, -55);
     ctx.closePath();
     ctx.fill();
   } else if (type === "javelinThrower") {
