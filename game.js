@@ -2177,6 +2177,10 @@ function isPlayerControlledSide(side) {
   return side === getPlayerControlledSide();
 }
 
+function isFourWayPlayerSide(side) {
+  return Boolean(state?.fourWay && side === getPlayerControlledSide());
+}
+
 function areHostileSides(a, b) {
   if (!a || !b || a === b) return false;
   return state?.fourWay ? areFourWayEnemies(a, b) : a !== b;
@@ -2293,6 +2297,7 @@ function getFourWayUnitValue(type, faction, side = null) {
 
 function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
+  if (selectedMode === "quad" || state?.fourWay) return FOUR_WAY_AI_ROSTER[selectedFaction] ?? FACTIONS[selectedFaction].roster;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
 }
@@ -2731,8 +2736,8 @@ function newFourWayGame() {
     FOUR_WAY_STARTERS[side].forEach((type, index) => spawnFourWayUnit(type, side, index));
   });
   statusEl.textContent = isDuoBattle()
-    ? `四国 2 打 2：你指挥${FACTIONS[selectedFaction].name}，队友会自动作战`
-    : `四国对战：你指挥${FACTIONS[selectedFaction].name}，其余三方由 AI 控制`;
+    ? `四国 2 打 2：你负责${FACTIONS[selectedFaction].name}出兵与指挥，队友自动作战`
+    : `四国对战：你负责${FACTIONS[selectedFaction].name}出兵与指挥，三方由 AI 控制`;
   updateHud();
   requestAnimationFrame(centerFourWayView);
 }
@@ -2870,6 +2875,7 @@ function spawnFourWayUnit(type, side, index = 0) {
   unit.y = base.y + ny * forward + py * sideOffset;
   unit.rallyX = unit.x;
   unit.rallyY = unit.y;
+  unit.facingDir = nx >= 0 ? 1 : -1;
   unit.forceCharge = true;
   unit.inCastle = false;
   clampUnitPosition(unit);
@@ -3162,15 +3168,8 @@ function getAvailableElementMerges() {
 }
 
 function renderShop() {
-  if (selectedMode === "quad") {
-    unitShop.innerHTML = `<span class="shop-spacer">四国 AI 自动出兵</span>`;
-    trainButtons = [...unitShop.querySelectorAll(".train-btn")];
-    unitShop.classList.remove("element-shop", "element-shop-expanded", "undead-shop");
-    mobileUnitsToggle.classList.add("hidden");
-    return;
-  }
   mobileUnitsToggle.classList.remove("hidden");
-  const showElementConvertButton = selectedFaction === "element" && (!activeCampaign || canUseEarthMinerConversion());
+  const showElementConvertButton = selectedFaction === "element" && selectedMode !== "quad" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
   const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
   const allowedElementMergeTypes = new Set(allowedElementMerges.map((merge) => merge.type));
@@ -3227,52 +3226,53 @@ function renderShop() {
   trainButtons = [...document.querySelectorAll(".train-btn")];
   trainButtons.forEach((button) => {
     button.addEventListener("click", () => {
+      const actionSide = getPlayerControlledSide();
       if (button.dataset.action === "convertEarth") {
-        convertEarthToMiner("player");
+        convertEarthToMiner(actionSide);
         return;
       }
       if (button.dataset.action === "mergeTreeEnt") {
-        mergeTreeEnt("player");
+        mergeTreeEnt(actionSide);
         return;
       }
       if (button.dataset.action === "mergeRog") {
-        mergeRog("player");
+        mergeRog(actionSide);
         return;
       }
       if (button.dataset.action === "mergeDreadfire") {
-        mergeDreadfire("player");
+        mergeDreadfire(actionSide);
         return;
       }
       if (button.dataset.action === "mergeRedflame") {
-        mergeRedflame("player");
+        mergeRedflame(actionSide);
         return;
       }
       if (button.dataset.action === "mergeStormLich") {
-        mergeStormLich("player");
+        mergeStormLich(actionSide);
         return;
       }
       if (button.dataset.action === "mergeHurricane") {
-        mergeHurricane("player");
+        mergeHurricane(actionSide);
         return;
       }
       if (button.dataset.action === "mergeHill") {
-        mergeHill("player");
+        mergeHill(actionSide);
         return;
       }
       if (button.dataset.action === "mergeLinghan") {
-        mergeLinghan("player");
+        mergeLinghan(actionSide);
         return;
       }
       if (button.dataset.action === "mergeScaldStrike") {
-        mergeScaldStrike("player");
+        mergeScaldStrike(actionSide);
         return;
       }
       if (button.dataset.action === "mergeElectricGate") {
-        mergeElectricGate("player");
+        mergeElectricGate(actionSide);
         return;
       }
       if (button.dataset.action === "mergeV") {
-        mergeV("player");
+        mergeV(actionSide);
         return;
       }
       queueUnit(button.dataset.unit);
@@ -3967,7 +3967,24 @@ function queueUnit(type) {
 
 function queueFourWayPlayerUnit(type) {
   const side = state.fourWayPlayerSide ?? selectedFaction;
-  popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "AI 会自行造兵", "#f3c963");
+  if (!FOUR_WAY_AI_ROSTER[side]?.includes(type) && !FACTIONS[side]?.roster?.includes(type)) return;
+  if (MERGE_UNITS.has(type)) {
+    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "进阶单位需要融合", "#f3c963");
+    return;
+  }
+  const faction = factionForSide(side);
+  const gold = getSideGoldAmount(side);
+  if (!canAffordUnit(type, faction, side, gold)) {
+    const cost = getUnitCost(type, faction, side);
+    const magicCost = getUnitMagicCost(type, faction);
+    popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, gold < cost ? "金币不足" : `魔力不足 ${magicCost}`, "#f3c963");
+    return;
+  }
+  spendUnitCost(type, faction, side, gold);
+  const data = UNIT[type];
+  state.spawnQueue.push({ type, side, timer: data.train, duration: data.train });
+  popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 118, `训练 ${data.name}`, "#d9e8ff");
+  updateHud();
 }
 
 function update(dt) {
@@ -4083,6 +4100,7 @@ function updateFourWayAi(dt) {
       ai.gold += 20;
       if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND;
     }
+    if (isFourWayPlayerSide(ai.side)) return;
     tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
@@ -5529,6 +5547,15 @@ function updateUnits(dt) {
       if (unit.type === "graveDigger") updateGraveDigger(unit, dt);
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
+      if (isManuallyControlled(unit)) {
+        updateManualControlledUnit(unit, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
+      if (updateGroupAttackUnit(unit, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
       updateFourWayUnit(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
@@ -5799,7 +5826,13 @@ function getFourWayBaseTargetScore(unit, item) {
   const hpRatio = Math.max(0, Math.min(1, item.hp / STATUE_MAX_HP));
   const pressure = state.fourWayPressure?.[item.ai.side] ?? 0;
   const teamCount = state.units.filter((other) => other.side === unit.side && other.hp > 0 && other.fourWayFocusSide === item.ai.side).length;
-  return distance + hpRatio * 180 + pressure * 90 + teamCount * 75 + Math.random() * 80;
+  return distance + hpRatio * 180 + pressure * 90 + teamCount * 75 + getStableFourWayTargetJitter(unit, item.ai.side);
+}
+
+function getStableFourWayTargetJitter(unit, targetSide) {
+  const sideIndex = FOUR_WAY_SIDES.indexOf(targetSide);
+  const seed = (unit.id * 37 + Math.max(0, sideIndex) * 53) % 97;
+  return seed * 0.82;
 }
 
 function getFourWayApproachPoint(unit, target, range) {
@@ -5848,6 +5881,7 @@ function updateManualControlledUnit(unit, dt) {
   unit.goldRushMineId = null;
   if (!dx && !dy) {
     if (!state.manualMoveTarget) return;
+    unit.facingDir = state.manualMoveTarget.x >= unit.x ? 1 : -1;
     const moving = moveUnitTowardPoint(unit, state.manualMoveTarget.x, state.manualMoveTarget.y, speed, dt, 6);
     clampUnitPosition(unit);
     if (!moving) state.manualMoveTarget = null;
@@ -5855,6 +5889,7 @@ function updateManualControlledUnit(unit, dt) {
   }
 
   state.manualMoveTarget = null;
+  if (Math.abs(dx) > 0.05) unit.facingDir = dx >= 0 ? 1 : -1;
   const distance = Math.hypot(dx, dy) || 1;
   unit.x += (dx / distance) * speed * getMoveFactor(unit) * dt;
   unit.y += (dy / distance) * speed * getMoveFactor(unit) * dt;
@@ -5922,7 +5957,7 @@ function isSelectedGroupUnit(unit) {
 }
 
 function updateGroupAttackUnit(unit, dt) {
-  if (!isSelectedGroupUnit(unit) || unit.side !== "player") return false;
+  if (!isSelectedGroupUnit(unit) || !isPlayerControlledSide(unit.side)) return false;
   const target = getGroupAttackTarget();
   if (!target || target.side === unit.side) return updateGroupMoveUnit(unit, dt);
   if (!canTarget(unit, target)) return updateGroupMoveUnit(unit, dt);
@@ -5939,9 +5974,10 @@ function updateGroupAttackUnit(unit, dt) {
   }
 
   const data = UNIT[unit.type] ?? {};
-  const direction = unit.side === "player" ? -1 : 1;
+  const direction = state?.fourWay ? (unit.x <= target.x ? -1 : 1) : (unit.side === "player" ? -1 : 1);
   const approach = Math.max(24, Math.min(Math.max(range - 8, 28), 90));
   const x = target.x + direction * approach;
+  unit.facingDir = target.x >= unit.x ? 1 : -1;
   moveUnitTowardPoint(unit, x, target.y, unit.speed ?? data.speed ?? 0, dt, 8);
   return true;
 }
@@ -5955,6 +5991,7 @@ function updateGroupMoveUnit(unit, dt) {
   unit.mineWorkSlot = null;
   unit.goldRushMineId = null;
   const point = getGroupMovePoint(unit);
+  unit.facingDir = point.x >= unit.x ? 1 : -1;
   const reached = !moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed ?? 0, dt, 8);
   if (reached && getSelectedGroupUnits().every((ally) => distanceTo(ally.x, ally.y, getGroupMovePoint(ally).x, getGroupMovePoint(ally).y) <= 14)) {
     state.groupMoveTarget = null;
@@ -16000,10 +16037,81 @@ function updateHud() {
     enemyGoldEl.textContent = `存活 ${alive.length}/4`;
     playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
     enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
+    const playerSide = getPlayerControlledSide();
+    const playerFaction = factionForSide(playerSide);
+    const playerGold = getSideGoldAmount(playerSide);
+    const trainingProgress = new Map();
+    state.spawnQueue.forEach((item) => {
+      if (item.side !== playerSide) return;
+      const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
+      if (duration <= 0) return;
+      const progress = Math.max(0, Math.min(1, 1 - item.timer / duration));
+      if (!trainingProgress.has(item.type)) trainingProgress.set(item.type, progress);
+    });
     trainButtons.forEach((button) => {
-      button.disabled = true;
-      delete button.dataset.training;
-      button.style.removeProperty("--train-progress");
+      const type = button.dataset.unit;
+      const progress = type ? trainingProgress.get(type) : undefined;
+      if (progress !== undefined) {
+        const degrees = Math.max(1, Math.round(progress * 360));
+        button.dataset.training = "true";
+        button.style.setProperty("--train-progress", `${degrees}deg`);
+      } else {
+        delete button.dataset.training;
+        button.style.removeProperty("--train-progress");
+      }
+      if (button.dataset.action?.startsWith("merge")) {
+        const mergeType = ELEMENT_MERGE_TYPE_BY_ACTION[button.dataset.action];
+        if (state.over || !canAffordElementMerge(mergeType, playerSide)) {
+          button.disabled = true;
+          return;
+        }
+      }
+      if (button.dataset.action === "mergeTreeEnt") {
+        const hasEarth = state.units.some((unit) => unit.side === playerSide && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+        const hasWater = state.units.some((unit) => unit.side === playerSide && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId);
+        button.disabled = state.over || !canAffordElementMerge("treeEnt", playerSide) || !hasEarth || !hasWater;
+        return;
+      }
+      if (button.dataset.action === "mergeRog") {
+        const hasEarth = state.units.some((unit) => unit.side === playerSide && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
+        const hasFire = state.units.some((unit) => unit.side === playerSide && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit));
+        button.disabled = state.over || !canAffordElementMerge("rog", playerSide) || !hasEarth || !hasFire;
+        return;
+      }
+      if (button.dataset.action === "mergeDreadfire") {
+        button.disabled = state.over || !canAffordElementMerge("dreadfire", playerSide) || !canMergeDreadfire(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeRedflame") {
+        button.disabled = state.over || !canAffordElementMerge("redflame", playerSide) || !canMergeRedflame(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeHurricane") {
+        button.disabled = state.over || !canAffordElementMerge("hurricane", playerSide) || !canMergeHurricane(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeHill") {
+        button.disabled = state.over || !canAffordElementMerge("hill", playerSide) || !canMergeHill(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeLinghan") {
+        button.disabled = state.over || !canAffordElementMerge("linghan", playerSide) || !canMergeLinghan(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeScaldStrike") {
+        button.disabled = state.over || !canAffordElementMerge("scaldStrike", playerSide) || !canMergeScaldStrike(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeElectricGate") {
+        button.disabled = state.over || !canAffordElementMerge("electricGate", playerSide) || !canMergeElectricGate(playerSide);
+        return;
+      }
+      if (button.dataset.action === "mergeV") {
+        button.disabled = state.over || !canAffordElementMerge("vUnit", playerSide) || !canMergeV(playerSide);
+        return;
+      }
+      if (!type) return;
+      button.disabled = !canAffordUnit(type, playerFaction, playerSide, playerGold) || state.over;
     });
     return;
   }
@@ -16099,9 +16207,11 @@ function loop(now) {
 
 function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, rect.width);
+  const height = Math.max(1, rect.height);
   return {
-    x: ((event.clientX - rect.left) / rect.width) * FIELD.width,
-    y: ((event.clientY - rect.top) / rect.height) * FIELD.height,
+    x: Math.max(0, Math.min(FIELD.width, ((event.clientX - rect.left) / width) * FIELD.width)),
+    y: Math.max(0, Math.min(FIELD.height, ((event.clientY - rect.top) / height) * FIELD.height)),
   };
 }
 
