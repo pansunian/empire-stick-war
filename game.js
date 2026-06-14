@@ -139,8 +139,8 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
-const UNDEAD_SKELETON_TRAIT = { interval: 8, rampEvery: 80, maxCount: 5 };
-const FOUR_WAY_UNDEAD_SKELETON_TRAIT = { interval: 14, rampEvery: 120, maxCount: 3 };
+const UNDEAD_SKELETON_TRAIT = { interval: 10, intervalPerExtra: 5, rampEvery: 60, maxCount: 5 };
+const FOUR_WAY_UNDEAD_SKELETON_TRAIT = { interval: 10, intervalPerExtra: 5, rampEvery: 60, maxCount: 5 };
 const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
 const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
@@ -148,6 +148,26 @@ const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_FOUR_WAY_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
+const UNDEAD_CORPSE_MAGIC_COST = { normal: 5, heavy: 10, heavyHp: 350 };
+const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
+const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
+  "covenantGuard",
+  "ironCavalry",
+  "rocketCart",
+  "catapult",
+  "minotaur",
+  "hornKnightRider",
+  "apeMan",
+  "summonedApeMan",
+  "rhinoMan",
+  "arrowShieldCart",
+  "vUnit",
+  "godVUnit",
+  "rog",
+  "treeEnt",
+  "hurricane",
+  "dreadfire",
+]);
 const MAGIC_MINE_CAPACITY = 1600;
 const MAGIC_INCOME_PER_SECOND = 6;
 const STATUE_MAX_HP = 3000;
@@ -2401,7 +2421,7 @@ function formatSpecial(type) {
   if (type === "candlelight") notes.push(`默认冰矩形态，攻击减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒；可切火焰形态，灼烧可叠加`);
   if (type === "reaper") notes.push(`连续攻击同一目标每次伤害 +${Math.round(data.stackBonus * 100)}%，最高 +${Math.round(data.maxStackBonus * 100)}%；隐形 ${data.stealthDuration}秒，移速 ${data.stealthSpeed}，破隐攻击 ${data.ambushDamage} 伤害`);
   if (type === "darkKnight") notes.push(`技能冲刺 ${data.chargeDistance} 距离，眩晕路径敌人 ${data.chargeStun}秒，冷却 ${data.chargeCooldown}秒，不造成伤害`);
-  if (type === "necromancer") notes.push(`每 ${data.convertEvery}秒将敌方尸体转化为丧尸，生命为尸体原生命 ${Math.round(data.corpseHpRatio * 100)}%；远程单位尸体转化为毒尸；技能召唤 ${data.summonCount} 只移速 ${data.summonedSpeed} 的冲锋丧尸，冷却 ${data.summonCooldown}秒`);
+  if (type === "necromancer") notes.push(`每 ${data.convertEvery}秒消耗魔力转化敌方尸体；远程尸体转毒尸，生命 ${NECROMANCER_DARK_KNIGHT_HP_THRESHOLD} 以上转黑骑士；技能召唤 ${data.summonCount} 只移速 ${data.summonedSpeed} 的冲锋丧尸，冷却 ${data.summonCooldown}秒`);
   if (type === "necromancer") notes.push(`手动死灵爆炸：${data.plagueRadius} 范围造成 ${data.plagueDamage} 伤害并中毒 ${data.plaguePoisonDps}/秒；中毒单位死亡会继续爆炸，冷却 ${data.plagueCooldown}秒`);
   if (type === "boneThrower") notes.push(`骷髅远程单位；携带 ${data.maxBoneAmmo} 根骨头，每次攻击消耗 1 根；手动取骨可将敌方尸体 ${Math.round(data.corpseBoneRatio * 100)}% 转化为骨头`);
   if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
@@ -2438,7 +2458,7 @@ function formatSpecial(type) {
   if (type === "rog") notes.push(`每 ${data.magmaEvery}秒岩浆灼烧`);
   if (type === "undeadMage") notes.push(`普攻法杖砸地，范围 ${data.staffRadius}；手动骨刺 ${data.boneSpikeRange} 距离；手动勾引一名敌人向我方前进 ${data.lureDuration}秒，造成 ${data.lureDamage} 伤害，冷却 ${data.lureCooldown}秒；手动召唤 ${data.skeletonSummonCount} 个骷髅兵，冷却 ${data.skeletonSummonCooldown}秒`);
   if (type === "bannerBearer") notes.push(`每 ${data.inspireEvery}秒原地举旗 ${data.inspireDuration}秒，可手动切换激励骷髅/丧尸/亡灵；骷髅死亡复活一次，丧尸移速翻倍并前三击眩晕，亡灵类吸血`);
-  if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
+  if (type === "graveDigger") notes.push(`每 ${data.reviveEvery}秒消耗魔力复活范围内一个基础单位尸体；每 ${data.ghostEvery}秒放出 ${data.ghostCount} 个幽灵，经过敌人使其恐惧并受伤翻倍`);
   if (type === "ghoul") notes.push(`手动技能：扑向最近敌方尸体，啃食 ${data.devourDuration}秒后恢复尸体原生命值一半，最多回满`);
   if (type === "boneGiant") notes.push(`巨斧范围攻击最多 ${data.aoeLimit} 人；受到远程伤害降低 ${Math.round(data.rangedReduction * 100)}%`);
   if (type === "berserker") notes.push(`附近至少 ${data.rageEnemyCount} 名敌人时释放狂暴`);
@@ -4286,11 +4306,11 @@ function updateUndeadSkeletonTrait(side, dt) {
   timer.undeadSkeletonElapsed += dt;
   timer.undeadSkeletonTimer -= dt;
   if (timer.undeadSkeletonTimer > 0) return;
-  timer.undeadSkeletonTimer += trait.interval;
   const count = Math.min(
     trait.maxCount,
     1 + Math.floor(timer.undeadSkeletonElapsed / trait.rampEvery),
   );
+  timer.undeadSkeletonTimer += trait.interval + Math.max(0, count - 1) * (trait.intervalPerExtra ?? 0);
   for (let i = 0; i < count; i += 1) {
     const skeleton = spawnTraitUnit("machete", side, i);
     skeleton.forceCharge = true;
@@ -6617,9 +6637,11 @@ function reviveNearestCorpse(unit) {
   const data = UNIT.graveDigger;
   const corpse = state.corpses
     .filter((item) => item.side === unit.side && item.reviveable && item.revives < 3 && !UNDEAD_CORPSE_EXCLUDED.has(item.type))
+    .filter((item) => canPayUndeadCorpseMagic(unit.side, item))
     .filter((item) => distanceTo(item.x, item.y, unit.x, unit.y) <= data.reviveRadius)
     .sort((a, b) => distanceTo(a.x, a.y, unit.x, unit.y) - distanceTo(b.x, b.y, unit.x, unit.y))[0];
   if (!corpse) return;
+  const magicCost = spendUndeadCorpseMagic(unit.side, corpse);
   corpse.revives += 1;
   const revived = spawnUnit(corpse.type, corpse.side, corpse.x);
   revived.y = corpse.y;
@@ -6627,7 +6649,24 @@ function reviveNearestCorpse(unit) {
   revived.hp = Math.max(1, Math.round(revived.maxHp * hpRatios[corpse.revives - 1]));
   revived.corpseRevives = corpse.revives;
   state.corpses = state.corpses.filter((item) => item !== corpse);
-  popText(revived.x, revived.y - 100, `掘墓复活 ${Math.round(hpRatios[corpse.revives - 1] * 100)}%`, "#b8b0a5");
+  popText(revived.x, revived.y - 100, `掘墓复活 ${Math.round(hpRatios[corpse.revives - 1] * 100)}% -${magicCost}魔`, "#b8b0a5");
+}
+
+function getUndeadCorpseMagicCost(corpse) {
+  const maxHp = corpse.maxHp ?? UNIT[corpse.type]?.hp ?? 0;
+  return maxHp >= UNDEAD_CORPSE_MAGIC_COST.heavyHp
+    ? UNDEAD_CORPSE_MAGIC_COST.heavy
+    : UNDEAD_CORPSE_MAGIC_COST.normal;
+}
+
+function canPayUndeadCorpseMagic(side, corpse) {
+  return getSideMagic(side) >= getUndeadCorpseMagicCost(corpse);
+}
+
+function spendUndeadCorpseMagic(side, corpse) {
+  const cost = getUndeadCorpseMagicCost(corpse);
+  addSideMagic(side, -cost);
+  return cost;
 }
 
 function releaseGraveGhosts(unit) {
@@ -6893,20 +6932,40 @@ function updateNecromancer(unit, dt) {
 function convertEnemyCorpseWithNecromancer(unit) {
   const corpse = state.corpses
     .filter((item) => item.side !== unit.side)
+    .filter((item) => canNecromancerConvertCorpse(item))
+    .filter((item) => canPayUndeadCorpseMagic(unit.side, item))
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0];
   if (!corpse) return false;
-  const type = isRangedCorpse(corpse) ? "poisonZombie" : "undead";
+  const type = getNecromancerConversionType(corpse);
+  const magicCost = spendUndeadCorpseMagic(unit.side, corpse);
   const converted = spawnUnit(type, unit.side, corpse.x);
   converted.y = corpse.y;
   const hpRatio = UNIT.necromancer.corpseHpRatio;
-  converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * hpRatio));
+  if (type !== "darkKnight") {
+    converted.maxHp = Math.max(1, Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? UNIT.undead.hp) * hpRatio));
+  }
   converted.hp = converted.maxHp;
   converted.forceCharge = true;
   converted.summonerId = unit.id;
   state.corpses = state.corpses.filter((item) => item !== corpse);
   state.blasts.push({ x: converted.x, y: converted.y - 36, radius: 46, life: 0.32, duration: 0.32, color: "#b8b0e8" });
-  popText(converted.x, converted.y - 106, hpRatio >= 1 ? "完整转化" : (type === "poisonZombie" ? "尸体转化毒尸" : "尸体转化丧尸"), "#b8b0e8");
+  popText(converted.x, converted.y - 106, `${getNecromancerConversionText(type)} -${magicCost}魔`, "#b8b0e8");
   return true;
+}
+
+function canNecromancerConvertCorpse(corpse) {
+  return !NECROMANCER_CONVERSION_BLOCKED_UNITS.has(corpse.type);
+}
+
+function getNecromancerConversionType(corpse) {
+  const maxHp = corpse.maxHp ?? UNIT[corpse.type]?.hp ?? 0;
+  if (maxHp >= NECROMANCER_DARK_KNIGHT_HP_THRESHOLD) return "darkKnight";
+  return isRangedCorpse(corpse) ? "poisonZombie" : "undead";
+}
+
+function getNecromancerConversionText(type) {
+  if (type === "darkKnight") return "尸体转化黑骑士";
+  return type === "poisonZombie" ? "尸体转化毒尸" : "尸体转化丧尸";
 }
 
 function isRangedCorpse(corpse) {
