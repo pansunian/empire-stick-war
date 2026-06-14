@@ -141,7 +141,20 @@ const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "elect
 const AOE_TARGET_LIMIT = 5;
 const UNDEAD_SKELETON_TRAIT = { interval: 10, intervalPerExtra: 5, rampEvery: 60, maxCount: 5 };
 const FOUR_WAY_UNDEAD_SKELETON_TRAIT = { interval: 10, intervalPerExtra: 5, rampEvery: 60, maxCount: 5 };
-const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
+const ORDER_ARMOR_TRAIT = {
+  light: { hpBelow: 100, interval: 5, reductionStep: 0.1, maxReduction: 0.9 },
+  medium: { hpMin: 100, hpMax: 300, interval: 8, reductionStep: 0.15, maxReduction: 0.9 },
+  heavy: { hpAbove: 300, reduction: 0.2 },
+};
+const ORDER_MELEE_VETERAN_TRAIT = {
+  hpBelow: 150,
+  requiredKills: 3,
+  reduction: 0.25,
+  cleaveChance: 0.25,
+  cleaveRadius: 76,
+  cleaveLimit: 3,
+  meleeRange: 80,
+};
 const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
@@ -4295,7 +4308,8 @@ function getFactionTraitTimer(side) {
   state.factionTraitTimers[side] = state.factionTraitTimers[side] ?? {
     undeadSkeletonTimer: UNDEAD_SKELETON_TRAIT.interval,
     undeadSkeletonElapsed: 0,
-    orderArmorTimer: ORDER_ARMOR_TRAIT.interval,
+    orderLightArmorTimer: ORDER_ARMOR_TRAIT.light.interval,
+    orderMediumArmorTimer: ORDER_ARMOR_TRAIT.medium.interval,
   };
   return state.factionTraitTimers[side];
 }
@@ -4321,19 +4335,33 @@ function updateUndeadSkeletonTrait(side, dt) {
 
 function updateOrderArmorTrait(side, dt) {
   const timer = getFactionTraitTimer(side);
-  timer.orderArmorTimer -= dt;
-  if (timer.orderArmorTimer > 0) return;
-  timer.orderArmorTimer += ORDER_ARMOR_TRAIT.interval;
-  let armored = 0;
+  timer.orderLightArmorTimer -= dt;
+  timer.orderMediumArmorTimer -= dt;
+  const lightReady = timer.orderLightArmorTimer <= 0;
+  const mediumReady = timer.orderMediumArmorTimer <= 0;
+  if (!lightReady && !mediumReady) return;
+  if (lightReady) timer.orderLightArmorTimer += ORDER_ARMOR_TRAIT.light.interval;
+  if (mediumReady) timer.orderMediumArmorTimer += ORDER_ARMOR_TRAIT.medium.interval;
+  let lightArmored = 0;
+  let mediumArmored = 0;
   state.units.forEach((unit) => {
     if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
-    const before = unit.armorReduction ?? 0;
-    unit.armorReduction = Math.min(ORDER_ARMOR_TRAIT.maxReduction, before + ORDER_ARMOR_TRAIT.reductionStep);
-    if (unit.armorReduction > before) armored += 1;
+    const maxHp = unit.maxHp ?? UNIT[unit.type]?.hp ?? 0;
+    if (lightReady && maxHp < ORDER_ARMOR_TRAIT.light.hpBelow) {
+      const before = unit.armorReduction ?? 0;
+      unit.armorReduction = Math.min(ORDER_ARMOR_TRAIT.light.maxReduction, before + ORDER_ARMOR_TRAIT.light.reductionStep);
+      if (unit.armorReduction > before) lightArmored += 1;
+      return;
+    }
+    if (mediumReady && maxHp >= ORDER_ARMOR_TRAIT.medium.hpMin && maxHp <= ORDER_ARMOR_TRAIT.medium.hpMax) {
+      const before = unit.armorReduction ?? 0;
+      unit.armorReduction = Math.min(ORDER_ARMOR_TRAIT.medium.maxReduction, before + ORDER_ARMOR_TRAIT.medium.reductionStep);
+      if (unit.armorReduction > before) mediumArmored += 1;
+    }
   });
-  if (!armored) return;
   const point = getSideTraitTextPoint(side);
-  popText(point.x, point.y, `秩序护甲 +${Math.round(ORDER_ARMOR_TRAIT.reductionStep * 100)}%`, "#dfe8ff");
+  if (lightArmored) popText(point.x, point.y, `轻甲 +${Math.round(ORDER_ARMOR_TRAIT.light.reductionStep * 100)}%`, "#dfe8ff");
+  if (mediumArmored) popText(point.x, point.y + (lightArmored ? 24 : 0), `中甲 +${Math.round(ORDER_ARMOR_TRAIT.medium.reductionStep * 100)}%`, "#dfe8ff");
 }
 
 function spawnTraitUnit(type, side, index = 0) {
@@ -8232,8 +8260,12 @@ function attack(unit, target) {
     return;
   }
 
-  const dealt = applyDamage(target, getAttackDamage(unit, target, unit.damage ?? data.damage), unit.side);
+  const rawDamage = unit.damage ?? data.damage;
+  const veteranCleave = shouldTriggerOrderVeteranCleave(unit, target);
+  const attackDamage = getAttackDamage(unit, target, rawDamage) * (veteranCleave ? 2 : 1);
+  const dealt = applyDamage(target, attackDamage, unit.side);
   handleDamageDealt(unit, target, dealt);
+  if (veteranCleave) applyOrderVeteranCleave(unit, target, attackDamage);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
   }
@@ -8241,6 +8273,25 @@ function attack(unit, target) {
     applyBurn(target, data.burnDps, data.burnDuration);
   }
   if (data.stunDuration) applyStun(target, data.stunDuration);
+}
+
+function shouldTriggerOrderVeteranCleave(unit, target) {
+  return Boolean(
+    unit?.orderMeleeVeteran &&
+    target?.kind !== "statue" &&
+    Math.random() < ORDER_MELEE_VETERAN_TRAIT.cleaveChance
+  );
+}
+
+function applyOrderVeteranCleave(unit, target, damage) {
+  const y = target.y ?? unit.y;
+  const targets = getUnitsInRadius(target.x, ORDER_MELEE_VETERAN_TRAIT.cleaveRadius, unit.side, ORDER_MELEE_VETERAN_TRAIT.cleaveLimit, target, y);
+  targets.forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, damage, { label: "横扫", color: "#fff1a8", yOffset: -82, sourceSide: unit.side, sourceUnitId: unit.id });
+    if (dealt > 0) enemy.lastDamageUnitId = unit.id;
+  });
+  state.blasts.push({ x: target.x, y: y - 30, radius: ORDER_MELEE_VETERAN_TRAIT.cleaveRadius, life: 0.24, duration: 0.24, color: "#fff1a8" });
+  popText(unit.x, unit.y - 112, "老兵横扫", "#fff1a8");
 }
 
 function attackApeMan(unit, target) {
@@ -8351,6 +8402,32 @@ function grantChaosKillRewards(unit) {
   if (healed <= 0) return;
   killer.hp += healed;
   popText(killer.x, killer.y - 104, `吞噬 +${healed}`, "#ff8a3d");
+}
+
+function grantOrderMeleeVeteranKill(deadUnit) {
+  const killerSide = deadUnit.lastDamageSide ?? deadUnit.poisonSourceSide;
+  const killerUnitId = deadUnit.lastDamageUnitId ?? deadUnit.poisonSourceUnitId;
+  if (!killerSide || !killerUnitId || killerSide === deadUnit.side || factionForSide(killerSide) !== "order") return;
+  if (!areHostileSides(killerSide, deadUnit.side)) return;
+  const killer = state.units.find((candidate) => candidate.id === killerUnitId && candidate.hp > 0 && candidate.side === killerSide);
+  if (!isOrderLowHpMeleeUnit(killer) || killer.orderMeleeVeteran) return;
+  killer.orderMeleeKills = (killer.orderMeleeKills ?? 0) + 1;
+  if (killer.orderMeleeKills < ORDER_MELEE_VETERAN_TRAIT.requiredKills) {
+    popText(killer.x, killer.y - 108, `历练 ${killer.orderMeleeKills}/${ORDER_MELEE_VETERAN_TRAIT.requiredKills}`, "#fff1a8");
+    return;
+  }
+  killer.orderMeleeVeteran = true;
+  killer.armorReduction = Math.max(killer.armorReduction ?? 0, ORDER_MELEE_VETERAN_TRAIT.reduction);
+  state.blasts.push({ x: killer.x, y: killer.y - 38, radius: 58, life: 0.36, duration: 0.36, color: "#fff1a8" });
+  popText(killer.x, killer.y - 118, "晋升老兵", "#fff1a8");
+}
+
+function isOrderLowHpMeleeUnit(unit) {
+  if (!unit || factionForSide(unit.side) !== "order" || unit.hp <= 0 || UNIT[unit.type]?.untargetable) return false;
+  const data = UNIT[unit.type] ?? {};
+  const maxHp = unit.maxHp ?? data.hp ?? 0;
+  const range = data.range ?? 0;
+  return maxHp < ORDER_MELEE_VETERAN_TRAIT.hpBelow && range <= ORDER_MELEE_VETERAN_TRAIT.meleeRange && (unit.damage ?? data.damage ?? 0) > 0;
 }
 
 function attackCandlelight(unit, target) {
@@ -10498,6 +10575,7 @@ function applyUnitDamage(target, amount, options = {}) {
   target.hp -= hpDamage;
   handleCovenantFatalSave(target);
   if (options.sourceSide && options.sourceSide !== "neutral" && hpDamage > 0) target.lastDamageSide = options.sourceSide;
+  if (options.sourceUnitId && hpDamage > 0) target.lastDamageUnitId = options.sourceUnitId;
   target.combatTimer = 3;
   const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
   popText(target.x, target.y + (options.yOffset ?? -68), label, options.color ?? "#f0a36a");
@@ -10530,7 +10608,12 @@ function getModifiedDamage(target, amount, options = {}) {
   if (target.type === "goblin" && target.goblinBurrowed) {
     damage *= 1 - (UNIT.goblin.burrowReduction ?? 0.9);
   }
-  const armorReduction = Math.max(target.armorReduction ?? 0, target.heavyArmorTimer > 0 ? target.heavyArmorReduction ?? 0 : 0);
+  const armorReduction = Math.max(
+    target.armorReduction ?? 0,
+    target.heavyArmorTimer > 0 ? target.heavyArmorReduction ?? 0 : 0,
+    getOrderHeavyTraitReduction(target),
+    target.orderMeleeVeteran ? ORDER_MELEE_VETERAN_TRAIT.reduction : 0,
+  );
   if (armorReduction > 0) {
     damage *= 1 - armorReduction;
   }
@@ -10579,6 +10662,12 @@ function isPoisoned(unit) {
   return unit.poisonTimer > 0 || unit.poisonTimer === Infinity;
 }
 
+function getOrderHeavyTraitReduction(unit) {
+  if (!unit || factionForSide(unit.side) !== "order") return 0;
+  const maxHp = unit.maxHp ?? UNIT[unit.type]?.hp ?? 0;
+  return maxHp > ORDER_ARMOR_TRAIT.heavy.hpAbove ? ORDER_ARMOR_TRAIT.heavy.reduction : 0;
+}
+
 function removeDead() {
   const deathSpawns = [];
   state.units = state.units.filter((unit) => {
@@ -10597,6 +10686,7 @@ function removeDead() {
       releaseVControl(unit);
     }
     grantChaosKillRewards(unit);
+    grantOrderMeleeVeteranKill(unit);
     if (unit.type === "minotaur") {
       deathSpawns.push({
         type: "hornKnightRider",
