@@ -155,6 +155,13 @@ const ORDER_MELEE_VETERAN_TRAIT = {
   cleaveLimit: 3,
   meleeRange: 80,
 };
+const ORDER_COMBAT_TRAIT = {
+  chance: 0.3,
+  meleeDamageFactor: 2,
+  rangedStun: 2.5,
+  siegeKnockbackFactor: 1.5,
+};
+const ORDER_SIEGE_UNITS = new Set(["catapult", "rocketCart"]);
 const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
@@ -6877,10 +6884,12 @@ function attackIronCavalry(unit, target, distance) {
   markRetaliationTarget(target, unit);
 
   if (distance <= data.spearRange) {
-    const dealt = applyDamage(target, data.spearDamage, unit.side);
+    const critical = shouldTriggerOrderMeleeCritical(unit, target);
+    const damage = data.spearDamage * (critical ? ORDER_COMBAT_TRAIT.meleeDamageFactor : 1);
+    const dealt = applyDamage(target, damage, unit.side);
     handleDamageDealt(unit, target, dealt);
     unit.cooldown = data.spearCooldown;
-    popText(unit.x, unit.y - 98, "长枪突刺", "#dfe8ff");
+    popText(unit.x, unit.y - 98, critical ? "长枪重击" : "长枪突刺", critical ? "#fff1a8" : "#dfe8ff");
     return;
   }
 
@@ -6913,6 +6922,7 @@ function fireIronCavalryMusket(unit, target) {
     side: unit.side,
     damage: data.musketDamage,
     sourceId: unit.id,
+    sourceType: unit.type,
     target,
     life: 0.45,
     type: "ironCavalryMusket",
@@ -6931,6 +6941,7 @@ function throwIronCavalryBomb(unit, target) {
     splash: data.bombSplash,
     limit: data.bombLimit,
     sourceId: unit.id,
+    sourceType: unit.type,
     target,
     life: 0.5,
     duration: 0.5,
@@ -8269,6 +8280,7 @@ function attack(unit, target) {
       side: unit.side,
       damage: getAttackDamage(unit, target, data.damage),
       sourceId: unit.id,
+      sourceType: unit.type,
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
       type: unit.type,
@@ -8280,10 +8292,14 @@ function attack(unit, target) {
   }
 
   const rawDamage = unit.damage ?? data.damage;
+  const orderMeleeCritical = shouldTriggerOrderMeleeCritical(unit, target);
   const veteranCleave = shouldTriggerOrderVeteranCleave(unit, target);
-  const attackDamage = getAttackDamage(unit, target, rawDamage) * (veteranCleave ? 2 : 1);
+  const attackDamage = getAttackDamage(unit, target, rawDamage)
+    * (orderMeleeCritical ? ORDER_COMBAT_TRAIT.meleeDamageFactor : 1)
+    * (veteranCleave ? 2 : 1);
   const dealt = applyDamage(target, attackDamage, unit.side);
   handleDamageDealt(unit, target, dealt);
+  if (orderMeleeCritical && dealt > 0) popText(target.x, target.y - 108, "秩序重击", "#fff1a8");
   if (veteranCleave) applyOrderVeteranCleave(unit, target, attackDamage);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
@@ -8300,6 +8316,65 @@ function shouldTriggerOrderVeteranCleave(unit, target) {
     target?.kind !== "statue" &&
     Math.random() < ORDER_MELEE_VETERAN_TRAIT.cleaveChance
   );
+}
+
+function shouldTriggerOrderMeleeCritical(unit, target) {
+  if (!unit || target?.kind === "statue" || factionForSide(unit.side) !== "order") return false;
+  if (isOrderSiegeType(unit.type)) return false;
+  const range = UNIT[unit.type]?.range ?? 0;
+  return range <= ORDER_MELEE_VETERAN_TRAIT.meleeRange && Math.random() < ORDER_COMBAT_TRAIT.chance;
+}
+
+function isOrderSiegeType(type) {
+  return ORDER_SIEGE_UNITS.has(type);
+}
+
+function getArrowSourceType(arrow, source = getArrowSource(arrow)) {
+  return arrow.sourceType ?? source?.type ?? arrow.type;
+}
+
+function isOrderRangedTraitArrow(arrow, source = getArrowSource(arrow)) {
+  if (factionForSide(arrow.side) !== "order") return false;
+  const sourceType = getArrowSourceType(arrow, source);
+  if (isOrderSiegeType(sourceType)) return false;
+  return (UNIT[sourceType]?.range ?? 0) > ORDER_MELEE_VETERAN_TRAIT.meleeRange || arrow.type === "spearThrow" || arrow.type === "goldenSpear";
+}
+
+function isOrderSiegeTraitArrow(arrow, source = getArrowSource(arrow)) {
+  return factionForSide(arrow.side) === "order" && isOrderSiegeType(getArrowSourceType(arrow, source));
+}
+
+function maybeApplyOrderRangedStun(arrow, target, source = getArrowSource(arrow)) {
+  if (!target || target.kind === "statue" || target.hp <= 0) return;
+  if (!isOrderRangedTraitArrow(arrow, source)) return;
+  if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
+  applyStun(target, ORDER_COMBAT_TRAIT.rangedStun);
+  popText(target.x, target.y - 112, "秩序震慑", "#dfe8ff");
+}
+
+function maybeApplyOrderRangedStunFromUnit(unit, target) {
+  if (!unit || !target || target.kind === "statue" || target.hp <= 0) return;
+  if (factionForSide(unit.side) !== "order" || isOrderSiegeType(unit.type)) return;
+  if ((UNIT[unit.type]?.range ?? 0) <= ORDER_MELEE_VETERAN_TRAIT.meleeRange) return;
+  if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
+  applyStun(target, ORDER_COMBAT_TRAIT.rangedStun);
+  popText(target.x, target.y - 112, "秩序震慑", "#dfe8ff");
+}
+
+function maybeApplyOrderSiegeKnockback(arrow, target, damage, source = getArrowSource(arrow)) {
+  if (!target || target.kind === "statue" || target.hp <= 0 || damage <= 0) return;
+  if (!isOrderSiegeTraitArrow(arrow, source)) return;
+  if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
+  knockbackTargetFromSource(target, source, arrow.side, damage * ORDER_COMBAT_TRAIT.siegeKnockbackFactor);
+}
+
+function knockbackTargetFromSource(target, source, side, distance) {
+  if (!target || target.kind === "statue" || distance <= 0) return;
+  const dir = source ? Math.sign(target.x - source.x) || (side === "player" ? 1 : -1) : (side === "player" ? 1 : -1);
+  const minX = state?.fourWay ? 36 : FIELD.playerGate + 28;
+  const maxX = state?.fourWay ? FIELD.width - 36 : FIELD.enemyGate - 28;
+  target.x = Math.max(minX, Math.min(maxX, target.x + dir * distance));
+  popText(target.x, target.y - 116, `击退 ${Math.round(distance)}`, "#fff1a8");
 }
 
 function applyOrderVeteranCleave(unit, target, damage) {
@@ -8560,6 +8635,8 @@ function throwSpear(unit, target) {
     ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 118,
     side: unit.side,
     damage: data.throwDamage,
+    sourceId: unit.id,
+    sourceType: unit.type,
     target,
     life: 0.45,
     type: "spearThrow",
@@ -8645,7 +8722,8 @@ function castMagicBlast(unit, target) {
     applyDamage(target, data.damage, unit.side);
   }
   getUnitsInRadius(target.x, data.explosionRadius, unit.side).forEach((other) => {
-    applyUnitDamage(other, data.damage, { label: "魔爆", color: "#b88cff", yOffset: -82 });
+    const dealt = applyUnitDamage(other, data.damage, { label: "魔爆", color: "#b88cff", yOffset: -82, sourceSide: unit.side, sourceUnitId: unit.id });
+    if (dealt > 0) maybeApplyOrderRangedStunFromUnit(unit, other);
   });
   state.blasts.push({ x: target.x, y: target.y ? target.y - 28 : FIELD.ground - 120, radius: data.explosionRadius, life: 0.42, duration: 0.42, color: "#b88cff" });
 }
@@ -8988,6 +9066,7 @@ function throwBoulder(unit, target) {
     side: unit.side,
     damage: data.damage,
     sourceId: unit.id,
+    sourceType: unit.type,
     stun: data.stunDuration,
     splash: data.splash,
     aoeLimit: data.aoeLimit,
@@ -9025,6 +9104,8 @@ function fireRocketArrow(unit, target) {
     ty: centerY + (Math.random() - 0.5) * 18,
     side: unit.side,
     damage: data.damage,
+    sourceId: unit.id,
+    sourceType: unit.type,
     splash: data.splash,
     target,
     life: data.arrowLife,
@@ -9106,7 +9187,8 @@ function castChainLightning(unit, target) {
   let fromY = unit.y - 92;
   hits.forEach((enemy, index) => {
     const damage = data.chainDamages[index];
-    applyDamage(enemy, damage, unit.side);
+    const dealt = applyDamage(enemy, damage, unit.side);
+    if (dealt > 0) maybeApplyOrderRangedStunFromUnit(unit, enemy);
     state.lightning.push({
       x1: fromX,
       y1: fromY,
@@ -9147,7 +9229,8 @@ function castArcaneExplosion(unit) {
   const data = UNIT.archmage;
   const targets = getUnitsInRadius(unit.x, data.arcaneRadius, unit.side, Infinity);
   targets.forEach((target) => {
-    applyDamage(target, data.arcaneDamage, unit.side);
+    const dealt = applyDamage(target, data.arcaneDamage, unit.side);
+    if (dealt > 0) maybeApplyOrderRangedStunFromUnit(unit, target);
     applyStun(target, data.arcaneStun);
   });
   state.blasts.push({ x: unit.x, y: unit.y - 44, radius: data.arcaneRadius, life: 0.45, duration: 0.45, color: "#b88cff" });
@@ -9348,20 +9431,28 @@ function updateArrows(dt) {
       } else if (arrow.type === "undeadVulture") {
         explodeUndeadVultureOrb(arrow);
       } else if (arrow.type === "poisonZombie") {
+        const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "fireElement") {
+        const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
       } else if (arrow.type === "archerFire") {
+        const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyBurn(arrow.target, arrow.burnDps, arrow.burnDuration);
       } else if (arrow.type === "javelinThrower") {
+        const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
         if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
@@ -9375,8 +9466,10 @@ function updateArrows(dt) {
       } else if (arrow.type === "ironCavalryBomb") {
         explodeIronCavalryBomb(arrow);
       } else {
+        const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-        handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
         if (arrow.stun) applyStun(arrow.target, arrow.stun);
       }
     }
@@ -9391,8 +9484,10 @@ function getArrowSource(arrow) {
 
 function attachCrossbowBomb(arrow) {
   const data = UNIT.crossbow;
+  const source = getArrowSource(arrow);
   const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
-  handleDamageDealt(getArrowSource(arrow), arrow.target, dealt);
+  handleDamageDealt(source, arrow.target, dealt);
+  maybeApplyOrderRangedStun(arrow, arrow.target, source);
   if (!arrow.target || arrow.target.kind === "statue" || arrow.target.hp <= 0 || isUnitHidden(arrow.target)) return;
   arrow.target.stickyBombs = arrow.target.stickyBombs ?? [];
   arrow.target.stickyBombs.push({
@@ -9427,12 +9522,14 @@ function explodeStickyBomb(unit, bomb) {
 
 function explodeBoulder(arrow) {
   const limit = arrow.aoeLimit ?? 3;
+  const source = getArrowSource(arrow);
   if (arrow.target?.kind === "statue") {
     applyDamage(arrow.target, arrow.damage, arrow.side);
   }
   getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, limit).forEach((target) => {
-    const dealt = applyUnitDamage(target, arrow.damage, { label: arrow.cannon ? "炮击" : "投石", color: arrow.cannon ? "#ffce7a" : "#c0a36d", yOffset: -80, ranged: true });
-    handleDamageDealt(getArrowSource(arrow), target, dealt);
+    const dealt = applyUnitDamage(target, arrow.damage, { label: arrow.cannon ? "炮击" : "投石", color: arrow.cannon ? "#ffce7a" : "#c0a36d", yOffset: -80, ranged: true, sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
+    handleDamageDealt(source, target, dealt);
+    maybeApplyOrderSiegeKnockback(arrow, target, dealt, source);
     if (arrow.stun) applyStun(target, arrow.stun);
   });
   if (arrow.groundFireDuration) {
@@ -9470,9 +9567,12 @@ function createGroundFire(x, y, side, dps, duration, radius) {
 }
 
 function explodeRocketArrow(arrow) {
+  const source = getArrowSource(arrow);
   const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, 3, null, arrow.ty);
   targets.forEach((target) => {
-    applyDamage(target, arrow.damage, arrow.side);
+    const dealt = applyUnitDamage(target, arrow.damage, { label: "火箭", color: "#ffce7a", yOffset: -78, ranged: true, sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
+    handleDamageDealt(source, target, dealt);
+    maybeApplyOrderSiegeKnockback(arrow, target, dealt, source);
   });
   if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= arrow.splash + 28) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
@@ -9481,10 +9581,12 @@ function explodeRocketArrow(arrow) {
 }
 
 function explodeIronCavalryBomb(arrow) {
+  const source = getArrowSource(arrow);
   const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 5, null, arrow.ty);
   targets.forEach((target) => {
-    const dealt = applyUnitDamage(target, arrow.damage, { label: "炸弹", color: "#ffce7a", yOffset: -78, ranged: true });
-    handleDamageDealt(getArrowSource(arrow), target, dealt);
+    const dealt = applyUnitDamage(target, arrow.damage, { label: "炸弹", color: "#ffce7a", yOffset: -78, ranged: true, sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
+    handleDamageDealt(source, target, dealt);
+    maybeApplyOrderRangedStun(arrow, target, source);
   });
   if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= arrow.splash + 28) {
     applyDamage(arrow.target, arrow.damage, arrow.side);
@@ -15788,6 +15890,7 @@ function shootArcherFireArrow(unit, target) {
     damage: unit.damage ?? data.damage,
     target,
     sourceId: unit.id,
+    sourceType: unit.type,
     life: 0.55,
     type: "archerFire",
     burnDps: data.fireArrowBurnDps,
@@ -16742,6 +16845,8 @@ function throwGoldenSpear(unit) {
     ty: target.y ? target.y - 40 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 118,
     side: unit.side,
     damage: UNIT.goldenSpartan.goldenSpearDamage,
+    sourceId: unit.id,
+    sourceType: unit.type,
     target,
     life: 0.42,
     type: "goldenSpear",
