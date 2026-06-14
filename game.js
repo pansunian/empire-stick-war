@@ -2906,15 +2906,18 @@ function renderCampaignMap() {
   const faction = selectedFaction;
   const progress = campaignProgressByFaction[faction] ?? 1;
   const unlocks = CAMPAIGN_UNLOCKS[faction];
+  const configuredLevels = Object.keys(CAMPAIGN_LEVELS[faction] ?? {}).length;
 
   campaignTitle.textContent = `${FACTIONS[faction].name}战役`;
-  campaignProgress.textContent = `第 ${progress} 关可挑战，共 ${CAMPAIGN_LEVEL_COUNT} 关`;
+  campaignProgress.textContent = configuredLevels
+    ? `第 ${Math.min(progress, configuredLevels)} 关可挑战，共 ${CAMPAIGN_LEVEL_COUNT} 个隐藏关`
+    : `隐藏关暂未开放，共 ${CAMPAIGN_LEVEL_COUNT} 个隐藏关`;
   campaignPath.innerHTML = Array.from({ length: CAMPAIGN_LEVEL_COUNT }, (_, index) => {
     const level = index + 1;
     const unitType = unlocks[index];
     const unitName = UNIT[unitType]?.name ?? "终章军团";
-    const available = level <= progress;
     const config = CAMPAIGN_LEVELS[faction]?.[level];
+    const available = Boolean(config) && level <= progress;
     const rewardText = config?.rewardText === "" ? "无" : (config?.rewardText ?? unitName);
     const titleText = HIDE_EXISTING_CAMPAIGNS ? `隐藏关 ${level}` : (config?.title ?? (available ? "可挑战" : "未解锁"));
     const unlockText = HIDE_EXISTING_CAMPAIGNS ? "隐藏奖励" : rewardText;
@@ -11675,7 +11678,11 @@ function drawUnit(unit) {
     return;
   }
   if (BASIC_ELEMENT_UNITS.has(unit.type)) {
-    drawBasicElementAura(unit);
+    drawBasicElementUnit(unit);
+    drawUnitHp(unit);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    return;
   }
   if (unit.type === "miner") {
     drawMinerUnit(unit, color, headColor);
@@ -11700,22 +11707,166 @@ function drawUnit(unit) {
   ctx.restore();
 }
 
-function drawBasicElementAura(unit) {
-  const colors = {
-    earthElement: "rgba(192, 163, 109, 0.48)",
-    waterElement: "rgba(114, 200, 232, 0.45)",
-    fireElement: "rgba(255, 122, 61, 0.5)",
-    windElement: "rgba(215, 246, 238, 0.48)",
+function drawBasicElementUnit(unit) {
+  const palette = {
+    earthElement: {
+      aura: "rgba(192, 163, 109, 0.34)",
+      body: "#9b8051",
+      head: "#c0a36d",
+      accent: "#5f4f33",
+      glow: "#d7bd82",
+    },
+    waterElement: {
+      aura: "rgba(114, 200, 232, 0.32)",
+      body: "#72c8e8",
+      head: "#b8f0ff",
+      accent: "#2d7ea6",
+      glow: "#d8fbff",
+    },
+    fireElement: {
+      aura: "rgba(255, 122, 61, 0.36)",
+      body: "#f07845",
+      head: "#ffd08a",
+      accent: "#8f2f20",
+      glow: "#ffe06d",
+    },
+    windElement: {
+      aura: "rgba(215, 246, 238, 0.32)",
+      body: "#d7f6ee",
+      head: "#ffffff",
+      accent: "#66b8aa",
+      glow: "#ffffff",
+    },
+  }[unit.type] ?? {
+    aura: "rgba(255,255,255,0.28)",
+    body: getUnitColor(unit),
+    head: getHeadColor(unit),
+    accent: "#333333",
+    glow: "#ffffff",
   };
+  const walk = getWalkAmount(unit);
+  const phase = getWalkPhase(unit);
+  const step = Math.sin(phase) * walk;
+  const counter = Math.sin(phase + Math.PI) * walk;
+  const liftA = Math.max(0, Math.sin(phase)) * walk;
+  const liftB = Math.max(0, Math.sin(phase + Math.PI)) * walk;
+  const lean = step * 2;
+
   ctx.save();
-  ctx.globalAlpha = 0.95;
-  ctx.fillStyle = colors[unit.type] ?? "rgba(255,255,255,0.35)";
-  ctx.strokeStyle = getHeadColor(unit);
-  ctx.lineWidth = 2.5;
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = palette.aura;
   ctx.beginPath();
-  ctx.ellipse(0, -42, 25, 38, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -36, 33, 48, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.stroke();
+
+  strokePose("#151515", 12, () => {
+    makeLimbPath(-2, -26, 12 + step * 10, -12 - liftA * 6, 24 + step * 12, 5 - liftA * 3);
+    makeLimbPath(-1, -26, -13 + counter * 10, -12 - liftB * 6, -24 + counter * 12, 5 - liftB * 3);
+    makeLimbPath(-2, -44, 18 + counter * 10, -38 + liftB * 2, 31 + counter * 11, -32 + liftB * 2);
+    makeLimbPath(1, -43, -18 + step * 10, -37 + liftA * 2, -31 + step * 11, -29 + liftA * 2);
+  });
+  strokePose(palette.body, 7, () => {
+    makeLimbPath(-2, -26, 12 + step * 10, -12 - liftA * 6, 24 + step * 12, 5 - liftA * 3);
+    makeLimbPath(-1, -26, -13 + counter * 10, -12 - liftB * 6, -24 + counter * 12, 5 - liftB * 3);
+    makeLimbPath(-2, -44, 18 + counter * 10, -38 + liftB * 2, 31 + counter * 11, -32 + liftB * 2);
+    makeLimbPath(1, -43, -18 + step * 10, -37 + liftA * 2, -31 + step * 11, -29 + liftA * 2);
+  });
+
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#151515";
+  ctx.lineWidth = 4;
+  ctx.fillStyle = palette.body;
+  if (unit.type === "earthElement") {
+    ctx.beginPath();
+    ctx.moveTo(-18 + lean * 0.2, -52);
+    ctx.lineTo(9 + lean * 0.4, -55);
+    ctx.lineTo(23 + lean * 0.3, -35);
+    ctx.lineTo(9, -17);
+    ctx.lineTo(-17, -20);
+    ctx.lineTo(-25, -38);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = palette.head;
+    [[-12, -45, 5], [5, -49, 6], [13, -34, 5], [-5, -27, 4]].forEach(([x, y, radius]) => {
+      ctx.beginPath();
+      ctx.arc(x + lean * 0.2, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  } else if (unit.type === "waterElement") {
+    ctx.beginPath();
+    ctx.moveTo(0 + lean * 0.3, -57);
+    ctx.bezierCurveTo(25, -39, 20, -15, 0, -15);
+    ctx.bezierCurveTo(-22, -15, -27, -39, 0 + lean * 0.3, -57);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = palette.glow;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-12, -34);
+    ctx.quadraticCurveTo(-2, -41, 9, -34);
+    ctx.quadraticCurveTo(15, -30, 20, -34);
+    ctx.stroke();
+  } else if (unit.type === "fireElement") {
+    ctx.beginPath();
+    ctx.moveTo(0, -61);
+    ctx.bezierCurveTo(25, -45, 22, -20, 4, -14);
+    ctx.bezierCurveTo(-18, -22, -27, -37, -9, -55);
+    ctx.bezierCurveTo(-5, -45, 4, -43, 0, -61);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = palette.glow;
+    ctx.beginPath();
+    ctx.moveTo(1, -49);
+    ctx.bezierCurveTo(12, -38, 10, -25, 0, -21);
+    ctx.bezierCurveTo(-10, -28, -10, -40, 1, -49);
+    ctx.fill();
+  } else {
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = palette.body;
+    ctx.beginPath();
+    ctx.ellipse(0 + lean * 0.2, -35, 18, 25, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = palette.accent;
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 3; i += 1) {
+      const offset = i * 9;
+      ctx.beginPath();
+      ctx.arc(-2, -37, 18 + offset, phase * 0.5 + i, phase * 0.5 + i + Math.PI * 1.1);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawRoundedHead(palette.head, lean * 0.25, -68, 14);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = palette.accent;
+  ctx.lineWidth = 3;
+  if (unit.type === "windElement") {
+    ctx.beginPath();
+    ctx.moveTo(-13, -70);
+    ctx.quadraticCurveTo(0, -82, 15, -70);
+    ctx.stroke();
+  } else if (unit.type === "fireElement") {
+    ctx.fillStyle = palette.glow;
+    ctx.beginPath();
+    ctx.moveTo(0, -91);
+    ctx.bezierCurveTo(9, -80, 5, -73, 0, -72);
+    ctx.bezierCurveTo(-7, -77, -6, -84, 0, -91);
+    ctx.fill();
+  } else if (unit.type === "waterElement") {
+    ctx.beginPath();
+    ctx.arc(0, -85, 7, 0.15 * Math.PI, 1.85 * Math.PI);
+    ctx.stroke();
+  } else if (unit.type === "earthElement") {
+    ctx.fillStyle = palette.accent;
+    ctx.fillRect(-9, -84, 18, 7);
+  }
   ctx.restore();
 }
 
@@ -16026,7 +16177,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-element-stagger-fix";
+  const refreshKey = "stick-war-sw-refresh-20260614-mode-faction-sweep";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
