@@ -3683,6 +3683,7 @@ function findConvertibleEarthElement(side) {
     candidate.side === side
     && candidate.type === "earthElement"
     && candidate.hp > 0
+    && !candidate.spawnExitTimer
     && !candidate.merging
     && !isUnitHidden(candidate)
   ));
@@ -16187,7 +16188,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-controls-swap";
+  const refreshKey = "stick-war-sw-refresh-20260614-fielded-units-fix";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");

@@ -3747,27 +3747,36 @@ body:not(.quad-watch) canvas {
 
 @media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
   .control-deck {
-    grid-template-columns: minmax(0, 1fr) 74px;
+    grid-template-columns: minmax(0, 1fr) minmax(216px, 252px);
     grid-template-rows: repeat(2, 46px);
     height: 108px;
   }
 
   .command-group {
+    grid-column: 2;
+    grid-row: 1 / span 2;
     grid-template-columns: repeat(3, minmax(66px, 1fr));
     grid-template-rows: repeat(2, 46px);
   }
 
   .mobile-units-toggle {
-    grid-row: 1 / span 2;
-    height: 100%;
+    display: none;
   }
 
   .unit-shop,
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
-    height: 132px;
-    grid-template-rows: repeat(2, 58px);
+    position: static;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: grid;
+    height: 100%;
+    grid-template-rows: repeat(2, 46px);
     grid-auto-columns: 62px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 }
