@@ -3676,26 +3676,26 @@ body.quad-watch .health-bars {
 }
 
 .command-btn[data-command="attack"] {
-  order: 2;
-}
-
-.command-btn[data-command="guard"] {
-  order: 1;
-}
-
-.command-btn[data-command="retreat"] {
   order: 3;
 }
 
-.miner-command-btn[data-miner-command="attack"] {
+.command-btn[data-command="guard"] {
+  order: 2;
+}
+
+.command-btn[data-command="retreat"] {
+  order: 1;
+}
+
+.miner-command-btn[data-miner-command="retreat"] {
   order: 4;
 }
 
-.miner-resource-btn[data-miner-resource="gold"] {
+.miner-command-btn[data-miner-command="mine"] {
   order: 5;
 }
 
-.miner-resource-btn[data-miner-resource="magic"] {
+.miner-command-btn[data-miner-command="attack"] {
   order: 6;
 }
 
