@@ -158,6 +158,7 @@ const ORDER_MELEE_VETERAN_TRAIT = {
 const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
+const CHAOS_SURVIVAL_HP_TRAIT = { interval: 10, factor: 1.2 };
 const CHAOS_FOUR_WAY_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
@@ -3595,6 +3596,8 @@ function spawnUnit(type, side, x) {
     combatTimer: 0,
     chaosRegenTick: 0,
     chaosCleanseTimer: 10,
+    chaosSurvivalTimer: 0,
+    chaosSurvivalStacks: 0,
     exploded: false,
     anim: Math.random() * 10,
   });
@@ -5495,6 +5498,7 @@ function updateUnits(dt) {
       if (unit.side === "player" && state.command === "retreat") continue;
       unit.inCastle = false;
     }
+    updateChaosSurvivalHpTrait(unit, dt);
     unit.cooldown = Math.max(0, unit.cooldown - dt * getAttackSpeedFactor(unit));
     unit.spearRecoverTimer = Math.max(0, unit.spearRecoverTimer - dt);
     unit.medusaSlayTimer = Math.max(0, unit.medusaSlayTimer - dt);
@@ -5809,6 +5813,21 @@ function updateUnits(dt) {
       state.inspectedUnitId = null;
       state.inspectedUnitTimer = 0;
     }
+  }
+}
+
+function updateChaosSurvivalHpTrait(unit, dt) {
+  if (!unit || unit.hp <= 0 || factionForSide(unit.side) !== "chaos") return;
+  if (isUnitHidden(unit) || UNIT[unit.type]?.untargetable || unit.timedLife !== undefined) return;
+  unit.chaosSurvivalTimer = (unit.chaosSurvivalTimer ?? 0) + dt;
+  while (unit.chaosSurvivalTimer >= CHAOS_SURVIVAL_HP_TRAIT.interval) {
+    unit.chaosSurvivalTimer -= CHAOS_SURVIVAL_HP_TRAIT.interval;
+    const oldMax = unit.maxHp;
+    unit.maxHp = Math.max(1, Math.round(unit.maxHp * CHAOS_SURVIVAL_HP_TRAIT.factor));
+    unit.hp = Math.max(1, Math.round(unit.hp * CHAOS_SURVIVAL_HP_TRAIT.factor));
+    unit.chaosSurvivalStacks = (unit.chaosSurvivalStacks ?? 0) + 1;
+    const gained = unit.maxHp - oldMax;
+    if (gained > 0) popText(unit.x, unit.y - 112, `混沌成长 +${gained}`, "#ff8a3d");
   }
 }
 
