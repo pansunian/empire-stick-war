@@ -99,6 +99,30 @@ const RALLY = {
 
 const MERGE_COST = 40;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const ELEMENT_MERGE_MAGIC_COSTS = {
+  hill: 50,
+  treeEnt: 50,
+  rog: 50,
+  hurricane: 50,
+  linghan: 100,
+  redflame: 100,
+  stormLich: 100,
+  vUnit: 150,
+  dreadfire: 150,
+};
+const FOUR_WAY_MERGE_VALUES = {
+  electricGate: 150,
+  hill: 160,
+  linghan: 170,
+  redflame: 205,
+  stormLich: 230,
+  treeEnt: 190,
+  rog: 245,
+  dreadfire: 280,
+  hurricane: 250,
+  scaldStrike: 180,
+  vUnit: 275,
+};
 const MERGE_COST_DISCOUNT_STEP = 8;
 const V_CONTROL_BLOCKED_UNITS = new Set([
   "catapult",
@@ -1167,7 +1191,7 @@ const UNIT = {
   },
   earthElement: {
     name: "土元素",
-    cost: 65,
+    cost: 100,
     hp: 95,
     damage: 7,
     range: 36,
@@ -1178,7 +1202,7 @@ const UNIT = {
   },
   waterElement: {
     name: "水元素",
-    cost: 90,
+    cost: 175,
     hp: 140,
     damage: 0,
     range: 34,
@@ -1191,7 +1215,7 @@ const UNIT = {
   },
   fireElement: {
     name: "火元素",
-    cost: 130,
+    cost: 250,
     hp: 100,
     damage: 17,
     range: 185,
@@ -1215,7 +1239,7 @@ const UNIT = {
   },
   windElement: {
     name: "风元素",
-    cost: 120,
+    cost: 200,
     hp: 85,
     damage: 28,
     range: 235,
@@ -1541,19 +1565,6 @@ const FOUR_WAY_AI_ROSTER = {
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
-};
-const FOUR_WAY_MERGE_COSTS = {
-  electricGate: 150,
-  hill: 160,
-  linghan: 170,
-  redflame: 205,
-  stormLich: 230,
-  treeEnt: 190,
-  rog: 245,
-  dreadfire: 280,
-  hurricane: 250,
-  scaldStrike: 180,
-  vUnit: 275,
 };
 const FOUR_WAY_TECH_UNLOCK = 35;
 const FOUR_WAY_HIGH_TIER_COST = 180;
@@ -2195,6 +2206,7 @@ function getUnitCost(type, faction, side = null) {
 }
 
 function getUnitMagicCost(type, faction) {
+  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeMagicCost(type);
   return UNIT[type]?.magicCost ?? 0;
 }
 
@@ -2243,9 +2255,18 @@ function spendUnitCost(type, faction, side, gold) {
 }
 
 function getElementMergeCost(type, side = null) {
+  void type;
+  void side;
+  return 0;
+}
+
+function getElementMergeMagicCost(type) {
   if (FREE_MERGE_UNITS.has(type)) return 0;
-  const discount = getElementMergeDiscount(type, side);
-  return Math.max(0, MERGE_COST - discount);
+  return ELEMENT_MERGE_MAGIC_COSTS[type] ?? 0;
+}
+
+function canAffordElementMerge(type, side = "player") {
+  return getSideMagic(side) >= getElementMergeMagicCost(type);
 }
 
 function getElementMergeDiscount(type, side = null) {
@@ -2261,11 +2282,13 @@ function recordElementMergeDiscount(side, type) {
 }
 
 function getFourWayUnitCost(type, faction, side = null) {
-  if (faction === "element" && MERGE_UNITS.has(type)) {
-    if (FREE_MERGE_UNITS.has(type)) return 0;
-    return Math.max(0, (FOUR_WAY_MERGE_COSTS[type] ?? 180) - getElementMergeDiscount(type, side));
-  }
+  if (faction === "element" && MERGE_UNITS.has(type)) return 0;
   return getUnitCost(type, faction, side);
+}
+
+function getFourWayUnitValue(type, faction, side = null) {
+  if (faction === "element" && MERGE_UNITS.has(type)) return FOUR_WAY_MERGE_VALUES[type] ?? 180;
+  return getFourWayUnitCost(type, faction, side);
 }
 
 function currentPlayerRoster() {
@@ -3172,12 +3195,12 @@ function renderShop() {
   };
   const renderElementButton = (type) => {
     if (!MERGE_UNITS.has(type)) return renderTrainButton(type);
-    const mergeCost = getElementMergeCost(type, "player");
+    const mergeMagicCost = getElementMergeMagicCost(type);
     return `
       <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>合成${UNIT[type].name}</strong>
-        <small>${mergeCost > 0 ? `${mergeCost} 金币` : "无需金币"}</small>
+        <small>${mergeMagicCost > 0 ? `${mergeMagicCost} 魔力` : "无需魔力"}</small>
       </button>
     `;
   };
@@ -3643,22 +3666,20 @@ function mergeV(side) {
 }
 
 function payMergeCost(side, x, color, mergeType = null) {
-  const key = side === "player" ? "gold" : "enemyGold";
-  const cost = mergeType ? getElementMergeCost(mergeType, side) : MERGE_COST;
-  if (cost <= 0) return true;
-  if (state[key] < cost) {
-    popText(x, FIELD.ground - 100, `融合需要 ${cost} 金币`, color);
+  const magicCost = mergeType ? getElementMergeMagicCost(mergeType) : 0;
+  if (magicCost <= 0) return true;
+  if (getSideMagic(side) < magicCost) {
+    popText(x, FIELD.ground - 100, `融合需要 ${magicCost} 魔力`, color);
     return false;
   }
-  state[key] -= cost;
+  addSideMagic(side, -magicCost);
   return true;
 }
 
 function refundMergeCost(side, mergeType) {
-  const cost = mergeType ? getElementMergeCost(mergeType, side) : MERGE_COST;
-  if (cost <= 0) return;
-  if (side === "player") state.gold += cost;
-  else state.enemyGold += cost;
+  const magicCost = mergeType ? getElementMergeMagicCost(mergeType) : 0;
+  if (magicCost <= 0) return;
+  addSideMagic(side, magicCost);
 }
 
 function beginDirectElementMerge(side, resultType, text, color) {
@@ -4078,7 +4099,7 @@ function updateFourWayAi(dt) {
     const cost = getFourWayUnitCost(type, ai.faction, ai.side);
     ai.gold -= cost;
     ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction);
-    const isHighTier = cost >= FOUR_WAY_HIGH_TIER_COST;
+    const isHighTier = getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
     recordElementMergeDiscount(ai.side, type);
@@ -4176,22 +4197,22 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
     return Boolean(UNIT[type]);
   });
   const highTargets = fullRoster
-    .filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST)
-    .sort((a, b) => getFourWayUnitCost(b, ai.faction, ai.side) - getFourWayUnitCost(a, ai.faction, ai.side));
+    .filter((type) => getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST)
+    .sort((a, b) => getFourWayUnitValue(b, ai.faction, ai.side) - getFourWayUnitValue(a, ai.faction, ai.side));
   const cheapestHigh = highTargets[highTargets.length - 1];
   const shouldTech = state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && livingCount >= 5 && cheapestHigh;
-  if (shouldTech && ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction, ai.side)) return null;
+  if (shouldTech && (ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction, ai.side) || (ai.magic ?? 0) < getUnitMagicCost(cheapestHigh, ai.faction))) return null;
   if (!affordableRoster.length) return null;
 
   const affordable = affordableRoster
     .slice()
-    .sort((a, b) => getFourWayUnitCost(b, ai.faction, ai.side) - getFourWayUnitCost(a, ai.faction, ai.side));
-  const highAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST);
+    .sort((a, b) => getFourWayUnitValue(b, ai.faction, ai.side) - getFourWayUnitValue(a, ai.faction, ai.side));
+  const highAffordable = affordable.filter((type) => getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST);
   const midAffordable = affordable.filter((type) => {
-    const cost = getFourWayUnitCost(type, ai.faction, ai.side);
+    const cost = getFourWayUnitValue(type, ai.faction, ai.side);
     return cost >= 110 && cost < FOUR_WAY_HIGH_TIER_COST;
   });
-  const cheapAffordable = affordable.filter((type) => getFourWayUnitCost(type, ai.faction, ai.side) < 110);
+  const cheapAffordable = affordable.filter((type) => getFourWayUnitValue(type, ai.faction, ai.side) < 110);
 
   if (state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && highAffordable.length && Math.random() < 0.68) {
     return highAffordable[Math.floor(Math.random() * highAffordable.length)];
@@ -4640,8 +4661,9 @@ function getFactionMagicDemand(faction, side = null) {
     ? currentPlayerRoster()
     : side === "enemy"
       ? currentEnemyRoster()
-      : FACTIONS[faction]?.roster ?? [];
-  return Math.max(0, ...roster.map((type) => getUnitMagicCost(type, faction)));
+      : (state?.fourWay && FOUR_WAY_AI_ROSTER[side]) ? FOUR_WAY_AI_ROSTER[side] : FACTIONS[faction]?.roster ?? [];
+  const magicRoster = faction === "element" ? [...new Set([...roster, ...FOUR_WAY_AI_ROSTER.element])] : roster;
+  return Math.max(0, ...magicRoster.map((type) => getUnitMagicCost(type, faction)));
 }
 
 function depositMinerCarry(unit, isPlayer) {
@@ -16013,7 +16035,7 @@ function updateHud() {
     }
     if (button.dataset.action?.startsWith("merge")) {
       const mergeType = ELEMENT_MERGE_TYPE_BY_ACTION[button.dataset.action];
-      if (state.over || state.gold < getElementMergeCost(mergeType, "player")) {
+      if (state.over || !canAffordElementMerge(mergeType, "player")) {
         button.disabled = true;
         return;
       }
@@ -16021,45 +16043,45 @@ function updateHud() {
     if (button.dataset.action === "mergeTreeEnt") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasWater = state.units.some((unit) => unit.side === "player" && unit.type === "waterElement" && unit.hp > 0 && !isUnitHidden(unit) && !unit.boundTargetId);
-      button.disabled = state.over || state.gold < getElementMergeCost("treeEnt", "player") || !hasEarth || !hasWater;
+      button.disabled = state.over || !canAffordElementMerge("treeEnt", "player") || !hasEarth || !hasWater;
       return;
     }
     if (button.dataset.action === "mergeRog") {
       const hasEarth = state.units.some((unit) => unit.side === "player" && unit.type === "earthElement" && unit.hp > 0 && !isUnitHidden(unit));
       const hasFire = state.units.some((unit) => unit.side === "player" && unit.type === "fireElement" && unit.hp > 0 && !isUnitHidden(unit));
-      button.disabled = state.over || state.gold < getElementMergeCost("rog", "player") || !hasEarth || !hasFire;
+      button.disabled = state.over || !canAffordElementMerge("rog", "player") || !hasEarth || !hasFire;
       return;
     }
     if (button.dataset.action === "mergeDreadfire") {
-      button.disabled = state.over || state.gold < getElementMergeCost("dreadfire", "player") || !canMergeDreadfire("player");
+      button.disabled = state.over || !canAffordElementMerge("dreadfire", "player") || !canMergeDreadfire("player");
       return;
     }
     if (button.dataset.action === "mergeRedflame") {
-      button.disabled = state.over || state.gold < getElementMergeCost("redflame", "player") || !canMergeRedflame("player");
+      button.disabled = state.over || !canAffordElementMerge("redflame", "player") || !canMergeRedflame("player");
       return;
     }
     if (button.dataset.action === "mergeHurricane") {
-      button.disabled = state.over || state.gold < getElementMergeCost("hurricane", "player") || !canMergeHurricane("player");
+      button.disabled = state.over || !canAffordElementMerge("hurricane", "player") || !canMergeHurricane("player");
       return;
     }
     if (button.dataset.action === "mergeHill") {
-      button.disabled = state.over || state.gold < getElementMergeCost("hill", "player") || !canMergeHill("player");
+      button.disabled = state.over || !canAffordElementMerge("hill", "player") || !canMergeHill("player");
       return;
     }
     if (button.dataset.action === "mergeLinghan") {
-      button.disabled = state.over || state.gold < getElementMergeCost("linghan", "player") || !canMergeLinghan("player");
+      button.disabled = state.over || !canAffordElementMerge("linghan", "player") || !canMergeLinghan("player");
       return;
     }
     if (button.dataset.action === "mergeScaldStrike") {
-      button.disabled = state.over || state.gold < getElementMergeCost("scaldStrike", "player") || !canMergeScaldStrike("player");
+      button.disabled = state.over || !canAffordElementMerge("scaldStrike", "player") || !canMergeScaldStrike("player");
       return;
     }
     if (button.dataset.action === "mergeElectricGate") {
-      button.disabled = state.over || state.gold < getElementMergeCost("electricGate", "player") || !canMergeElectricGate("player");
+      button.disabled = state.over || !canAffordElementMerge("electricGate", "player") || !canMergeElectricGate("player");
       return;
     }
     if (button.dataset.action === "mergeV") {
-      button.disabled = state.over || state.gold < getElementMergeCost("vUnit", "player") || !canMergeV("player");
+      button.disabled = state.over || !canAffordElementMerge("vUnit", "player") || !canMergeV("player");
       return;
     }
     if (!type) return;
