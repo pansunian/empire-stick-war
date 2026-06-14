@@ -333,7 +333,8 @@ const UNIT = {
   },
   archon: {
     name: "执政官",
-    cost: 200,
+    cost: 350,
+    magicCost: 50,
     hp: 180,
     shieldHp: 400,
     damage: 15,
@@ -448,8 +449,8 @@ const UNIT = {
   },
   covenantGuard: {
     name: "圣契卫士",
-    cost: 360,
-    magicCost: 200,
+    cost: 300,
+    magicCost: 100,
     hp: 420,
     damage: 20,
     range: 42,
@@ -16160,7 +16161,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-home-start-visible";
+  const refreshKey = "stick-war-sw-refresh-20260614-order-price-update";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
