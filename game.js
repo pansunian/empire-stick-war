@@ -1579,7 +1579,7 @@ const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
   chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
-  undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "undeadMage", "necromancer", "graveDigger"] },
+  undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "necromancer"] },
   element: { cooldown: 30, duration: 15, summons: ["vUnit"] },
 };
 
@@ -2210,14 +2210,14 @@ function getUnitCost(type, faction, side = null) {
   return UNIT[type].cost;
 }
 
-function getUnitMagicCost(type, faction) {
-  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeMagicCost(type);
+function getUnitMagicCost(type, faction, side = null) {
+  if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeMagicCost(type, side);
   return UNIT[type]?.magicCost ?? 0;
 }
 
 function formatUnitCost(type, faction, side = null) {
   const gold = getUnitCost(type, faction, side);
-  const magic = getUnitMagicCost(type, faction);
+  const magic = getUnitMagicCost(type, faction, side);
   return magic > 0 ? `${gold} 金币 · ${magic} 魔力` : `${gold} 金币`;
 }
 
@@ -2237,12 +2237,12 @@ function addSideMagic(side, amount) {
 }
 
 function canAffordUnit(type, faction, side, gold) {
-  return gold >= getUnitCost(type, faction, side) && getSideMagic(side) >= getUnitMagicCost(type, faction);
+  return gold >= getUnitCost(type, faction, side) && getSideMagic(side) >= getUnitMagicCost(type, faction, side);
 }
 
 function spendUnitCost(type, faction, side, gold) {
   const cost = getUnitCost(type, faction, side);
-  const magicCost = getUnitMagicCost(type, faction);
+  const magicCost = getUnitMagicCost(type, faction, side);
   if (side === "player") {
     state.gold -= cost;
     state.magic -= magicCost;
@@ -2265,13 +2265,26 @@ function getElementMergeCost(type, side = null) {
   return 0;
 }
 
-function getElementMergeMagicCost(type) {
+function getElementMergeCount(side, type) {
+  if (!state || !side || !type) return 0;
+  return state.elementMergeCounts?.[side]?.[type] ?? 0;
+}
+
+function recordElementMerge(side, type) {
+  if (!state || !side || !MERGE_UNITS.has(type)) return;
+  state.elementMergeCounts[side] = state.elementMergeCounts[side] ?? {};
+  state.elementMergeCounts[side][type] = getElementMergeCount(side, type) + 1;
+}
+
+function getElementMergeMagicCost(type, side = null) {
   if (FREE_MERGE_UNITS.has(type)) return 0;
-  return ELEMENT_MERGE_MAGIC_COSTS[type] ?? 0;
+  const baseCost = ELEMENT_MERGE_MAGIC_COSTS[type] ?? 0;
+  const discount = Math.min(1, getElementMergeCount(side, type) * 0.1);
+  return Math.max(0, Math.round(baseCost * (1 - discount)));
 }
 
 function canAffordElementMerge(type, side = "player") {
-  return getSideMagic(side) >= getElementMergeMagicCost(type);
+  return getSideMagic(side) >= getElementMergeMagicCost(type, side);
 }
 
 function getFourWayUnitCost(type, faction, side = null) {
@@ -2627,6 +2640,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     ghosts: [],
     pendingMerges: [],
     factionTraitTimers: {},
+    elementMergeCounts: {},
     floaters: [],
     spawnQueue: [],
     enemySpawnTimer: 0,
@@ -3204,7 +3218,7 @@ function renderShop() {
   };
   const renderElementButton = (type) => {
     if (!MERGE_UNITS.has(type)) return renderTrainButton(type);
-    const mergeMagicCost = getElementMergeMagicCost(type);
+    const mergeMagicCost = getElementMergeMagicCost(type, state?.fourWay ? getPlayerControlledSide() : "player");
     return `
       <button class="train-btn" data-action="${ELEMENT_MERGE_ACTION_BY_TYPE[type]}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
@@ -3689,6 +3703,7 @@ function mergeScaldStrike(side) {
   const dir = side === "player" ? 1 : -1;
   const blastX = target?.x ?? front ?? x + dir * 220;
   detonateScaldStrike(side, Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX)), FIELD.ground);
+  recordElementMerge(side, "scaldStrike");
   return true;
 }
 
@@ -3698,17 +3713,17 @@ function mergeElectricGate(side) {
 
 function mergeV(side) {
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
-  if (!payMergeCost(side, x, "#d7ceff", "vUnit")) return false;
   const materials = getVMaterials(side);
   if (!materials) {
-    popText(x, FIELD.ground - 100, "需要土水火风各 2 个", "#d7ceff");
+    popText(x, FIELD.ground - 100, "需要土水火风各 1 个", "#d7ceff");
     return false;
   }
+  if (!payMergeCost(side, x, "#d7ceff", "vUnit")) return false;
   return beginElementMerge(side, materials, "vUnit", "合成 V", "#d7ceff");
 }
 
 function payMergeCost(side, x, color, mergeType = null) {
-  const magicCost = mergeType ? getElementMergeMagicCost(mergeType) : 0;
+  const magicCost = mergeType ? getElementMergeMagicCost(mergeType, side) : 0;
   if (magicCost <= 0) return true;
   if (getSideMagic(side) < magicCost) {
     popText(x, FIELD.ground - 100, `融合需要 ${magicCost} 魔力`, color);
@@ -3719,7 +3734,7 @@ function payMergeCost(side, x, color, mergeType = null) {
 }
 
 function refundMergeCost(side, mergeType) {
-  const magicCost = mergeType ? getElementMergeMagicCost(mergeType) : 0;
+  const magicCost = mergeType ? getElementMergeMagicCost(mergeType, side) : 0;
   if (magicCost <= 0) return;
   addSideMagic(side, magicCost);
 }
@@ -3730,6 +3745,7 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const dir = side === "player" ? 1 : -1;
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
+  recordElementMerge(side, resultType);
   popText(result.x, result.y - 95, text, color);
   return true;
 }
@@ -3832,6 +3848,7 @@ function completeElementMerge(merge, materials, x, y) {
   const result = spawnUnit(merge.resultType, merge.side, x);
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
+  recordElementMerge(merge.side, merge.resultType);
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
 }
 
@@ -3937,7 +3954,7 @@ function queueUnit(type) {
   }
   const data = UNIT[type];
   const cost = getUnitCost(type, selectedFaction, "player");
-  const magicCost = getUnitMagicCost(type, selectedFaction);
+  const magicCost = getUnitMagicCost(type, selectedFaction, "player");
   if (state.gold < cost || (state.magic ?? 0) < magicCost) {
     popText(FIELD.playerGate, FIELD.ground - 95, state.gold < cost ? "金币不足" : "魔力不足", "#f3c963");
     return;
@@ -3961,7 +3978,7 @@ function queueFourWayPlayerUnit(type) {
   const gold = getSideGoldAmount(side);
   if (!canAffordUnit(type, faction, side, gold)) {
     const cost = getUnitCost(type, faction, side);
-    const magicCost = getUnitMagicCost(type, faction);
+    const magicCost = getUnitMagicCost(type, faction, side);
     popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, gold < cost ? "金币不足" : `魔力不足 ${magicCost}`, "#f3c963");
     return;
   }
@@ -4091,7 +4108,7 @@ function updateFourWayAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
-      return ai.gold >= getFourWayUnitCost(type, ai.faction, ai.side) && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction);
+      return ai.gold >= getFourWayUnitCost(type, ai.faction, ai.side) && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction, ai.side);
     });
     const livingCount = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
     const type = chooseFourWayAiUnit(ai, roster, livingCount);
@@ -4101,7 +4118,7 @@ function updateFourWayAi(dt) {
     }
     const cost = getFourWayUnitCost(type, ai.faction, ai.side);
     ai.gold -= cost;
-    ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction);
+    ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction, ai.side);
     const isHighTier = getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
@@ -4203,7 +4220,7 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
     .sort((a, b) => getFourWayUnitValue(b, ai.faction, ai.side) - getFourWayUnitValue(a, ai.faction, ai.side));
   const cheapestHigh = highTargets[highTargets.length - 1];
   const shouldTech = state.fourWayElapsed >= FOUR_WAY_TECH_UNLOCK && livingCount >= 5 && cheapestHigh;
-  if (shouldTech && (ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction, ai.side) || (ai.magic ?? 0) < getUnitMagicCost(cheapestHigh, ai.faction))) return null;
+  if (shouldTech && (ai.gold < getFourWayUnitCost(cheapestHigh, ai.faction, ai.side) || (ai.magic ?? 0) < getUnitMagicCost(cheapestHigh, ai.faction, ai.side))) return null;
   if (!affordableRoster.length) return null;
 
   const affordable = affordableRoster
@@ -5095,12 +5112,12 @@ function updateTeamAi(dt) {
 
 function canTeamAiAffordUnit(ai, type) {
   return ai.gold >= getUnitCost(type, ai.faction, ai.side)
-    && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction);
+    && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction, ai.side);
 }
 
 function spendTeamAiUnitCost(ai, type) {
   ai.gold -= getUnitCost(type, ai.faction, ai.side);
-  ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction);
+  ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction, ai.side);
 }
 
 function getEnemyTargetMinerCount() {
@@ -16177,7 +16194,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-element-skill-trim";
+  const refreshKey = "stick-war-sw-refresh-20260614-undead-element-traits";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
