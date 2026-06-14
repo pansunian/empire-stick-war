@@ -864,6 +864,16 @@ button {
   color: rgba(245, 240, 223, 0.72);
 }
 
+.money-label {
+  font-size: 12px;
+  color: rgba(245, 240, 223, 0.78);
+}
+
+.money-label.magic,
+.money-value.magic {
+  color: #c7a0ff;
+}
+
 .money-chip .money-value {
   font-size: 18px;
   font-weight: 950;

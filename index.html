@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="一款可安装到主屏幕的中世纪火柴人帝国战争网页游戏。" />
     <title>帝国火柴人战争</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260613-faction-traits" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260614-order-magic" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260613-faction-traits" />
+    <link rel="stylesheet" href="./style.css?v=20260614-order-magic" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -219,6 +219,14 @@
             <span>矿工挖矿</span>
             <small>恢复采集</small>
           </button>
+          <button class="command-btn miner-resource-btn active" data-miner-resource="gold">
+            <span>采金币</span>
+            <small>金矿</small>
+          </button>
+          <button class="command-btn miner-resource-btn" data-miner-resource="magic">
+            <span>采魔力</span>
+            <small>魔力矿</small>
+          </button>
           <button class="command-btn miner-command-btn" data-miner-command="attack">
             <span>矿工进攻</span>
             <small>停止采矿</small>
@@ -234,12 +242,12 @@
           <button class="train-btn" data-unit="miner">
             <span class="unit-icon miner"></span>
             <strong>矿工</strong>
-            <small>50 金币</small>
+            <small>100 金币</small>
           </button>
           <button class="train-btn" data-unit="swordsman">
             <span class="unit-icon sword"></span>
             <strong>剑士</strong>
-            <small>80 金币</small>
+            <small>100 金币</small>
           </button>
           <button class="train-btn" data-unit="archer">
             <span class="unit-icon bow"></span>
@@ -294,6 +302,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260613-faction-traits"></script>
+    <script src="./game.js?v=20260614-order-magic"></script>
   </body>
 </html>

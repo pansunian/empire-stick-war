@@ -47,6 +47,7 @@ const statsOverlay = document.querySelector("#statsOverlay");
 const statsTable = document.querySelector("#statsTable");
 const armyCommandButtons = [...document.querySelectorAll(".command-btn[data-command]")];
 const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")];
+const minerResourceButtons = [...document.querySelectorAll(".miner-resource-btn")];
 const controlDeck = document.querySelector(".control-deck");
 const unitShop = document.querySelector(".unit-shop");
 const mobileUnitsToggle = document.querySelector("#mobileUnitsToggle");
@@ -118,6 +119,8 @@ const UNDEAD_SKELETON_TRAIT = { interval: 8, rampEvery: 80, maxCount: 5 };
 const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
 const CHAOS_KILL_GOLD = 2;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
+const MAGIC_MINE_CAPACITY = 1600;
+const MAGIC_INCOME_PER_SECOND = 6;
 const STATUE_MAX_HP = 3000;
 const GOD_V_CONTROL_RANGE = 1000;
 const BASE_ATTACK = {
@@ -149,7 +152,7 @@ const CENTER_TOWER = {
 const UNIT = {
   miner: {
     name: "矿工",
-    cost: 50,
+    cost: 100,
     hp: 100,
     damage: 4,
     range: 30,
@@ -157,6 +160,8 @@ const UNIT = {
     train: 2.8,
     goldPerSwing: 25,
     bagSize: 100,
+    magicPerSwing: 12.5,
+    magicBagSize: 50,
   },
   summoner: {
     name: "召唤师",
@@ -187,7 +192,7 @@ const UNIT = {
   },
   swordsman: {
     name: "剑士",
-    cost: 70,
+    cost: 100,
     hp: 85,
     damage: 8,
     range: 32,
@@ -205,7 +210,7 @@ const UNIT = {
   },
   spearman: {
     name: "长矛兵",
-    cost: 110,
+    cost: 120,
     hp: 100,
     damage: 12,
     range: 42,
@@ -218,7 +223,7 @@ const UNIT = {
   },
   archer: {
     name: "弓箭手",
-    cost: 90,
+    cost: 120,
     hp: 70,
     damage: 10,
     range: 200,
@@ -241,7 +246,7 @@ const UNIT = {
   },
   greatsword: {
     name: "大剑兵",
-    cost: 150,
+    cost: 250,
     hp: 250,
     damage: 20,
     range: 38,
@@ -251,7 +256,8 @@ const UNIT = {
   },
   spartan: {
     name: "斯巴达",
-    cost: 160,
+    cost: 300,
+    magicCost: 50,
     hp: 450,
     damage: 12,
     range: 40,
@@ -264,7 +270,8 @@ const UNIT = {
   },
   ironCavalry: {
     name: "铁骑兵",
-    cost: 240,
+    cost: 400,
+    magicCost: 100,
     hp: 420,
     damage: 24,
     range: 600,
@@ -311,7 +318,8 @@ const UNIT = {
   },
   monk: {
     name: "修道士",
-    cost: 120,
+    cost: 150,
+    magicCost: 150,
     hp: 150,
     damage: 0,
     range: 150,
@@ -327,7 +335,8 @@ const UNIT = {
   },
   crossbow: {
     name: "弩手",
-    cost: 160,
+    cost: 200,
+    magicCost: 100,
     hp: 150,
     damage: 10,
     range: 108,
@@ -344,7 +353,7 @@ const UNIT = {
   },
   musketeer: {
     name: "火枪手",
-    cost: 150,
+    cost: 350,
     hp: 100,
     damage: 45,
     range: 350,
@@ -354,7 +363,8 @@ const UNIT = {
   },
   mage: {
     name: "法师",
-    cost: 225,
+    cost: 180,
+    magicCost: 300,
     hp: 180,
     damage: 50,
     range: 300,
@@ -414,7 +424,7 @@ const UNIT = {
   },
   catapult: {
     name: "火炮",
-    cost: 350,
+    cost: 850,
     hp: 560,
     damage: 60,
     range: 500,
@@ -443,7 +453,7 @@ const UNIT = {
   },
   rocketCart: {
     name: "火箭车",
-    cost: 400,
+    cost: 850,
     hp: 470,
     damage: 6,
     range: 350,
@@ -2080,9 +2090,57 @@ function createFourWayTeams(playerSide) {
 }
 
 function getUnitCost(type, faction, side = null) {
-  if (type === "miner" && (faction === "order" || faction === "chaos")) return 65;
   if (faction === "element" && MERGE_UNITS.has(type)) return getElementMergeCost(type, side);
   return UNIT[type].cost;
+}
+
+function getUnitMagicCost(type, faction) {
+  if (faction !== "order") return 0;
+  return UNIT[type]?.magicCost ?? 0;
+}
+
+function formatUnitCost(type, faction, side = null) {
+  const gold = getUnitCost(type, faction, side);
+  const magic = getUnitMagicCost(type, faction);
+  return magic > 0 ? `${gold} 金币 · ${magic} 魔力` : `${gold} 金币`;
+}
+
+function getSideMagic(side) {
+  if (side === "player") return state.magic ?? 0;
+  if (side === "enemy") return state.enemyMagic ?? 0;
+  return state.fourWaySides?.find((ai) => ai.side === side)?.magic ?? 0;
+}
+
+function addSideMagic(side, amount) {
+  if (side === "player") state.magic = (state.magic ?? 0) + amount;
+  else if (side === "enemy") state.enemyMagic = (state.enemyMagic ?? 0) + amount;
+  else {
+    const ai = state.fourWaySides?.find((item) => item.side === side);
+    if (ai) ai.magic = (ai.magic ?? 0) + amount;
+  }
+}
+
+function canAffordUnit(type, faction, side, gold) {
+  return gold >= getUnitCost(type, faction, side) && getSideMagic(side) >= getUnitMagicCost(type, faction);
+}
+
+function spendUnitCost(type, faction, side, gold) {
+  const cost = getUnitCost(type, faction, side);
+  const magicCost = getUnitMagicCost(type, faction);
+  if (side === "player") {
+    state.gold -= cost;
+    state.magic -= magicCost;
+  } else if (side === "enemy") {
+    state.enemyGold -= cost;
+    state.enemyMagic -= magicCost;
+  } else {
+    const ai = state.fourWaySides?.find((item) => item.side === side);
+    if (ai) {
+      ai.gold -= cost;
+      ai.magic = (ai.magic ?? 0) - magicCost;
+    }
+  }
+  return cost;
 }
 
 function getElementMergeCost(type, side = null) {
@@ -2265,7 +2323,7 @@ function renderStatsTable() {
         const faction = groupName === "秩序帝国" ? "order" : groupName === "混沌帝国" ? "chaos" : groupName === "亡灵帝国" ? "undeadEmpire" : "element";
         return [
           data.name,
-          getUnitCost(type, faction),
+          formatUnitCost(type, faction),
           data.hp,
           data.damage,
           data.range,
@@ -2338,6 +2396,7 @@ function newGame() {
   spawnCampaignCenterElectricGate();
   setCommand("guard");
   setMinerCommand("mine");
+  setMinerResource("gold");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
   if (selectedMode === "brawl") statusEl.textContent = "淘金热：双方 1500 金币开局，中央金矿可争夺";
   if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} 2 打 2：AI 队友会自动出兵`;
@@ -2349,6 +2408,7 @@ function createTeamAiState(side, faction, gold) {
     side,
     faction,
     gold,
+    magic: 0,
     spawnTimer: 2 + Math.random() * 1.6,
     minerTimer: 7,
   };
@@ -2418,10 +2478,13 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
   return {
     gold: startGold,
     enemyGold: enemyStartGold,
+    magic: 0,
+    enemyMagic: 0,
     command: "guard",
     attackIntent: "tower",
     commandLevel: 0,
     minerCommand: "mine",
+    minerResource: "gold",
     paused: false,
     over: false,
     winner: null,
@@ -2532,6 +2595,7 @@ function newFourWayGame() {
     side,
     faction: side,
     gold: FOUR_WAY_START_GOLD,
+    magic: 0,
     hp: STATUE_MAX_HP,
     spawnTimer: 1 + Math.random() * 1.2,
     incomeTimer: 1,
@@ -3000,7 +3064,7 @@ function renderShop() {
       <button class="train-btn ${shopGroupClass(type)}" data-unit="${type}">
         <span class="unit-icon ${UNIT_ICON[type]}"></span>
         <strong>${data.name}</strong>
-        <small>${getUnitCost(type, selectedFaction, "player")} 金币${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
+        <small>${formatUnitCost(type, selectedFaction, "player")}${Number.isFinite(getCampaignUnitLimit(type)) ? ` · 本关限 ${getCampaignUnitLimit(type)}` : ""}</small>
       </button>
     `;
   };
@@ -3176,6 +3240,21 @@ function setMinerCommand(command) {
   }
 }
 
+function setMinerResource(resource) {
+  if (!state) return;
+  state.minerResource = resource === "magic" ? "magic" : "gold";
+  minerResourceButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.minerResource === state.minerResource);
+  });
+  state.units.forEach((unit) => {
+    if (unit.side !== "player" || unit.type !== "miner" || unit.carry > 0) return;
+    unit.mineSlotId = null;
+    unit.mineWorkSlot = null;
+    unit.carryResource = state.minerResource;
+  });
+  if (!state.over) statusEl.textContent = state.minerResource === "magic" ? "矿工改为采集魔力" : "矿工改为采集金币";
+}
+
 function spawnUnit(type, side, x) {
   const forceGodV = type === "godVUnit";
   const unitType = normalizeUnitType(type);
@@ -3198,6 +3277,7 @@ function spawnUnit(type, side, x) {
     mineSlotId: null,
     mineWorkSlot: null,
     carry: 0,
+    carryResource: "gold",
     lastDamageSide: null,
     lastDamageUnitId: null,
     poisonTimer: 0,
@@ -3739,12 +3819,13 @@ function queueUnit(type) {
   }
   const data = UNIT[type];
   const cost = getUnitCost(type, selectedFaction, "player");
-  if (state.gold < cost) {
-    popText(FIELD.playerGate, FIELD.ground - 95, "金币不足", "#f3c963");
+  const magicCost = getUnitMagicCost(type, selectedFaction);
+  if (state.gold < cost || (state.magic ?? 0) < magicCost) {
+    popText(FIELD.playerGate, FIELD.ground - 95, state.gold < cost ? "金币不足" : "魔力不足", "#f3c963");
     return;
   }
 
-  state.gold -= cost;
+  spendUnitCost(type, selectedFaction, "player", state.gold);
   state.campaignTrainCounts[type] = getCampaignQueuedCount(type) + 1;
   state.spawnQueue.push({ type, side: "player", timer: data.train, duration: data.train });
   popText(FIELD.playerGate, FIELD.ground - 118, `训练 ${data.name}`, "#d9e8ff");
@@ -3865,13 +3946,14 @@ function updateFourWayAi(dt) {
     while (ai.incomeTimer <= 0) {
       ai.incomeTimer += 1;
       ai.gold += 20;
+      if (ai.faction === "order") ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND;
     }
     tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
     const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
-      return getFourWayUnitCost(type, ai.faction, ai.side) <= ai.gold;
+      return ai.gold >= getFourWayUnitCost(type, ai.faction, ai.side) && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction);
     });
     const livingCount = state.units.filter((unit) => unit.side === ai.side && unit.hp > 0 && !isUnitHidden(unit)).length;
     const type = chooseFourWayAiUnit(ai, roster, livingCount);
@@ -3881,6 +3963,7 @@ function updateFourWayAi(dt) {
     }
     const cost = getFourWayUnitCost(type, ai.faction, ai.side);
     ai.gold -= cost;
+    ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction);
     const isHighTier = cost >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
@@ -4327,15 +4410,25 @@ function createSideMines() {
 function createMinesForSide(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   const dir = side === "player" ? 1 : -1;
-  return MINE_LANES.flatMap((laneY, rowIndex) => (
+  const goldMines = MINE_LANES.flatMap((laneY, rowIndex) => (
     NORMAL_MINE_COLUMNS.map((columnOffset, columnIndex) => ({
       id: `${side}-mine-${rowIndex}-${columnIndex}`,
+      resource: "gold",
       x: baseX + dir * (Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2)) + columnOffset),
       y: FIELD.ground + laneY,
       remaining: NORMAL_MINE_CAPACITY,
       capacity: NORMAL_MINE_CAPACITY,
     }))
   ));
+  const magicMines = MINE_LANES.map((laneY, rowIndex) => ({
+    id: `${side}-magic-${rowIndex}`,
+    resource: "magic",
+    x: baseX + dir * (Math.sqrt(Math.max(0, (FIELD.mineDistance + 82) ** 2 - laneY ** 2)) + 38),
+    y: FIELD.ground + laneY - 24,
+    remaining: MAGIC_MINE_CAPACITY,
+    capacity: MAGIC_MINE_CAPACITY,
+  }));
+  return [...goldMines, ...magicMines];
 }
 
 function getSideMines(side) {
@@ -4343,7 +4436,8 @@ function getSideMines(side) {
 }
 
 function getMineForMiner(unit) {
-  const mines = getSideMines(unit.side);
+  const resource = getMinerResource(unit);
+  const mines = getSideMines(unit.side).filter((mine) => (mine.resource ?? "gold") === resource);
   const current = mines.find((mine) => mine.id === unit.mineSlotId && canUseNormalMine(unit, mine));
   if (current) return current;
   const mine = mines
@@ -4355,6 +4449,7 @@ function getMineForMiner(unit) {
     .sort((a, b) => a.score - b.score)[0]?.mine;
   unit.mineSlotId = mine?.id ?? null;
   unit.mineWorkSlot = mine ? getAvailableMineWorkSlot(unit.side, mine.id) : null;
+  if (mine && unit.carry <= 0) unit.carryResource = mine.resource ?? "gold";
   return mine;
 }
 
@@ -4407,11 +4502,56 @@ function isMiningWorker(unit) {
 }
 
 function getMiningBagSize(unit) {
+  if (getCarryResource(unit) === "magic") return UNIT[unit.type]?.magicBagSize ?? UNIT.miner.magicBagSize;
   return UNIT[unit.type]?.bagSize ?? UNIT.miner.bagSize;
 }
 
 function getMiningGoldPerSwing(unit) {
+  if (getCarryResource(unit) === "magic") return UNIT[unit.type]?.magicPerSwing ?? UNIT.miner.magicPerSwing;
   return UNIT[unit.type]?.goldPerSwing ?? UNIT.miner.goldPerSwing;
+}
+
+function getCarryResource(unit) {
+  return unit.carry > 0 ? (unit.carryResource ?? "gold") : getMinerResource(unit);
+}
+
+function getMinerResource(unit) {
+  if (unit.type !== "miner") return "gold";
+  if (unit.side === "player") return state.minerResource ?? "gold";
+  if (factionForSide(unit.side) !== "order") return "gold";
+  return getSideMagic(unit.side) < getOrderMagicDemand(unit.side) ? "magic" : "gold";
+}
+
+function getOrderMagicDemand(side) {
+  const faction = factionForSide(side);
+  if (faction !== "order") return 0;
+  const roster = side === "player" ? currentPlayerRoster() : currentEnemyRoster();
+  return Math.max(0, ...roster.map((type) => getUnitMagicCost(type, faction)));
+}
+
+function depositMinerCarry(unit, isPlayer) {
+  const resource = getCarryResource(unit);
+  if (resource === "magic") {
+    addSideMagic(unit.side, unit.carry);
+  } else if (isPlayer) {
+    state.gold += unit.carry;
+  } else {
+    state.enemyGold += unit.carry;
+  }
+  popText(unit.x, unit.y - 52, `入库 ${getResourceLabel(resource)} +${formatResourceAmount(unit.carry)}`, getResourceColor(resource, isPlayer));
+}
+
+function getResourceLabel(resource) {
+  return resource === "magic" ? "魔力" : "金币";
+}
+
+function getResourceColor(resource, isPlayer = true) {
+  if (resource === "magic") return "#b88cff";
+  return isPlayer ? "#f5c542" : "#b7f56e";
+}
+
+function formatResourceAmount(value) {
+  return Number.isInteger(value) ? value : Math.round(value * 10) / 10;
 }
 
 function distanceTo(x1, y1, x2, y2) {
@@ -4763,23 +4903,22 @@ function updateEnemyAi(dt) {
     state.enemyMinerTimer = 8;
   }
 
-  const economyCost = getUnitCost(enemyEconomyType, opponentFaction(), "enemy");
-  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && state.enemyGold >= economyCost) {
-    state.enemyGold -= economyCost;
+  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && canAffordUnit(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold)) {
+    spendUnitCost(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold);
     state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
     spawnUnit(enemyEconomyType, "enemy", FIELD.enemyGate + 34);
   }
 
   if (state.enemySpawnTimer <= 0) {
     const enemyRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
-    const affordable = enemyRoster.filter((type) => getUnitCost(type, opponentFaction(), "enemy") <= state.enemyGold);
+    const affordable = enemyRoster.filter((type) => canAffordUnit(type, opponentFaction(), "enemy", state.enemyGold));
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
       return;
     }
 
     const type = chooseEnemyUnit(affordable);
-    state.enemyGold -= getUnitCost(type, opponentFaction(), "enemy");
+    spendUnitCost(type, opponentFaction(), "enemy", state.enemyGold);
     recordElementMergeDiscount("enemy", type);
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnUnit(type, "enemy", FIELD.enemyGate + 12);
@@ -4790,13 +4929,13 @@ function updateTeamAi(dt) {
   if (!state.teamAi?.length || state.over) return;
   state.teamAi.forEach((ai) => {
     ai.gold += 5 * dt;
+    if (ai.faction === "order") ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
     ai.minerTimer -= dt;
     ai.spawnTimer -= dt;
     const economyType = ai.faction === "undeadEmpire" ? "summoner" : "miner";
     const miners = state.units.filter((unit) => unit.side === ai.side && unit.type === economyType && unit.hp > 0).length;
-    const economyCost = getUnitCost(economyType, ai.faction, ai.side);
-    if (ai.minerTimer <= 0 && miners < 5 && ai.gold >= economyCost) {
-      ai.gold -= economyCost;
+    if (ai.minerTimer <= 0 && miners < 5 && canTeamAiAffordUnit(ai, economyType)) {
+      spendTeamAiUnitCost(ai, economyType);
       ai.minerTimer = miners < 3 ? 9 : 13;
       spawnUnit(economyType, ai.side, ai.side === "player" ? FIELD.playerGate - 70 : FIELD.enemyGate + 70);
       return;
@@ -4804,17 +4943,27 @@ function updateTeamAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FACTIONS[ai.faction].roster
       .filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type) && !UNIT[type]?.summonOnly && !UNIT[type]?.statueOnly);
-    const affordable = roster.filter((type) => getUnitCost(type, ai.faction, ai.side) <= ai.gold);
+    const affordable = roster.filter((type) => canTeamAiAffordUnit(ai, type));
     if (!affordable.length) {
       ai.spawnTimer = 0.9;
       return;
     }
     const type = affordable[Math.floor(Math.random() * affordable.length)];
-    ai.gold -= getUnitCost(type, ai.faction, ai.side);
+    spendTeamAiUnitCost(ai, type);
     recordElementMergeDiscount(ai.side, type);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
     spawnUnit(type, ai.side, ai.side === "player" ? FIELD.playerGate - 96 : FIELD.enemyGate + 96);
   });
+}
+
+function canTeamAiAffordUnit(ai, type) {
+  return ai.gold >= getUnitCost(type, ai.faction, ai.side)
+    && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction);
+}
+
+function spendTeamAiUnitCost(ai, type) {
+  ai.gold -= getUnitCost(type, ai.faction, ai.side);
+  ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction);
 }
 
 function getEnemyTargetMinerCount() {
@@ -6961,10 +7110,9 @@ function updateMiner(unit, dt) {
   }
 
   if (returningHome && unit.carry > 0) {
-    if (isPlayer) state.gold += unit.carry;
-    else state.enemyGold += unit.carry;
-    popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, isPlayer ? "#f5c542" : "#b7f56e");
+    depositMinerCarry(unit, isPlayer);
     unit.carry = 0;
+    unit.carryResource = getMinerResource(unit);
     unit.mineTimer = 0;
     return;
   }
@@ -6980,11 +7128,12 @@ function updateMiner(unit, dt) {
         unit.mineWorkSlot = null;
         return;
       }
+      unit.carryResource = mine.resource ?? "gold";
       unit.carry += mined;
       mine.remaining -= mined;
-      popText(unit.x, unit.y - 52, `袋 ${unit.carry}/${bagSize}`, isPlayer ? "#f5c542" : "#b7f56e");
+      popText(unit.x, unit.y - 52, `${getResourceLabel(unit.carryResource)} ${formatResourceAmount(unit.carry)}/${formatResourceAmount(bagSize)}`, getResourceColor(unit.carryResource, isPlayer));
       if (mine.remaining <= 0) {
-        popText(mine.x, mine.y - 72, "金矿枯竭", "#d8c7a0");
+        popText(mine.x, mine.y - 72, `${getResourceLabel(mine.resource)}枯竭`, getResourceColor(mine.resource, isPlayer));
         unit.mineSlotId = null;
         unit.mineWorkSlot = null;
       }
@@ -6998,8 +7147,9 @@ function getMinerMoveSpeed(unit) {
 
 function updateGoldRushMiner(unit, dt) {
   const isPlayer = unit.side === "player";
+  unit.carryResource = "gold";
   const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
-  const bagSize = getMiningBagSize(unit);
+  const bagSize = UNIT[unit.type]?.bagSize ?? UNIT.miner.bagSize;
   const mustDeposit = unit.carry >= bagSize;
 
   if (mustDeposit) {
@@ -7150,9 +7300,9 @@ function moveTowardCastle(unit, dt) {
   unit.inCastle = true;
   unit.cooldown = 0;
   if (unit.carry > 0) {
-    state.gold += unit.carry;
-    popText(unit.x, unit.y - 52, `入库 +${unit.carry}`, "#f5c542");
+    depositMinerCarry(unit, true);
     unit.carry = 0;
+    unit.carryResource = getMinerResource(unit);
     unit.mineTimer = 0;
   }
   clearPoison(unit, "进城解毒");
@@ -7361,7 +7511,7 @@ function getEnemyRallyBaseX(sideMines = null) {
 }
 
 function getFrontMineColumnX(side, sideMines = null) {
-  const mines = sideMines?.[side] ?? getSideMines(side);
+  const mines = (sideMines?.[side] ?? getSideMines(side)).filter((mine) => (mine.resource ?? "gold") === "gold");
   if (!mines.length) return side === "player" ? FIELD.playerMineX : FIELD.enemyMineX;
   return mines.reduce((frontX, mine) => (
     side === "player" ? Math.max(frontX, mine.x) : Math.min(frontX, mine.x)
@@ -10840,9 +10990,10 @@ function drawMine(mine, side) {
   const y = typeof mine === "number" ? FIELD.ground : mine.y;
   const remaining = typeof mine === "number" ? NORMAL_MINE_CAPACITY : mine.remaining;
   const capacity = typeof mine === "number" ? NORMAL_MINE_CAPACITY : mine.capacity;
+  const resource = typeof mine === "number" ? "gold" : (mine.resource ?? "gold");
   const ratio = capacity > 0 ? Math.max(0, remaining / capacity) : 0;
   const faction = factionForSide(side);
-  ctx.fillStyle = remaining > 0 ? "#403421" : "#26231e";
+  ctx.fillStyle = remaining > 0 ? (resource === "magic" ? "#2d2440" : "#403421") : "#26231e";
   ctx.beginPath();
   ctx.moveTo(x - 35, y + 11);
   ctx.lineTo(x - 10, y - 31);
@@ -10850,7 +11001,7 @@ function drawMine(mine, side) {
   ctx.closePath();
   ctx.fill();
   if (remaining > 0) {
-    ctx.fillStyle = FACTIONS[faction].mineColor;
+    ctx.fillStyle = resource === "magic" ? "#b88cff" : FACTIONS[faction].mineColor;
     ctx.beginPath();
     ctx.arc(x + 4, y - 5, 9, 0, Math.PI * 2);
     ctx.arc(x - 10, y + 5, 6, 0, Math.PI * 2);
@@ -10858,7 +11009,7 @@ function drawMine(mine, side) {
   }
   ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
   ctx.fillRect(x - 19, y + 15, 38, 4);
-  ctx.fillStyle = remaining > 0 ? "#f5c542" : "#5d574b";
+  ctx.fillStyle = remaining > 0 ? (resource === "magic" ? "#b88cff" : "#f5c542") : "#5d574b";
   ctx.fillRect(x - 19, y + 15, 38 * ratio, 4);
 }
 
@@ -13364,7 +13515,7 @@ function drawUnitHp(unit) {
     const bagSize = getMiningBagSize(unit);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(-18, -77, 36, 5);
-    ctx.fillStyle = unit.type === "wraithMiner" ? "#7ed8ff" : unit.side === "player" ? "#f5c542" : "#b7f56e";
+    ctx.fillStyle = unit.type === "wraithMiner" ? "#7ed8ff" : getResourceColor(getCarryResource(unit), unit.side === "player");
     ctx.fillRect(-18, -77, 36 * (unit.carry / bagSize), 5);
   }
 }
@@ -15207,7 +15358,8 @@ function updateHud() {
       .map((ai) => {
         const base = FOUR_WAY_BASES[ai.side];
         const className = ai.side === "undeadEmpire" ? "undead" : ai.side;
-        return `<span class="money-chip ${className}"><span class="money-label">${base.label}</span><span class="money-value">${Math.floor(ai.gold)}</span></span>`;
+        const magic = ai.magic > 0 ? `<span class="money-label">魔</span><span class="money-value">${Math.floor(ai.magic)}</span>` : "";
+        return `<span class="money-chip ${className}"><span class="money-label">${base.label}</span><span class="money-value">${Math.floor(ai.gold)}</span>${magic}</span>`;
       })
       .join("");
     enemyGoldEl.textContent = `存活 ${alive.length}/4`;
@@ -15220,8 +15372,8 @@ function updateHud() {
     });
     return;
   }
-  goldEl.textContent = Math.floor(state.gold);
-  enemyGoldEl.textContent = Math.floor(state.enemyGold);
+  goldEl.innerHTML = `<span class="money-label">金</span><span class="money-value">${Math.floor(state.gold)}</span><span class="money-label magic">魔</span><span class="money-value magic">${Math.floor(state.magic ?? 0)}</span>`;
+  enemyGoldEl.innerHTML = `<span class="money-label">金</span><span class="money-value">${Math.floor(state.enemyGold)}</span><span class="money-label magic">魔</span><span class="money-value magic">${Math.floor(state.enemyMagic ?? 0)}</span>`;
   playerHpBar.style.width = `${(state.playerHp / STATUE_MAX_HP) * 100}%`;
   enemyHpBar.style.width = `${(state.enemyHp / STATUE_MAX_HP) * 100}%`;
   const trainingProgress = new Map();
@@ -15298,7 +15450,7 @@ function updateHud() {
       return;
     }
     if (!type) return;
-    button.disabled = state.gold < getUnitCost(type, selectedFaction, "player") || state.over || !canQueueCampaignUnit(type);
+    button.disabled = !canAffordUnit(type, selectedFaction, "player", state.gold) || state.over || !canQueueCampaignUnit(type);
   });
 }
 
@@ -15591,6 +15743,13 @@ minerCommandButtons.forEach((button) => {
   button.addEventListener("click", () => {
     closeMobileUnitShop();
     setMinerCommand(button.dataset.minerCommand);
+  });
+});
+
+minerResourceButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    closeMobileUnitShop();
+    setMinerResource(button.dataset.minerResource);
   });
 });
 
