@@ -715,6 +715,10 @@ body {
   justify-self: center;
 }
 
+.home-start-btn:hover {
+  transform: translate(-50%, -1px);
+}
+
 .crest {
   grid-column: 1;
   width: 82px;
