@@ -142,7 +142,7 @@ const AOE_TARGET_LIMIT = 5;
 const UNDEAD_SKELETON_TRAIT = { interval: 8, rampEvery: 80, maxCount: 5 };
 const FOUR_WAY_UNDEAD_SKELETON_TRAIT = { interval: 14, rampEvery: 120, maxCount: 3 };
 const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
-const CHAOS_KILL_GOLD = 2;
+const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_FOUR_WAY_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
@@ -1583,7 +1583,7 @@ const FOUR_WAY_STARTERS = {
 const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
-  chaos: { cooldown: 30, duration: 15 },
+  chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
   undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "necromancer"] },
   element: { cooldown: 30, duration: 15, summons: ["vUnit"] },
 };
@@ -4145,10 +4145,8 @@ function castFourWayOrderSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.order;
   const base = FOUR_WAY_BASES[side];
   const spartan = spawnFourWayUnit("goldenSpartan", side, 14);
-  const archers = [
-    spawnFourWayUnit("goldenArcher", side, 15),
-    spawnFourWayUnit("goldenArcher", side, 16),
-  ];
+  const archer = spawnFourWayUnit("goldenArcher", side, 15);
+  const archers = [archer];
   [spartan, ...archers].forEach((unit) => {
     unit.timedLife = config.duration;
     unit.noCorpse = true;
@@ -4164,11 +4162,13 @@ function castFourWayOrderSkill(side) {
 
 function castFourWayChaosSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.chaos;
+  const type = config.summons[Math.floor(Math.random() * config.summons.length)];
+  const summons = summonFourWaySkillUnits(side, [type], config.duration, 18);
   state.fourWaySkillCooldowns[side] = config.cooldown;
-  state.fourWaySkillEffects[side] = config.duration;
+  state.fourWaySkillEffects[side] = 0;
   const base = FOUR_WAY_BASES[side];
   state.blasts.push({ x: base.x, y: base.y, radius: 104, life: 0.45, duration: 0.45, color: "#ff6a3d" });
-  popText(base.x, base.y - 128, "混沌抱团战吼", "#ff8a3d");
+  popText(base.x, base.y - 128, `${UNIT[type].name}降临 x${summons.length}`, "#ff8a3d");
   return true;
 }
 
@@ -7595,7 +7595,6 @@ function getMoveFactor(unit) {
   if (unit.inspiredZombieTimer > 0 && ZOMBIE_UNITS.has(unit.type)) factor *= 2;
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
-  if (unit.chaosWarCryTimer > 0) factor *= FOUR_WAY_FACTION_SKILL.chaos.factor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageMoveFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
@@ -7629,7 +7628,6 @@ function getAttackSpeedFactor(unit) {
   }
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
-  if (unit.chaosWarCryTimer > 0) factor *= FOUR_WAY_FACTION_SKILL.chaos.factor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
@@ -8250,7 +8248,6 @@ function hasChaosOrcPackBonus(unit) {
 
 function hasFourWayChaosPackBonus(unit) {
   if (!state?.fourWay || !unit || factionForSide(unit.side) !== "chaos") return false;
-  if ((state.fourWaySkillEffects?.[unit.side] ?? 0) <= 0) return false;
   const nearbyChaos = state.units.filter((candidate) => (
     candidate.side === unit.side &&
     candidate.hp > 0 &&
