@@ -381,6 +381,63 @@ const UNIT = {
     electricWallDuration: 6,
     electricWallWidth: 58,
   },
+  commander: {
+    name: "号令官",
+    cost: 220,
+    magicCost: 100,
+    hp: 220,
+    damage: 8,
+    range: 45,
+    speed: 38,
+    train: 5.6,
+    cooldown: 1.5,
+    commandRadius: 260,
+    commandDamageBonus: 0.1,
+    markCooldown: 18,
+    markDuration: 6,
+    markBonusDamage: 4,
+  },
+  barricadeEngineer: {
+    name: "拒马工兵",
+    cost: 180,
+    magicCost: 50,
+    hp: 170,
+    damage: 6,
+    range: 35,
+    speed: 35,
+    train: 5,
+    cooldown: 1.4,
+    barricadeCost: 20,
+    barricadeBuildTime: 5,
+    barricadeCooldown: 8,
+    barricadeMax: 3,
+    barricadeHp: 300,
+    barricadeLength: 260,
+    barricadeWidth: 60,
+    barricadeDuration: 50,
+    barricadeTickEvery: 0.8,
+    barricadeDamage: 8,
+    barricadeSlow: 0.4,
+    cavalryStop: 0.6,
+  },
+  covenantGuard: {
+    name: "圣契卫士",
+    cost: 360,
+    magicCost: 200,
+    hp: 420,
+    damage: 20,
+    range: 42,
+    speed: 36,
+    train: 7,
+    cooldown: 1.8,
+    formationRadius: 180,
+    formationReduction: 0.2,
+    formationTypes: 3,
+    guardCooldown: 24,
+    guardDuration: 6,
+    guardReduction: 0.5,
+    guardReductionDuration: 2,
+  },
   berserker: {
     name: "狂战士",
     cost: 0,
@@ -1395,7 +1452,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "covenantGuard", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
@@ -1441,7 +1498,7 @@ const FOUR_WAY_BASES = {
   element: { x: 2670, y: 1550, label: "元素", color: "#5e9f92" },
 };
 const FOUR_WAY_AI_ROSTER = {
-  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "covenantGuard", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
@@ -1492,6 +1549,9 @@ const UNIT_ICON = {
   crossbow: "bomb-crossbow",
   musketeer: "gun",
   mage: "wizard-hat",
+  commander: "spartan",
+  barricadeEngineer: "miner",
+  covenantGuard: "spartan",
   berserker: "greatsword",
   archmage: "wizard-hat",
   catapult: "bomb",
@@ -1565,7 +1625,7 @@ function normalizeUnitType(type) {
 }
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "covenantGuard", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
@@ -2505,6 +2565,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     thornFields: [],
     healingFields: [],
     landMines: [],
+    barricades: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -3341,6 +3402,14 @@ function spawnUnit(type, side, x) {
     swordsmanSelfRageTimer: 0,
     spartanShieldTimer: 0,
     spartanShieldCooldown: 0,
+    orderMarkTimer: 0,
+    orderMarkSide: null,
+    barricadeBuildTimer: 0,
+    barricadeBuildPending: null,
+    barricadeBuildCooldown: 0,
+    covenantSaveTimer: 0,
+    covenantDamageReductionTimer: 0,
+    covenantDamageReduction: 0,
     undeadBoneTimer: data.boneSpikeEvery ?? 0,
     hillJumpTimer: data.jumpEvery ?? 0,
     linghanFreezeTimer: 0,
@@ -3872,6 +3941,7 @@ function update(dt) {
   updateBurn(dt);
   updateCorpses(dt);
   updateLandMines(dt);
+  updateBarricades(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -3906,6 +3976,7 @@ function updateFourWayBattle(dt) {
   updateBurn(dt);
   updateCorpses(dt);
   updateLandMines(dt);
+  updateBarricades(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -5307,6 +5378,12 @@ function updateUnits(dt) {
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
     unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
+    unit.orderMarkTimer = Math.max(0, (unit.orderMarkTimer ?? 0) - dt);
+    if (unit.orderMarkTimer <= 0) unit.orderMarkSide = null;
+    unit.barricadeBuildCooldown = Math.max(0, (unit.barricadeBuildCooldown ?? 0) - dt);
+    unit.covenantSaveTimer = Math.max(0, (unit.covenantSaveTimer ?? 0) - dt);
+    unit.covenantDamageReductionTimer = Math.max(0, (unit.covenantDamageReductionTimer ?? 0) - dt);
+    if (unit.covenantDamageReductionTimer <= 0) unit.covenantDamageReduction = 0;
     if (unit.spartanShieldTimer > 0) {
       unit.spartanShieldTimer = Math.max(0, unit.spartanShieldTimer - dt);
       if (unit.spartanShieldTimer <= 0) finishSpartanShield(unit);
@@ -5345,6 +5422,12 @@ function updateUnits(dt) {
     if (unit.inspiringTimer > 0) {
       unit.inspiringTimer = Math.max(0, unit.inspiringTimer - dt);
       if (unit.inspiringTimer <= 0) finishBannerInspire(unit);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
+    if (unit.barricadeBuildTimer > 0) {
+      unit.barricadeBuildTimer = Math.max(0, unit.barricadeBuildTimer - dt);
+      if (unit.barricadeBuildTimer <= 0) finishBuildBarricade(unit);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
@@ -7327,6 +7410,12 @@ function getMoveFactor(unit) {
       factor = Math.min(factor, field.slow);
     }
   }
+  for (const barricade of state.barricades ?? []) {
+    if (!areHostileSides(barricade.side, unit.side)) continue;
+    if (isPointInsideBarricade(unit.x, unit.y ?? FIELD.ground, barricade)) {
+      factor = Math.min(factor, barricade.slow);
+    }
+  }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
@@ -7892,7 +7981,7 @@ function attack(unit, target) {
       tx: target.x,
       ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
       side: unit.side,
-      damage: data.damage,
+      damage: getOrderAttackDamage(unit, target, data.damage),
       sourceId: unit.id,
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
@@ -7904,7 +7993,7 @@ function attack(unit, target) {
     return;
   }
 
-  const dealt = applyDamage(target, unit.damage ?? data.damage, unit.side);
+  const dealt = applyDamage(target, getOrderAttackDamage(unit, target, unit.damage ?? data.damage), unit.side);
   handleDamageDealt(unit, target, dealt);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
@@ -7944,6 +8033,30 @@ function handleDamageDealt(attacker, target, damage) {
     attacker.inspiredZombieHits -= 1;
     applyStun(target, 2);
   }
+}
+
+function getOrderAttackDamage(attacker, target, baseDamage) {
+  if (!attacker || !target || baseDamage <= 0 || factionForSide(attacker.side) !== "order") return baseDamage;
+  let damage = baseDamage;
+  if (hasOrderCommanderAura(attacker)) {
+    damage *= 1 + UNIT.commander.commandDamageBonus;
+  }
+  if (target.kind !== "statue" && target.orderMarkTimer > 0 && target.orderMarkSide === attacker.side) {
+    damage += UNIT.commander.markBonusDamage;
+  }
+  return Math.max(1, Math.round(damage * 10) / 10);
+}
+
+function hasOrderCommanderAura(unit) {
+  if (!unit || factionForSide(unit.side) !== "order") return false;
+  const radius = UNIT.commander.commandRadius;
+  return state.units.some((candidate) =>
+    candidate.side === unit.side &&
+    candidate.type === "commander" &&
+    candidate.hp > 0 &&
+    !isUnitHidden(candidate) &&
+    distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= radius
+  );
 }
 
 function grantChaosKillRewards(unit) {
@@ -9739,6 +9852,61 @@ function updateLandMines(dt = 0) {
   if (triggered.size) state.landMines = state.landMines.filter((mine) => !triggered.has(mine.id));
 }
 
+function updateBarricades(dt = 0) {
+  for (const barricade of state.barricades) {
+    barricade.life -= dt;
+    barricade.tick -= dt;
+    while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
+      barricade.tick += barricade.tickEvery;
+      damageBarricadeRow(barricade);
+    }
+  }
+  state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function damageBarricadeRow(barricade) {
+  const targets = getUnitsOnBarricade(barricade).slice(0, 6);
+  targets.forEach((unit) => {
+    const dealt = applyUnitDamage(unit, barricade.damage, { label: "拒马", color: "#d7c090", yOffset: -84, sourceSide: barricade.side });
+    const source = state.units.find((candidate) => candidate.id === barricade.ownerId && candidate.hp > 0) ?? null;
+    handleDamageDealt(source, unit, dealt);
+    unit.stormSlowTimer = Math.max(unit.stormSlowTimer ?? 0, 0.9);
+    unit.stormSlowFactor = Math.min(unit.stormSlowFactor ?? 1, barricade.slow);
+    if (isCavalryUnit(unit)) {
+      cancelCavalryMomentum(unit);
+      applyStun(unit, barricade.cavalryStop);
+      popText(unit.x, unit.y - 108, "骑兵受阻", "#d7c090");
+    }
+    barricade.hp -= 3;
+  });
+}
+
+function getUnitsOnBarricade(barricade) {
+  return state.units.filter((unit) =>
+    areHostileSides(barricade.side, unit.side) &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !isReaperStealthed(unit) &&
+    !UNIT[unit.type]?.untargetable &&
+    isPointInsideBarricade(unit.x, unit.y ?? FIELD.ground, barricade)
+  );
+}
+
+function isPointInsideBarricade(x, y, barricade) {
+  return Math.abs(x - barricade.x) <= barricade.length / 2 && Math.abs(y - barricade.y) <= barricade.width / 2;
+}
+
+function isCavalryUnit(unit) {
+  return ["ironCavalry", "darkKnight", "minotaur", "hornKnightRider", "rhinoMan"].includes(unit?.type);
+}
+
+function cancelCavalryMomentum(unit) {
+  unit.forceCharge = false;
+  unit.ironCavalryChargeTimer = 0;
+  unit.darkKnightChargeTimer = 0;
+  unit.minotaurLeapTimer = Math.max(unit.minotaurLeapTimer ?? 0, 0.8);
+}
+
 function updateGhosts(dt) {
   for (const ghost of state.ghosts) {
     ghost.life -= dt;
@@ -10051,6 +10219,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
+  handleCovenantFatalSave(target);
   if ((attackerSide === "player" || attackerSide === "enemy") && hpDamage > 0) target.lastDamageSide = attackerSide;
   target.combatTimer = 3;
   popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
@@ -10062,6 +10231,7 @@ function applyUnitDamage(target, amount, options = {}) {
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
+  handleCovenantFatalSave(target);
   if ((options.sourceSide === "player" || options.sourceSide === "enemy") && hpDamage > 0) target.lastDamageSide = options.sourceSide;
   target.combatTimer = 3;
   const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
@@ -10108,7 +10278,36 @@ function getModifiedDamage(target, amount, options = {}) {
   if (target.spartanShieldTimer > 0) {
     damage *= 1 - (UNIT.spartan.shieldStanceReduction ?? 0.9);
   }
+  if (target.type === "covenantGuard" && hasCovenantFormation(target)) {
+    damage *= 1 - UNIT.covenantGuard.formationReduction;
+  }
+  if (target.covenantDamageReductionTimer > 0) {
+    damage *= 1 - (target.covenantDamageReduction ?? UNIT.covenantGuard.guardReduction);
+  }
   return Math.max(1, Math.round(damage * 10) / 10);
+}
+
+function handleCovenantFatalSave(target) {
+  if (!target || target.kind === "statue" || target.hp > 0 || target.covenantSaveTimer <= 0) return false;
+  target.hp = 1;
+  target.covenantSaveTimer = 0;
+  target.covenantDamageReduction = UNIT.covenantGuard.guardReduction;
+  target.covenantDamageReductionTimer = UNIT.covenantGuard.guardReductionDuration;
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 48, life: 0.28, duration: 0.28, color: "#fff1a8" });
+  popText(target.x, target.y - 112, "守约", "#fff1a8");
+  return true;
+}
+
+function hasCovenantFormation(unit) {
+  const data = UNIT.covenantGuard;
+  if (!unit || unit.type !== "covenantGuard") return false;
+  const types = new Set();
+  state.units.forEach((candidate) => {
+    if (candidate.side !== unit.side || candidate.hp <= 0 || candidate.id === unit.id || isUnitHidden(candidate)) return;
+    if (factionForSide(candidate.side) !== "order") return;
+    if (distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= data.formationRadius) types.add(candidate.type);
+  });
+  return types.size >= data.formationTypes;
 }
 
 function isPoisoned(unit) {
@@ -10624,6 +10823,7 @@ function draw() {
   state.thornFields.forEach(drawThornField);
   state.healingFields.forEach(drawHealingField);
   state.landMines.forEach(drawLandMine);
+  state.barricades.forEach(drawBarricade);
   state.corpses.forEach(drawCorpse);
   if (state.fourWay) {
     drawFourWayCenter();
@@ -10985,6 +11185,37 @@ function drawLandMine(mine) {
   ctx.restore();
 }
 
+function drawBarricade(barricade) {
+  const ratio = barricade.maxHp > 0 ? Math.max(0, barricade.hp / barricade.maxHp) : 0;
+  const alpha = Math.max(0.35, Math.min(1, barricade.life / barricade.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(barricade.x, barricade.y);
+  ctx.fillStyle = "rgba(42, 28, 18, 0.48)";
+  ctx.fillRect(-barricade.length / 2, -barricade.width / 2, barricade.length, barricade.width);
+  ctx.strokeStyle = "#2b1c12";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  for (let x = -barricade.length / 2 + 18; x <= barricade.length / 2 - 18; x += 34) {
+    ctx.beginPath();
+    ctx.moveTo(x - 18, barricade.width / 2 - 6);
+    ctx.lineTo(x + 18, -barricade.width / 2 + 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 18, -barricade.width / 2 + 6);
+    ctx.lineTo(x + 18, barricade.width / 2 - 6);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#d7c090";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-barricade.length / 2, -barricade.width / 2, barricade.length, barricade.width);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
+  ctx.fillRect(-42, -barricade.width / 2 - 14, 84, 6);
+  ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
+  ctx.fillRect(-42, -barricade.width / 2 - 14, 84 * ratio, 6);
+  ctx.restore();
+}
+
 function drawMine(mine, side) {
   const x = typeof mine === "number" ? mine : mine.x;
   const y = typeof mine === "number" ? FIELD.ground : mine.y;
@@ -11227,6 +11458,10 @@ function drawUnit(unit) {
   if (unit.shieldTimer > 0) {
     ctx.shadowColor = "#9ee8ff";
     ctx.shadowBlur = 22;
+  }
+  if (unit.type === "commander" || unit.type === "covenantGuard") {
+    ctx.shadowColor = unit.type === "commander" ? "#f5d14f" : "#fff1a8";
+    ctx.shadowBlur = 10;
   }
   if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0) {
     ctx.shadowColor = "#ff4f3d";
@@ -12066,6 +12301,9 @@ function getUnitColor(unit) {
   if (unit.type === "vUnit") return "#f7f7f2";
   if (unit.type === "vClone") return "#7369c8";
   if (unit.type === "mage") return "#786bd8";
+  if (unit.type === "commander") return "#3f6fb8";
+  if (unit.type === "barricadeEngineer") return "#9a7652";
+  if (unit.type === "covenantGuard") return "#6f7f91";
   if (unit.type === "berserker") return "#a84032";
   if (unit.type === "archmage") return "#4c55b8";
   if (unit.type === "monk") return "#d8d0b2";
@@ -12155,6 +12393,9 @@ function getHeadColor(unit) {
   if (unit.type === "candlelight") return "#e8ddcf";
   if (unit.type === "reaper") return "#d8d0c8";
   if (unit.type === "mage") return "#d7ceff";
+  if (unit.type === "commander") return "#fff1a8";
+  if (unit.type === "barricadeEngineer") return "#e0c08a";
+  if (unit.type === "covenantGuard") return "#f8eac5";
   if (unit.type === "goldenArcher") return "#fff1a8";
   if (unit.type === "goldenSpartan") return "#fff1a8";
   if (unit.type === "ironCavalry") return "#dbe8ff";
@@ -13970,6 +14211,15 @@ function getManualActions(unit) {
       add("iceField", "冰地");
       add("mageWall", "电墙");
       break;
+    case "commander":
+      add("orderMark", "标记", "target");
+      break;
+    case "barricadeEngineer":
+      add("buildBarricade", "拒马", "direct");
+      break;
+    case "covenantGuard":
+      add("covenantGuard", "守约", "target");
+      break;
     case "medusa":
       add("medusaSlay", "石化", "target");
       add("medusaPoison", "喷毒", "direct");
@@ -14095,6 +14345,9 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "priestBlood" && unit.priestBloodTimer > 0) return true;
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return true;
   if (button.id === "monkField" && unit.monkFieldTimer > 0) return true;
+  if (button.id === "buildBarricade") return !canStartBuildBarricade(unit);
+  if (button.id === "orderMark" && (unit.manualSkillCooldowns?.orderMark ?? 0) > 0) return true;
+  if (button.id === "covenantGuard" && (unit.manualSkillCooldowns?.covenantGuard ?? 0) > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -14204,6 +14457,12 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "undeadLure" && unit.undeadLureTimer > 0) return `冷却 ${Math.ceil(unit.undeadLureTimer)}秒`;
   if (button.id === "monkField" && unit.monkFieldTimer > 0) return `冷却 ${Math.ceil(unit.monkFieldTimer)}秒`;
   if (button.id === "spartanShield" && unit.spartanShieldCooldown > 0) return `冷却 ${Math.ceil(unit.spartanShieldCooldown)}秒`;
+  if (button.id === "buildBarricade") {
+    if (unit.barricadeBuildTimer > 0) return "建造中";
+    if ((unit.barricadeBuildCooldown ?? 0) > 0) return `冷却 ${Math.ceil(unit.barricadeBuildCooldown)}秒`;
+    if (getActiveBarricadeCount(unit) >= UNIT.barricadeEngineer.barricadeMax) return "拒马已满";
+    if (getSideGoldAmount(unit.side) < UNIT.barricadeEngineer.barricadeCost) return "金币不足";
+  }
   const cooldown = Math.max(unit.cooldown ?? 0, unit.manualSkillCooldowns?.[button.id] ?? 0);
   if (cooldown > 0) return `冷却 ${Math.ceil(cooldown)}秒`;
   return "暂不可用";
@@ -14274,6 +14533,10 @@ function executeManualAction(unit, action, point) {
     castMonkHealingField(unit);
     return;
   }
+  if (action.id === "buildBarricade") {
+    startBuildBarricade(unit);
+    return;
+  }
   if (action.id === "waterSacrifice") {
     sacrificeWaterElement(unit);
     return;
@@ -14335,10 +14598,18 @@ function findManualAttackTarget(unit, range) {
 }
 
 function isAllyManualTargetAction(id) {
-  return id === "goblinHeavyArmor" || id === "priestBlood";
+  return id === "goblinHeavyArmor" || id === "priestBlood" || id === "covenantGuard";
 }
 
 function getManualTargetAt(unit, point, actionId = null) {
+  if (actionId === "covenantGuard") {
+    const clickedAlly = findUnitAt(point);
+    if (clickedAlly && canCovenantGuardAlly(unit, clickedAlly)) return clickedAlly;
+    return state.units
+      .filter((target) => canCovenantGuardAlly(unit, target))
+      .filter((target) => distanceTo(point.x, point.y, target.x, target.y - 48) <= 130)
+      .sort((a, b) => distanceTo(point.x, point.y, a.x, a.y - 48) - distanceTo(point.x, point.y, b.x, b.y - 48))[0] ?? null;
+  }
   if (actionId === "goblinHeavyArmor") {
     const clickedAlly = findUnitAt(point);
     if (clickedAlly && canReceiveGoblinExpertArmor(unit, clickedAlly)) return clickedAlly;
@@ -14542,6 +14813,9 @@ function getManualActionCooldown(unit, id) {
     priestBlood: UNIT.priest.bloodSacrificeCooldown,
     jumpSlash: data.jumpSlashCooldown,
     fireArrow: data.fireArrowCooldown ?? data.cooldown,
+    orderMark: data.markCooldown,
+    buildBarricade: data.barricadeCooldown,
+    covenantGuard: data.guardCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -14670,9 +14944,134 @@ function castManualSkill(unit, id, target) {
       return true;
     case "goblinHeavyArmor":
       return castGoblinExpertHeavyArmor(unit, target);
+    case "orderMark":
+      return castOrderMark(unit, target);
+    case "covenantGuard":
+      return castCovenantGuard(unit, target);
     default:
       return false;
   }
+}
+
+function getSideGoldAmount(side) {
+  if (state?.fourWay) return state.fourWaySides.find((item) => item.side === side)?.gold ?? 0;
+  return side === "player" ? state.gold : state.enemyGold;
+}
+
+function spendSideGold(side, amount) {
+  if (state?.fourWay) {
+    const ai = state.fourWaySides.find((item) => item.side === side);
+    if (ai) ai.gold = Math.max(0, ai.gold - amount);
+    return;
+  }
+  if (side === "player") state.gold = Math.max(0, state.gold - amount);
+  else state.enemyGold = Math.max(0, state.enemyGold - amount);
+}
+
+function getActiveBarricadeCount(unit) {
+  return (state.barricades ?? []).filter((barricade) => barricade.ownerId === unit.id && barricade.hp > 0 && barricade.life > 0).length;
+}
+
+function canStartBuildBarricade(unit) {
+  if (!unit || unit.type !== "barricadeEngineer" || unit.hp <= 0 || isUnitHidden(unit)) return false;
+  const data = UNIT.barricadeEngineer;
+  if (unit.barricadeBuildTimer > 0 || unit.barricadeBuildCooldown > 0) return false;
+  if (getActiveBarricadeCount(unit) >= data.barricadeMax) return false;
+  return getSideGoldAmount(unit.side) >= data.barricadeCost;
+}
+
+function startBuildBarricade(unit) {
+  if (!canStartBuildBarricade(unit)) {
+    popText(unit.x, unit.y - 116, getManualDisabledLabel(unit, { id: "buildBarricade" }), "#d9d0b8");
+    return false;
+  }
+  const data = UNIT.barricadeEngineer;
+  spendSideGold(unit.side, data.barricadeCost);
+  const dir = getUnitFacingDirection(unit);
+  unit.barricadeBuildTimer = data.barricadeBuildTime;
+  unit.barricadeBuildPending = {
+    x: clampWorldX(unit.x + dir * 82),
+    y: Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, unit.y)),
+  };
+  unit.cooldown = Math.max(unit.cooldown ?? 0, data.barricadeBuildTime);
+  unit.combatTimer = data.barricadeBuildTime;
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.buildBarricade = data.barricadeCooldown;
+  popText(unit.x, unit.y - 116, "建造拒马", "#d7c090");
+  return true;
+}
+
+function finishBuildBarricade(unit) {
+  const data = UNIT.barricadeEngineer;
+  const point = unit.barricadeBuildPending ?? { x: unit.x, y: unit.y };
+  state.barricades.push({
+    id: state.nextId++,
+    ownerId: unit.id,
+    side: unit.side,
+    x: point.x,
+    y: point.y,
+    hp: data.barricadeHp,
+    maxHp: data.barricadeHp,
+    length: data.barricadeLength,
+    width: data.barricadeWidth,
+    life: data.barricadeDuration,
+    duration: data.barricadeDuration,
+    tick: data.barricadeTickEvery,
+    tickEvery: data.barricadeTickEvery,
+    damage: data.barricadeDamage,
+    slow: data.barricadeSlow,
+    cavalryStop: data.cavalryStop,
+  });
+  unit.barricadeBuildPending = null;
+  unit.barricadeBuildCooldown = data.barricadeCooldown;
+  state.blasts.push({ x: point.x, y: point.y - 28, radius: 38, life: 0.24, duration: 0.24, color: "#d7c090" });
+  popText(point.x, point.y - 60, "拒马完成", "#d7c090");
+}
+
+function getUnitFacingDirection(unit) {
+  if (state?.fourWay) return unit.facingDir ?? (unit.x < FIELD.width / 2 ? 1 : -1);
+  return unit.side === "player" ? 1 : -1;
+}
+
+function clampWorldX(x) {
+  if (state?.fourWay) return Math.max(40, Math.min(FIELD.width - 40, x));
+  return Math.max(FIELD.playerGate + 40, Math.min(FIELD.enemyGate - 40, x));
+}
+
+function castOrderMark(unit, target) {
+  const data = UNIT.commander;
+  if (!target || target.kind === "statue" || target.hp <= 0 || !areHostileSides(unit.side, target.side) || !canTarget(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法标记", "#f5d14f");
+    return false;
+  }
+  if (distanceTo(unit.x, unit.y, target.x, target.y) > data.commandRadius) {
+    popText(unit.x, unit.y - 116, "距离太远", "#d9d0b8");
+    return false;
+  }
+  target.orderMarkTimer = data.markDuration;
+  target.orderMarkSide = unit.side;
+  state.lightning.push({ x1: unit.x, y1: unit.y - 72, x2: target.x, y2: target.y - 60, life: 0.22, duration: 0.22 });
+  state.blasts.push({ x: target.x, y: target.y - 44, radius: 44, life: 0.28, duration: 0.28, color: "#f5d14f" });
+  popText(target.x, target.y - 105, "号令标记", "#f5d14f");
+  return true;
+}
+
+function canCovenantGuardAlly(unit, target) {
+  if (!unit || !target || unit.id === target.id || target.hp <= 0 || isUnitHidden(target)) return false;
+  if (target.side !== unit.side || target.kind === "statue" || UNIT[target.type]?.untargetable || isSiegeUnit(target)) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y) <= UNIT.covenantGuard.formationRadius;
+}
+
+function castCovenantGuard(unit, target) {
+  const data = UNIT.covenantGuard;
+  if (!canCovenantGuardAlly(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法守约", "#fff1a8");
+    return false;
+  }
+  target.covenantSaveTimer = data.guardDuration;
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 52, life: 0.32, duration: 0.32, color: "#fff1a8" });
+  popText(target.x, target.y - 108, "圣契守约", "#fff1a8");
+  return true;
 }
 
 function toggleSpartanShield(unit) {
