@@ -3672,11 +3672,11 @@ body.quad-watch .health-bars {
 }
 
 .command-btn[data-command="attack"] {
-  order: 1;
+  order: 2;
 }
 
 .command-btn[data-command="guard"] {
-  order: 2;
+  order: 1;
 }
 
 .command-btn[data-command="retreat"] {
@@ -3687,11 +3687,11 @@ body.quad-watch .health-bars {
   order: 4;
 }
 
-.miner-command-btn[data-miner-command="mine"] {
+.miner-resource-btn[data-miner-resource="gold"] {
   order: 5;
 }
 
-.miner-command-btn[data-miner-command="retreat"] {
+.miner-resource-btn[data-miner-resource="magic"] {
   order: 6;
 }
 

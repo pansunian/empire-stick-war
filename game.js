@@ -3393,9 +3393,17 @@ function setMinerCommand(command) {
   }
 }
 
+function syncMinerCommandButtons() {
+  minerCommandButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.minerCommand === state.minerCommand);
+  });
+}
+
 function setMinerResource(resource) {
   if (!state) return;
   state.minerResource = resource === "magic" ? "magic" : "gold";
+  state.minerCommand = "mine";
+  syncMinerCommandButtons();
   minerResourceButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.minerResource === state.minerResource);
   });
@@ -3794,6 +3802,7 @@ function beginElementMerge(side, materials, resultType, text, color, options = {
     color,
     targetX,
     targetY,
+    elapsed: 0,
     onComplete: options.onComplete ?? null,
   });
   popText(targetX, targetY - 95, "元素靠拢", color);
@@ -3804,14 +3813,21 @@ function updatePendingMerges(dt) {
   if (!state.pendingMerges.length) return;
   const remaining = [];
   for (const merge of state.pendingMerges) {
+    merge.elapsed = (merge.elapsed ?? 0) + dt;
     const materials = merge.materialIds
       .map((id) => state.units.find((unit) => unit.id === id && unit.hp > 0))
       .filter(Boolean);
-    if (materials.length !== merge.materialIds.length) {
+    if (materials.length !== merge.materialIds.length || merge.elapsed > 8) {
       materials.forEach((unit) => {
         unit.merging = false;
         unit.mergeId = null;
+        unit.targetX = null;
+        unit.targetY = null;
       });
+      if (merge.elapsed > 8) {
+        refundMergeCost(merge.side, merge.resultType);
+        popText(merge.targetX, merge.targetY - 95, "融合中断", merge.color);
+      }
       continue;
     }
 
@@ -3821,11 +3837,12 @@ function updatePendingMerges(dt) {
     merge.targetY = targetY;
     materials.forEach((unit) => {
       moveUnitTowardPoint(unit, targetX, targetY, Math.max(72, (UNIT[unit.type]?.speed ?? 36) * 1.8), dt, 2);
+      clampUnitPosition(unit);
       unit.targetX = targetX;
       unit.targetY = targetY;
     });
 
-    const aligned = materials.every((unit) => Math.abs(unit.x - targetX) <= 4);
+    const aligned = materials.every((unit) => distanceTo(unit.x, unit.y, targetX, targetY) <= 6);
     if (aligned) {
       completeElementMerge(merge, materials, targetX, targetY);
     } else {
@@ -3838,6 +3855,12 @@ function updatePendingMerges(dt) {
 function completeElementMerge(merge, materials, x, y) {
   const hpRatio = Math.max(0.05, materials.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / materials.length);
   materials.forEach(releaseFrozenTarget);
+  materials.forEach((unit) => {
+    unit.merging = false;
+    unit.mergeId = null;
+    unit.targetX = null;
+    unit.targetY = null;
+  });
   state.units = state.units.filter((unit) => !materials.includes(unit));
 
   if (merge.onComplete) {
@@ -3944,7 +3967,7 @@ function getLinghanMaterials(side) {
 }
 
 function isMergeMaterial(unit, side, type) {
-  return unit.side === side && unit.type === type && unit.hp > 0 && !unit.merging && !isUnitHidden(unit);
+  return unit.side === side && unit.type === type && unit.hp > 0 && !unit.merging && !unit.spawnExitTimer && !isUnitHidden(unit);
 }
 
 function getVMaterials(side) {
@@ -10505,8 +10528,10 @@ function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exc
 }
 
 function applyDamage(target, amount, attackerSide, options = {}) {
+  if (!target || amount <= 0) return 0;
   if (isUnitHidden(target)) return 0;
   if (isReaperStealthed(target)) return 0;
+  if (target.kind !== "statue" && target.hp <= 0) return 0;
   if (target.kind === "statue") {
     if (state?.fourWay) {
       state.fourWayBaseHp[target.side] = Math.max(0, (state.fourWayBaseHp[target.side] ?? STATUE_MAX_HP) - amount);
@@ -10532,6 +10557,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
 }
 
 function applyUnitDamage(target, amount, options = {}) {
+  if (!target || target.kind === "statue" || target.hp <= 0 || amount <= 0 || isUnitHidden(target)) return 0;
   const damage = options.modified === false ? amount : getModifiedDamage(target, amount, options);
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
@@ -16161,7 +16187,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-order-price-update";
+  const refreshKey = "stick-war-sw-refresh-20260614-command-freeze-fix";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");

@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="一款可安装到主屏幕的中世纪火柴人帝国战争网页游戏。" />
     <title>帝国火柴人战争</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260614-order-price-update" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260614-command-freeze-fix" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260614-order-price-update" />
+    <link rel="stylesheet" href="./style.css?v=20260614-command-freeze-fix" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -203,10 +203,6 @@
 
       <section class="control-deck">
         <div class="command-group" aria-label="军令">
-          <button class="command-btn" data-command="retreat">
-            <span>撤退</span>
-            <small>回到城堡内</small>
-          </button>
           <button class="command-btn active" data-command="guard">
             <span>防守</span>
             <small>逐级回防</small>
@@ -215,17 +211,21 @@
             <span>进攻</span>
             <small>逐级推进</small>
           </button>
-          <button class="command-btn miner-command-btn" data-miner-command="retreat">
-            <span>矿工撤退</span>
-            <small>矿工回城</small>
-          </button>
-          <button class="command-btn miner-command-btn active" data-miner-command="mine">
-            <span>矿工挖矿</span>
-            <small>恢复采集</small>
+          <button class="command-btn" data-command="retreat">
+            <span>撤退</span>
+            <small>回到城堡内</small>
           </button>
           <button class="command-btn miner-command-btn" data-miner-command="attack">
             <span>矿工进攻</span>
             <small>停止采矿</small>
+          </button>
+          <button class="command-btn miner-resource-btn active" data-miner-resource="gold">
+            <span>采金矿</span>
+            <small>矿工采金</small>
+          </button>
+          <button class="command-btn miner-resource-btn" data-miner-resource="magic">
+            <span>采魔力</span>
+            <small>矿工采魔</small>
           </button>
         </div>
 
@@ -298,6 +298,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260614-order-price-update"></script>
+    <script src="./game.js?v=20260614-command-freeze-fix"></script>
   </body>
 </html>
