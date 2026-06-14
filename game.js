@@ -8,6 +8,7 @@ const modeButtons = [...document.querySelectorAll(".mode-card")];
 const teamModeButtons = [...document.querySelectorAll("[data-team-mode]")];
 const controlModeButtons = [...document.querySelectorAll("[data-control-mode]")];
 const ruleDialog = document.querySelector("#ruleDialog");
+const homeStartBtn = document.querySelector("#homeStartBtn");
 const ruleStartBtn = document.querySelector("#ruleStartBtn");
 const ruleCancelBtn = document.querySelector("#ruleCancelBtn");
 const campaignMap = document.querySelector("#campaignMap");
@@ -2891,6 +2892,23 @@ function spawnFourWayUnit(type, side, index = 0) {
   return unit;
 }
 
+function sendUnitOutOfBase(unit, dt) {
+  if (!unit.spawnExitTimer || unit.spawnExitTimer <= 0) return false;
+  unit.spawnExitTimer = Math.max(0, unit.spawnExitTimer - dt);
+  const targetX = unit.spawnExitTargetX ?? unit.x;
+  const targetY = unit.spawnExitTargetY ?? unit.y;
+  const speed = Math.max(70, (unit.speed ?? UNIT[unit.type]?.speed ?? 40) * 1.35);
+  moveUnitTowardPoint(unit, targetX, targetY, speed, dt, 4);
+  if (unit.spawnExitTimer <= 0 || distanceTo(unit.x, unit.y, targetX, targetY) <= 5) {
+    unit.x = targetX;
+    unit.y = targetY;
+    unit.spawnExitTimer = 0;
+    unit.spawnExitTargetX = null;
+    unit.spawnExitTargetY = null;
+  }
+  return true;
+}
+
 function chooseEnemyFaction() {
   const factions = Object.keys(FACTIONS);
   return factions[Math.floor(Math.random() * factions.length)];
@@ -3551,6 +3569,9 @@ function spawnUnit(type, side, x) {
     earthMiner: false,
     rooted: unitType === "treeEnt" ? false : null,
     inCastle: false,
+    spawnExitTimer: 0,
+    spawnExitTargetX: null,
+    spawnExitTargetY: null,
     combatTimer: 0,
     chaosRegenTick: 0,
     chaosCleanseTimer: 10,
@@ -3560,6 +3581,48 @@ function spawnUnit(type, side, x) {
 
   const unit = state.units[state.units.length - 1];
   applyCampaignUnitModifiers(unit, { forceGodV });
+  return unit;
+}
+
+function getBaseSpawnPoint(side, index = 0) {
+  if (state?.fourWay && FOUR_WAY_BASES[side]) {
+    const base = FOUR_WAY_BASES[side];
+    const center = { x: FIELD.width / 2, y: FIELD.height / 2 };
+    const dx = center.x - base.x;
+    const dy = center.y - base.y;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const nx = dx / len;
+    const ny = dy / len;
+    const px = -ny;
+    const py = nx;
+    const offset = (index % 7 - 3) * 13;
+    return {
+      x: base.x - nx * 48 + px * offset,
+      y: base.y - ny * 48 + py * offset,
+      targetX: base.x + nx * (92 + Math.floor(index / 7) * 18) + px * offset,
+      targetY: base.y + ny * (92 + Math.floor(index / 7) * 18) + py * offset,
+    };
+  }
+  const isPlayerSide = side === "player";
+  const baseX = isPlayerSide ? FIELD.playerBase : FIELD.enemyBase;
+  const gateX = isPlayerSide ? FIELD.playerGate : FIELD.enemyGate;
+  const dir = isPlayerSide ? 1 : -1;
+  const lane = ((index % 5) - 2) * 12;
+  return {
+    x: baseX + dir * 28,
+    y: FIELD.ground + lane,
+    targetX: gateX + dir * (18 + Math.floor(index / 5) * 10),
+    targetY: FIELD.ground + lane,
+  };
+}
+
+function spawnTrainedUnit(type, side, index = 0) {
+  const point = getBaseSpawnPoint(side, index);
+  const unit = spawnUnit(type, side, point.x);
+  unit.y = point.y;
+  unit.spawnExitTimer = 1.4;
+  unit.spawnExitTargetX = point.targetX;
+  unit.spawnExitTargetY = point.targetY;
   return unit;
 }
 
@@ -4403,12 +4466,11 @@ function updateQueue(dt) {
   state.spawnQueue = state.spawnQueue.filter((item) => item.timer > 0);
   ready.forEach((item, index) => {
     if (state.fourWay && item.side) {
-      spawnFourWayUnit(item.type, item.side, index + Math.floor(Math.random() * 8));
+      spawnTrainedUnit(item.type, item.side, index + Math.floor(Math.random() * 8));
       return;
     }
     const side = item.side ?? "player";
-    const x = side === "player" ? FIELD.playerGate - 20 + index * 12 : FIELD.enemyGate + 20 - index * 12;
-    spawnUnit(item.type, side, x);
+    spawnTrainedUnit(item.type, side, index);
   });
 }
 
@@ -4679,6 +4741,7 @@ function getCarryResource(unit) {
 
 function getMinerResource(unit) {
   if (unit.type !== "miner") return "gold";
+  if (unit.miningResource) return unit.miningResource;
   if (unit.side === "player") return state.minerResource ?? "gold";
   return getSideMagic(unit.side) < getFactionMagicDemand(factionForSide(unit.side), unit.side) ? "magic" : "gold";
 }
@@ -5070,7 +5133,7 @@ function updateEnemyAi(dt) {
   if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && canAffordUnit(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold)) {
     spendUnitCost(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold);
     state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
-    spawnUnit(enemyEconomyType, "enemy", FIELD.enemyGate + 34);
+    spawnTrainedUnit(enemyEconomyType, "enemy", enemyMiners);
   }
 
   if (state.enemySpawnTimer <= 0) {
@@ -5085,7 +5148,7 @@ function updateEnemyAi(dt) {
     spendUnitCost(type, opponentFaction(), "enemy", state.enemyGold);
     recordElementMergeDiscount("enemy", type);
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
-    spawnUnit(type, "enemy", FIELD.enemyGate + 12);
+    spawnTrainedUnit(type, "enemy", Math.floor(Math.random() * 8));
   }
 }
 
@@ -5101,7 +5164,7 @@ function updateTeamAi(dt) {
     if (ai.minerTimer <= 0 && miners < 5 && canTeamAiAffordUnit(ai, economyType)) {
       spendTeamAiUnitCost(ai, economyType);
       ai.minerTimer = miners < 3 ? 9 : 13;
-      spawnUnit(economyType, ai.side, ai.side === "player" ? FIELD.playerGate - 70 : FIELD.enemyGate + 70);
+      spawnTrainedUnit(economyType, ai.side, miners);
       return;
     }
     if (ai.spawnTimer > 0) return;
@@ -5116,7 +5179,7 @@ function updateTeamAi(dt) {
     spendTeamAiUnitCost(ai, type);
     recordElementMergeDiscount(ai.side, type);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
-    spawnUnit(type, ai.side, ai.side === "player" ? FIELD.playerGate - 96 : FIELD.enemyGate + 96);
+    spawnTrainedUnit(type, ai.side, Math.floor(Math.random() * 8));
   });
 }
 
@@ -5449,6 +5512,10 @@ function updateUnits(dt) {
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
+    if (sendUnitOutOfBase(unit, dt)) {
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
     if (isUnitHidden(unit)) {
       if (unit.side === "player" && state.command === "retreat") continue;
       unit.inCastle = false;
@@ -5463,6 +5530,7 @@ function updateUnits(dt) {
       unit.timedLife = Math.max(0, unit.timedLife - dt);
       if (unit.timedLife <= 0) {
         unit.expired = true;
+        unit.noCorpse = true;
         unit.hp = 0;
       }
     }
@@ -6307,6 +6375,7 @@ function updateElectricGate(unit, dt) {
 
   if (unit.electricGateTimer <= 0) {
     unit.expired = true;
+    unit.noCorpse = true;
     unit.hp = 0;
     return;
   }
@@ -6555,6 +6624,7 @@ function killTreeScorpions(tree) {
   let killed = 0;
   state.units.forEach((unit) => {
     if (unit.type !== "waterScorpion" || unit.summonerId !== tree.id || unit.hp <= 0) return;
+    unit.noCorpse = true;
     unit.hp = 0;
     killed += 1;
     popText(unit.x, unit.y - 70, "失去首领", "#8ee0cf");
@@ -6566,6 +6636,7 @@ function killSummonedUndead(mage) {
   let killed = 0;
   state.units.forEach((unit) => {
     if (unit.type !== "undead" || unit.summonerId !== mage.id || unit.hp <= 0) return;
+    unit.noCorpse = true;
     unit.hp = 0;
     killed += 1;
     popText(unit.x, unit.y - 70, "召唤消散", "#b8b0a5");
@@ -8065,6 +8136,7 @@ function attack(unit, target) {
 
   if (unit.type === "bomber") {
     unit.exploded = true;
+    unit.noCorpse = true;
     unit.hp = 0;
     explodeAt(target.x, unit.y - 20, unit.side, data.damage, data.splash, "轰", {
       burnDps: data.burnDps,
@@ -8363,6 +8435,7 @@ function toggleCandleForm(unit) {
 function explodeDeadCorpse(unit) {
   const data = UNIT.deadCorpse;
   unit.exploded = true;
+  unit.noCorpse = true;
   unit.hp = 0;
   getUnitsInRadius(unit.x, data.poisonRadius, unit.side, Infinity).forEach((enemy) => {
     applyPoison(enemy, data.poisonDps, data.poisonDuration, {
@@ -8378,6 +8451,7 @@ function explodeDeadCorpse(unit) {
 
 function explodeScaldStrike(unit) {
   detonateScaldStrike(unit.side, unit.x, unit.y);
+  unit.noCorpse = true;
   unit.hp = 0;
 }
 
@@ -9804,6 +9878,8 @@ function castPriestBloodSacrifice(unit, target) {
     return false;
   }
   const lifePool = Math.round(target.hp * data.bloodSacrificeFactor);
+  target.lastDamageSide = unit.side;
+  target.lastDamageUnitId = unit.id;
   target.hp = 0;
   unit.priestBloodTimer = data.bloodSacrificeCooldown;
   healFrontlineAllies(unit.side, lifePool, "血祭");
@@ -10396,14 +10472,14 @@ function updateIceFieldEffects(dt) {
       if (Math.abs(unit.x - field.x) > field.radius) return;
       const damage = getModifiedDamage(unit, field.damage ?? 0);
       if (damage <= 0) return;
-      applyUnitDamage(unit, field.damage ?? 0, { label: "冰", color: "#9ee8ff", yOffset: -98 });
+      applyUnitDamage(unit, field.damage ?? 0, { label: "冰", color: "#9ee8ff", yOffset: -98, sourceSide: field.side });
     });
   }
 }
 
 function damageUnitsInRadius(x, radius, attackerSide, amount, label) {
   getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
-    applyUnitDamage(unit, amount, { label, color: "#ffb45e", yOffset: -80 });
+    applyUnitDamage(unit, amount, { label, color: "#ffb45e", yOffset: -80, sourceSide: attackerSide });
   });
 }
 
@@ -10448,7 +10524,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   handleCovenantFatalSave(target);
-  if ((attackerSide === "player" || attackerSide === "enemy") && hpDamage > 0) target.lastDamageSide = attackerSide;
+  if (attackerSide && attackerSide !== "neutral" && hpDamage > 0) target.lastDamageSide = attackerSide;
   target.combatTimer = 3;
   popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
   return hpDamage;
@@ -10460,7 +10536,7 @@ function applyUnitDamage(target, amount, options = {}) {
   const hpDamage = absorbShieldDamage(target, damage);
   target.hp -= hpDamage;
   handleCovenantFatalSave(target);
-  if ((options.sourceSide === "player" || options.sourceSide === "enemy") && hpDamage > 0) target.lastDamageSide = options.sourceSide;
+  if (options.sourceSide && options.sourceSide !== "neutral" && hpDamage > 0) target.lastDamageSide = options.sourceSide;
   target.combatTimer = 3;
   const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
   popText(target.x, target.y + (options.yOffset ?? -68), label, options.color ?? "#f0a36a");
@@ -10689,7 +10765,7 @@ function removeDead() {
       state.winner = "enemy";
       statusEl.textContent = "神明V倒下，挑战失败";
     }
-    maybeLeaveUndeadCorpse(unit);
+    maybeLeaveCorpse(unit);
     const godVExit = unit.godV && unit.side === "enemy" && activeCampaign?.enemyGodV;
     popText(unit.x, unit.y - 35, godVExit ? "退出战场" : "倒下", godVExit ? "#d7ceff" : "#a7a7a7");
     return false;
@@ -10697,14 +10773,14 @@ function removeDead() {
   deathSpawns.forEach(spawnDeathUnit);
 }
 
-function maybeLeaveUndeadCorpse(unit) {
+function maybeLeaveCorpse(unit) {
   if (unit.noCorpse) return;
-  if (UNIT[unit.type]?.untargetable || isHeroUnit(unit)) return;
+  if (UNIT[unit.type]?.untargetable) return;
+  if (!unit.lastDamageSide) return;
   const reviveable = factionForSide(unit.side) === "undeadEmpire"
     && UNDEAD_BASE_UNITS.has(unit.type)
     && !UNDEAD_CORPSE_EXCLUDED.has(unit.type);
   const ritual = unit.type !== "electricGate";
-  if (!reviveable && !ritual) return;
   state.corpses.push({
     id: state.nextId++,
     type: unit.type,
@@ -10905,7 +10981,10 @@ function checkFourWayWin() {
     if (hp > 0) return;
     ai.alive = false;
     state.units.forEach((unit) => {
-      if (unit.side === ai.side) unit.hp = 0;
+      if (unit.side === ai.side) {
+        unit.noCorpse = true;
+        unit.hp = 0;
+      }
     });
     const base = FOUR_WAY_BASES[ai.side];
     popText(base.x, base.y - 130, `${FACTIONS[ai.faction].name}出局`, "#ffce7a");
@@ -14023,6 +14102,7 @@ function drawUnitHp(unit) {
 
 function getInspectedUnitInfoLayout(unit) {
   const data = UNIT[unit.type] ?? {};
+  const canChooseMineResource = isPlayerControlledSide(unit.side) && unit.type === "miner";
   const stats = [
     { id: "hp", label: "生命", value: formatStat(unit.maxHp), valueColor: "#e94f4f" },
     { id: "speed", label: "移速", value: formatStat(unit.speed ?? data.speed ?? 0), valueColor: "#4f8cff" },
@@ -14036,9 +14116,15 @@ function getInspectedUnitInfoLayout(unit) {
   ctx.font = "700 14px system-ui, sans-serif";
   const width = Math.max(...lines.map((line) => ctx.measureText(line).width), 88) + 28;
   ctx.restore();
-  const height = 124;
+  const height = canChooseMineResource ? 154 : 124;
   const x = Math.max(10, Math.min(FIELD.width - width - 10, unit.x - width / 2));
   const y = Math.max(12, unit.y - (UNIT[unit.type]?.flying ? 126 : 112) - height);
+  const resourceButtons = canChooseMineResource
+    ? {
+      gold: { x: x + 14, y: y + height - 64, width: (width - 34) / 2, height: 24 },
+      magic: { x: x + 20 + (width - 34) / 2, y: y + height - 64, width: (width - 34) / 2, height: 24 },
+    }
+    : null;
   return {
     x,
     y,
@@ -14046,6 +14132,7 @@ function getInspectedUnitInfoLayout(unit) {
     height,
     lines,
     stats,
+    resourceButtons,
     controlButton: {
       x: x + 14,
       y: y + height - 34,
@@ -14078,6 +14165,20 @@ function drawInspectedUnitInfo() {
   stats.forEach((stat, index) => {
     drawInfoStatRow(stat, x + 14, y + 37 + index * 18, width - 28);
   });
+
+  if (layout.resourceButtons) {
+    const current = getMinerResource(unit);
+    Object.entries(layout.resourceButtons).forEach(([resource, button]) => {
+      const active = current === resource;
+      ctx.fillStyle = active ? "rgba(230, 184, 74, 0.9)" : "rgba(255, 255, 255, 0.12)";
+      ctx.beginPath();
+      ctx.roundRect(button.x, button.y, button.width, button.height, 6);
+      ctx.fill();
+      ctx.fillStyle = active ? "#17140e" : "#f5f0df";
+      ctx.font = "800 11px system-ui, sans-serif";
+      ctx.fillText(resource === "magic" ? "挖魔力" : "挖金矿", button.x + button.width / 2, button.y + 16);
+    });
+  }
 
   const controlled = state.controlledUnitId === unit.id;
   ctx.fillStyle = controlled ? "rgba(230, 184, 74, 0.92)" : "rgba(117, 167, 255, 0.78)";
@@ -14632,8 +14733,33 @@ function handleInspectedInfoButton(point) {
   const unit = state.units.find((candidate) => candidate.id === state.inspectedUnitId && candidate.hp > 0 && !isUnitHidden(candidate));
   if (!unit) return false;
   const layout = getInspectedUnitInfoLayout(unit);
+  if (layout.resourceButtons) {
+    if (pointInRect(point, layout.resourceButtons.gold)) {
+      setMinerUnitResource(unit, "gold");
+      return true;
+    }
+    if (pointInRect(point, layout.resourceButtons.magic)) {
+      setMinerUnitResource(unit, "magic");
+      return true;
+    }
+  }
   if (!pointInRect(point, layout.controlButton)) return false;
   toggleManualControl(unit);
+  return true;
+}
+
+function setMinerUnitResource(unit, resource) {
+  if (!unit || unit.type !== "miner" || !isPlayerControlledSide(unit.side)) return false;
+  if (unit.carry > 0) {
+    popText(unit.x, unit.y - 112, "先运回当前资源", "#f3c963");
+    return true;
+  }
+  unit.miningResource = resource === "magic" ? "magic" : "gold";
+  unit.carryResource = unit.miningResource;
+  unit.mineSlotId = null;
+  unit.mineWorkSlot = null;
+  unit.mineTimer = 0;
+  popText(unit.x, unit.y - 112, unit.miningResource === "magic" ? "改挖魔力" : "改挖金矿", unit.miningResource === "magic" ? "#b88cff" : "#f5c542");
   return true;
 }
 
@@ -15127,6 +15253,8 @@ function castManualSkill(unit, id, target) {
         popText(unit.x, unit.y - 116, "无法石化", "#93d96b");
         return false;
       }
+      target.lastDamageSide = unit.side;
+      target.lastDamageUnitId = unit.id;
       target.hp = 0;
       unit.medusaSlayTimer = UNIT.medusa.slayCooldown;
       state.lightning.push({ x1: unit.x, y1: unit.y - 78, x2: target.x, y2: target.y - 64, life: 0.28, duration: 0.28 });
@@ -15504,6 +15632,7 @@ function summonDeathGodClone(unit) {
 function updateDeathGodClone(unit, dt) {
   unit.deathGodCloneTimer = Math.max(0, (unit.deathGodCloneTimer ?? UNIT.deathGodClone.duration) - dt);
   if (unit.deathGodCloneTimer <= 0) {
+    unit.noCorpse = true;
     unit.hp = 0;
     state.blasts.push({ x: unit.x, y: unit.y - 42, radius: 44, life: 0.28, duration: 0.28, color: "#d8d0c8" });
     popText(unit.x, unit.y - 96, "分身消散", "#d8d0c8");
@@ -16031,7 +16160,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-map-ui-fix";
+  const refreshKey = "stick-war-sw-refresh-20260614-home-start-visible";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
@@ -16415,6 +16544,8 @@ function tryMedusaSlay(point) {
     return true;
   }
 
+  target.lastDamageSide = medusa.side;
+  target.lastDamageUnitId = medusa.id;
   target.hp = 0;
   target.combatTimer = 3;
   medusa.medusaSlayTimer = UNIT.medusa.slayCooldown;
@@ -16460,6 +16591,7 @@ function findPlayerWaterElementAt(point) {
 
 function sacrificeWaterElement(unit) {
   releaseFrozenTarget(unit);
+  unit.noCorpse = true;
   unit.hp = 0;
   popText(unit.x, unit.y - 120, "水愈爆发", "#8ee0cf");
 }
@@ -16771,8 +16903,11 @@ modeButtons.forEach((button) => {
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
-    openRuleDialog();
   });
+});
+
+homeStartBtn?.addEventListener("click", () => {
+  openRuleDialog();
 });
 
 ruleStartBtn?.addEventListener("click", () => {
@@ -16809,7 +16944,6 @@ factionButtons.forEach((button) => {
     factionButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
-    openRuleDialog();
   });
 });
 

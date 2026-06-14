@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="一款可安装到主屏幕的中世纪火柴人帝国战争网页游戏。" />
     <title>帝国火柴人战争</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260614-map-ui-fix" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260614-home-start-visible" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260614-map-ui-fix" />
+    <link rel="stylesheet" href="./style.css?v=20260614-home-start-visible" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -51,7 +51,7 @@
           <div class="selection-label">
             <b>2</b>
             <span>选择帝国</span>
-            <small>选好后进入规则确认</small>
+            <small>选好后点击开始</small>
           </div>
           <div class="faction-options four">
             <button class="faction-card order active" data-faction="order">
@@ -76,6 +76,10 @@
             </button>
           </div>
         </div>
+        <button id="homeStartBtn" class="quick-start-btn home-start-btn" type="button">
+          <strong>开始战斗</strong>
+          <small>确认模式和帝国后选择规则</small>
+        </button>
       </div>
     </section>
 
@@ -219,14 +223,6 @@
             <span>矿工挖矿</span>
             <small>恢复采集</small>
           </button>
-          <button class="command-btn miner-resource-btn active" data-miner-resource="gold">
-            <span>采金币</span>
-            <small>金矿</small>
-          </button>
-          <button class="command-btn miner-resource-btn" data-miner-resource="magic">
-            <span>采魔力</span>
-            <small>魔力矿</small>
-          </button>
           <button class="command-btn miner-command-btn" data-miner-command="attack">
             <span>矿工进攻</span>
             <small>停止采矿</small>
@@ -302,6 +298,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260614-map-ui-fix"></script>
+    <script src="./game.js?v=20260614-home-start-visible"></script>
   </body>
 </html>

@@ -56,6 +56,7 @@ body {
   background-size: cover;
   background-position: center;
   overflow: auto;
+  padding-bottom: 112px;
 }
 
 .faction-select.hidden {
@@ -702,6 +703,16 @@ body {
   margin-top: 2px;
   color: rgba(245, 240, 223, 0.72);
   font-size: 12px;
+}
+
+.home-start-btn {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 11;
+  width: min(360px, calc(100vw - 36px));
+  transform: translateX(-50%);
+  justify-self: center;
 }
 
 .crest {
@@ -3656,11 +3667,11 @@ body.quad-watch .health-bars {
 }
 
 .command-group {
-  grid-template-columns: repeat(4, 96px);
+  grid-template-columns: repeat(3, 108px);
   grid-template-rows: repeat(2, 56px);
 }
 
-.command-btn[data-command="retreat"] {
+.command-btn[data-command="attack"] {
   order: 1;
 }
 
@@ -3668,7 +3679,7 @@ body.quad-watch .health-bars {
   order: 2;
 }
 
-.command-btn[data-command="attack"] {
+.command-btn[data-command="retreat"] {
   order: 3;
 }
 
@@ -3676,20 +3687,12 @@ body.quad-watch .health-bars {
   order: 4;
 }
 
-.miner-command-btn[data-miner-command="retreat"] {
+.miner-command-btn[data-miner-command="mine"] {
   order: 5;
 }
 
-.miner-command-btn[data-miner-command="mine"] {
+.miner-command-btn[data-miner-command="retreat"] {
   order: 6;
-}
-
-.miner-resource-btn[data-miner-resource="gold"] {
-  order: 7;
-}
-
-.miner-resource-btn[data-miner-resource="magic"] {
-  order: 8;
 }
 
 .unit-shop,
@@ -3713,7 +3716,7 @@ body:not(.quad-watch) canvas {
 
 @media (max-width: 840px) {
   .command-group {
-    grid-template-columns: repeat(4, minmax(76px, 1fr));
+    grid-template-columns: repeat(3, minmax(76px, 1fr));
     grid-template-rows: repeat(2, 52px);
   }
 
@@ -3744,7 +3747,7 @@ body:not(.quad-watch) canvas {
   }
 
   .command-group {
-    grid-template-columns: repeat(4, minmax(66px, 1fr));
+    grid-template-columns: repeat(3, minmax(66px, 1fr));
     grid-template-rows: repeat(2, 46px);
   }
 
