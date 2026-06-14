@@ -710,7 +710,7 @@ const UNIT = {
   },
   bomber: {
     name: "炸弹客",
-    cost: 80,
+    cost: 75,
     hp: 35,
     damage: 30,
     range: 34,
