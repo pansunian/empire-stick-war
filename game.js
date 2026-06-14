@@ -165,7 +165,7 @@ const UNIT = {
   },
   summoner: {
     name: "召唤师",
-    cost: 100,
+    cost: 180,
     hp: 135,
     damage: 5,
     range: 160,
@@ -564,7 +564,7 @@ const UNIT = {
   },
   undead: {
     name: "丧尸",
-    cost: 60,
+    cost: 70,
     hp: 80,
     damage: 8,
     range: 30,
@@ -574,7 +574,7 @@ const UNIT = {
   },
   ghoul: {
     name: "食尸鬼",
-    cost: 80,
+    cost: 110,
     hp: 130,
     damage: 5,
     range: 30,
@@ -585,7 +585,7 @@ const UNIT = {
   },
   candlelight: {
     name: "烛光",
-    cost: 90,
+    cost: 150,
     hp: 115,
     damage: 6,
     range: 145,
@@ -600,7 +600,7 @@ const UNIT = {
   },
   reaper: {
     name: "收割者",
-    cost: 140,
+    cost: 175,
     hp: 90,
     damage: 16,
     range: 36,
@@ -615,7 +615,8 @@ const UNIT = {
   },
   deathGod: {
     name: "死神",
-    cost: 380,
+    cost: 500,
+    magicCost: 150,
     hp: 420,
     damage: 50,
     range: 46,
@@ -642,7 +643,7 @@ const UNIT = {
   },
   machete: {
     name: "骷髅兵",
-    cost: 40,
+    cost: 50,
     hp: 50,
     damage: 6,
     range: 34,
@@ -683,7 +684,8 @@ const UNIT = {
   },
   poisonZombie: {
     name: "毒尸",
-    cost: 120,
+    cost: 100,
+    magicCost: 100,
     hp: 225,
     damage: 8,
     range: 135,
@@ -695,7 +697,8 @@ const UNIT = {
   },
   necromancer: {
     name: "死灵法师",
-    cost: 155,
+    cost: 200,
+    magicCost: 200,
     hp: 200,
     damage: 30,
     range: 150,
@@ -941,7 +944,8 @@ const UNIT = {
   },
   undeadVulture: {
     name: "秃鹫",
-    cost: 120,
+    cost: 50,
+    magicCost: 100,
     hp: 90,
     damage: 16,
     range: 180,
@@ -983,7 +987,8 @@ const UNIT = {
   },
   darkKnight: {
     name: "黑骑士",
-    cost: 130,
+    cost: 100,
+    magicCost: 100,
     hp: 350,
     damage: 17,
     range: 38,
@@ -996,7 +1001,8 @@ const UNIT = {
   },
   bannerBearer: {
     name: "掌旗手",
-    cost: 190,
+    cost: 200,
+    magicCost: 100,
     hp: 450,
     damage: 8,
     range: 32,
@@ -1012,7 +1018,8 @@ const UNIT = {
   },
   graveDigger: {
     name: "掘墓者",
-    cost: 190,
+    cost: 150,
+    magicCost: 50,
     hp: 300,
     damage: 12,
     range: 34,
@@ -1029,7 +1036,8 @@ const UNIT = {
   },
   boneGiant: {
     name: "骸骨",
-    cost: 260,
+    cost: 400,
+    magicCost: 150,
     hp: 800,
     damage: 40,
     range: 46,
@@ -1064,7 +1072,8 @@ const UNIT = {
   },
   undeadMage: {
     name: "骨巫",
-    cost: 250,
+    cost: 150,
+    magicCost: 250,
     hp: 200,
     damage: 25,
     range: 120,
@@ -1471,7 +1480,7 @@ const FACTIONS = {
   },
   undeadEmpire: {
     name: "亡灵帝国",
-    roster: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
+    roster: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
     startingUnits: ["summoner", "machete", "undead", "ghoul", "candlelight"],
     mineColor: "#b8b0a5",
   },
@@ -1507,7 +1516,7 @@ const FOUR_WAY_BASES = {
 const FOUR_WAY_AI_ROSTER = {
   order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "covenantGuard", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
-  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
+  undeadEmpire: ["machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
 };
 const FOUR_WAY_MERGE_COSTS = {
@@ -1634,7 +1643,7 @@ function normalizeUnitType(type) {
 const STAT_GROUPS = [
   ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "covenantGuard", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
-  ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"]],
+  ["亡灵帝国", ["summoner", "wraithMiner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
 ];
 
@@ -1677,7 +1686,7 @@ const ECONOMY_UNITS = new Set(["miner", "summoner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
-  undeadEmpire: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "deadCorpse", "darkKnight", "undeadMage"],
+  undeadEmpire: ["summoner", "machete", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
 };
 const campaignProgressByFaction = {
@@ -3080,7 +3089,7 @@ const ELEMENT_SHOP_LAYOUT = [
 const UNDEAD_SHOP_LAYOUT = [
   ["summoner", "undead", "candlelight"],
   ["machete", "ghoul", "reaper"],
-  ["undeadVulture", "deadCorpse", "deathGod"],
+  ["undeadVulture", null, "deathGod"],
   ["darkKnight", "poisonZombie", null],
   ["undeadMage", "necromancer", null],
   ["graveDigger", null, null],
