@@ -1246,6 +1246,7 @@ body.quad-watch .health-bars {
   grid-template-rows: repeat(2, 56px);
   flex: 0 0 auto;
   gap: 8px;
+  order: 2;
 }
 
 .command-group .command-btn {
@@ -1263,6 +1264,7 @@ body.quad-watch .health-bars {
   align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
+  order: 1;
   padding-bottom: 4px;
   scrollbar-color: rgba(230, 184, 74, 0.8) rgba(0, 0, 0, 0.22);
   -webkit-overflow-scrolling: touch;
