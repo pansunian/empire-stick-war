@@ -16013,10 +16013,30 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
+  const refreshKey = "stick-war-sw-refresh-20260614-cache-repair";
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (sessionStorage.getItem(refreshKey) === "done") return;
+    sessionStorage.setItem(refreshKey, "done");
+    window.location.reload();
+  });
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("./service-worker.js")
-      .then((registration) => registration.update())
+      .then((registration) => {
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+        return registration.update();
+      })
       .catch(() => {
         statusEl.textContent = "离线缓存暂时不可用，联网游玩不受影响";
       });

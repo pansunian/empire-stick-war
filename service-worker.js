@@ -1,10 +1,10 @@
-const CACHE_NAME = "stick-war-pwa-v138";
+const CACHE_NAME = "stick-war-pwa-v139";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260614-quad-player-control",
-  "./game.js?v=20260614-quad-player-control",
-  "./manifest.webmanifest?v=20260614-quad-player-control",
+  "./style.css?v=20260614-cache-repair",
+  "./game.js?v=20260614-cache-repair",
+  "./manifest.webmanifest?v=20260614-cache-repair",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
   "./assets/factions/order-crest.png",
@@ -27,6 +27,12 @@ self.addEventListener("activate", (event) => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
