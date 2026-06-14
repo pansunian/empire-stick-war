@@ -8720,14 +8720,15 @@ function castMeteorRain(unit, target) {
 
 function strikeLightning(unit, target) {
   const data = UNIT.windElement;
-  const startY = unit.y - 92;
   const endY = target.y ? target.y - 44 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 120;
-  if (tryBlockSpecialWithShieldCart({ x: unit.x, y: startY }, { x: target.x, y: endY }, target, data.damage)) {
+  const startX = target.x + (Math.random() * 34 - 17);
+  const startY = Math.max(30, endY - 360);
+  if (tryBlockSpecialWithShieldCart({ x: startX, y: startY }, { x: target.x, y: endY }, target, data.damage)) {
     popText(target.x, endY - 28, "闪电被挡", "#d7c090");
     return;
   }
   applyDamage(target, data.damage, unit.side);
-  state.lightning.push({ x1: unit.x, y1: startY, x2: target.x, y2: endY, life: 0.22, duration: 0.22 });
+  state.lightning.push({ x1: startX, y1: startY, x2: target.x, y2: endY, life: 0.22, duration: 0.22 });
 }
 
 function castChainLightning(unit, target) {
