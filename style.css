@@ -1113,9 +1113,9 @@ body.quad-watch .zoom-btn:not([hidden]) {
   background: #1b241f;
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.38);
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   scrollbar-color: rgba(230, 184, 74, 0.8) rgba(0, 0, 0, 0.28);
-  touch-action: pan-x pan-y;
+  touch-action: pan-x;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1125,7 +1125,7 @@ canvas {
   max-width: none;
   height: 800px;
   min-height: 0;
-  touch-action: pan-x pan-y;
+  touch-action: pan-x;
 }
 
 body.quad-watch .battlefield-wrap {
@@ -3651,6 +3651,114 @@ body.quad-watch .health-bars {
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
     grid-template-rows: repeat(3, 62px);
+    grid-auto-columns: 62px;
+  }
+}
+
+.command-group {
+  grid-template-columns: repeat(4, 96px);
+  grid-template-rows: repeat(2, 56px);
+}
+
+.command-btn[data-command="retreat"] {
+  order: 1;
+}
+
+.command-btn[data-command="guard"] {
+  order: 2;
+}
+
+.command-btn[data-command="attack"] {
+  order: 3;
+}
+
+.miner-command-btn[data-miner-command="attack"] {
+  order: 4;
+}
+
+.miner-command-btn[data-miner-command="retreat"] {
+  order: 5;
+}
+
+.miner-command-btn[data-miner-command="mine"] {
+  order: 6;
+}
+
+.miner-resource-btn[data-miner-resource="gold"] {
+  order: 7;
+}
+
+.miner-resource-btn[data-miner-resource="magic"] {
+  order: 8;
+}
+
+.unit-shop,
+.unit-shop.element-shop,
+.unit-shop.element-shop-expanded,
+.unit-shop.undead-shop {
+  grid-template-rows: repeat(2, 78px);
+  grid-auto-flow: column;
+  grid-auto-columns: 78px;
+}
+
+body:not(.quad-watch) .battlefield-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+}
+
+body:not(.quad-watch) canvas {
+  touch-action: pan-x;
+}
+
+@media (max-width: 840px) {
+  .command-group {
+    grid-template-columns: repeat(4, minmax(76px, 1fr));
+    grid-template-rows: repeat(2, 52px);
+  }
+
+  .unit-shop,
+  .unit-shop.element-shop,
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
+    grid-template-rows: repeat(2, 70px);
+    grid-auto-columns: 70px;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 699px) {
+  .unit-shop,
+  .unit-shop.element-shop,
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
+    grid-template-rows: repeat(2, 64px);
+    grid-auto-columns: 68px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 932px) and (orientation: landscape) {
+  .control-deck {
+    grid-template-columns: minmax(0, 1fr) 74px;
+    grid-template-rows: repeat(2, 46px);
+    height: 108px;
+  }
+
+  .command-group {
+    grid-template-columns: repeat(4, minmax(66px, 1fr));
+    grid-template-rows: repeat(2, 46px);
+  }
+
+  .mobile-units-toggle {
+    grid-row: 1 / span 2;
+    height: 100%;
+  }
+
+  .unit-shop,
+  .unit-shop.element-shop,
+  .unit-shop.element-shop-expanded,
+  .unit-shop.undead-shop {
+    height: 132px;
+    grid-template-rows: repeat(2, 58px);
     grid-auto-columns: 62px;
   }
 }

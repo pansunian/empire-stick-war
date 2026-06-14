@@ -87,6 +87,7 @@ const FIELD = {
 const DEFAULT_FIELD = { ...FIELD };
 const MINE_LANES = [-205, -72, 72, 185];
 const NORMAL_MINE_COLUMNS = [0, 170];
+const MAGIC_MINE_COLUMN_OFFSET = 340;
 const NORMAL_MINE_CAPACITY = 2500;
 const MINE_WORKER_LIMIT = 2;
 const RALLY = {
@@ -2794,14 +2795,22 @@ function applyBattlefieldZoom(preserveCenter = true) {
   const centerX = (battlefieldWrap.scrollLeft + battlefieldWrap.clientWidth / 2) / oldWidth;
   const centerY = (battlefieldWrap.scrollTop + battlefieldWrap.clientHeight / 2) / oldHeight;
   battlefieldZoom = clampBattlefieldZoom(battlefieldZoom);
-  const displayWidth = Math.max(1, FIELD.width * battlefieldZoom);
-  const displayHeight = Math.max(1, FIELD.height * battlefieldZoom);
+  const normalScale = !canZoomBattlefield() && battlefieldWrap.clientHeight > 0
+    ? battlefieldWrap.clientHeight / Math.max(1, FIELD.height)
+    : battlefieldZoom;
+  const displayWidth = Math.max(1, FIELD.width * normalScale);
+  const displayHeight = Math.max(1, FIELD.height * normalScale);
   canvas.style.width = `${displayWidth}px`;
   canvas.style.height = `${displayHeight}px`;
   updateZoomButtons();
-  if (!preserveCenter) return;
+  if (!preserveCenter) {
+    if (!canZoomBattlefield()) battlefieldWrap.scrollTop = 0;
+    return;
+  }
   battlefieldWrap.scrollLeft = Math.max(0, centerX * displayWidth - battlefieldWrap.clientWidth / 2);
-  battlefieldWrap.scrollTop = Math.max(0, centerY * displayHeight - battlefieldWrap.clientHeight / 2);
+  battlefieldWrap.scrollTop = canZoomBattlefield()
+    ? Math.max(0, centerY * displayHeight - battlefieldWrap.clientHeight / 2)
+    : 0;
 }
 
 function setBattlefieldZoom(nextZoom) {
@@ -4576,8 +4585,8 @@ function createMinesForSide(side) {
   const magicMines = MINE_LANES.map((laneY, rowIndex) => ({
     id: `${side}-magic-${rowIndex}`,
     resource: "magic",
-    x: baseX + dir * (Math.sqrt(Math.max(0, (FIELD.mineDistance + 82) ** 2 - laneY ** 2)) + 38),
-    y: FIELD.ground + laneY - 24,
+    x: baseX + dir * (Math.sqrt(Math.max(0, FIELD.mineDistance ** 2 - laneY ** 2)) + MAGIC_MINE_COLUMN_OFFSET),
+    y: FIELD.ground + laneY,
     remaining: MAGIC_MINE_CAPACITY,
     capacity: MAGIC_MINE_CAPACITY,
   }));
@@ -11592,7 +11601,6 @@ function drawFourWayCastle(side) {
   const centerAngle = Math.atan2(FIELD.height / 2 - base.y, FIELD.width / 2 - base.x);
   ctx.save();
   ctx.translate(base.x, base.y);
-  ctx.rotate(centerAngle + Math.PI / 2);
 
   ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
   ctx.beginPath();
@@ -11612,6 +11620,16 @@ function drawFourWayCastle(side) {
   ctx.fill();
   ctx.fillStyle = base.color;
   ctx.fillRect(-20, -4, 40, 12);
+  ctx.save();
+  ctx.rotate(centerAngle);
+  ctx.fillStyle = "rgba(248, 234, 197, 0.78)";
+  ctx.beginPath();
+  ctx.moveTo(112, 0);
+  ctx.lineTo(82, -13);
+  ctx.lineTo(82, 13);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
   ctx.restore();
 
   drawFourWayCastleHpBar(side);
@@ -16013,7 +16031,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-cache-repair";
+  const refreshKey = "stick-war-sw-refresh-20260614-map-ui-fix";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
