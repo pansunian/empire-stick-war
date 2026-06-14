@@ -543,7 +543,7 @@ const UNIT = {
   },
   creeper: {
     name: "爬行者",
-    cost: 45,
+    cost: 50,
     hp: 35,
     damage: 10,
     range: 28,
@@ -723,7 +723,7 @@ const UNIT = {
   },
   orc: {
     name: "兽人",
-    cost: 80,
+    cost: 90,
     hp: 110,
     damage: 6,
     range: 34,
@@ -733,7 +733,7 @@ const UNIT = {
   },
   berserkOrc: {
     name: "狂兽人",
-    cost: 120,
+    cost: 150,
     hp: 140,
     damage: 13,
     range: 38,
@@ -743,7 +743,7 @@ const UNIT = {
   },
   goblin: {
     name: "地精",
-    cost: 140,
+    cost: 180,
     hp: 80,
     damage: 0,
     range: 0,
@@ -762,7 +762,7 @@ const UNIT = {
   },
   goblinExpert: {
     name: "地精专家",
-    cost: 160,
+    cost: 210,
     hp: 140,
     damage: 0,
     range: 0,
@@ -779,7 +779,7 @@ const UNIT = {
   },
   arrowShieldCart: {
     name: "遮箭车",
-    cost: 200,
+    cost: 400,
     hp: 200,
     damage: 0,
     range: 0,
@@ -794,7 +794,8 @@ const UNIT = {
   },
   shaman: {
     name: "萨满",
-    cost: 150,
+    cost: 100,
+    magicCost: 150,
     hp: 170,
     damage: 0,
     range: 0,
@@ -813,7 +814,8 @@ const UNIT = {
   },
   priest: {
     name: "祭司",
-    cost: 180,
+    cost: 150,
+    magicCost: 200,
     hp: 150,
     damage: 20,
     range: 145,
@@ -830,7 +832,8 @@ const UNIT = {
   },
   apeMan: {
     name: "猿人",
-    cost: 150,
+    cost: 200,
+    magicCost: 100,
     hp: 320,
     damage: 20,
     range: 44,
@@ -868,7 +871,8 @@ const UNIT = {
   },
   minotaur: {
     name: "巨角骑士",
-    cost: 150,
+    cost: 300,
+    magicCost: 100,
     hp: 600,
     damage: 30,
     range: 48,
@@ -897,7 +901,8 @@ const UNIT = {
   },
   rhinoMan: {
     name: "犀牛人",
-    cost: 270,
+    cost: 480,
+    magicCost: 50,
     hp: 670,
     damage: 36,
     range: 44,
@@ -911,7 +916,7 @@ const UNIT = {
   },
   javelinThrower: {
     name: "投矛手",
-    cost: 120,
+    cost: 150,
     hp: 60,
     damage: 14,
     range: 200,
@@ -924,7 +929,8 @@ const UNIT = {
   },
   goblinVulture: {
     name: "持弩哨兵",
-    cost: 150,
+    cost: 100,
+    magicCost: 50,
     hp: 90,
     damage: 13,
     range: 170,
@@ -950,8 +956,9 @@ const UNIT = {
     crashLimit: 3,
   },
   griffinBomber: {
-    name: "狮鹫轰炸机",
-    cost: 450,
+    name: "巨龙轰炸机",
+    cost: 200,
+    magicCost: 150,
     hp: 400,
     damage: 30,
     range: 200,
@@ -2155,7 +2162,6 @@ function getUnitCost(type, faction, side = null) {
 }
 
 function getUnitMagicCost(type, faction) {
-  if (faction !== "order") return 0;
   return UNIT[type]?.magicCost ?? 0;
 }
 
@@ -4017,7 +4023,7 @@ function updateFourWayAi(dt) {
     while (ai.incomeTimer <= 0) {
       ai.incomeTimer += 1;
       ai.gold += 20;
-      if (ai.faction === "order") ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND;
+      if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND;
     }
     tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
@@ -4589,14 +4595,15 @@ function getCarryResource(unit) {
 function getMinerResource(unit) {
   if (unit.type !== "miner") return "gold";
   if (unit.side === "player") return state.minerResource ?? "gold";
-  if (factionForSide(unit.side) !== "order") return "gold";
-  return getSideMagic(unit.side) < getOrderMagicDemand(unit.side) ? "magic" : "gold";
+  return getSideMagic(unit.side) < getFactionMagicDemand(factionForSide(unit.side), unit.side) ? "magic" : "gold";
 }
 
-function getOrderMagicDemand(side) {
-  const faction = factionForSide(side);
-  if (faction !== "order") return 0;
-  const roster = side === "player" ? currentPlayerRoster() : currentEnemyRoster();
+function getFactionMagicDemand(faction, side = null) {
+  const roster = side === "player"
+    ? currentPlayerRoster()
+    : side === "enemy"
+      ? currentEnemyRoster()
+      : FACTIONS[faction]?.roster ?? [];
   return Math.max(0, ...roster.map((type) => getUnitMagicCost(type, faction)));
 }
 
@@ -5000,7 +5007,7 @@ function updateTeamAi(dt) {
   if (!state.teamAi?.length || state.over) return;
   state.teamAi.forEach((ai) => {
     ai.gold += 5 * dt;
-    if (ai.faction === "order") ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
+    if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
     ai.minerTimer -= dt;
     ai.spawnTimer -= dt;
     const economyType = ai.faction === "undeadEmpire" ? "summoner" : "miner";
