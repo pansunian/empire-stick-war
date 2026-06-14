@@ -99,6 +99,7 @@ const RALLY = {
 };
 
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
+const BASIC_ELEMENT_UNITS = new Set(["earthElement", "waterElement", "fireElement", "windElement"]);
 const ELEMENT_MERGE_MAGIC_COSTS = {
   hill: 50,
   treeEnt: 50,
@@ -2489,19 +2490,19 @@ function newGame() {
   const enemyStart = activeCampaign?.enemyStart ?? FACTIONS[opponentFaction()].startingUnits;
 
   playerStart.forEach((type, index) => {
-    spawnUnit(type, "player", FIELD.playerGate - 28 + index * 32);
+    spawnTrainedUnit(type, "player", index);
   });
   if (isDuoBattle() && playerAllyFaction) {
     FACTIONS[playerAllyFaction].startingUnits.forEach((type, index) => {
-      spawnUnit(type, "player", FIELD.playerGate - 132 - index * 34);
+      spawnTrainedUnit(type, "player", index + playerStart.length + 4);
     });
   }
   enemyStart.forEach((type, index) => {
-    spawnUnit(type, "enemy", FIELD.enemyGate + 28 - index * 32);
+    spawnTrainedUnit(type, "enemy", index);
   });
   if (isDuoBattle() && enemyAllyFaction) {
     FACTIONS[enemyAllyFaction].startingUnits.forEach((type, index) => {
-      spawnUnit(type, "enemy", FIELD.enemyGate + 132 + index * 34);
+      spawnTrainedUnit(type, "enemy", index + enemyStart.length + 4);
     });
   }
   if (isDuoBattle()) {
@@ -3572,10 +3573,11 @@ function getBaseSpawnPoint(side, index = 0) {
   const gateX = isPlayerSide ? FIELD.playerGate : FIELD.enemyGate;
   const dir = isPlayerSide ? 1 : -1;
   const lane = ((index % 5) - 2) * 12;
+  const exitStagger = (index % 5) * 42 + Math.floor(index / 5) * 18;
   return {
-    x: baseX + dir * 28,
+    x: baseX + dir * (28 + (index % 3) * 10),
     y: FIELD.ground + lane,
-    targetX: gateX + dir * (18 + Math.floor(index / 5) * 10),
+    targetX: gateX + dir * (18 + exitStagger),
     targetY: FIELD.ground + lane,
   };
 }
@@ -7762,15 +7764,16 @@ function getEnemyRallyX(unit) {
 
 function getGuardFormationPoint(unit, side, baseOverride = null) {
   const index = getGuardFormationIndex(unit, side);
-  const rowOffsets = [-120, -84, -48, -12, 24, 60, 96, 132];
+  const rowOffsets = [-124, -88, -52, -16, 20, 56, 92, 128];
   const rows = rowOffsets.length;
   const row = index % rows;
   const column = Math.floor(index / rows) % 5;
-  const columnSpacing = 34;
+  const rowStagger = (row % 4) * 78;
+  const columnSpacing = 220;
   const baseX = baseOverride ?? (side === "player" ? getPlayerRallyBaseX() : getEnemyRallyBaseX());
   const direction = side === "player" ? 1 : -1;
   return {
-    x: baseX + direction * column * columnSpacing,
+    x: baseX + direction * (column * columnSpacing + rowStagger),
     y: FIELD.ground + rowOffsets[row],
   };
 }
@@ -11671,6 +11674,9 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (BASIC_ELEMENT_UNITS.has(unit.type)) {
+    drawBasicElementAura(unit);
+  }
   if (unit.type === "miner") {
     drawMinerUnit(unit, color, headColor);
     ctx.restore();
@@ -11691,6 +11697,25 @@ function drawUnit(unit) {
   drawWeapon(unit.type, unit);
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawBasicElementAura(unit) {
+  const colors = {
+    earthElement: "rgba(192, 163, 109, 0.48)",
+    waterElement: "rgba(114, 200, 232, 0.45)",
+    fireElement: "rgba(255, 122, 61, 0.5)",
+    windElement: "rgba(215, 246, 238, 0.48)",
+  };
+  ctx.save();
+  ctx.globalAlpha = 0.95;
+  ctx.fillStyle = colors[unit.type] ?? "rgba(255,255,255,0.35)";
+  ctx.strokeStyle = getHeadColor(unit);
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, -42, 25, 38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -16001,7 +16026,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-dead-code-cleanup";
+  const refreshKey = "stick-war-sw-refresh-20260614-element-stagger-fix";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
