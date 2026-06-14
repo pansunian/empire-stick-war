@@ -140,9 +140,14 @@ const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
 const UNDEAD_SKELETON_TRAIT = { interval: 8, rampEvery: 80, maxCount: 5 };
+const FOUR_WAY_UNDEAD_SKELETON_TRAIT = { interval: 14, rampEvery: 120, maxCount: 3 };
 const ORDER_ARMOR_TRAIT = { interval: 10, reductionStep: 0.1, maxReduction: 0.5 };
 const CHAOS_KILL_GOLD = 2;
+const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
+const CHAOS_FOUR_WAY_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
+const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
+const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
 const MAGIC_MINE_CAPACITY = 1600;
 const MAGIC_INCOME_PER_SECOND = 6;
 const STATUE_MAX_HP = 3000;
@@ -1578,7 +1583,7 @@ const FOUR_WAY_STARTERS = {
 const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
-  chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
+  chaos: { cooldown: 30, duration: 15 },
   undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "necromancer"] },
   element: { cooldown: 30, duration: 15, summons: ["vUnit"] },
 };
@@ -4159,12 +4164,11 @@ function castFourWayOrderSkill(side) {
 
 function castFourWayChaosSkill(side) {
   const config = FOUR_WAY_FACTION_SKILL.chaos;
-  const summons = summonFourWaySkillUnits(side, config.summons, config.duration, 20);
   state.fourWaySkillCooldowns[side] = config.cooldown;
   state.fourWaySkillEffects[side] = config.duration;
   const base = FOUR_WAY_BASES[side];
   state.blasts.push({ x: base.x, y: base.y, radius: 104, life: 0.45, duration: 0.45, color: "#ff6a3d" });
-  popText(base.x, base.y - 128, `混沌巨援 x${summons.length}`, "#ff8a3d");
+  popText(base.x, base.y - 128, "混沌抱团战吼", "#ff8a3d");
   return true;
 }
 
@@ -4277,14 +4281,15 @@ function getFactionTraitTimer(side) {
 }
 
 function updateUndeadSkeletonTrait(side, dt) {
+  const trait = state.fourWay ? FOUR_WAY_UNDEAD_SKELETON_TRAIT : UNDEAD_SKELETON_TRAIT;
   const timer = getFactionTraitTimer(side);
   timer.undeadSkeletonElapsed += dt;
   timer.undeadSkeletonTimer -= dt;
   if (timer.undeadSkeletonTimer > 0) return;
-  timer.undeadSkeletonTimer += UNDEAD_SKELETON_TRAIT.interval;
+  timer.undeadSkeletonTimer += trait.interval;
   const count = Math.min(
-    UNDEAD_SKELETON_TRAIT.maxCount,
-    1 + Math.floor(timer.undeadSkeletonElapsed / UNDEAD_SKELETON_TRAIT.rampEvery),
+    trait.maxCount,
+    1 + Math.floor(timer.undeadSkeletonElapsed / trait.rampEvery),
   );
   for (let i = 0; i < count; i += 1) {
     const skeleton = spawnTraitUnit("machete", side, i);
@@ -8158,7 +8163,7 @@ function attack(unit, target) {
       tx: target.x,
       ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
       side: unit.side,
-      damage: getOrderAttackDamage(unit, target, data.damage),
+      damage: getAttackDamage(unit, target, data.damage),
       sourceId: unit.id,
       target,
       life: unit.type === "crossbow" ? 0.42 : 0.55,
@@ -8170,7 +8175,7 @@ function attack(unit, target) {
     return;
   }
 
-  const dealt = applyDamage(target, getOrderAttackDamage(unit, target, unit.damage ?? data.damage), unit.side);
+  const dealt = applyDamage(target, getAttackDamage(unit, target, unit.damage ?? data.damage), unit.side);
   handleDamageDealt(unit, target, dealt);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
@@ -8224,6 +8229,38 @@ function getOrderAttackDamage(attacker, target, baseDamage) {
   return Math.max(1, Math.round(damage * 10) / 10);
 }
 
+function getAttackDamage(attacker, target, baseDamage) {
+  let damage = getOrderAttackDamage(attacker, target, baseDamage);
+  if (hasChaosOrcPackBonus(attacker)) damage *= CHAOS_ORC_PACK_TRAIT.damageFactor;
+  if (hasFourWayChaosPackBonus(attacker)) damage *= CHAOS_FOUR_WAY_PACK_TRAIT.damageFactor;
+  return Math.max(1, Math.round(damage * 10) / 10);
+}
+
+function hasChaosOrcPackBonus(unit) {
+  if (!unit || !CHAOS_ORC_PACK_UNITS.has(unit.type) || factionForSide(unit.side) !== "chaos") return false;
+  const nearbyOrcs = state.units.filter((candidate) => (
+    candidate.side === unit.side &&
+    CHAOS_ORC_PACK_UNITS.has(candidate.type) &&
+    candidate.hp > 0 &&
+    !isUnitHidden(candidate) &&
+    distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= CHAOS_ORC_PACK_TRAIT.radius
+  ));
+  return nearbyOrcs.length >= CHAOS_ORC_PACK_TRAIT.count;
+}
+
+function hasFourWayChaosPackBonus(unit) {
+  if (!state?.fourWay || !unit || factionForSide(unit.side) !== "chaos") return false;
+  if ((state.fourWaySkillEffects?.[unit.side] ?? 0) <= 0) return false;
+  const nearbyChaos = state.units.filter((candidate) => (
+    candidate.side === unit.side &&
+    candidate.hp > 0 &&
+    !isUnitHidden(candidate) &&
+    !UNIT[candidate.type]?.untargetable &&
+    distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= CHAOS_FOUR_WAY_PACK_TRAIT.radius
+  ));
+  return nearbyChaos.length >= CHAOS_FOUR_WAY_PACK_TRAIT.count;
+}
+
 function hasOrderCommanderAura(unit) {
   if (!unit || factionForSide(unit.side) !== "order") return false;
   const radius = UNIT.commander.commandRadius;
@@ -8242,9 +8279,9 @@ function grantChaosKillRewards(unit) {
   if (factionForSide(killerSide) !== "chaos") return;
   if (state.fourWay) {
     const ai = state.fourWaySides.find((item) => item.side === killerSide);
-    if (ai) ai.gold += CHAOS_KILL_GOLD;
+    if (ai) ai.gold += CHAOS_FOUR_WAY_KILL_GOLD;
     const base = FOUR_WAY_BASES[killerSide];
-    popText(base.x, base.y + (base.y < FIELD.height / 2 ? -150 : 170), `混沌掠夺 +${CHAOS_KILL_GOLD}`, "#ff8a3d");
+    popText(base.x, base.y + (base.y < FIELD.height / 2 ? -150 : 170), `混沌掠夺 +${CHAOS_FOUR_WAY_KILL_GOLD}`, "#ff8a3d");
   } else {
     const key = killerSide === "player" ? "gold" : "enemyGold";
     state[key] += CHAOS_KILL_GOLD;
@@ -16194,7 +16231,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-undead-element-traits";
+  const refreshKey = "stick-war-sw-refresh-20260614-fourway-undead-trait-tune";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
