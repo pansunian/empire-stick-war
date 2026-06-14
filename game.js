@@ -48,7 +48,6 @@ const statsOverlay = document.querySelector("#statsOverlay");
 const statsTable = document.querySelector("#statsTable");
 const armyCommandButtons = [...document.querySelectorAll(".command-btn[data-command]")];
 const minerCommandButtons = [...document.querySelectorAll(".miner-command-btn")];
-const minerResourceButtons = [...document.querySelectorAll(".miner-resource-btn")];
 const controlDeck = document.querySelector(".control-deck");
 const unitShop = document.querySelector(".unit-shop");
 const mobileUnitsToggle = document.querySelector("#mobileUnitsToggle");
@@ -99,7 +98,6 @@ const RALLY = {
   guardForwardFromMine: 300,
 };
 
-const MERGE_COST = 40;
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const ELEMENT_MERGE_MAGIC_COSTS = {
   hill: 50,
@@ -125,7 +123,6 @@ const FOUR_WAY_MERGE_VALUES = {
   scaldStrike: 180,
   vUnit: 275,
 };
-const MERGE_COST_DISCOUNT_STEP = 8;
 const V_CONTROL_BLOCKED_UNITS = new Set([
   "catapult",
   "rocketCart",
@@ -2276,18 +2273,6 @@ function canAffordElementMerge(type, side = "player") {
   return getSideMagic(side) >= getElementMergeMagicCost(type);
 }
 
-function getElementMergeDiscount(type, side = null) {
-  if (!side || !state?.elementMergeDiscounts?.[side]) return 0;
-  return state.elementMergeDiscounts[side][type] ?? 0;
-}
-
-function recordElementMergeDiscount(side, type) {
-  if (!side || !MERGE_UNITS.has(type) || FREE_MERGE_UNITS.has(type)) return;
-  state.elementMergeDiscounts[side] = state.elementMergeDiscounts[side] ?? {};
-  const current = state.elementMergeDiscounts[side][type] ?? 0;
-  state.elementMergeDiscounts[side][type] = Math.min(MERGE_COST, current + MERGE_COST_DISCOUNT_STEP);
-}
-
 function getFourWayUnitCost(type, faction, side = null) {
   if (faction === "element" && MERGE_UNITS.has(type)) return 0;
   return getUnitCost(type, faction, side);
@@ -2528,7 +2513,6 @@ function newGame() {
   spawnCampaignCenterElectricGate();
   setCommand("guard");
   setMinerCommand("mine");
-  setMinerResource("gold");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
   if (selectedMode === "brawl") statusEl.textContent = "淘金热：双方 1500 金币开局，中央金矿可争夺";
   if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} 2 打 2：AI 队友会自动出兵`;
@@ -2642,7 +2626,6 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     ghosts: [],
     pendingMerges: [],
     factionTraitTimers: {},
-    elementMergeDiscounts: {},
     floaters: [],
     spawnQueue: [],
     enemySpawnTimer: 0,
@@ -2908,11 +2891,6 @@ function sendUnitOutOfBase(unit, dt) {
     unit.spawnExitTargetY = null;
   }
   return true;
-}
-
-function chooseEnemyFaction() {
-  const factions = Object.keys(FACTIONS);
-  return factions[Math.floor(Math.random() * factions.length)];
 }
 
 function openCampaignMap() {
@@ -3393,29 +3371,6 @@ function setMinerCommand(command) {
   }
 }
 
-function syncMinerCommandButtons() {
-  minerCommandButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.minerCommand === state.minerCommand);
-  });
-}
-
-function setMinerResource(resource) {
-  if (!state) return;
-  state.minerResource = resource === "magic" ? "magic" : "gold";
-  state.minerCommand = "mine";
-  syncMinerCommandButtons();
-  minerResourceButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.minerResource === state.minerResource);
-  });
-  state.units.forEach((unit) => {
-    if (unit.side !== "player" || unit.type !== "miner" || unit.carry > 0) return;
-    unit.mineSlotId = null;
-    unit.mineWorkSlot = null;
-    unit.carryResource = state.minerResource;
-  });
-  if (!state.over) statusEl.textContent = state.minerResource === "magic" ? "矿工改为采集魔力" : "矿工改为采集金币";
-}
-
 function spawnUnit(type, side, x) {
   const forceGodV = type === "godVUnit";
   const unitType = normalizeUnitType(type);
@@ -3770,7 +3725,6 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const dir = side === "player" ? 1 : -1;
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
-  recordElementMergeDiscount(side, resultType);
   popText(result.x, result.y - 95, text, color);
   return true;
 }
@@ -3873,7 +3827,6 @@ function completeElementMerge(merge, materials, x, y) {
   const result = spawnUnit(merge.resultType, merge.side, x);
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
-  recordElementMergeDiscount(merge.side, merge.resultType);
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
 }
 
@@ -3895,76 +3848,6 @@ function spawnVClone(v, offset) {
     clone.damage = 20;
   }
   return clone;
-}
-
-function getTreeEntMaterials(side) {
-  return {
-    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
-    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
-  };
-}
-
-function getRogMaterials(side) {
-  return {
-    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
-    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
-  };
-}
-
-function getDreadfireMaterials(side) {
-  return {
-    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
-    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
-  };
-}
-
-function getRedflameMaterials(side) {
-  const materials = state.units
-    .filter((unit) => isMergeMaterial(unit, side, "fireElement"))
-    .slice(0, 2);
-  return materials.length === 2 ? materials : null;
-}
-
-function getStormLichMaterials(side) {
-  const materials = state.units
-    .filter((unit) => isMergeMaterial(unit, side, "windElement"))
-    .slice(0, 2);
-  return materials.length === 2 ? materials : null;
-}
-
-function getHurricaneMaterials(side) {
-  return {
-    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
-    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
-  };
-}
-
-function getScaldStrikeMaterials(side) {
-  return {
-    water: state.units.find((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId),
-    fire: state.units.find((unit) => isMergeMaterial(unit, side, "fireElement")),
-  };
-}
-
-function getElectricGateMaterials(side) {
-  return {
-    earth: state.units.find((unit) => isMergeMaterial(unit, side, "earthElement")),
-    wind: state.units.find((unit) => isMergeMaterial(unit, side, "windElement")),
-  };
-}
-
-function getHillMaterials(side) {
-  const materials = state.units
-    .filter((unit) => isMergeMaterial(unit, side, "earthElement"))
-    .slice(0, 2);
-  return materials.length === 2 ? materials : null;
-}
-
-function getLinghanMaterials(side) {
-  const materials = state.units
-    .filter((unit) => isMergeMaterial(unit, side, "waterElement") && !unit.boundTargetId)
-    .slice(0, 2);
-  return materials.length === 2 ? materials : null;
 }
 
 function isMergeMaterial(unit, side, type) {
@@ -4217,7 +4100,6 @@ function updateFourWayAi(dt) {
     const isHighTier = getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST;
     ai.spawnTimer = isHighTier ? 2.15 + Math.random() * 1.25 : 1.05 + Math.random() * 1.1;
     spawnFourWayUnit(type, ai.side, Math.floor(Math.random() * 12));
-    recordElementMergeDiscount(ai.side, type);
   });
 }
 
@@ -5171,7 +5053,6 @@ function updateEnemyAi(dt) {
 
     const type = chooseEnemyUnit(affordable);
     spendUnitCost(type, opponentFaction(), "enemy", state.enemyGold);
-    recordElementMergeDiscount("enemy", type);
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnTrainedUnit(type, "enemy", Math.floor(Math.random() * 8));
   }
@@ -5202,7 +5083,6 @@ function updateTeamAi(dt) {
     }
     const type = affordable[Math.floor(Math.random() * affordable.length)];
     spendTeamAiUnitCost(ai, type);
-    recordElementMergeDiscount(ai.side, type);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
     spawnTrainedUnit(type, ai.side, Math.floor(Math.random() * 8));
   });
@@ -5401,11 +5281,6 @@ function shouldEnemySaveForV() {
 
 function countUnits(side, type) {
   return state.units.filter((unit) => unit.side === side && unit.type === type && unit.hp > 0).length;
-}
-
-function canSpendVMaterials(types, savingForV) {
-  if (!savingForV) return true;
-  return types.every((type) => countUnits("enemy", type) > 2);
 }
 
 function updateBaseAttacks(dt) {
@@ -6019,10 +5894,6 @@ function getSelectedGroupUnits() {
   );
 }
 
-function getGroupRepresentativeUnit() {
-  return getSelectedGroupUnits()[0] ?? null;
-}
-
 function clearSelectedGroup() {
   if (!state) return;
   state.selectedGroupIds = [];
@@ -6113,36 +5984,6 @@ function getGroupMovePoint(unit) {
   };
 }
 
-function resolveUnitCollisions() {
-  const visible = state.units.filter((unit) => unit.hp > 0 && !isUnitHidden(unit) && !UNIT[unit.type]?.untargetable);
-  for (let i = 0; i < visible.length; i += 1) {
-    for (let j = i + 1; j < visible.length; j += 1) {
-      const a = visible[i];
-      const b = visible[j];
-      if (UNIT[a.type]?.flying || UNIT[b.type]?.flying) continue;
-      const minDistance = getCollisionRadius(a) + getCollisionRadius(b);
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const distance = Math.hypot(dx, dy) || 0.01;
-      if (distance >= minDistance) continue;
-
-      const push = (minDistance - distance) / 2;
-      const nx = dx / distance;
-      const ny = dy / distance;
-      if (!isAnchoredForCollision(a)) {
-        a.x -= nx * push;
-        a.y -= ny * push;
-        clampUnitPosition(a);
-      }
-      if (!isAnchoredForCollision(b)) {
-        b.x += nx * push;
-        b.y += ny * push;
-        clampUnitPosition(b);
-      }
-    }
-  }
-}
-
 function getCollisionRadius(unit) {
   const data = UNIT[unit.type] ?? {};
   if (data.collisionRadius) return data.collisionRadius;
@@ -6150,10 +5991,6 @@ function getCollisionRadius(unit) {
   if (unit.type === "treeEnt") return 25;
   if (unit.type === "rocketCart" || unit.type === "catapult" || unit.type === "undeadCatapult") return 28;
   return 12 * (data.visualScale ?? 1);
-}
-
-function isAnchoredForCollision(unit) {
-  return unit.type === "electricGate" || (unit.type === "treeEnt" && unit.rooted) || UNIT[unit.type]?.immobile;
 }
 
 function clampUnitPosition(unit) {
@@ -9464,29 +9301,9 @@ function explodeCampaignMissile(arrow) {
   state.screenShake = Math.max(state.screenShake ?? 0, 0.18);
 }
 
-function explodeBolt(arrow) {
-  const data = UNIT.crossbow;
-  const unitLimit = arrow.target.kind === "statue" ? AOE_TARGET_LIMIT : AOE_TARGET_LIMIT - 1;
-  if (arrow.target.kind === "statue") {
-    applyDamage(arrow.target, arrow.damage, arrow.side);
-  } else {
-    applyDamage(arrow.target, arrow.damage, arrow.side);
-  }
-
-  getUnitsInRadius(arrow.tx, data.splash, arrow.side, unitLimit, arrow.target, arrow.ty).forEach((unit) => {
-    applyUnitDamage(unit, data.splashDamage, { label: "爆", color: "#ffce7a", yOffset: -76 });
-  });
-
-  if (arrow.target.kind === "statue") {
-    popText(arrow.tx, FIELD.ground - 176, "爆炸", "#ffce7a");
-  }
-
-  state.blasts.push({ x: arrow.tx, y: arrow.ty + 26, radius: data.splash, life: 0.32, duration: 0.32 });
-}
-
 function explodeAt(x, y, attackerSide, damage, radius, label, options = {}) {
   getUnitsInRadius(x, radius, attackerSide, AOE_TARGET_LIMIT, null, y).forEach((unit) => {
-    const finalDamage = applyUnitDamage(unit, damage, { label, color: "#ffb45e", yOffset: -76 });
+    applyUnitDamage(unit, damage, { label, color: "#ffb45e", yOffset: -76 });
     if (options.burnDps) applyBurn(unit, options.burnDps, options.burnDuration);
   });
 
@@ -15029,10 +14846,6 @@ function findManualAttackTarget(unit, range) {
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
 }
 
-function isAllyManualTargetAction(id) {
-  return id === "goblinHeavyArmor" || id === "priestBlood" || id === "covenantGuard";
-}
-
 function getManualTargetAt(unit, point, actionId = null) {
   if (actionId === "covenantGuard") {
     const clickedAlly = findUnitAt(point);
@@ -16188,7 +16001,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-fielded-units-fix";
+  const refreshKey = "stick-war-sw-refresh-20260614-dead-code-cleanup";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
@@ -16686,13 +16499,6 @@ minerCommandButtons.forEach((button) => {
   button.addEventListener("click", () => {
     closeMobileUnitShop();
     setMinerCommand(button.dataset.minerCommand);
-  });
-});
-
-minerResourceButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    closeMobileUnitShop();
-    setMinerResource(button.dataset.minerResource);
   });
 });
 
