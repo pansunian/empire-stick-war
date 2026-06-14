@@ -1580,7 +1580,7 @@ const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
   chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
   undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "undeadMage", "necromancer", "graveDigger"] },
-  element: { cooldown: 30, duration: 15, summons: ["vUnit", "earthElement", "waterElement", "fireElement", "windElement"] },
+  element: { cooldown: 30, duration: 15, summons: ["vUnit"] },
 };
 
 const UNIT_ICON = {
@@ -2275,7 +2275,7 @@ function canAffordElementMerge(type, side = "player") {
 }
 
 function getFourWayUnitCost(type, faction, side = null) {
-  if (faction === "element" && MERGE_UNITS.has(type)) return 0;
+  if (faction === "element" && MERGE_UNITS.has(type)) return FOUR_WAY_MERGE_VALUES[type] ?? getUnitCost(type, faction, side);
   return getUnitCost(type, faction, side);
 }
 
@@ -3860,7 +3860,7 @@ function isMergeMaterial(unit, side, type) {
 }
 
 function getVMaterials(side) {
-  const required = ["earthElement", "earthElement", "waterElement", "waterElement", "fireElement", "fireElement", "windElement", "windElement"];
+  const required = ["earthElement", "waterElement", "fireElement", "windElement"];
   const picked = [];
 
   for (const type of required) {
@@ -16177,7 +16177,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-mode-faction-sweep";
+  const refreshKey = "stick-war-sw-refresh-20260614-element-skill-trim";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
