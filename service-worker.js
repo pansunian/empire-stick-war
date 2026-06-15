@@ -2,9 +2,9 @@ const CACHE_NAME = "stick-war-pwa-v154";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260615-remove-order-covenant-guard",
-  "./game.js?v=20260615-remove-order-covenant-guard",
-  "./manifest.webmanifest?v=20260615-remove-order-covenant-guard",
+  "./style.css?v=20260615-add-swarm-empire",
+  "./game.js?v=20260615-add-swarm-empire",
+  "./manifest.webmanifest?v=20260615-add-swarm-empire",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
   "./assets/factions/order-crest.png",

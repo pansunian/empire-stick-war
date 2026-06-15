@@ -11,6 +11,7 @@
   --chaos-money: #ff9b7f;
   --undead-money: #d8d0ff;
   --element-money: #8ee0cf;
+  --swarm-money: #cde69b;
 }
 
 * {
@@ -576,12 +577,17 @@ body {
 }
 
 .faction-options.three,
-.faction-options.four {
+.faction-options.four,
+.faction-options.five {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .faction-options.four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.faction-options.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .selection-section .mode-options,
@@ -630,6 +636,12 @@ body {
   background:
     linear-gradient(90deg, rgba(237, 199, 91, 0.14), transparent 44%),
     linear-gradient(145deg, rgba(70, 135, 125, 0.78), rgba(35, 43, 31, 0.94));
+}
+
+.faction-card.swarm {
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.13), transparent 44%),
+    linear-gradient(145deg, rgba(83, 112, 45, 0.82), rgba(21, 29, 16, 0.95));
 }
 
 .faction-card:hover,
@@ -747,6 +759,16 @@ body {
   background-image: url("./assets/factions/element-crest.png");
 }
 
+.swarm .crest {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(226, 255, 138, 0.9) 0 12%, transparent 13%),
+    radial-gradient(circle at 42% 52%, rgba(36, 55, 22, 0.95) 0 18%, transparent 19%),
+    radial-gradient(circle at 58% 52%, rgba(36, 55, 22, 0.95) 0 18%, transparent 19%),
+    linear-gradient(145deg, #cde69b, #536f2d 55%, #17200f);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px rgba(32, 42, 18, 0.75), inset 0 0 18px rgba(0, 0, 0, 0.36);
+}
+
 button {
   border: 0;
   font: inherit;
@@ -862,6 +884,12 @@ button {
   color: var(--element-money);
 }
 
+.player.swarm #gold,
+.enemy.swarm #enemyGold,
+.money-chip.swarm {
+  color: var(--swarm-money);
+}
+
 .money-chip {
   display: inline-flex;
   align-items: baseline;
@@ -919,6 +947,11 @@ button {
 .player.element .banner,
 .enemy.element .banner {
   background: linear-gradient(135deg, #8ee0cf, #8c7948);
+}
+
+.player.swarm .banner,
+.enemy.swarm .banner {
+  background: linear-gradient(135deg, #d8ef7a, #536f2d);
 }
 
 .status-panel {
@@ -2156,7 +2189,8 @@ body.quad-watch .health-bars {
   }
 
   .faction-options.three,
-.faction-options.four {
+.faction-options.four,
+.faction-options.five {
     grid-template-columns: 1fr;
   }
 
@@ -2809,7 +2843,8 @@ body.quad-watch .health-bars {
   .mode-options,
   .faction-options,
   .faction-options.three,
-.faction-options.four {
+.faction-options.four,
+.faction-options.five {
     gap: 8px;
   }
 
@@ -3017,7 +3052,8 @@ body.quad-watch .health-bars {
   }
 
   .faction-options.three,
-.faction-options.four {
+.faction-options.four,
+.faction-options.five {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
@@ -3299,7 +3335,8 @@ body.quad-watch .health-bars {
   }
 
   .faction-options.three,
-.faction-options.four {
+.faction-options.four,
+.faction-options.five {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
@@ -3491,7 +3528,8 @@ body.quad-watch .health-bars {
 
   .faction-options,
   .faction-options.three,
-  .faction-options.four {
+  .faction-options.four,
+  .faction-options.five {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }

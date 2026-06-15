@@ -260,6 +260,57 @@ const UNIT = {
     bagSize: 55,
     summonOnly: true,
   },
+  gnawMiner: {
+    name: "咀矿者",
+    cost: 100,
+    hp: 80,
+    damage: 4,
+    range: 28,
+    speed: 48,
+    train: 2.8,
+    cooldown: 1,
+    goldPerSwing: 25,
+    bagSize: 100,
+  },
+  crawler: {
+    name: "爬虫",
+    cost: 55,
+    hp: 60,
+    damage: 6,
+    range: 26,
+    speed: 60,
+    train: 2.5,
+    cooldown: 0.8,
+  },
+  poisonBug: {
+    name: "毒虫",
+    cost: 100,
+    hp: 30,
+    damage: 20,
+    range: 26,
+    speed: 58,
+    train: 3.1,
+    cooldown: 1,
+    splash: 72,
+    aoeLimit: 5,
+    corrosionDps: 5,
+    corrosionDpsGrowth: 1,
+    corrosionDuration: 5,
+    corrosionSlow: 0.75,
+  },
+  swarmWorm: {
+    name: "蠕虫",
+    cost: 110,
+    hp: 135,
+    damage: 12,
+    range: 32,
+    speed: 48,
+    train: 3.6,
+    cooldown: 1,
+    slimeRadius: 72,
+    slimeSlow: 0.8,
+    slimeDuration: 8,
+  },
   swordsman: {
     name: "剑士",
     cost: 100,
@@ -1584,6 +1635,12 @@ const FACTIONS = {
     startingUnits: ["earthElement", "waterElement", "fireElement", "windElement"],
     mineColor: "#8ee0cf",
   },
+  swarm: {
+    name: "虫群帝国",
+    roster: ["gnawMiner", "crawler", "poisonBug", "swarmWorm"],
+    startingUnits: ["gnawMiner", "crawler", "crawler"],
+    mineColor: "#b6d56d",
+  },
 };
 
 const FOUR_WAY_SIDES = ["order", "chaos", "undeadEmpire", "element"];
@@ -1716,6 +1773,10 @@ const UNIT_ICON = {
   scaldStrike: "water",
   electricGate: "lightning",
   vUnit: "white-orb",
+  gnawMiner: "claws",
+  crawler: "claws",
+  poisonBug: "venom",
+  swarmWorm: "claws",
 };
 
 function normalizeUnitType(type) {
@@ -1727,6 +1788,7 @@ const STAT_GROUPS = [
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
+  ["虫群帝国", ["gnawMiner", "crawler", "poisonBug", "swarmWorm"]],
 ];
 
 let state = null;
@@ -1764,7 +1826,7 @@ const BANNER_INSPIRE_LABELS = {
   zombie: "丧尸",
   spirit: "亡灵",
 };
-const ECONOMY_UNITS = new Set(["miner", "summoner"]);
+const ECONOMY_UNITS = new Set(["miner", "summoner", "gnawMiner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
@@ -2191,6 +2253,16 @@ function getFactionKey(side) {
   return side === "undeadEmpire" ? "undead" : side;
 }
 
+function getFactionEconomyUnit(faction) {
+  if (faction === "undeadEmpire") return "summoner";
+  if (faction === "swarm") return "gnawMiner";
+  return "miner";
+}
+
+function isFactionUnavailableForMode(faction, mode, controlMode = selectedControlMode) {
+  return faction === "swarm" && (mode === "campaign" || mode === "quad" || controlMode === "ai");
+}
+
 function chooseUnusedFaction(excluded = []) {
   const blocked = new Set(excluded.filter(Boolean));
   const available = Object.keys(FACTIONS).filter((faction) => !blocked.has(faction));
@@ -2418,6 +2490,9 @@ function formatSpecial(type) {
   const data = UNIT[type];
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
+  if (type === "gnawMiner") notes.push("虫群矿工；挖 4 次带回 100 金");
+  if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
+  if (type === "swarmWorm") notes.push("移动时潜地隐形，停下钻出；击杀敌人会转化为蠕虫；死亡留下减速粘液");
   if (type === "summoner") notes.push(`矿工类单位；出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤；每名召唤师最多召唤 ${data.maxWraiths} 个亡魂`);
   if (type === "wraithMiner") notes.push(`召唤单位，矿工类指令；挖 ${data.bagSize / data.goldPerSwing} 次可带回 ${data.bagSize} 金`);
   if (data.splash) notes.push(`范围 ${data.splash}`);
@@ -2689,6 +2764,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     healingFields: [],
     landMines: [],
     barricades: [],
+    slimeFields: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -3180,22 +3256,18 @@ function renderFactionUi() {
   if (selectedMode === "quad") {
     playerNameEl.textContent = selectedControlMode === "ai" ? "AI 对战观战" : FACTIONS[selectedFaction].name;
     enemyNameEl.textContent = selectedControlMode === "ai" ? "四方 AI" : isDuoBattle() ? "敌方同盟" : "三方 AI";
-    playerCard.classList.remove("order", "chaos", "undead", "element");
-    enemyCard.classList.remove("order", "chaos", "undead", "element");
+    playerCard.classList.remove("order", "chaos", "undead", "element", "swarm");
+    enemyCard.classList.remove("order", "chaos", "undead", "element", "swarm");
     if (selectedControlMode !== "ai") playerCard.classList.add(getFactionKey(selectedFaction));
     enemyCard.classList.add("element");
     return;
   }
   playerNameEl.textContent = FACTIONS[selectedFaction].name;
   enemyNameEl.textContent = FACTIONS[opponentFaction()].name;
-  playerCard.classList.toggle("order", selectedFaction === "order");
-  playerCard.classList.toggle("chaos", selectedFaction === "chaos");
-  playerCard.classList.toggle("undead", selectedFaction === "undeadEmpire");
-  playerCard.classList.toggle("element", selectedFaction === "element");
-  enemyCard.classList.toggle("order", opponentFaction() === "order");
-  enemyCard.classList.toggle("chaos", opponentFaction() === "chaos");
-  enemyCard.classList.toggle("undead", opponentFaction() === "undeadEmpire");
-  enemyCard.classList.toggle("element", opponentFaction() === "element");
+  playerCard.classList.remove("order", "chaos", "undead", "element", "swarm");
+  enemyCard.classList.remove("order", "chaos", "undead", "element", "swarm");
+  playerCard.classList.add(getFactionKey(selectedFaction));
+  enemyCard.classList.add(getFactionKey(opponentFaction()));
 }
 
 const ELEMENT_MERGE_ACTIONS = [
@@ -3431,7 +3503,7 @@ function setMinerCommand(command) {
   state.minerCommand = command;
   if (command !== "retreat" && state.command !== "retreat") {
     state.units.forEach((unit) => {
-      if (unit.side === "player" && (unit.type === "miner" || unit.type === "summoner" || unit.type === "wraithMiner") && unit.inCastle) unit.inCastle = false;
+      if (unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner") && unit.inCastle) unit.inCastle = false;
     });
   }
   minerCommandButtons.forEach((button) => {
@@ -3476,6 +3548,11 @@ function spawnUnit(type, side, x) {
     poisonRaisesUndead: false,
     poisonSourceSide: null,
     poisonSourceUnitId: null,
+    corrosionTimer: 0,
+    corrosionDps: 0,
+    corrosionDpsGrowth: 0,
+    corrosionTick: 0,
+    corrosionSlow: 1,
     necroPlague: null,
     stormSlowTimer: 0,
     stormSlowFactor: 1,
@@ -4079,10 +4156,12 @@ function update(dt) {
   updateStickyBombs(dt);
   updateFrozenDamage(dt);
   updatePoison(dt);
+  updateCorrosion(dt);
   updateBurn(dt);
   updateCorpses(dt);
   updateLandMines(dt);
   updateBarricades(dt);
+  updateSlimeFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -4114,10 +4193,12 @@ function updateFourWayBattle(dt) {
   updateStickyBombs(dt);
   updateFrozenDamage(dt);
   updatePoison(dt);
+  updateCorrosion(dt);
   updateBurn(dt);
   updateCorpses(dt);
   updateLandMines(dt);
   updateBarricades(dt);
+  updateSlimeFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -4724,7 +4805,7 @@ function getMineWorkPoint(unit, mine) {
 }
 
 function isMiningWorker(unit) {
-  return unit.type === "miner" || unit.type === "wraithMiner";
+  return unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "wraithMiner";
 }
 
 function getMiningBagSize(unit) {
@@ -4742,7 +4823,7 @@ function getCarryResource(unit) {
 }
 
 function getMinerResource(unit) {
-  if (unit.type !== "miner") return "gold";
+  if (unit.type !== "miner" && unit.type !== "gnawMiner") return "gold";
   if (unit.miningResource) return unit.miningResource;
   if (unit.side === "player") return state.minerResource ?? "gold";
   return getSideMagic(unit.side) < getFactionMagicDemand(factionForSide(unit.side), unit.side) ? "magic" : "gold";
@@ -5092,7 +5173,7 @@ function updateEnemyAi(dt) {
   updateEnemyBattleLine(dt);
   if (activeCampaign?.secondPhase?.disableEnemyTraining && state.campaignPhase === 2) return;
 
-  const enemyEconomyType = opponentFaction() === "undeadEmpire" ? "summoner" : "miner";
+  const enemyEconomyType = getFactionEconomyUnit(opponentFaction());
   const enemyMiners = state.units.filter((unit) => unit.side === "enemy" && unit.type === enemyEconomyType).length;
   const savingForV = shouldEnemySaveForV();
   const targetEnemyMiners = getEnemyTargetMinerCount();
@@ -5160,7 +5241,7 @@ function updateTeamAi(dt) {
     if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
     ai.minerTimer -= dt;
     ai.spawnTimer -= dt;
-    const economyType = ai.faction === "undeadEmpire" ? "summoner" : "miner";
+    const economyType = getFactionEconomyUnit(ai.faction);
     const miners = state.units.filter((unit) => unit.side === ai.side && unit.type === economyType && unit.hp > 0).length;
     if (ai.minerTimer <= 0 && miners < 5 && canTeamAiAffordUnit(ai, economyType)) {
       spendTeamAiUnitCost(ai, economyType);
@@ -5777,8 +5858,14 @@ function updateUnits(dt) {
       continue;
     }
 
-    if (unit.type === "miner") {
+    if (unit.type === "miner" || unit.type === "gnawMiner") {
       updateMiner(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
+
+    if (unit.type === "swarmWorm") {
+      updateSwarmWorm(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
@@ -5962,7 +6049,7 @@ function updateManualControlledUnit(unit, dt) {
   const joystickY = Math.abs(manualJoystick.vector.y) > 0.05 ? manualJoystick.vector.y : 0;
   const dx = (manualKeys.right ? 1 : 0) - (manualKeys.left ? 1 : 0) + joystickX;
   const dy = (manualKeys.down ? 1 : 0) - (manualKeys.up ? 1 : 0) + joystickY;
-  const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed ?? 0);
+  const speed = isMiningWorker(unit) ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed ?? 0);
   unit.inCastle = false;
   unit.mineSlotId = null;
   unit.mineWorkSlot = null;
@@ -7449,7 +7536,7 @@ function updateWraithMiner(unit, dt) {
 
 function updateMiner(unit, dt) {
   const isPlayer = unit.side === "player";
-  const minerCommand = isPlayer && (unit.type === "miner" || unit.type === "wraithMiner") ? state.minerCommand : "mine";
+  const minerCommand = isPlayer && isMiningWorker(unit) ? state.minerCommand : "mine";
 
   if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
     moveTowardCastle(unit, dt);
@@ -7463,7 +7550,7 @@ function updateMiner(unit, dt) {
 
   const danger = nearestEnemy(unit, 42);
   const canFight = unit.side === "enemy" || state.command !== "retreat";
-  if ((unit.type === "miner" || unit.type === "wraithMiner") && danger && canFight) {
+  if (isMiningWorker(unit) && danger && canFight) {
     if (unit.cooldown <= 0) attack(unit, danger);
     return;
   }
@@ -7521,6 +7608,31 @@ function updateMiner(unit, dt) {
       }
     }
   }
+}
+
+function updateSwarmWorm(unit, dt) {
+  const data = UNIT.swarmWorm;
+  const wasBurrowed = unit.wormBurrowed;
+  unit.wormBurrowed = false;
+  const target = isPlayerRetreating(unit) ? null : findTarget(unit);
+  const range = getUnitRange(unit);
+  if (target && canAttackFromDistance(unit, target, range)) {
+    if (wasBurrowed) popText(unit.x, unit.y - 78, "钻出地面", "#cde69b");
+    attack(unit, target);
+    return;
+  }
+
+  const statueTarget = getForcedStatueTarget(unit, target);
+  const activeTarget = statueTarget ?? target;
+  const desiredX = getDesiredX(unit, activeTarget);
+  const desiredPoint = getDesiredPoint(unit, activeTarget, desiredX);
+  const moving = distanceTo(unit.x, unit.y, desiredPoint.x, desiredPoint.y) > getMoveTolerance(unit, activeTarget, desiredX);
+  if (moving) {
+    unit.wormBurrowed = true;
+    moveUnitTowardPoint(unit, desiredPoint.x, desiredPoint.y, data.speed, dt, 5);
+    return;
+  }
+  if (wasBurrowed) popText(unit.x, unit.y - 78, "钻出地面", "#cde69b");
 }
 
 function getMinerMoveSpeed(unit) {
@@ -7641,11 +7753,11 @@ function updateAttackingMiner(unit, dt) {
 }
 
 function canEnterCastle(unit) {
-  return unit.side === "player" && (unit.type === "miner" || unit.type === "summoner" || unit.type === "wraithMiner");
+  return unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner");
 }
 
 function isUnitHidden(unit) {
-  return unit.inCastle && canEnterCastle(unit);
+  return (unit.inCastle && canEnterCastle(unit)) || (unit.type === "swarmWorm" && unit.wormBurrowed);
 }
 
 function isReaperStealthed(unit) {
@@ -7672,7 +7784,7 @@ function moveTowardCastle(unit, dt) {
   if (unit.type === "waterElement" && unit.boundTargetId) releaseFrozenTarget(unit);
 
   if (distanceTo(unit.x, unit.y, castleX, FIELD.ground) > 6) {
-    const speed = unit.type === "miner" ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed);
+    const speed = isMiningWorker(unit) ? getMinerMoveSpeed(unit) : (unit.speed ?? data.speed);
     moveUnitTowardPoint(unit, castleX, FIELD.ground, speed, dt, 6);
     return true;
   }
@@ -7698,6 +7810,7 @@ function moveTowardCastle(unit, dt) {
 function getMoveFactor(unit) {
   let factor = 1;
   if (isPoisoned(unit)) factor = Math.min(factor, unit.poisonSlow ?? 1);
+  if ((unit.corrosionTimer ?? 0) > 0) factor = Math.min(factor, unit.corrosionSlow ?? 1);
   if (unit.stormSlowTimer > 0) factor = Math.min(factor, unit.stormSlowFactor ?? 1);
   for (const field of state.iceFields) {
     if (field.side === unit.side) continue;
@@ -7713,6 +7826,12 @@ function getMoveFactor(unit) {
     if (!areHostileSides(barricade.side, unit.side)) continue;
     if (isPointInsideBarricade(unit.x, unit.y ?? FIELD.ground, barricade)) {
       factor = Math.min(factor, barricade.slow);
+    }
+  }
+  for (const slime of state.slimeFields ?? []) {
+    if (!areHostileSides(slime.side, unit.side)) continue;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, slime.x, slime.y) <= slime.radius) {
+      factor = Math.min(factor, slime.slow);
     }
   }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
@@ -8149,6 +8268,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "poisonBug") {
+    explodePoisonBug(unit, target);
+    return;
+  }
+
   if (unit.type === "bomber") {
     unit.exploded = true;
     unit.noCorpse = true;
@@ -8308,6 +8432,7 @@ function attack(unit, target) {
     * (orderMeleeCritical ? ORDER_COMBAT_TRAIT.meleeDamageFactor : 1)
     * (veteranCleave ? 2 : 1);
   const dealt = applyDamage(target, attackDamage, unit.side);
+  if (dealt > 0 && target.kind !== "statue") target.lastDamageUnitId = unit.id;
   handleDamageDealt(unit, target, dealt);
   if (orderMeleeCritical && dealt > 0) popText(target.x, target.y - 108, "秩序重击", "#fff1a8");
   if (veteranCleave) applyOrderVeteranCleave(unit, target, attackDamage);
@@ -8318,6 +8443,30 @@ function attack(unit, target) {
     applyBurn(target, data.burnDps, data.burnDuration);
   }
   if (data.stunDuration) applyStun(target, data.stunDuration);
+}
+
+function explodePoisonBug(unit, target) {
+  const data = UNIT.poisonBug;
+  unit.exploded = true;
+  unit.noCorpse = true;
+  unit.hp = 0;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit);
+  targets.forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.damage, {
+      label: "爆",
+      color: "#b7e06b",
+      yOffset: -82,
+      sourceSide: unit.side,
+      sourceUnitId: unit.id,
+    });
+    handleDamageDealt(unit, enemy, dealt);
+    applyCorrosion(enemy, data.corrosionDps, data.corrosionDuration, {
+      growth: data.corrosionDpsGrowth,
+      slow: data.corrosionSlow,
+    });
+  });
+  state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#b7e06b" });
+  popText(unit.x, unit.y - 84, "腐蚀自爆", "#b7e06b");
 }
 
 function shouldTriggerOrderVeteranCleave(unit, target) {
@@ -9733,6 +9882,38 @@ function updatePoison(dt) {
   });
 }
 
+function applyCorrosion(target, dps, duration, options = {}) {
+  if (isUnitHidden(target) || target.kind === "statue") return;
+  target.corrosionTimer = Math.max(target.corrosionTimer ?? 0, duration);
+  target.corrosionDps = Math.max(target.corrosionDps ?? 0, dps);
+  target.corrosionDpsGrowth = Math.max(target.corrosionDpsGrowth ?? 0, options.growth ?? 0);
+  target.corrosionSlow = Math.min(target.corrosionSlow ?? 1, options.slow ?? 1);
+  target.corrosionTick = 0;
+  popText(target.x, target.y - 94, "腐蚀", "#b7e06b");
+}
+
+function updateCorrosion(dt) {
+  state.units.forEach((unit) => {
+    if (isUnitHidden(unit)) return;
+    if ((unit.corrosionTimer ?? 0) <= 0) return;
+    unit.corrosionTimer -= dt;
+    unit.corrosionTick += dt;
+    while (unit.corrosionTick >= 1 && unit.corrosionTimer > 0) {
+      unit.corrosionTick -= 1;
+      const dps = unit.corrosionDps ?? 0;
+      applyUnitDamage(unit, dps, { label: "蚀", color: "#b7e06b", yOffset: -100, modified: false });
+      unit.corrosionDps = dps + (unit.corrosionDpsGrowth ?? 0);
+    }
+    if (unit.corrosionTimer <= 0) {
+      unit.corrosionTimer = 0;
+      unit.corrosionDps = 0;
+      unit.corrosionDpsGrowth = 0;
+      unit.corrosionTick = 0;
+      unit.corrosionSlow = 1;
+    }
+  });
+}
+
 function updateBurn(dt) {
   state.units.forEach((unit) => {
     if (isUnitHidden(unit)) return;
@@ -10508,6 +10689,13 @@ function updateThornFields(dt) {
   state.thornFields = state.thornFields.filter((field) => field.life > 0);
 }
 
+function updateSlimeFields(dt) {
+  for (const field of state.slimeFields ?? []) {
+    field.life -= dt;
+  }
+  state.slimeFields = (state.slimeFields ?? []).filter((field) => field.life > 0);
+}
+
 function updateHealingFields(dt) {
   for (const field of state.healingFields) {
     field.life -= dt;
@@ -10799,6 +10987,32 @@ function getOrderHeavyTraitReduction(unit) {
   return maxHp > ORDER_ARMOR_TRAIT.heavy.hpAbove ? ORDER_ARMOR_TRAIT.heavy.reduction : 0;
 }
 
+function getWormKillerSide(unit) {
+  const killer = state.units.find((candidate) => candidate.id === unit.lastDamageUnitId && candidate.type === "swarmWorm" && candidate.hp > 0);
+  return killer?.side ?? null;
+}
+
+function shouldBecomeWorm(unit) {
+  if (!unit || unit.kind === "statue" || unit.type === "swarmWorm" || isHeroUnit(unit) || UNIT[unit.type]?.untargetable) return false;
+  const side = getWormKillerSide(unit);
+  return Boolean(side && areHostileSides(side, unit.side));
+}
+
+function createWormSlime(unit) {
+  const data = UNIT.swarmWorm;
+  state.slimeFields = state.slimeFields ?? [];
+  state.slimeFields.push({
+    x: unit.x,
+    y: unit.y ?? FIELD.ground,
+    side: unit.side,
+    radius: data.slimeRadius,
+    slow: data.slimeSlow,
+    life: data.slimeDuration,
+    duration: data.slimeDuration,
+  });
+  popText(unit.x, unit.y - 64, "粘液", "#b7e06b");
+}
+
 function removeDead() {
   const deathSpawns = [];
   state.units = state.units.filter((unit) => {
@@ -10859,6 +11073,9 @@ function removeDead() {
     }
     if (unit.type === "stormLich") {
       createStormLichDeathRain(unit);
+    }
+    if (unit.type === "swarmWorm") {
+      createWormSlime(unit);
     }
     if (unit.type === "undeadVulture") {
       createUndeadVultureCrash(unit);
@@ -10932,6 +11149,19 @@ function removeDead() {
     }
     if (unit.necroPlague) {
       triggerNecroPlagueDeath(unit);
+    }
+    if (shouldBecomeWorm(unit)) {
+      deathSpawns.push({
+        type: "swarmWorm",
+        side: getWormKillerSide(unit),
+        x: unit.x,
+        y: unit.y,
+        text: "转化蠕虫",
+        color: "#cde69b",
+        setup: (worm) => {
+          worm.forceCharge = true;
+        },
+      });
     }
     if (unit.frozenBy) {
       const water = state.units.find((candidate) => candidate.id === unit.frozenBy);
@@ -11314,6 +11544,7 @@ function draw() {
   state.groundFires.forEach(drawGroundFire);
   state.thornFields.forEach(drawThornField);
   state.healingFields.forEach(drawHealingField);
+  (state.slimeFields ?? []).forEach(drawSlimeField);
   state.landMines.forEach(drawLandMine);
   state.barricades.forEach(drawBarricade);
   state.corpses.forEach(drawCorpse);
@@ -11335,6 +11566,7 @@ function draw() {
   drawControlledUnitMarker();
   drawSelectedGroupMarkers();
 
+  state.units.filter((unit) => unit.type === "swarmWorm" && unit.wormBurrowed && unit.hp > 0).forEach(drawWormBurrow);
   const sortedUnits = state.units.filter((unit) => !isUnitHidden(unit)).sort((a, b) => a.y - b.y);
   sortedUnits.forEach(drawUnit);
   drawInspectedUnitInfo();
@@ -11627,6 +11859,30 @@ function drawThornField(field) {
     ctx.moveTo(x, 4);
     ctx.lineTo(x + Math.sin(i) * 8, -radius * 0.72);
     ctx.lineTo(x + 8, -radius * 0.28);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSlimeField(field) {
+  const alpha = Math.max(0.16, Math.min(0.52, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius * (1 + Math.sin(performance.now() / 180 + field.x) * 0.04);
+  const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
+  gradient.addColorStop(0, "rgba(176, 220, 78, 0.55)");
+  gradient.addColorStop(0.62, "rgba(80, 122, 38, 0.34)");
+  gradient.addColorStop(1, "rgba(22, 48, 20, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius, radius * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(214, 246, 118, 0.46)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i += 1) {
+    ctx.beginPath();
+    ctx.arc((i - 1.5) * radius * 0.25, Math.sin(i + field.x) * 7, radius * 0.08, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -12035,6 +12291,26 @@ function drawUnit(unit) {
   drawWeapon(unit.type, unit);
   drawUnitHp(unit);
   ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawWormBurrow(unit) {
+  ctx.save();
+  ctx.translate(unit.x, unit.y);
+  const pulse = 1 + Math.sin(performance.now() / 130 + unit.id) * 0.06;
+  ctx.globalAlpha = 0.72;
+  ctx.fillStyle = "rgba(74, 58, 32, 0.72)";
+  ctx.beginPath();
+  ctx.ellipse(0, -4, 28 * pulse, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(190, 214, 104, 0.5)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-24, -10);
+  ctx.quadraticCurveTo(-6, -20, 12, -8);
+  ctx.moveTo(-15, -1);
+  ctx.quadraticCurveTo(4, 8, 25, -2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -12984,6 +13260,10 @@ function getUnitColor(unit) {
   const type = unit.type;
   if (type === "summoner") return "#4d405f";
   if (type === "wraithMiner") return "#7ed8ff";
+  if (type === "gnawMiner") return "#8fae54";
+  if (type === "crawler") return "#7fa64d";
+  if (type === "poisonBug") return "#9abd4a";
+  if (type === "swarmWorm") return "#8b7a45";
   if (type === "creeper") return "#9ee06b";
   if (type === "largeCreeper") return "#6fcf59";
   if (type === "orc") return "#7faa5c";
@@ -13047,6 +13327,10 @@ function getHeadColor(unit) {
   if (unit.type === "vClone") return "#d7ceff";
   if (unit.type === "summoner") return "#d8c8e8";
   if (unit.type === "wraithMiner") return "#d7f6ff";
+  if (unit.type === "gnawMiner") return "#d8efa2";
+  if (unit.type === "crawler") return "#cde69b";
+  if (unit.type === "poisonBug") return "#e2ff8a";
+  if (unit.type === "swarmWorm") return "#d8c87a";
   if (unit.type === "orc") return "#b8d68a";
   if (unit.type === "berserkOrc") return "#c8a36f";
   if (unit.type === "goblin") return unit.goblinBurrowed ? "#7a705f" : "#cde69b";
@@ -13353,6 +13637,61 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.ellipse(0, -28, 18, 30, 0, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "gnawMiner") {
+    ctx.strokeStyle = "#d8efa2";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(14, -36);
+    ctx.lineTo(32, -52);
+    ctx.moveTo(19, -48);
+    ctx.lineTo(39, -40);
+    ctx.stroke();
+    ctx.fillStyle = "#3f4f26";
+    ctx.beginPath();
+    ctx.moveTo(23, -29);
+    ctx.lineTo(34, -34);
+    ctx.lineTo(29, -22);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === "crawler") {
+    ctx.strokeStyle = "#cde69b";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(12, -30);
+    ctx.lineTo(36, -39);
+    ctx.moveTo(13, -25);
+    ctx.lineTo(33, -19);
+    ctx.moveTo(23, -35);
+    ctx.lineTo(42, -48);
+    ctx.stroke();
+  } else if (type === "poisonBug") {
+    ctx.fillStyle = "rgba(183, 224, 107, 0.28)";
+    ctx.beginPath();
+    ctx.arc(25, -35, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#e2ff8a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(10, -31);
+    ctx.lineTo(42, -39);
+    ctx.moveTo(18, -47);
+    ctx.lineTo(31, -20);
+    ctx.stroke();
+  } else if (type === "swarmWorm") {
+    ctx.strokeStyle = "#d8c87a";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(2, -28);
+    ctx.quadraticCurveTo(19, -48, 44, -34);
+    ctx.stroke();
+    ctx.strokeStyle = "#4c3f20";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(30, -37);
+    ctx.lineTo(44, -45);
+    ctx.moveTo(31, -32);
+    ctx.lineTo(45, -25);
+    ctx.stroke();
   } else if (type === "graveDigger") {
     ctx.strokeStyle = "#d8d0c8";
     ctx.lineWidth = 4;
@@ -16354,6 +16693,12 @@ function closeRuleDialog() {
 }
 
 function openRuleDialog() {
+  if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
+    statusEl.textContent = selectedMode === "campaign"
+      ? "虫群帝国隐藏战役暂未开放"
+      : "虫群帝国暂不加入四国对战";
+    return;
+  }
   if (selectedMode === "campaign") {
     closeRuleDialog();
     openCampaignMap();
@@ -16393,6 +16738,13 @@ function returnToMainMenu() {
 
 async function startSelectedBattle(faction = selectedFaction) {
   selectedFaction = faction || "order";
+  if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
+    statusEl.textContent = selectedMode === "campaign"
+      ? "虫群帝国隐藏战役暂未开放"
+      : "虫群帝国暂不加入四国对战";
+    closeRuleDialog();
+    return;
+  }
   if (selectedControlMode === "ai" && selectedMode !== "campaign") {
     selectedMode = "quad";
     modeButtons.forEach((button) => {
@@ -16496,7 +16848,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260615-remove-order-covenant-guard";
+  const refreshKey = "stick-war-sw-refresh-20260615-add-swarm-empire";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
