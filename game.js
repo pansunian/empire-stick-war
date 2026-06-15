@@ -1613,11 +1613,6 @@ const FOUR_WAY_AI_ROSTER = {
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
 };
-const FOUR_WAY_SHARED_EXCLUDED_UNITS = new Set(["vUnit", "vClone"]);
-const FOUR_WAY_SHARED_ROSTER = [...new Set(Object.values(FOUR_WAY_AI_ROSTER).flat())].filter((type) => {
-  const data = UNIT[type];
-  return data && !data.hero && !data.statueOnly && !data.summonOnly && !FOUR_WAY_SHARED_EXCLUDED_UNITS.has(type);
-});
 const FOUR_WAY_TECH_UNLOCK = 35;
 const FOUR_WAY_HIGH_TIER_COST = 180;
 const FOUR_WAY_STARTERS = {
@@ -2348,9 +2343,16 @@ function getFourWayUnitValue(type, faction, side = null) {
   return getFourWayUnitCost(type, faction, side);
 }
 
+function getFourWayFactionRoster(faction) {
+  return [...new Set([...(FACTIONS[faction]?.roster ?? []), ...(FOUR_WAY_AI_ROSTER[faction] ?? [])])].filter((type) => {
+    const data = UNIT[type];
+    return data && !data.hero && !data.statueOnly && !data.summonOnly;
+  });
+}
+
 function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
-  if (selectedMode === "quad" || state?.fourWay) return FOUR_WAY_SHARED_ROSTER;
+  if (selectedMode === "quad" || state?.fourWay) return getFourWayFactionRoster(selectedFaction);
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
 }
@@ -3246,7 +3248,6 @@ function getAvailableElementMerges() {
 
 function renderShop() {
   mobileUnitsToggle.classList.remove("hidden");
-  const isFourWayShop = selectedMode === "quad" || state?.fourWay;
   const showElementConvertButton = selectedFaction === "element" && selectedMode !== "quad" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
   const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
@@ -3291,13 +3292,11 @@ function renderShop() {
     `
     : "";
 
-  unitShop.classList.toggle("element-shop", !isFourWayShop && selectedFaction === "element");
-  unitShop.classList.toggle("element-shop-expanded", !isFourWayShop && selectedFaction === "element" && elementShopItemCount > 12);
-  unitShop.classList.toggle("undead-shop", !isFourWayShop && selectedFaction === "undeadEmpire");
+  unitShop.classList.toggle("element-shop", selectedFaction === "element");
+  unitShop.classList.toggle("element-shop-expanded", selectedFaction === "element" && elementShopItemCount > 12);
+  unitShop.classList.toggle("undead-shop", selectedFaction === "undeadEmpire");
 
-  unitShop.innerHTML = isFourWayShop
-    ? shopRoster.map(renderTrainButton).join("")
-    : selectedFaction === "element"
+  unitShop.innerHTML = selectedFaction === "element"
       ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
       : selectedFaction === "undeadEmpire"
       ? undeadShopItems.map(renderTrainButton).join("")
@@ -4028,7 +4027,7 @@ function queueUnit(type) {
 function queueFourWayPlayerUnit(type) {
   const side = state.fourWayPlayerSide;
   if (!side) return;
-  if (!FOUR_WAY_SHARED_ROSTER.includes(type)) return;
+  if (!getFourWayFactionRoster(factionForSide(side)).includes(type)) return;
   if (MERGE_UNITS.has(type)) {
     popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "进阶单位需要融合", "#f3c963");
     return;
@@ -4165,7 +4164,7 @@ function updateFourWayAi(dt) {
     tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
-    const roster = FOUR_WAY_SHARED_ROSTER.filter((type) => {
+    const roster = getFourWayFactionRoster(ai.faction).filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
       return ai.gold >= getFourWayUnitCost(type, ai.faction, ai.side) && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction, ai.side);
     });
@@ -4269,7 +4268,7 @@ function countNearbyAllies(unit, radius) {
 }
 
 function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
-  const fullRoster = FOUR_WAY_SHARED_ROSTER.filter((type) => {
+  const fullRoster = getFourWayFactionRoster(ai.faction).filter((type) => {
     if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
     return Boolean(UNIT[type]);
   });
@@ -4754,7 +4753,7 @@ function getFactionMagicDemand(faction, side = null) {
     ? currentPlayerRoster()
     : side === "enemy"
       ? currentEnemyRoster()
-      : state?.fourWay ? FOUR_WAY_SHARED_ROSTER : FACTIONS[faction]?.roster ?? [];
+      : state?.fourWay ? getFourWayFactionRoster(faction) : FACTIONS[faction]?.roster ?? [];
   const magicRoster = faction === "element" ? [...new Set([...roster, ...FOUR_WAY_AI_ROSTER.element])] : roster;
   return Math.max(0, ...magicRoster.map((type) => getUnitMagicCost(type, faction)));
 }
@@ -14290,36 +14289,17 @@ function drawWeapon(type, unit = null) {
     ctx.arc(25, -62, 10, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "waterScorpion") {
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#2a5d7a";
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#56a8c8";
     ctx.beginPath();
-    ctx.moveTo(-19, -34);
-    ctx.lineTo(-36, -43);
-    ctx.moveTo(-17, -28);
-    ctx.lineTo(-36, -27);
-    ctx.moveTo(-2, -27);
-    ctx.lineTo(-15, -12);
-    ctx.moveTo(13, -28);
-    ctx.lineTo(28, -13);
-    ctx.moveTo(20, -38);
-    ctx.quadraticCurveTo(42, -54, 50, -36);
-    ctx.moveTo(48, -36);
-    ctx.lineTo(58, -42);
+    ctx.moveTo(4, -28);
+    ctx.lineTo(35, -25);
+    ctx.moveTo(10, -33);
+    ctx.lineTo(0, -43);
+    ctx.moveTo(28, -31);
+    ctx.lineTo(44, -44);
+    ctx.moveTo(22, -24);
+    ctx.lineTo(36, -12);
     ctx.stroke();
-    ctx.fillStyle = "#56a8c8";
-    ctx.strokeStyle = "#17384b";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(-5, -34, 24, 12, -0.05, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#b8f0ff";
-    ctx.beginPath();
-    ctx.arc(-27, -36, 7, 0, Math.PI * 2);
-    ctx.arc(16, -35, 8, 0, Math.PI * 2);
-    ctx.fill();
   } else if (type === "rog") {
     ctx.lineWidth = 6;
     ctx.strokeStyle = "#4a2c22";
@@ -16516,7 +16496,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260615-fourway-control-shared-roster";
+  const refreshKey = "stick-war-sw-refresh-20260615-faction-rosters-two-row-shop";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");

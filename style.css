@@ -1258,7 +1258,7 @@ body.quad-watch .health-bars {
 .unit-shop {
   flex: 1;
   display: grid;
-  grid-template-rows: repeat(3, 72px);
+  grid-template-rows: repeat(2, 72px);
   grid-auto-flow: column;
   grid-auto-columns: minmax(118px, 132px);
   align-items: stretch;
@@ -1272,12 +1272,12 @@ body.quad-watch .health-bars {
 
 .unit-shop.element-shop,
 .unit-shop.element-shop-expanded {
-  grid-template-rows: repeat(3, 72px);
+  grid-template-rows: repeat(2, 72px);
   grid-auto-columns: minmax(104px, 122px);
 }
 
 .unit-shop.undead-shop {
-  grid-template-rows: repeat(3, 72px);
+  grid-template-rows: repeat(2, 72px);
   grid-auto-columns: 78px;
 }
 
@@ -2127,19 +2127,19 @@ body.quad-watch .health-bars {
   }
 
   .unit-shop {
-    grid-template-rows: repeat(3, 70px);
+    grid-template-rows: repeat(2, 70px);
     grid-auto-flow: column;
     grid-auto-columns: minmax(104px, 116px);
   }
 
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
-    grid-template-rows: repeat(3, 70px);
+    grid-template-rows: repeat(2, 70px);
     grid-auto-columns: minmax(96px, 108px);
   }
 
   .unit-shop.undead-shop {
-    grid-template-rows: repeat(3, 70px);
+    grid-template-rows: repeat(2, 70px);
     grid-auto-columns: 72px;
   }
 
@@ -2388,18 +2388,18 @@ body.quad-watch .health-bars {
   }
 
   .unit-shop {
-    grid-template-rows: repeat(3, 58px);
+    grid-template-rows: repeat(2, 58px);
     grid-auto-columns: minmax(104px, 116px);
   }
 
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded {
-    grid-template-rows: repeat(3, 58px);
+    grid-template-rows: repeat(2, 58px);
     grid-auto-columns: minmax(92px, 104px);
   }
 
   .unit-shop.undead-shop {
-    grid-template-rows: repeat(3, 58px);
+    grid-template-rows: repeat(2, 58px);
     grid-auto-columns: 64px;
   }
 
@@ -3390,8 +3390,8 @@ body.quad-watch .health-bars {
     bottom: calc(100% + 8px);
     z-index: 8;
     display: none;
-    height: 74px;
-    grid-template-rows: 62px;
+    height: 142px;
+    grid-template-rows: repeat(2, 62px);
     grid-auto-flow: column;
     grid-auto-columns: minmax(82px, 96px);
     gap: 6px;
@@ -3649,7 +3649,7 @@ body.quad-watch .health-bars {
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
-    grid-template-rows: repeat(3, 78px);
+    grid-template-rows: repeat(2, 78px);
     grid-auto-columns: 78px;
   }
 }
@@ -3658,7 +3658,7 @@ body.quad-watch .health-bars {
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
-    grid-template-rows: repeat(3, 78px);
+    grid-template-rows: repeat(2, 78px);
     grid-auto-columns: 72px;
   }
 }
@@ -3667,7 +3667,7 @@ body.quad-watch .health-bars {
   .unit-shop.element-shop,
   .unit-shop.element-shop-expanded,
   .unit-shop.undead-shop {
-    grid-template-rows: repeat(3, 62px);
+    grid-template-rows: repeat(2, 62px);
     grid-auto-columns: 62px;
   }
 }
