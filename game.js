@@ -1613,6 +1613,11 @@ const FOUR_WAY_AI_ROSTER = {
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
 };
+const FOUR_WAY_SHARED_EXCLUDED_UNITS = new Set(["vUnit", "vClone"]);
+const FOUR_WAY_SHARED_ROSTER = [...new Set(Object.values(FOUR_WAY_AI_ROSTER).flat())].filter((type) => {
+  const data = UNIT[type];
+  return data && !data.hero && !data.statueOnly && !data.summonOnly && !FOUR_WAY_SHARED_EXCLUDED_UNITS.has(type);
+});
 const FOUR_WAY_TECH_UNLOCK = 35;
 const FOUR_WAY_HIGH_TIER_COST = 180;
 const FOUR_WAY_STARTERS = {
@@ -2184,7 +2189,7 @@ function factionForSide(side) {
 
 function isDuoBattle() {
   if (selectedMode === "campaign" || activeCampaign) return false;
-  return selectedTeamMode === "duo" || selectedControlMode === "humanAi";
+  return selectedTeamMode === "duo";
 }
 
 function getFactionKey(side) {
@@ -2217,11 +2222,11 @@ function areFourWayEnemies(a, b) {
 }
 
 function getPlayerControlledSide() {
-  return state?.fourWay ? (state.fourWayPlayerSide ?? selectedFaction) : "player";
+  return state?.fourWay ? state.fourWayPlayerSide : "player";
 }
 
 function isPlayerControlledSide(side) {
-  return side === getPlayerControlledSide();
+  return Boolean(getPlayerControlledSide()) && side === getPlayerControlledSide();
 }
 
 function isFourWayPlayerSide(side) {
@@ -2345,7 +2350,7 @@ function getFourWayUnitValue(type, faction, side = null) {
 
 function currentPlayerRoster() {
   if (activeCampaign) return activeCampaign.playerRoster;
-  if (selectedMode === "quad" || state?.fourWay) return FOUR_WAY_AI_ROSTER[selectedFaction] ?? FACTIONS[selectedFaction].roster;
+  if (selectedMode === "quad" || state?.fourWay) return FOUR_WAY_SHARED_ROSTER;
   if (selectedFaction === "element") return ["earthElement", "waterElement", "fireElement", "windElement"];
   return FACTIONS[selectedFaction].roster;
 }
@@ -2763,8 +2768,8 @@ function newFourWayGame() {
   state = createBaseState(0, 0, { player: [], enemy: [] });
   state.fourWay = true;
   state.fourWayElapsed = 0;
-  state.fourWayPlayerSide = selectedFaction;
-  state.fourWayTeams = createFourWayTeams(selectedFaction);
+  state.fourWayPlayerSide = selectedControlMode === "ai" ? null : selectedFaction;
+  state.fourWayTeams = createFourWayTeams(state.fourWayPlayerSide ?? selectedFaction);
   state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
   state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10, element: 13 };
   state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0, element: 0 };
@@ -2782,9 +2787,11 @@ function newFourWayGame() {
   FOUR_WAY_SIDES.forEach((side) => {
     FOUR_WAY_STARTERS[side].forEach((type, index) => spawnFourWayUnit(type, side, index));
   });
-  statusEl.textContent = isDuoBattle()
-    ? `四国 2 打 2：你负责${FACTIONS[selectedFaction].name}出兵与指挥，队友自动作战`
-    : `四国对战：你负责${FACTIONS[selectedFaction].name}出兵与指挥，三方由 AI 控制`;
+  statusEl.textContent = selectedControlMode === "ai"
+    ? "四国 AI 对战：四方 AI 自动作战，你负责观战"
+    : isDuoBattle()
+      ? `四国 2 打 2：你负责${FACTIONS[selectedFaction].name}出兵与指挥，队友自动作战`
+      : `四国对战：你负责${FACTIONS[selectedFaction].name}出兵与指挥，三方由 AI 控制`;
   updateHud();
   requestAnimationFrame(centerFourWayView);
 }
@@ -3169,11 +3176,11 @@ function renderCampaignBriefing(config) {
 
 function renderFactionUi() {
   if (selectedMode === "quad") {
-    playerNameEl.textContent = FACTIONS[selectedFaction].name;
-    enemyNameEl.textContent = isDuoBattle() ? "敌方同盟" : "三方 AI";
+    playerNameEl.textContent = selectedControlMode === "ai" ? "AI 对战观战" : FACTIONS[selectedFaction].name;
+    enemyNameEl.textContent = selectedControlMode === "ai" ? "四方 AI" : isDuoBattle() ? "敌方同盟" : "三方 AI";
     playerCard.classList.remove("order", "chaos", "undead", "element");
     enemyCard.classList.remove("order", "chaos", "undead", "element");
-    playerCard.classList.add(getFactionKey(selectedFaction));
+    if (selectedControlMode !== "ai") playerCard.classList.add(getFactionKey(selectedFaction));
     enemyCard.classList.add("element");
     return;
   }
@@ -3239,6 +3246,7 @@ function getAvailableElementMerges() {
 
 function renderShop() {
   mobileUnitsToggle.classList.remove("hidden");
+  const isFourWayShop = selectedMode === "quad" || state?.fourWay;
   const showElementConvertButton = selectedFaction === "element" && selectedMode !== "quad" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
   const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
@@ -3283,13 +3291,15 @@ function renderShop() {
     `
     : "";
 
-  unitShop.classList.toggle("element-shop", selectedFaction === "element");
-  unitShop.classList.toggle("element-shop-expanded", selectedFaction === "element" && elementShopItemCount > 12);
-  unitShop.classList.toggle("undead-shop", selectedFaction === "undeadEmpire");
+  unitShop.classList.toggle("element-shop", !isFourWayShop && selectedFaction === "element");
+  unitShop.classList.toggle("element-shop-expanded", !isFourWayShop && selectedFaction === "element" && elementShopItemCount > 12);
+  unitShop.classList.toggle("undead-shop", !isFourWayShop && selectedFaction === "undeadEmpire");
 
-  unitShop.innerHTML = selectedFaction === "element"
-    ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
-    : selectedFaction === "undeadEmpire"
+  unitShop.innerHTML = isFourWayShop
+    ? shopRoster.map(renderTrainButton).join("")
+    : selectedFaction === "element"
+      ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
+      : selectedFaction === "undeadEmpire"
       ? undeadShopItems.map(renderTrainButton).join("")
       : shopRoster.map(renderTrainButton).join("");
 
@@ -4016,8 +4026,9 @@ function queueUnit(type) {
 }
 
 function queueFourWayPlayerUnit(type) {
-  const side = state.fourWayPlayerSide ?? selectedFaction;
-  if (!FOUR_WAY_AI_ROSTER[side]?.includes(type) && !FACTIONS[side]?.roster?.includes(type)) return;
+  const side = state.fourWayPlayerSide;
+  if (!side) return;
+  if (!FOUR_WAY_SHARED_ROSTER.includes(type)) return;
   if (MERGE_UNITS.has(type)) {
     popText(FOUR_WAY_BASES[side].x, FOUR_WAY_BASES[side].y - 95, "进阶单位需要融合", "#f3c963");
     return;
@@ -4154,7 +4165,7 @@ function updateFourWayAi(dt) {
     tryCastFourWayFactionSkill(ai);
     ai.spawnTimer -= dt;
     if (ai.spawnTimer > 0) return;
-    const roster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
+    const roster = FOUR_WAY_SHARED_ROSTER.filter((type) => {
       if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
       return ai.gold >= getFourWayUnitCost(type, ai.faction, ai.side) && (ai.magic ?? 0) >= getUnitMagicCost(type, ai.faction, ai.side);
     });
@@ -4258,7 +4269,7 @@ function countNearbyAllies(unit, radius) {
 }
 
 function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
-  const fullRoster = FOUR_WAY_AI_ROSTER[ai.side].filter((type) => {
+  const fullRoster = FOUR_WAY_SHARED_ROSTER.filter((type) => {
     if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
     return Boolean(UNIT[type]);
   });
@@ -4743,7 +4754,7 @@ function getFactionMagicDemand(faction, side = null) {
     ? currentPlayerRoster()
     : side === "enemy"
       ? currentEnemyRoster()
-      : (state?.fourWay && FOUR_WAY_AI_ROSTER[side]) ? FOUR_WAY_AI_ROSTER[side] : FACTIONS[faction]?.roster ?? [];
+      : state?.fourWay ? FOUR_WAY_SHARED_ROSTER : FACTIONS[faction]?.roster ?? [];
   const magicRoster = faction === "element" ? [...new Set([...roster, ...FOUR_WAY_AI_ROSTER.element])] : roster;
   return Math.max(0, ...magicRoster.map((type) => getUnitMagicCost(type, faction)));
 }
@@ -16402,6 +16413,12 @@ function returnToMainMenu() {
 
 async function startSelectedBattle(faction = selectedFaction) {
   selectedFaction = faction || "order";
+  if (selectedControlMode === "ai" && selectedMode !== "campaign") {
+    selectedMode = "quad";
+    modeButtons.forEach((button) => {
+      button.classList.toggle("active", button.dataset.mode === selectedMode);
+    });
+  }
   factionButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.faction === selectedFaction);
   });
@@ -16499,7 +16516,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260614-fourway-undead-trait-tune";
+  const refreshKey = "stick-war-sw-refresh-20260615-fourway-control-shared-roster";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
@@ -16544,6 +16561,14 @@ function updateHud() {
     playerHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.order ?? 0) / STATUE_MAX_HP) * 100))}%`;
     enemyHpBar.style.width = `${Math.max(0, Math.min(100, ((state.fourWayBaseHp.chaos ?? 0) / STATUE_MAX_HP) * 100))}%`;
     const playerSide = getPlayerControlledSide();
+    if (!playerSide) {
+      trainButtons.forEach((button) => {
+        delete button.dataset.training;
+        button.style.removeProperty("--train-progress");
+        button.disabled = true;
+      });
+      return;
+    }
     const playerFaction = factionForSide(playerSide);
     const playerGold = getSideGoldAmount(playerSide);
     const trainingProgress = new Map();
