@@ -4092,7 +4092,7 @@ function mergeLinghan(side) {
 function mergeScaldStrike(side) {
   const x = side === "player" ? FIELD.playerGate : FIELD.enemyGate;
   if (!payMergeCost(side, x, "#ffb36e", "scaldStrike")) return false;
-  const target = findFrontEnemy(side);
+  const target = findFrontEnemyForGoldenSpear(side);
   const front = getFrontX(side);
   const dir = side === "player" ? 1 : -1;
   const blastX = target?.x ?? front ?? x + dir * 220;
