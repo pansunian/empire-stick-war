@@ -2,9 +2,9 @@ const CACHE_NAME = "stick-war-pwa-v154";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260615-swarm-evolution",
-  "./game.js?v=20260615-swarm-evolution",
-  "./manifest.webmanifest?v=20260615-swarm-evolution",
+  "./style.css?v=20260616-swarm-brood-spider",
+  "./game.js?v=20260616-swarm-brood-spider",
+  "./manifest.webmanifest?v=20260616-swarm-brood-spider",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
   "./assets/factions/order-crest.png",

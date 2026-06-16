@@ -262,7 +262,7 @@ const UNIT = {
   },
   gnawMiner: {
     name: "咀矿者",
-    cost: 100,
+    cost: 0,
     hp: 80,
     damage: 4,
     range: 28,
@@ -273,6 +273,7 @@ const UNIT = {
     bagSize: 100,
     magicPerSwing: 12.5,
     magicBagSize: 50,
+    summonOnly: true,
   },
   crawler: {
     name: "爬虫",
@@ -301,7 +302,7 @@ const UNIT = {
     corrosionSlow: 0.75,
   },
   swarmWorm: {
-    name: "蠕虫",
+    name: "沙虫",
     cost: 110,
     hp: 135,
     damage: 12,
@@ -312,11 +313,65 @@ const UNIT = {
     slimeRadius: 72,
     slimeSlow: 0.8,
     slimeDuration: 8,
+    evolveGoldCost: 50,
+    evolveMagicCost: 100,
+    evolveDuration: 3,
+  },
+  broodMother: {
+    name: "虫母",
+    cost: 0,
+    hp: 450,
+    damage: 10,
+    range: 36,
+    speed: 25,
+    train: 0,
+    cooldown: 1.4,
+    summonEvery: 12.5,
+    summonCount: 5,
+    summonOnly: true,
+  },
+  locust: {
+    name: "蝗虫",
+    cost: 0,
+    hp: 30,
+    damage: 4,
+    range: 32,
+    speed: 50,
+    train: 0,
+    cooldown: 0.8,
+    flying: true,
+    summonOnly: true,
+  },
+  ashWorm: {
+    name: "灰烬",
+    cost: 0,
+    hp: 400,
+    damage: 0,
+    range: 0,
+    speed: 22,
+    train: 0,
+    cooldown: 1,
+    summonEvery: 10,
+    summonCount: 4,
+    summonOnly: true,
+  },
+  blastBug: {
+    name: "自爆虫",
+    cost: 0,
+    hp: 50,
+    damage: 40,
+    range: 28,
+    speed: 60,
+    train: 0,
+    cooldown: 1,
+    splash: 72,
+    aoeLimit: 5,
+    summonOnly: true,
   },
   ironAnt: {
     name: "铁蚁",
     cost: 120,
-    hp: 90,
+    hp: 130,
     damage: 7,
     range: 28,
     speed: 54,
@@ -327,6 +382,38 @@ const UNIT = {
     evolveGoldCost: 100,
     evolveMagicCost: 50,
     evolveDuration: 3,
+  },
+  spider: {
+    name: "蜘蛛",
+    cost: 0,
+    magicCost: 100,
+    hp: 90,
+    damage: 8,
+    range: 34,
+    speed: 48,
+    train: 4.2,
+    cooldown: 1,
+    webRadius: 100,
+    webDuration: 8,
+    webEnemySlow: 0.5,
+    webSpiderBoost: 1.5,
+    webCooldown: 14,
+    evolveGoldCost: 100,
+    evolveMagicCost: 50,
+    evolveDuration: 3,
+  },
+  giantSpider: {
+    name: "巨蛛",
+    cost: 0,
+    hp: 300,
+    damage: 16,
+    range: 42,
+    speed: 30,
+    train: 0,
+    cooldown: 1.4,
+    summonEvery: 10,
+    summonCount: 3,
+    summonOnly: true,
   },
   heavyAnt: {
     name: "重蚁",
@@ -1735,8 +1822,8 @@ const FACTIONS = {
   },
   swarm: {
     name: "虫群帝国",
-    roster: ["gnawMiner", "crawler", "ironAnt", "poisonBug", "swarmWorm", "corrosiveSpitter", "boneStinger"],
-    startingUnits: ["gnawMiner", "crawler", "ironAnt"],
+    roster: ["crawler", "ironAnt", "poisonBug", "swarmWorm", "spider", "corrosiveSpitter", "boneStinger"],
+    startingUnits: ["crawler", "crawler", "ironAnt"],
     mineColor: "#b6d56d",
   },
 };
@@ -1875,7 +1962,13 @@ const UNIT_ICON = {
   crawler: "claws",
   poisonBug: "venom",
   swarmWorm: "claws",
+  broodMother: "venom",
+  locust: "wing",
+  ashWorm: "fire",
+  blastBug: "bomb",
   ironAnt: "spartan",
+  spider: "claws",
+  giantSpider: "claws",
   heavyAnt: "spartan",
   antQueen: "venom",
   corrosiveSpitter: "venom",
@@ -1892,7 +1985,7 @@ const STAT_GROUPS = [
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
-  ["虫群帝国", ["gnawMiner", "crawler", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "corrosiveSpitter", "boneStinger", "lurker"]],
+  ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker"]],
 ];
 
 let state = null;
@@ -2595,11 +2688,18 @@ function formatSpecial(type) {
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
   if (type === "gnawMiner") notes.push("虫群矿工；挖 4 次带回 100 金");
+  if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
-  if (type === "swarmWorm") notes.push("移动时潜地隐形，停下钻出；击杀敌人会转化为蠕虫；死亡留下减速粘液");
+  if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
+  if (type === "broodMother") notes.push("每12.5秒召唤5个飞行蝗虫");
+  if (type === "locust") notes.push("飞行召唤单位，会俯冲攻击敌人");
+  if (type === "ashWorm") notes.push("不会攻击；每10秒召唤4个自爆虫");
+  if (type === "blastBug") notes.push("靠近敌人后自爆，造成40范围伤害，最多5人");
   if (type === "ironAnt") notes.push("免疫小于15的伤害最多15次；可花100金币和50魔力原地进化为重蚁或蚁后");
   if (type === "heavyAnt") notes.push("远程小于35的伤害免疫35次；躲避时不能移动或攻击，但免疫小于35的近战/远程伤害");
   if (type === "antQueen") notes.push("每8秒召唤2个铁蚁，召唤后自身眩晕2秒");
+  if (type === "spider") notes.push("消耗100魔力训练；可进化巨蛛；技能生成蛛网，减速敌人50%，加速蜘蛛50%");
+  if (type === "giantSpider") notes.push("每10秒召唤3个蜘蛛");
   if (type === "corrosiveSpitter") notes.push("远程腐蚀6秒；攻击叠加5%易伤，最多50%；20%概率范围伤并生成减速粘液");
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
@@ -2875,6 +2975,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     landMines: [],
     barricades: [],
     slimeFields: [],
+    webFields: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -3747,6 +3848,7 @@ function spawnUnit(type, side, x) {
     heavyAntDodge: false,
     swarmEvolutionTimer: 0,
     swarmEvolutionTarget: null,
+    spiderWebCooldown: 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
@@ -4281,6 +4383,7 @@ function update(dt) {
   updateLandMines(dt);
   updateBarricades(dt);
   updateSlimeFields(dt);
+  updateWebFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -4318,6 +4421,7 @@ function updateFourWayBattle(dt) {
   updateLandMines(dt);
   updateBarricades(dt);
   updateSlimeFields(dt);
+  updateWebFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -5779,6 +5883,7 @@ function updateUnits(dt) {
     if (unit.vulnerabilityTimer <= 0) unit.vulnerabilityBonus = 0;
     unit.boneStingerBurrowCooldown = Math.max(0, (unit.boneStingerBurrowCooldown ?? 0) - dt);
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
+    unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
     unit.anim += dt * 8;
 
     if (unit.inspiringTimer > 0) {
@@ -5835,6 +5940,7 @@ function updateUnits(dt) {
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
       if (unit.type === "antQueen") updateAntQueen(unit, dt);
+      if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (isManuallyControlled(unit)) {
         updateManualControlledUnit(unit, dt);
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
@@ -5866,6 +5972,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "antQueen") {
       updateAntQueen(unit, dt);
+    }
+    if (isSwarmSpawner(unit)) {
+      updateSwarmSpawner(unit, dt);
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -7789,6 +7898,28 @@ function updateAntQueen(unit, dt) {
   popText(unit.x, unit.y - 116, "产出铁蚁", "#cde69b");
 }
 
+function isSwarmSpawner(unit) {
+  return unit?.type === "broodMother" || unit?.type === "ashWorm" || unit?.type === "giantSpider";
+}
+
+function updateSwarmSpawner(unit, dt) {
+  const data = UNIT[unit.type];
+  unit.summonTimer = Math.max(0, (unit.summonTimer ?? data.summonEvery) - dt);
+  if (unit.summonTimer > 0) return;
+  unit.summonTimer = data.summonEvery;
+  const summonType = unit.type === "broodMother" ? "locust" : unit.type === "ashWorm" ? "blastBug" : "spider";
+  const label = unit.type === "broodMother" ? "蝗虫" : unit.type === "ashWorm" ? "自爆虫" : "蜘蛛";
+  const dir = getUnitFacingDirection(unit);
+  for (let i = 0; i < data.summonCount; i += 1) {
+    const spawn = spawnUnit(summonType, unit.side, clampWorldX(unit.x - dir * (30 + i * 18)));
+    spawn.y = unit.y + (i - (data.summonCount - 1) / 2) * 9;
+    spawn.forceCharge = true;
+    spawn.summonerId = unit.id;
+  }
+  state.blasts.push({ x: unit.x, y: unit.y - 42, radius: 58, life: 0.32, duration: 0.32, color: "#cde69b" });
+  popText(unit.x, unit.y - 116, `召唤${label} x${data.summonCount}`, "#cde69b");
+}
+
 function getMinerMoveSpeed(unit) {
   return unit.speed ?? UNIT.miner.speed;
 }
@@ -7988,6 +8119,14 @@ function getMoveFactor(unit) {
       factor = Math.min(factor, slime.slow);
     }
   }
+  for (const web of state.webFields ?? []) {
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, web.x, web.y) > web.radius) continue;
+    if (areHostileSides(web.side, unit.side)) {
+      factor = Math.min(factor, web.enemySlow);
+    } else if (isSpiderUnit(unit.type)) {
+      factor *= web.spiderBoost;
+    }
+  }
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
@@ -7999,6 +8138,10 @@ function getMoveFactor(unit) {
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageMoveFactor;
   if (isReaperStealthed(unit)) factor *= UNIT.reaper.stealthSpeed / UNIT.reaper.speed;
   return factor;
+}
+
+function isSpiderUnit(type) {
+  return type === "spider" || type === "giantSpider";
 }
 
 function getIceRoadMoveFactor(unit) {
@@ -8428,6 +8571,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "blastBug") {
+    explodeBlastBug(unit, target);
+    return;
+  }
+
   if (unit.type === "boneStinger") {
     attackBoneStinger(unit, target);
     return;
@@ -8634,6 +8782,26 @@ function explodePoisonBug(unit, target) {
   });
   state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#b7e06b" });
   popText(unit.x, unit.y - 84, "腐蚀自爆", "#b7e06b");
+}
+
+function explodeBlastBug(unit, target) {
+  const data = UNIT.blastBug;
+  unit.exploded = true;
+  unit.noCorpse = true;
+  unit.hp = 0;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
+  targets.forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.damage, {
+      label: "爆",
+      color: "#ffb45e",
+      yOffset: -82,
+      sourceSide: unit.side,
+      sourceUnitId: unit.id,
+    });
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#ffb45e" });
+  popText(unit.x, unit.y - 84, "自爆", "#ffb45e");
 }
 
 function impactCorrosiveSpit(arrow, source) {
@@ -10966,6 +11134,13 @@ function updateSlimeFields(dt) {
   state.slimeFields = (state.slimeFields ?? []).filter((field) => field.life > 0);
 }
 
+function updateWebFields(dt) {
+  for (const field of state.webFields ?? []) {
+    field.life -= dt;
+  }
+  state.webFields = (state.webFields ?? []).filter((field) => field.life > 0);
+}
+
 function updateHealingFields(dt) {
   for (const field of state.healingFields) {
     field.life -= dt;
@@ -11447,7 +11622,7 @@ function removeDead() {
         side: getWormKillerSide(unit),
         x: unit.x,
         y: unit.y,
-        text: "转化蠕虫",
+        text: "转化沙虫",
         color: "#cde69b",
         setup: (worm) => {
           worm.forceCharge = true;
@@ -11836,6 +12011,7 @@ function draw() {
   state.thornFields.forEach(drawThornField);
   state.healingFields.forEach(drawHealingField);
   (state.slimeFields ?? []).forEach(drawSlimeField);
+  (state.webFields ?? []).forEach(drawWebField);
   state.landMines.forEach(drawLandMine);
   state.barricades.forEach(drawBarricade);
   state.corpses.forEach(drawCorpse);
@@ -12174,6 +12350,32 @@ function drawSlimeField(field) {
   for (let i = 0; i < 4; i += 1) {
     ctx.beginPath();
     ctx.arc((i - 1.5) * radius * 0.25, Math.sin(i + field.x) * 7, radius * 0.08, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawWebField(field) {
+  const alpha = Math.max(0.18, Math.min(0.58, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius;
+  ctx.strokeStyle = "rgba(228, 236, 214, 0.62)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius, radius * 0.32, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 8; i += 1) {
+    const a = (Math.PI * 2 * i) / 8;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius * 0.32);
+    ctx.stroke();
+  }
+  for (let r = 0.35; r <= 0.8; r += 0.22) {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radius * r, radius * 0.32 * r, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -13555,9 +13757,15 @@ function getUnitColor(unit) {
   if (type === "crawler") return "#7fa64d";
   if (type === "poisonBug") return "#9abd4a";
   if (type === "swarmWorm") return "#8b7a45";
+  if (type === "broodMother") return "#7d8f50";
+  if (type === "locust") return "#b3c86a";
+  if (type === "ashWorm") return "#6c5f56";
+  if (type === "blastBug") return "#d88938";
   if (type === "ironAnt") return "#657464";
   if (type === "heavyAnt") return unit.heavyAntDodge ? "#4d5d50" : "#4f6658";
   if (type === "antQueen") return "#7d8f50";
+  if (type === "spider") return "#596f4d";
+  if (type === "giantSpider") return "#3f583c";
   if (type === "corrosiveSpitter") return "#6f9f58";
   if (type === "boneStinger") return (unit.boneStingerBurrowTimer ?? 0) > 0 ? "#75684a" : "#8a8f6a";
   if (type === "lurker") return "#6b7f55";
@@ -13628,9 +13836,15 @@ function getHeadColor(unit) {
   if (unit.type === "crawler") return "#cde69b";
   if (unit.type === "poisonBug") return "#e2ff8a";
   if (unit.type === "swarmWorm") return "#d8c87a";
+  if (unit.type === "broodMother") return "#f0d892";
+  if (unit.type === "locust") return "#f2f0a0";
+  if (unit.type === "ashWorm") return "#ffb45e";
+  if (unit.type === "blastBug") return "#ffd08a";
   if (unit.type === "ironAnt") return "#cbd6bd";
   if (unit.type === "heavyAnt") return "#d8e8cc";
   if (unit.type === "antQueen") return "#f0d892";
+  if (unit.type === "spider") return "#d8e8cc";
+  if (unit.type === "giantSpider") return "#e4ecd6";
   if (unit.type === "corrosiveSpitter") return "#d8ff8a";
   if (unit.type === "boneStinger") return "#e6e1b2";
   if (unit.type === "lurker") return "#cde69b";
@@ -13995,6 +14209,52 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(31, -32);
     ctx.lineTo(45, -25);
     ctx.stroke();
+  } else if (type === "broodMother" || type === "ashWorm") {
+    ctx.strokeStyle = type === "broodMother" ? "#f0d892" : "#ffb45e";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, -25);
+    ctx.quadraticCurveTo(22, -60, 54, -34);
+    ctx.stroke();
+    ctx.fillStyle = type === "broodMother" ? "rgba(240,216,146,0.32)" : "rgba(255,138,61,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(25, -38, 28, 18, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+    if (type === "ashWorm") {
+      ctx.fillStyle = "#ff8a3d";
+      ctx.beginPath();
+      ctx.arc(48, -38, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (type === "locust") {
+    ctx.strokeStyle = "#f2f0a0";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(10, -34);
+    ctx.lineTo(40, -42);
+    ctx.moveTo(19, -45);
+    ctx.lineTo(36, -68);
+    ctx.moveTo(19, -38);
+    ctx.lineTo(38, -18);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(242,240,160,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(26, -50, 22, 9, -0.35, 0, Math.PI * 2);
+    ctx.ellipse(28, -31, 20, 8, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "blastBug") {
+    ctx.fillStyle = "rgba(255,138,61,0.35)";
+    ctx.beginPath();
+    ctx.arc(26, -35, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffd08a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(9, -31);
+    ctx.lineTo(42, -39);
+    ctx.moveTo(20, -49);
+    ctx.lineTo(33, -21);
+    ctx.stroke();
   } else if (type === "ironAnt" || type === "heavyAnt") {
     ctx.strokeStyle = type === "heavyAnt" ? "#d8e8cc" : "#cbd6bd";
     ctx.lineWidth = type === "heavyAnt" ? 6 : 4;
@@ -14023,6 +14283,23 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.ellipse(26, -42, 23, 18, -0.2, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "spider" || type === "giantSpider") {
+    const big = type === "giantSpider";
+    ctx.strokeStyle = big ? "#e4ecd6" : "#d8e8cc";
+    ctx.lineWidth = big ? 5 : 4;
+    ctx.fillStyle = big ? "rgba(228,236,214,0.22)" : "rgba(205,230,155,0.2)";
+    ctx.beginPath();
+    ctx.ellipse(23, -36, big ? 23 : 17, big ? 16 : 12, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i < 4; i += 1) {
+      const y = -48 + i * 8;
+      ctx.moveTo(12, y);
+      ctx.lineTo(42, y - 16);
+      ctx.moveTo(13, y);
+      ctx.lineTo(41, y + 14);
+    }
+    ctx.stroke();
   } else if (type === "corrosiveSpitter") {
     ctx.fillStyle = "rgba(183, 224, 107, 0.32)";
     ctx.beginPath();
@@ -15579,6 +15856,9 @@ function getManualActions(unit) {
   const actions = [{ id: "attack", label: "普攻", mode: "direct" }];
   const add = (id, label, mode = "point") => actions.push({ id, label, mode });
   switch (unit.type) {
+    case "crawler":
+      add("evolveGnawMiner", "咀矿者", "direct");
+      break;
     case "swordsman":
       add("jumpSlash", "跳劈", "target");
       break;
@@ -15687,9 +15967,17 @@ function getManualActions(unit) {
     case "boneThrower":
       add("boneHarvest", "取骨", "direct");
       break;
+    case "swarmWorm":
+      add("evolveBroodMother", "虫母", "direct");
+      add("evolveAshWorm", "灰烬", "direct");
+      break;
     case "ironAnt":
       add("evolveHeavyAnt", "重蚁", "direct");
       add("evolveAntQueen", "蚁后", "direct");
+      break;
+    case "spider":
+      add("spiderWeb", "蛛网", "direct");
+      add("evolveGiantSpider", "巨蛛", "direct");
       break;
     case "heavyAnt":
       add("heavyAntDodge", unit.heavyAntDodge ? "停躲避" : "躲避", "direct");
@@ -15746,8 +16034,13 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "releaseV" || button.id === "toggleRoot" || button.id === "toggleCandleForm" || button.id === "waterSacrifice" || button.id === "scaldExplode" || button.id === "bannerInspireGroup") return false;
   if (button.id === "heavyAntDodge") return false;
   if (button.id === "goblinBurrow") return false;
+  if (button.id === "evolveGnawMiner") return !canEvolveSwarmUnit(unit, "gnawMiner");
+  if (button.id === "evolveBroodMother") return !canEvolveSwarmUnit(unit, "broodMother");
+  if (button.id === "evolveAshWorm") return !canEvolveSwarmUnit(unit, "ashWorm");
   if (button.id === "evolveHeavyAnt" || button.id === "evolveAntQueen") return !canEvolveSwarmUnit(unit, button.id === "evolveHeavyAnt" ? "heavyAnt" : "antQueen");
+  if (button.id === "evolveGiantSpider") return !canEvolveSwarmUnit(unit, "giantSpider");
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
+  if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
   if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
@@ -15890,8 +16183,13 @@ function getManualDisabledLabel(unit, button) {
     if ((unit.boneAmmo ?? 0) >= UNIT.boneThrower.maxBoneAmmo) return "骨头已满";
     if (!findBoneHarvestCorpse(unit)) return "附近没有敌方尸体";
   }
+  if (button.id === "evolveGnawMiner") return getSwarmEvolveDisabledLabel(unit, "gnawMiner");
+  if (button.id === "evolveBroodMother") return getSwarmEvolveDisabledLabel(unit, "broodMother");
+  if (button.id === "evolveAshWorm") return getSwarmEvolveDisabledLabel(unit, "ashWorm");
   if (button.id === "evolveHeavyAnt" || button.id === "evolveAntQueen") return getSwarmEvolveDisabledLabel(unit, button.id === "evolveHeavyAnt" ? "heavyAnt" : "antQueen");
+  if (button.id === "evolveGiantSpider") return getSwarmEvolveDisabledLabel(unit, "giantSpider");
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
+  if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
@@ -15947,6 +16245,22 @@ function executeManualAction(unit, action, point) {
     activateBoneStingerBurrow(unit);
     return;
   }
+  if (action.id === "spiderWeb") {
+    castSpiderWeb(unit);
+    return;
+  }
+  if (action.id === "evolveGnawMiner") {
+    evolveSwarmUnit(unit, "gnawMiner");
+    return;
+  }
+  if (action.id === "evolveBroodMother") {
+    evolveSwarmUnit(unit, "broodMother");
+    return;
+  }
+  if (action.id === "evolveAshWorm") {
+    evolveSwarmUnit(unit, "ashWorm");
+    return;
+  }
   if (action.id === "evolveHeavyAnt") {
     evolveSwarmUnit(unit, "heavyAnt");
     return;
@@ -15957,6 +16271,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "evolveLurker") {
     evolveSwarmUnit(unit, "lurker");
+    return;
+  }
+  if (action.id === "evolveGiantSpider") {
+    evolveSwarmUnit(unit, "giantSpider");
     return;
   }
   if (action.id === "spartanShield") {
@@ -16563,6 +16881,9 @@ function getSwarmEvolutionCost(unit, targetType) {
 function canEvolveSwarmUnit(unit, targetType) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
   if ((unit.swarmEvolutionTimer ?? 0) > 0) return false;
+  if (targetType === "gnawMiner" && unit.type !== "crawler") return false;
+  if ((targetType === "broodMother" || targetType === "ashWorm") && unit.type !== "swarmWorm") return false;
+  if (targetType === "giantSpider" && unit.type !== "spider") return false;
   if (targetType === "lurker" && unit.type !== "boneStinger") return false;
   if ((targetType === "heavyAnt" || targetType === "antQueen") && unit.type !== "ironAnt") return false;
   const cost = getSwarmEvolutionCost(unit, targetType);
@@ -16636,6 +16957,29 @@ function activateBoneStingerBurrow(unit) {
   unit.boneStingerBurrowCooldown = data.burrowCooldown;
   state.blasts.push({ x: unit.x, y: unit.y - 22, radius: 44, life: 0.26, duration: 0.26, color: "#8d7a4a" });
   popText(unit.x, unit.y - 112, "钻地", "#d8c87a");
+  return true;
+}
+
+function castSpiderWeb(unit) {
+  const data = UNIT.spider;
+  if ((unit.spiderWebCooldown ?? 0) > 0) {
+    popText(unit.x, unit.y - 116, `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`, "#d9d0b8");
+    return false;
+  }
+  state.webFields = state.webFields ?? [];
+  state.webFields.push({
+    x: unit.x,
+    y: unit.y ?? FIELD.ground,
+    side: unit.side,
+    radius: data.webRadius,
+    enemySlow: data.webEnemySlow,
+    spiderBoost: data.webSpiderBoost,
+    life: data.webDuration,
+    duration: data.webDuration,
+  });
+  unit.spiderWebCooldown = data.webCooldown;
+  state.blasts.push({ x: unit.x, y: unit.y - 28, radius: data.webRadius, life: 0.28, duration: 0.28, color: "#e4ecd6" });
+  popText(unit.x, unit.y - 112, "蛛网", "#e4ecd6");
   return true;
 }
 
@@ -17334,7 +17678,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260615-swarm-evolution";
+  const refreshKey = "stick-war-sw-refresh-20260616-swarm-brood-spider";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
