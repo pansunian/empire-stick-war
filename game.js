@@ -101,13 +101,13 @@ const RALLY = {
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const BASIC_ELEMENT_UNITS = new Set(["earthElement", "waterElement", "fireElement", "windElement"]);
 const ELEMENT_MERGE_MAGIC_COSTS = {
-  hill: 50,
-  treeEnt: 50,
-  rog: 50,
-  hurricane: 50,
+  hill: 100,
+  treeEnt: 100,
+  rog: 100,
+  hurricane: 100,
   linghan: 100,
-  redflame: 100,
-  stormLich: 100,
+  redflame: 150,
+  stormLich: 150,
   vUnit: 150,
   dreadfire: 150,
 };
@@ -739,7 +739,7 @@ const UNIT = {
   },
   barricadeEngineer: {
     name: "拒马工兵",
-    cost: 180,
+    cost: 150,
     magicCost: 50,
     hp: 170,
     damage: 6,
@@ -747,17 +747,17 @@ const UNIT = {
     speed: 35,
     train: 5,
     cooldown: 1.4,
-    barricadeCost: 20,
+    barricadeCost: 150,
     barricadeBuildTime: 5,
     barricadeCooldown: 8,
-    barricadeMax: 3,
+    barricadeMax: Infinity,
     barricadeHp: 300,
     barricadeLength: 260,
     barricadeWidth: 60,
-    barricadeDuration: 50,
-    barricadeTickEvery: 0.8,
-    barricadeDamage: 8,
-    barricadeSlow: 0.4,
+    barricadeDuration: Infinity,
+    barricadeTickEvery: 6,
+    barricadeDamage: 6,
+    barricadeSlow: 0,
     cavalryStop: 0.6,
   },
   covenantGuard: {
@@ -5131,6 +5131,8 @@ function distanceTo(x1, y1, x2, y2) {
 }
 
 function moveUnitTowardPoint(unit, targetX, targetY, speed, dt, tolerance = 5) {
+  const beforeX = unit.x;
+  const beforeY = unit.y;
   const dx = targetX - unit.x;
   const dy = targetY - unit.y;
   const distance = Math.hypot(dx, dy);
@@ -5138,7 +5140,17 @@ function moveUnitTowardPoint(unit, targetX, targetY, speed, dt, tolerance = 5) {
   const step = Math.min(distance, speed * getMoveFactor(unit) * dt);
   unit.x += (dx / distance) * step;
   unit.y += (dy / distance) * step;
+  stopAtBlockingBarricade(unit, beforeX, beforeY);
   return true;
+}
+
+function stopAtBlockingBarricade(unit, beforeX, beforeY) {
+  if (!unit || unit.hp <= 0 || UNIT[unit.type]?.flying) return;
+  const blocker = getBlockingBarricadeAt(unit, unit.x, unit.y, beforeX, beforeY);
+  if (!blocker) return;
+  unit.y = beforeY;
+  if (beforeX < blocker.x) unit.x = blocker.x - blocker.length / 2 - 8;
+  else unit.x = blocker.x + blocker.length / 2 + 8;
 }
 
 function updateCampaignReinforcements(dt) {
@@ -8467,6 +8479,8 @@ function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
   if (isReaperStealthed(unit)) return null;
   if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") return null;
+  const barricadeTarget = findBlockingBarricadeTarget(unit);
+  if (barricadeTarget) return barricadeTarget;
   if (UNIT[unit.type]?.statueOnly) {
     return {
       kind: "statue",
@@ -8522,7 +8536,7 @@ function isRetaliationTarget(unit, target) {
 }
 
 function markRetaliationTarget(target, attacker) {
-  if (!target || target.kind === "statue" || !attacker || attacker.kind === "statue") return;
+  if (!target || target.kind || !attacker || attacker.kind) return;
   if (target.side === attacker.side || target.hp <= 0 || attacker.hp <= 0) return;
   if (!canTarget(target, attacker)) return;
   target.retaliateTargetId = attacker.id;
@@ -9084,6 +9098,7 @@ function attackApeMan(unit, target) {
 
 function handleDamageDealt(attacker, target, damage) {
   if (!attacker || !target || damage <= 0) return;
+  if (target.kind === "barricade") return;
   if (target.kind !== "statue") {
     target.lastDamageSide = attacker.side;
     target.lastDamageUnitId = attacker.id;
@@ -11050,30 +11065,84 @@ function damageBarricadeRow(barricade) {
     const dealt = applyUnitDamage(unit, barricade.damage, { label: "拒马", color: "#d7c090", yOffset: -84, sourceSide: barricade.side });
     const source = state.units.find((candidate) => candidate.id === barricade.ownerId && candidate.hp > 0) ?? null;
     handleDamageDealt(source, unit, dealt);
-    unit.stormSlowTimer = Math.max(unit.stormSlowTimer ?? 0, 0.9);
-    unit.stormSlowFactor = Math.min(unit.stormSlowFactor ?? 1, barricade.slow);
     if (isCavalryUnit(unit)) {
       cancelCavalryMomentum(unit);
       applyStun(unit, barricade.cavalryStop);
       popText(unit.x, unit.y - 108, "骑兵受阻", "#d7c090");
     }
-    barricade.hp -= 3;
   });
 }
 
 function getUnitsOnBarricade(barricade) {
+  const front = getBarricadeFrontDirection(barricade);
   return state.units.filter((unit) =>
     areHostileSides(barricade.side, unit.side) &&
     unit.hp > 0 &&
     !isUnitHidden(unit) &&
     !isReaperStealthed(unit) &&
     !UNIT[unit.type]?.untargetable &&
-    isPointInsideBarricade(unit.x, unit.y ?? FIELD.ground, barricade)
+    isPointInFrontOfBarricade(unit.x, unit.y ?? FIELD.ground, barricade, front)
+  );
+}
+
+function getBarricadeFrontDirection(barricade) {
+  if (state?.fourWay && FOUR_WAY_BASES[barricade.side]) {
+    return FOUR_WAY_BASES[barricade.side].x < FIELD.width / 2 ? 1 : -1;
+  }
+  return barricade.side === "player" ? 1 : -1;
+}
+
+function isPointInFrontOfBarricade(x, y, barricade, front = getBarricadeFrontDirection(barricade)) {
+  const forward = (x - barricade.x) * front;
+  return (
+    forward >= -barricade.length / 2 &&
+    forward <= barricade.length / 2 + 70 &&
+    Math.abs(y - barricade.y) <= barricade.width / 2 + 40
   );
 }
 
 function isPointInsideBarricade(x, y, barricade) {
   return Math.abs(x - barricade.x) <= barricade.length / 2 && Math.abs(y - barricade.y) <= barricade.width / 2;
+}
+
+function getBlockingBarricadeAt(unit, x = unit.x, y = unit.y, beforeX = null, beforeY = null) {
+  if (!unit || UNIT[unit.type]?.flying) return null;
+  return (state.barricades ?? []).find((barricade) => (
+    barricade.hp > 0 &&
+    areHostileSides(barricade.side, unit.side) &&
+    (
+      isPointInsideBarricade(x, y ?? FIELD.ground, barricade) ||
+      didCrossBarricade(unit, barricade, x, y ?? FIELD.ground, beforeX, beforeY)
+    )
+  )) ?? null;
+}
+
+function didCrossBarricade(unit, barricade, x, y, beforeX, beforeY) {
+  if (!Number.isFinite(beforeX) || !Number.isFinite(beforeY)) return false;
+  const laneTouches = Math.min(Math.abs(y - barricade.y), Math.abs(beforeY - barricade.y)) <= barricade.width / 2 + 8;
+  if (!laneTouches) return false;
+  const left = barricade.x - barricade.length / 2;
+  const right = barricade.x + barricade.length / 2;
+  const minX = Math.min(beforeX, x);
+  const maxX = Math.max(beforeX, x);
+  return minX <= right && maxX >= left;
+}
+
+function findBlockingBarricadeTarget(unit) {
+  if (!unit || UNIT[unit.type]?.flying) return null;
+  const dir = getUnitFacingDirection(unit);
+  const reach = Math.max(getUnitRange(unit), 80) + 24;
+  const candidate = (state.barricades ?? [])
+    .filter((barricade) => (
+      barricade.hp > 0 &&
+      areHostileSides(barricade.side, unit.side) &&
+      Math.sign(barricade.x - unit.x || dir) === dir &&
+      Math.abs((unit.y ?? FIELD.ground) - barricade.y) <= barricade.width / 2 + 44 &&
+      Math.abs(barricade.x - unit.x) <= reach + barricade.length / 2
+    ))
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0];
+  if (!candidate) return null;
+  return { ...candidate, kind: "barricade" };
 }
 
 function isCavalryUnit(unit) {
@@ -11415,6 +11484,18 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   if (isUnitHidden(target)) return 0;
   if (isReaperStealthed(target)) return 0;
   if (target.kind !== "statue" && target.hp <= 0) return 0;
+  if (target.kind === "barricade") {
+    const barricade = state.barricades.find((item) => item.id === target.id);
+    if (!barricade || barricade.hp <= 0) return 0;
+    const damage = Math.max(0, Math.round(amount * 10) / 10);
+    barricade.hp = Math.max(0, barricade.hp - damage);
+    popText(barricade.x, barricade.y - 58, `拒马 -${damage}`, attackerSide === "player" ? "#9fc0ff" : "#ff9b8d");
+    if (barricade.hp <= 0) {
+      popText(barricade.x, barricade.y - 82, "拒马摧毁", "#d7c090");
+      state.blasts.push({ x: barricade.x, y: barricade.y - 28, radius: 42, life: 0.24, duration: 0.24, color: "#d7c090" });
+    }
+    return damage;
+  }
   if (target.kind === "statue") {
     if (state?.fourWay) {
       state.fourWayBaseHp[target.side] = Math.max(0, (state.fourWayBaseHp[target.side] ?? STATUE_MAX_HP) - amount);
@@ -12536,7 +12617,9 @@ function drawLandMine(mine) {
 
 function drawBarricade(barricade) {
   const ratio = barricade.maxHp > 0 ? Math.max(0, barricade.hp / barricade.maxHp) : 0;
-  const alpha = Math.max(0.35, Math.min(1, barricade.life / barricade.duration));
+  const alpha = Number.isFinite(barricade.life) && Number.isFinite(barricade.duration)
+    ? Math.max(0.35, Math.min(1, barricade.life / barricade.duration))
+    : 1;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(barricade.x, barricade.y);
@@ -17824,7 +17907,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260616-swarm-caterpillar";
+  const refreshKey = "stick-war-sw-refresh-20260617-element-barricade-balance";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
