@@ -415,6 +415,39 @@ const UNIT = {
     summonCount: 3,
     summonOnly: true,
   },
+  caterpillar: {
+    name: "毛毛虫",
+    cost: 400,
+    magicCost: 100,
+    hp: 200,
+    damage: 50,
+    range: 400,
+    speed: 24,
+    train: 6.2,
+    cooldown: 2.5,
+    splash: 86,
+    aoeLimit: 5,
+    neuralRetreatDuration: 5,
+    evolveGoldCost: 100,
+    evolveMagicCost: 50,
+    evolveDuration: 3,
+  },
+  hoodCaterpillar: {
+    name: "毛帽虫",
+    cost: 0,
+    hp: 200,
+    damage: 30,
+    range: 500,
+    speed: 22,
+    train: 0,
+    cooldown: 2.5,
+    splash: 76,
+    aoeLimit: 5,
+    scatterCount: 3,
+    scatterSpread: 44,
+    neuralRetreatDuration: 5,
+    summonOnly: true,
+  },
   heavyAnt: {
     name: "重蚁",
     cost: 0,
@@ -1822,7 +1855,7 @@ const FACTIONS = {
   },
   swarm: {
     name: "虫群帝国",
-    roster: ["crawler", "ironAnt", "poisonBug", "swarmWorm", "spider", "corrosiveSpitter", "boneStinger"],
+    roster: ["crawler", "ironAnt", "poisonBug", "swarmWorm", "spider", "corrosiveSpitter", "boneStinger", "caterpillar"],
     startingUnits: ["crawler", "crawler", "ironAnt"],
     mineColor: "#b6d56d",
   },
@@ -1969,6 +2002,8 @@ const UNIT_ICON = {
   ironAnt: "spartan",
   spider: "claws",
   giantSpider: "claws",
+  caterpillar: "venom",
+  hoodCaterpillar: "venom",
   heavyAnt: "spartan",
   antQueen: "venom",
   corrosiveSpitter: "venom",
@@ -1985,7 +2020,7 @@ const STAT_GROUPS = [
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
-  ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker"]],
+  ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
 ];
 
 let state = null;
@@ -2700,6 +2735,8 @@ function formatSpecial(type) {
   if (type === "antQueen") notes.push("每8秒召唤2个铁蚁，召唤后自身眩晕2秒");
   if (type === "spider") notes.push("消耗100魔力训练；可进化巨蛛；技能生成蛛网，减速敌人50%，加速蜘蛛50%");
   if (type === "giantSpider") notes.push("每10秒召唤3个蜘蛛");
+  if (type === "caterpillar") notes.push("每2.5秒射出神经炸弹，范围50伤害，并让敌人后撤5秒；可进化毛帽虫");
+  if (type === "hoodCaterpillar") notes.push("进化单位；一次散射3枚神经炸弹，单枚30伤害，射程500");
   if (type === "corrosiveSpitter") notes.push("远程腐蚀6秒；攻击叠加5%易伤，最多50%；20%概率范围伤并生成减速粘液");
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
@@ -3895,6 +3932,8 @@ function spawnUnit(type, side, x) {
     siegeBlindTargetId: null,
     fearTimer: 0,
     fearDamageMultiplier: 1,
+    neuralRetreatTimer: 0,
+    neuralRetreatFromSide: null,
     hero: Boolean(data.hero),
     spawnedClones: false,
     summonerId: null,
@@ -5857,6 +5896,8 @@ function updateUnits(dt) {
     unit.inspiredLifestealTimer = Math.max(0, (unit.inspiredLifestealTimer ?? 0) - dt);
     unit.fearTimer = Math.max(0, (unit.fearTimer ?? 0) - dt);
     if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
+    unit.neuralRetreatTimer = Math.max(0, (unit.neuralRetreatTimer ?? 0) - dt);
+    if (unit.neuralRetreatTimer <= 0) unit.neuralRetreatFromSide = null;
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
@@ -5923,6 +5964,11 @@ function updateUnits(dt) {
     }
     if (unit.luredTimer > 0) {
       updateLuredUnit(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
+    if (unit.neuralRetreatTimer > 0) {
+      updateNeuralRetreatUnit(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
@@ -8576,6 +8622,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "caterpillar" || unit.type === "hoodCaterpillar") {
+    launchNeuralBombs(unit, target);
+    return;
+  }
+
   if (unit.type === "boneStinger") {
     attackBoneStinger(unit, target);
     return;
@@ -8802,6 +8853,43 @@ function explodeBlastBug(unit, target) {
   });
   state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#ffb45e" });
   popText(unit.x, unit.y - 84, "自爆", "#ffb45e");
+}
+
+function launchNeuralBombs(unit, target) {
+  const data = UNIT[unit.type];
+  const count = data.scatterCount ?? 1;
+  const spread = data.scatterSpread ?? 0;
+  for (let i = 0; i < count; i += 1) {
+    const offset = (i - (count - 1) / 2) * spread;
+    state.arrows.push({
+      x: unit.x,
+      y: unit.y - 58,
+      tx: target.x + offset,
+      ty: (target.y ?? unit.y) - 42 + (i % 2 ? 12 : -8),
+      side: unit.side,
+      damage: getAttackDamage(unit, target, data.damage),
+      sourceId: unit.id,
+      sourceType: unit.type,
+      target,
+      life: 0.72,
+      duration: 0.72,
+      type: "neuralBomb",
+      splash: data.splash,
+      aoeLimit: data.aoeLimit,
+      retreatDuration: data.neuralRetreatDuration,
+    });
+  }
+  popText(unit.x, unit.y - 112, count > 1 ? "神经散射" : "神经炸弹", "#cde69b");
+}
+
+function explodeNeuralBomb(arrow, source) {
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash ?? 80, arrow.side, arrow.aoeLimit ?? 5, null, arrow.ty);
+  targets.forEach((target) => {
+    const dealt = applyDamage(target, arrow.damage, arrow.side, { ranged: true });
+    handleDamageDealt(source, target, dealt);
+    applyNeuralRetreat(target, arrow.retreatDuration ?? 5, arrow.side);
+  });
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: arrow.splash ?? 80, life: 0.32, duration: 0.32, color: "#cde69b" });
 }
 
 function impactCorrosiveSpit(arrow, source) {
@@ -10051,6 +10139,9 @@ function updateArrows(dt) {
       } else if (arrow.type === "corrosiveSpitter") {
         const source = getArrowSource(arrow);
         impactCorrosiveSpit(arrow, source);
+      } else if (arrow.type === "neuralBomb") {
+        const source = getArrowSource(arrow);
+        explodeNeuralBomb(arrow, source);
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
@@ -11015,6 +11106,23 @@ function applyFear(unit, duration) {
   unit.fearTimer = Math.max(unit.fearTimer ?? 0, duration);
   unit.fearDamageMultiplier = Math.max(unit.fearDamageMultiplier ?? 1, 2);
   popText(unit.x, unit.y - 108, "恐惧", "#d8d0ff");
+}
+
+function applyNeuralRetreat(unit, duration, sourceSide) {
+  if (!unit || unit.kind === "statue" || unit.hp <= 0 || isUnitHidden(unit)) return;
+  unit.neuralRetreatTimer = Math.max(unit.neuralRetreatTimer ?? 0, duration);
+  unit.neuralRetreatFromSide = sourceSide;
+  popText(unit.x, unit.y - 112, "神经后撤", "#cde69b");
+}
+
+function updateNeuralRetreatUnit(unit, dt) {
+  const sourceSide = unit.neuralRetreatFromSide;
+  const dir = state?.fourWay && sourceSide && FOUR_WAY_BASES[sourceSide]
+    ? Math.sign(unit.x - FOUR_WAY_BASES[sourceSide].x) || getUnitFacingDirection(unit)
+    : sourceSide === "enemy" ? 1 : -1;
+  const speed = Math.max(unit.speed ?? UNIT[unit.type]?.speed ?? 40, 42);
+  const targetX = unit.x + dir * 120;
+  moveUnitTowardPoint(unit, clampWorldX(targetX), unit.y ?? FIELD.ground, speed, dt, 4);
 }
 
 function updateChaosRecovery(dt) {
@@ -13766,6 +13874,8 @@ function getUnitColor(unit) {
   if (type === "antQueen") return "#7d8f50";
   if (type === "spider") return "#596f4d";
   if (type === "giantSpider") return "#3f583c";
+  if (type === "caterpillar") return "#6e9a55";
+  if (type === "hoodCaterpillar") return "#5d7f62";
   if (type === "corrosiveSpitter") return "#6f9f58";
   if (type === "boneStinger") return (unit.boneStingerBurrowTimer ?? 0) > 0 ? "#75684a" : "#8a8f6a";
   if (type === "lurker") return "#6b7f55";
@@ -13845,6 +13955,8 @@ function getHeadColor(unit) {
   if (unit.type === "antQueen") return "#f0d892";
   if (unit.type === "spider") return "#d8e8cc";
   if (unit.type === "giantSpider") return "#e4ecd6";
+  if (unit.type === "caterpillar") return "#d8ff8a";
+  if (unit.type === "hoodCaterpillar") return "#e4ecd6";
   if (unit.type === "corrosiveSpitter") return "#d8ff8a";
   if (unit.type === "boneStinger") return "#e6e1b2";
   if (unit.type === "lurker") return "#cde69b";
@@ -14300,6 +14412,30 @@ function drawWeapon(type, unit = null) {
       ctx.lineTo(41, y + 14);
     }
     ctx.stroke();
+  } else if (type === "caterpillar" || type === "hoodCaterpillar") {
+    const hood = type === "hoodCaterpillar";
+    ctx.strokeStyle = hood ? "#e4ecd6" : "#d8ff8a";
+    ctx.lineWidth = hood ? 5 : 4;
+    ctx.beginPath();
+    ctx.moveTo(4, -28);
+    ctx.quadraticCurveTo(18, -52, 40, -42);
+    ctx.quadraticCurveTo(55, -35, 46, -24);
+    ctx.stroke();
+    ctx.fillStyle = hood ? "rgba(228,236,214,0.28)" : "rgba(216,255,138,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(27, -38, hood ? 25 : 20, hood ? 15 : 12, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+    if (hood) {
+      ctx.strokeStyle = "#cde69b";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(41, -52, 14, Math.PI * 0.15, Math.PI * 1.15);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#cde69b";
+    ctx.beginPath();
+    ctx.arc(49, -39, 6, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "corrosiveSpitter") {
     ctx.fillStyle = "rgba(183, 224, 107, 0.32)";
     ctx.beginPath();
@@ -15979,6 +16115,9 @@ function getManualActions(unit) {
       add("spiderWeb", "蛛网", "direct");
       add("evolveGiantSpider", "巨蛛", "direct");
       break;
+    case "caterpillar":
+      add("evolveHoodCaterpillar", "毛帽虫", "direct");
+      break;
     case "heavyAnt":
       add("heavyAntDodge", unit.heavyAntDodge ? "停躲避" : "躲避", "direct");
       break;
@@ -16039,6 +16178,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "evolveAshWorm") return !canEvolveSwarmUnit(unit, "ashWorm");
   if (button.id === "evolveHeavyAnt" || button.id === "evolveAntQueen") return !canEvolveSwarmUnit(unit, button.id === "evolveHeavyAnt" ? "heavyAnt" : "antQueen");
   if (button.id === "evolveGiantSpider") return !canEvolveSwarmUnit(unit, "giantSpider");
+  if (button.id === "evolveHoodCaterpillar") return !canEvolveSwarmUnit(unit, "hoodCaterpillar");
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
@@ -16188,6 +16328,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "evolveAshWorm") return getSwarmEvolveDisabledLabel(unit, "ashWorm");
   if (button.id === "evolveHeavyAnt" || button.id === "evolveAntQueen") return getSwarmEvolveDisabledLabel(unit, button.id === "evolveHeavyAnt" ? "heavyAnt" : "antQueen");
   if (button.id === "evolveGiantSpider") return getSwarmEvolveDisabledLabel(unit, "giantSpider");
+  if (button.id === "evolveHoodCaterpillar") return getSwarmEvolveDisabledLabel(unit, "hoodCaterpillar");
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
@@ -16275,6 +16416,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "evolveGiantSpider") {
     evolveSwarmUnit(unit, "giantSpider");
+    return;
+  }
+  if (action.id === "evolveHoodCaterpillar") {
+    evolveSwarmUnit(unit, "hoodCaterpillar");
     return;
   }
   if (action.id === "spartanShield") {
@@ -16884,6 +17029,7 @@ function canEvolveSwarmUnit(unit, targetType) {
   if (targetType === "gnawMiner" && unit.type !== "crawler") return false;
   if ((targetType === "broodMother" || targetType === "ashWorm") && unit.type !== "swarmWorm") return false;
   if (targetType === "giantSpider" && unit.type !== "spider") return false;
+  if (targetType === "hoodCaterpillar" && unit.type !== "caterpillar") return false;
   if (targetType === "lurker" && unit.type !== "boneStinger") return false;
   if ((targetType === "heavyAnt" || targetType === "antQueen") && unit.type !== "ironAnt") return false;
   const cost = getSwarmEvolutionCost(unit, targetType);
@@ -17678,7 +17824,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260616-swarm-brood-spider";
+  const refreshKey = "stick-war-sw-refresh-20260616-swarm-caterpillar";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
