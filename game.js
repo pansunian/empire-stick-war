@@ -542,6 +542,10 @@ const UNIT = {
     selfRageRange: 115,
     selfRageEnemyCount: 2,
     selfRageHpCost: 10,
+    rageAllyRange: 90,
+    rageAllyMaxHp: 200,
+    rageAllyDuration: 6,
+    rageAllyAttackFactor: 1.5,
     jumpSlashDistance: 80,
     jumpSlashDamageMultiplier: 2,
     jumpSlashStun: 2,
@@ -606,6 +610,7 @@ const UNIT = {
     shieldStanceDuration: 10,
     shieldStanceReduction: 0.9,
     shieldStanceCooldown: 10,
+    shieldProtectBehind: 80,
   },
   ironCavalry: {
     name: "铁骑兵",
@@ -2751,7 +2756,8 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
-  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
+  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，使周围 ${data.rageAllyRange} 距离内非剑士且生命值小于 ${data.rageAllyMaxHp} 的友军攻速 x${data.rageAllyAttackFactor}，持续 ${data.rageAllyDuration}秒`);
+  if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
@@ -5890,6 +5896,7 @@ function updateUnits(dt) {
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
+    unit.swordsmanAllyRageTimer = Math.max(0, (unit.swordsmanAllyRageTimer ?? 0) - dt);
     unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
     unit.orderMarkTimer = Math.max(0, (unit.orderMarkTimer ?? 0) - dt);
     if (unit.orderMarkTimer <= 0) unit.orderMarkSide = null;
@@ -5997,6 +6004,7 @@ function updateUnits(dt) {
       if (unit.type === "graveDigger") updateGraveDigger(unit, dt);
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
+      if (unit.type === "swordsman") updateSwordsman(unit, dt);
       if (unit.type === "antQueen") updateAntQueen(unit, dt);
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (isManuallyControlled(unit)) {
@@ -7366,10 +7374,30 @@ function updateSwordsman(unit, dt) {
     return;
   }
 
+  const allies = state.units.filter((ally) => (
+    ally.side === unit.side &&
+    ally.id !== unit.id &&
+    ally.type !== "swordsman" &&
+    ally.hp > 0 &&
+    ally.maxHp < data.rageAllyMaxHp &&
+    !isUnitHidden(ally) &&
+    !UNIT[ally.type]?.untargetable &&
+    distanceTo(unit.x, unit.y, ally.x, ally.y) <= data.rageAllyRange
+  ));
+
+  if (!allies.length) {
+    unit.swordsmanRageTimer = 1;
+    return;
+  }
+
   unit.hp = Math.max(1, unit.hp - data.selfRageHpCost);
-  unit.swordsmanSelfRageTimer = Math.max(unit.swordsmanSelfRageTimer ?? 0, data.selfRageDuration);
+  allies.forEach((ally) => {
+    ally.swordsmanAllyRageTimer = Math.max(ally.swordsmanAllyRageTimer ?? 0, data.rageAllyDuration);
+    popText(ally.x, ally.y - 104, "愤怒加速", "#ff5a45");
+  });
   unit.swordsmanRageTimer = data.selfRageEvery;
-  popText(unit.x, unit.y - 104, `狂暴 -${data.selfRageHpCost}生命`, "#ff5a45");
+  state.blasts.push({ x: unit.x, y: unit.y - 42, radius: data.rageAllyRange, life: 0.28, duration: 0.28, color: "#ff5a45" });
+  popText(unit.x, unit.y - 104, `愤怒 -${data.selfRageHpCost}生命`, "#ff5a45");
 }
 
 function updateUndeadMage(unit, dt) {
@@ -8229,6 +8257,7 @@ function getAttackSpeedFactor(unit) {
   }
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
+  if (unit.swordsmanAllyRageTimer > 0) factor *= UNIT.swordsman.rageAllyAttackFactor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
@@ -10022,6 +10051,74 @@ function isArrowShieldBlockable(arrow) {
   return source?.type === "undeadCatapult";
 }
 
+function isSpartanShieldBlockable(arrow) {
+  if (!arrow.target || arrow.target.kind === "statue") return false;
+  const blockableTypes = new Set([
+    "archer",
+    "goldenArcher",
+    "archerFire",
+    "crossbow",
+    "spearThrow",
+    "goldenSpear",
+    "poisonZombie",
+    "necromancer",
+    "summoner",
+    "boneThrower",
+    "musketeer",
+    "demonArcher",
+    "fireElement",
+    "javelinThrower",
+    "goblinVulture",
+    "undeadVulture",
+    "corrosiveSpitter",
+    "antQueen",
+  ]);
+  return blockableTypes.has(arrow.type);
+}
+
+function getSpartanShieldRect(spartan) {
+  const dir = getUnitFacingDirection(spartan);
+  const centerX = spartan.x + dir * 18;
+  return {
+    x1: centerX - 10,
+    x2: centerX + 10,
+    y1: spartan.y - 92,
+    y2: spartan.y - 24,
+  };
+}
+
+function isTargetBehindSpartanShield(target, spartan) {
+  if (!target || target.id === spartan.id) return false;
+  const dir = getUnitFacingDirection(spartan);
+  const behind = (target.x - spartan.x) * dir <= 0;
+  const behindDistance = Math.abs(target.x - spartan.x);
+  return (
+    behind &&
+    behindDistance <= (UNIT.spartan.shieldProtectBehind ?? 80) &&
+    Math.abs((target.y ?? FIELD.ground) - (spartan.y ?? FIELD.ground)) <= 70
+  );
+}
+
+function tryBlockArrowWithSpartanShield(arrow, from, to) {
+  if (!isSpartanShieldBlockable(arrow)) return false;
+  const protectedSide = arrow.target.side;
+  const spartans = state.units.filter((unit) => (
+    (unit.type === "spartan" || unit.type === "goldenSpartan") &&
+    unit.side === protectedSide &&
+    unit.hp > 0 &&
+    unit.spartanShieldTimer > 0 &&
+    !isUnitHidden(unit)
+  ));
+  for (const spartan of spartans) {
+    if (!isTargetBehindSpartanShield(arrow.target, spartan)) continue;
+    if (!segmentIntersectsRect(from, to, getSpartanShieldRect(spartan))) continue;
+    state.blasts.push({ x: spartan.x + getUnitFacingDirection(spartan) * 20, y: spartan.y - 58, radius: 18, life: 0.18, duration: 0.18, color: "#d7c090" });
+    popText(spartan.x, spartan.y - 126, "盾挡直射", "#d7c090");
+    return true;
+  }
+  return false;
+}
+
 function getArrowBoardRect(cart) {
   const data = UNIT.arrowShieldCart;
   const width = data.arrowBoardWidth;
@@ -10115,6 +10212,11 @@ function updateArrows(dt) {
     arrow.life -= dt;
     const to = getArrowPosition(arrow);
     if (tryBlockArrowWithShieldCart(arrow, from, to)) {
+      arrow.life = 0;
+      arrow.blocked = true;
+      continue;
+    }
+    if (tryBlockArrowWithSpartanShield(arrow, from, to)) {
       arrow.life = 0;
       arrow.blocked = true;
       continue;
@@ -12904,7 +13006,7 @@ function drawUnit(unit) {
     ctx.shadowColor = unit.type === "commander" ? "#f5d14f" : "#fff1a8";
     ctx.shadowBlur = 10;
   }
-  if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0) {
+  if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0 || unit.swordsmanAllyRageTimer > 0) {
     ctx.shadowColor = "#ff4f3d";
     ctx.shadowBlur = 18;
   }
@@ -17907,7 +18009,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260617-element-barricade-balance";
+  const refreshKey = "stick-war-sw-refresh-20260617-spartan-sword-rage";
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
