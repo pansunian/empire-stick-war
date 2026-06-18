@@ -542,10 +542,6 @@ const UNIT = {
     selfRageRange: 115,
     selfRageEnemyCount: 2,
     selfRageHpCost: 10,
-    rageAllyRange: 90,
-    rageAllyMaxHp: 200,
-    rageAllyDuration: 6,
-    rageAllyAttackFactor: 1.5,
     jumpSlashDistance: 80,
     jumpSlashDamageMultiplier: 2,
     jumpSlashStun: 2,
@@ -2756,7 +2752,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
-  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，使周围 ${data.rageAllyRange} 距离内非剑士且生命值小于 ${data.rageAllyMaxHp} 的友军攻速 x${data.rageAllyAttackFactor}，持续 ${data.rageAllyDuration}秒`);
+  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
@@ -5896,7 +5892,6 @@ function updateUnits(dt) {
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
     unit.rageTimer = Math.max(0, (unit.rageTimer ?? 0) - dt);
     unit.swordsmanSelfRageTimer = Math.max(0, (unit.swordsmanSelfRageTimer ?? 0) - dt);
-    unit.swordsmanAllyRageTimer = Math.max(0, (unit.swordsmanAllyRageTimer ?? 0) - dt);
     unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
     unit.orderMarkTimer = Math.max(0, (unit.orderMarkTimer ?? 0) - dt);
     if (unit.orderMarkTimer <= 0) unit.orderMarkSide = null;
@@ -7374,30 +7369,10 @@ function updateSwordsman(unit, dt) {
     return;
   }
 
-  const allies = state.units.filter((ally) => (
-    ally.side === unit.side &&
-    ally.id !== unit.id &&
-    ally.type !== "swordsman" &&
-    ally.hp > 0 &&
-    ally.maxHp < data.rageAllyMaxHp &&
-    !isUnitHidden(ally) &&
-    !UNIT[ally.type]?.untargetable &&
-    distanceTo(unit.x, unit.y, ally.x, ally.y) <= data.rageAllyRange
-  ));
-
-  if (!allies.length) {
-    unit.swordsmanRageTimer = 1;
-    return;
-  }
-
   unit.hp = Math.max(1, unit.hp - data.selfRageHpCost);
-  allies.forEach((ally) => {
-    ally.swordsmanAllyRageTimer = Math.max(ally.swordsmanAllyRageTimer ?? 0, data.rageAllyDuration);
-    popText(ally.x, ally.y - 104, "愤怒加速", "#ff5a45");
-  });
+  unit.swordsmanSelfRageTimer = Math.max(unit.swordsmanSelfRageTimer ?? 0, data.selfRageDuration);
   unit.swordsmanRageTimer = data.selfRageEvery;
-  state.blasts.push({ x: unit.x, y: unit.y - 42, radius: data.rageAllyRange, life: 0.28, duration: 0.28, color: "#ff5a45" });
-  popText(unit.x, unit.y - 104, `愤怒 -${data.selfRageHpCost}生命`, "#ff5a45");
+  popText(unit.x, unit.y - 104, `狂暴 -${data.selfRageHpCost}生命`, "#ff5a45");
 }
 
 function updateUndeadMage(unit, dt) {
@@ -8257,7 +8232,6 @@ function getAttackSpeedFactor(unit) {
   }
   if (unit.rageTimer > 0) factor *= 2;
   if (unit.swordsmanSelfRageTimer > 0) factor *= 1.5;
-  if (unit.swordsmanAllyRageTimer > 0) factor *= UNIT.swordsman.rageAllyAttackFactor;
   if (unit.type === "minotaur" && unit.minotaurRage) factor *= UNIT.minotaur.deathRageAttackFactor;
   if (unit.type === "rhinoMan" && unit.rhinoRage) factor *= UNIT.rhinoMan.deathRageAttackFactor;
   return factor;
@@ -13006,7 +12980,7 @@ function drawUnit(unit) {
     ctx.shadowColor = unit.type === "commander" ? "#f5d14f" : "#fff1a8";
     ctx.shadowBlur = 10;
   }
-  if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0 || unit.swordsmanAllyRageTimer > 0) {
+  if (unit.rageTimer > 0 || unit.swordsmanSelfRageTimer > 0) {
     ctx.shadowColor = "#ff4f3d";
     ctx.shadowBlur = 18;
   }
