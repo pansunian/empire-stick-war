@@ -313,7 +313,7 @@ const UNIT = {
     slimeDuration: 8,
     evolveGoldCost: 50,
     evolveMagicCost: 100,
-    evolveDuration: 3,
+    evolveDuration: 5,
   },
   broodMother: {
     name: "虫母",
@@ -379,7 +379,7 @@ const UNIT = {
     lowDamageShieldCharges: 15,
     evolveGoldCost: 100,
     evolveMagicCost: 50,
-    evolveDuration: 3,
+    evolveDuration: 5,
   },
   spider: {
     name: "蜘蛛",
@@ -398,7 +398,7 @@ const UNIT = {
     webCooldown: 14,
     evolveGoldCost: 100,
     evolveMagicCost: 50,
-    evolveDuration: 3,
+    evolveDuration: 5,
   },
   giantSpider: {
     name: "巨蛛",
@@ -428,7 +428,7 @@ const UNIT = {
     neuralRetreatDuration: 5,
     evolveGoldCost: 100,
     evolveMagicCost: 50,
-    evolveDuration: 3,
+    evolveDuration: 5,
   },
   hoodCaterpillar: {
     name: "毛帽虫",
@@ -512,7 +512,7 @@ const UNIT = {
     burrowCooldown: 16,
     evolveGoldCost: 100,
     evolveMagicCost: 50,
-    evolveDuration: 3,
+    evolveDuration: 5,
   },
   lurker: {
     name: "潜伏者",
@@ -3554,6 +3554,31 @@ const UNDEAD_SHOP_LAYOUT = [
   ["boneGiant", null, null],
   ["bannerBearer", null, null],
 ];
+const SWARM_EVOLUTION_SOURCE_BY_TYPE = {
+  gnawMiner: "crawler",
+  broodMother: "swarmWorm",
+  ashWorm: "swarmWorm",
+  heavyAnt: "ironAnt",
+  antQueen: "ironAnt",
+  giantSpider: "spider",
+  hoodCaterpillar: "caterpillar",
+  lurker: "boneStinger",
+};
+const SWARM_EVOLVE_ACTION_BY_TYPE = Object.fromEntries(
+  Object.keys(SWARM_EVOLUTION_SOURCE_BY_TYPE).map((type) => [type, `evolve${type[0].toUpperCase()}${type.slice(1)}`])
+);
+const SWARM_EVOLVE_TYPE_BY_ACTION = Object.fromEntries(
+  Object.entries(SWARM_EVOLVE_ACTION_BY_TYPE).map(([type, action]) => [action, type])
+);
+const SWARM_SHOP_LAYOUT = [
+  ["crawler", "gnawMiner", null],
+  ["ironAnt", "heavyAnt", "antQueen"],
+  ["poisonBug", "corrosiveSpitter", null],
+  ["swarmWorm", "broodMother", "ashWorm"],
+  ["spider", "giantSpider", null],
+  ["boneStinger", "lurker", null],
+  ["caterpillar", "hoodCaterpillar", null],
+];
 
 function shopGroupClass(type) {
   if (type === "summoner") return "shop-group-economy";
@@ -3582,6 +3607,9 @@ function renderShop() {
   const undeadShopItems = selectedFaction === "undeadEmpire"
     ? UNDEAD_SHOP_LAYOUT.flatMap((column) => column).filter((type) => type === null || shopRoster.includes(type))
     : [];
+  const swarmShopItems = selectedFaction === "swarm"
+    ? SWARM_SHOP_LAYOUT.flatMap((column) => column).filter((type) => type === null || shopRoster.includes(type) || SWARM_EVOLUTION_SOURCE_BY_TYPE[type])
+    : [];
   const elementShopItemCount = elementShopItems.length + (showElementConvertButton ? 1 : 0);
 
   const renderTrainButton = (type) => {
@@ -3606,6 +3634,23 @@ function renderShop() {
       </button>
     `;
   };
+  const renderSwarmButton = (type) => {
+    if (!type) return renderTrainButton(type);
+    if (!SWARM_EVOLUTION_SOURCE_BY_TYPE[type]) return renderTrainButton(type);
+    const sourceType = SWARM_EVOLUTION_SOURCE_BY_TYPE[type];
+    const cost = getSwarmEvolutionCostForSource(sourceType, type);
+    const costText = [
+      cost.gold > 0 ? `${cost.gold} 金` : "",
+      cost.magic > 0 ? `${cost.magic} 魔力` : "",
+    ].filter(Boolean).join(" · ") || "无需资源";
+    return `
+      <button class="train-btn" data-action="${SWARM_EVOLVE_ACTION_BY_TYPE[type]}">
+        <span class="unit-icon ${UNIT_ICON[type]}"></span>
+        <strong>进化${UNIT[type].name}</strong>
+        <small>${UNIT[sourceType].name} · ${costText}</small>
+      </button>
+    `;
+  };
   const elementConvertButton = showElementConvertButton
     ? `
       <button class="train-btn" data-action="convertEarth">
@@ -3624,6 +3669,8 @@ function renderShop() {
       ? elementShopItems.map(renderElementButton).join("") + elementConvertButton
       : selectedFaction === "undeadEmpire"
       ? undeadShopItems.map(renderTrainButton).join("")
+      : selectedFaction === "swarm"
+      ? swarmShopItems.map(renderSwarmButton).join("")
       : shopRoster.map(renderTrainButton).join("");
 
   trainButtons = [...document.querySelectorAll(".train-btn")];
@@ -3676,6 +3723,11 @@ function renderShop() {
       }
       if (button.dataset.action === "mergeV") {
         mergeV(actionSide);
+        return;
+      }
+      const swarmEvolveType = SWARM_EVOLVE_TYPE_BY_ACTION[button.dataset.action];
+      if (swarmEvolveType) {
+        evolveFirstSwarmUnit(actionSide, swarmEvolveType);
         return;
       }
       queueUnit(button.dataset.unit);
@@ -3888,6 +3940,8 @@ function spawnUnit(type, side, x) {
     heavyAntDodge: false,
     swarmEvolutionTimer: 0,
     swarmEvolutionTarget: null,
+    swarmEvolutionOriginalMaxHp: 0,
+    swarmEvolutionForceCharge: false,
     spiderWebCooldown: 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
@@ -17303,8 +17357,8 @@ function castCovenantGuard(unit, target) {
   return true;
 }
 
-function getSwarmEvolutionCost(unit, targetType) {
-  const data = UNIT[unit.type] ?? {};
+function getSwarmEvolutionCostForSource(sourceType, targetType) {
+  const data = UNIT[sourceType] ?? {};
   return {
     gold: data.evolveGoldCost ?? 0,
     magic: data.evolveMagicCost ?? 0,
@@ -17312,15 +17366,43 @@ function getSwarmEvolutionCost(unit, targetType) {
   };
 }
 
+function getSwarmEvolutionCost(unit, targetType) {
+  return getSwarmEvolutionCostForSource(unit?.type, targetType);
+}
+
+function getSwarmEvolutionSourceType(targetType) {
+  return SWARM_EVOLUTION_SOURCE_BY_TYPE[targetType] ?? null;
+}
+
+function findSwarmEvolutionCandidate(side, targetType) {
+  const sourceType = getSwarmEvolutionSourceType(targetType);
+  if (!sourceType) return null;
+  return state.units
+    .filter((unit) => unit.side === side && unit.type === sourceType && unit.hp > 0 && !isUnitHidden(unit))
+    .sort((a, b) => b.x - a.x || a.id - b.id)
+    .find((unit) => canEvolveSwarmUnit(unit, targetType)) ?? null;
+}
+
+function canStartSwarmEvolutionFromShop(side, targetType) {
+  return Boolean(findSwarmEvolutionCandidate(side, targetType));
+}
+
+function evolveFirstSwarmUnit(side, targetType) {
+  const unit = findSwarmEvolutionCandidate(side, targetType);
+  if (!unit) {
+    const sourceType = getSwarmEvolutionSourceType(targetType);
+    const x = getSideTraitTextPoint(side).x;
+    const y = getSideTraitTextPoint(side).y;
+    popText(x, y, sourceType ? `需要可进化的${UNIT[sourceType].name}` : "暂不可进化", "#d9d0b8");
+    return false;
+  }
+  return evolveSwarmUnit(unit, targetType);
+}
+
 function canEvolveSwarmUnit(unit, targetType) {
   if (!unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
   if ((unit.swarmEvolutionTimer ?? 0) > 0) return false;
-  if (targetType === "gnawMiner" && unit.type !== "crawler") return false;
-  if ((targetType === "broodMother" || targetType === "ashWorm") && unit.type !== "swarmWorm") return false;
-  if (targetType === "giantSpider" && unit.type !== "spider") return false;
-  if (targetType === "hoodCaterpillar" && unit.type !== "caterpillar") return false;
-  if (targetType === "lurker" && unit.type !== "boneStinger") return false;
-  if ((targetType === "heavyAnt" || targetType === "antQueen") && unit.type !== "ironAnt") return false;
+  if (unit.type !== getSwarmEvolutionSourceType(targetType)) return false;
   const cost = getSwarmEvolutionCost(unit, targetType);
   return getSideGoldAmount(unit.side) >= cost.gold && getSideMagic(unit.side) >= cost.magic;
 }
@@ -17341,8 +17423,14 @@ function evolveSwarmUnit(unit, targetType) {
   const cost = getSwarmEvolutionCost(unit, targetType);
   spendSideGold(unit.side, cost.gold);
   addSideMagic(unit.side, -cost.magic);
+  const originalMaxHp = Math.max(1, unit.maxHp || UNIT[unit.type]?.hp || unit.hp || 1);
+  const evolutionMaxHp = Math.max(1, Math.round(originalMaxHp * 0.5));
+  unit.swarmEvolutionOriginalMaxHp = originalMaxHp;
+  unit.maxHp = evolutionMaxHp;
+  unit.hp = Math.min(unit.hp, evolutionMaxHp);
   unit.swarmEvolutionTarget = targetType;
-  unit.swarmEvolutionTimer = UNIT[unit.type]?.evolveDuration ?? 3;
+  unit.swarmEvolutionTimer = UNIT[unit.type]?.evolveDuration ?? 5;
+  unit.swarmEvolutionForceCharge = unit.forceCharge;
   unit.cooldown = Math.max(unit.cooldown ?? 0, unit.swarmEvolutionTimer);
   unit.combatTimer = unit.swarmEvolutionTimer;
   unit.forceCharge = false;
@@ -17356,10 +17444,11 @@ function evolveSwarmUnit(unit, targetType) {
 function finishSwarmEvolution(unit) {
   const targetType = unit.swarmEvolutionTarget;
   if (!targetType || unit.hp <= 0) return false;
+  const evolutionHpRatio = Math.max(0.01, Math.min(1, unit.hp / Math.max(1, unit.maxHp || unit.hp)));
   const evolved = spawnUnit(targetType, unit.side, unit.x);
   evolved.y = unit.y;
-  evolved.hp = Math.max(1, Math.round(evolved.maxHp * 0.5));
-  evolved.forceCharge = unit.forceCharge;
+  evolved.hp = Math.max(1, Math.round(evolved.maxHp * evolutionHpRatio));
+  evolved.forceCharge = unit.swarmEvolutionForceCharge;
   evolved.combatTimer = 1.5;
   if (targetType === "lurker") {
     evolved.boneStingerBurrowTimer = Infinity;
@@ -18262,6 +18351,11 @@ function updateHud() {
         button.disabled = state.over || !canAffordElementMerge("vUnit", playerSide) || !canMergeV(playerSide);
         return;
       }
+      const swarmEvolveType = SWARM_EVOLVE_TYPE_BY_ACTION[button.dataset.action];
+      if (swarmEvolveType) {
+        button.disabled = state.over || !canStartSwarmEvolutionFromShop(playerSide, swarmEvolveType);
+        return;
+      }
       if (!type) return;
       button.disabled = !canAffordUnit(type, playerFaction, playerSide, playerGold) || state.over;
     });
@@ -18342,6 +18436,11 @@ function updateHud() {
     }
     if (button.dataset.action === "mergeV") {
       button.disabled = state.over || !canAffordElementMerge("vUnit", "player") || !canMergeV("player");
+      return;
+    }
+    const swarmEvolveType = SWARM_EVOLVE_TYPE_BY_ACTION[button.dataset.action];
+    if (swarmEvolveType) {
+      button.disabled = state.over || !canStartSwarmEvolutionFromShop("player", swarmEvolveType);
       return;
     }
     if (!type) return;
