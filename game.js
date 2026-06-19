@@ -4700,7 +4700,7 @@ function getFactionTraitTimer(side) {
     undeadSkeletonElapsed: 0,
     orderLightArmorTimer: ORDER_ARMOR_TRAIT.light.interval,
     orderMediumArmorTimer: ORDER_ARMOR_TRAIT.medium.interval,
-    swarmEggTimer: 18,
+    swarmEggTimer: 20,
   };
   return state.factionTraitTimers[side];
 }
@@ -4717,7 +4717,7 @@ function updateSwarmEggTrait(side, dt) {
   const timer = getFactionTraitTimer(side);
   timer.swarmEggTimer -= dt;
   if (timer.swarmEggTimer > 0) return;
-  timer.swarmEggTimer += 18;
+  timer.swarmEggTimer += 20;
   const eggs = state.units.filter((unit) => unit.side === side && canSwarmUnitLayEgg(unit)).map((unit) => ({
     side,
     type: unit.type,
