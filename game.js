@@ -1899,6 +1899,9 @@ const FOUR_WAY_START_GOLD = 600;
 const FOUR_WAY_MINE_LINE_SPACING = 80;
 const FOUR_WAY_MINE_BACK_DISTANCE = 210;
 const FOUR_WAY_MINE_SIDE_OFFSET = 105;
+const SWARM_HATCH_HEALTH_FACTOR = 0.6;
+const SWARM_HATCH_MIN_HEALTH_FACTOR = 0.22;
+const SWARM_HATCH_DAMAGE_FACTOR = 0.6;
 const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
   chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
@@ -4721,6 +4724,10 @@ function updateSwarmEggTrait(side, dt) {
     x: unit.x,
     y: unit.y,
     life: 5,
+    healthFactor: Math.max(
+      SWARM_HATCH_MIN_HEALTH_FACTOR,
+      (unit.swarmHatchHealthFactor ?? 1) * SWARM_HATCH_HEALTH_FACTOR,
+    ),
   }));
   if (!eggs.length) return;
   state.swarmEggs.push(...eggs);
@@ -4741,9 +4748,13 @@ function updateSwarmEggs(dt) {
     if (!data) return;
     const hatch = spawnUnit(egg.type, egg.side, egg.x);
     hatch.y = egg.y;
-    hatch.hp = Math.max(1, Math.round((hatch.maxHp ?? data.hp) * 0.5));
+    const healthFactor = egg.healthFactor ?? SWARM_HATCH_HEALTH_FACTOR;
+    hatch.maxHp = Math.max(1, Math.round((data.hp ?? hatch.maxHp) * healthFactor));
+    hatch.hp = hatch.maxHp;
+    if (Number.isFinite(data.damage)) hatch.damage = Math.max(1, Math.round(data.damage * SWARM_HATCH_DAMAGE_FACTOR * 10) / 10);
     hatch.forceCharge = true;
     hatch.swarmHatched = true;
+    hatch.swarmHatchHealthFactor = healthFactor;
     state.blasts.push({ x: hatch.x, y: hatch.y - 32, radius: 38, life: 0.3, duration: 0.3, color: "#d7f59b" });
     popText(hatch.x, hatch.y - 86, "孵化", "#d7f59b");
   });
