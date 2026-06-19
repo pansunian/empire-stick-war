@@ -2752,7 +2752,7 @@ function formatSpecial(type) {
   if (data.slayImmune) notes.push("免疫秒杀");
   if (data.controlImmune) notes.push("免疫控制");
   if (data.antiAir) notes.push("近战可攻击空中");
-  if (type === "swordsman") notes.push(`附近至少 ${data.selfRageEnemyCount} 名敌人时，每 ${data.selfRageEvery}秒消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5`);
+  if (type === "swordsman") notes.push(`手动技能愤怒：消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5，持续 ${data.selfRageDuration}秒，冷却 ${data.selfRageEvery}秒`);
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
@@ -3856,7 +3856,6 @@ function spawnUnit(type, side, x) {
     zeusColumnTimer: data.columnEvery ?? 0,
     zeusGateTimer: data.gateEvery ?? 0,
     berserkerRageTimer: data.rageEvery ?? 0,
-    swordsmanRageTimer: data.selfRageEvery ?? 0,
     swordsmanSelfRageTimer: 0,
     spartanShieldTimer: 0,
     spartanShieldCooldown: 0,
@@ -5999,7 +5998,6 @@ function updateUnits(dt) {
       if (unit.type === "graveDigger") updateGraveDigger(unit, dt);
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
-      if (unit.type === "swordsman") updateSwordsman(unit, dt);
       if (unit.type === "antQueen") updateAntQueen(unit, dt);
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (isManuallyControlled(unit)) {
@@ -6119,9 +6117,6 @@ function updateUnits(dt) {
       updateIronCavalry(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
-    }
-    if (unit.type === "swordsman") {
-      updateSwordsman(unit, dt);
     }
     if (unit.type === "suikai") {
       updateSuikai(unit, dt);
@@ -7352,27 +7347,6 @@ function throwIronCavalryBomb(unit, target) {
     type: "ironCavalryBomb",
   });
   popText(unit.x, unit.y - 112, "投掷炸弹", "#ffce7a");
-}
-
-function updateSwordsman(unit, dt) {
-  const data = UNIT.swordsman;
-  unit.swordsmanRageTimer = Math.max(0, (unit.swordsmanRageTimer ?? data.selfRageEvery) - dt);
-  if (unit.swordsmanRageTimer > 0 || unit.hp <= data.selfRageHpCost) return;
-
-  const nearbyEnemies = state.units.filter((enemy) => {
-    if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
-    return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.selfRageRange;
-  }).length;
-
-  if (nearbyEnemies < data.selfRageEnemyCount) {
-    unit.swordsmanRageTimer = 1;
-    return;
-  }
-
-  unit.hp = Math.max(1, unit.hp - data.selfRageHpCost);
-  unit.swordsmanSelfRageTimer = Math.max(unit.swordsmanSelfRageTimer ?? 0, data.selfRageDuration);
-  unit.swordsmanRageTimer = data.selfRageEvery;
-  popText(unit.x, unit.y - 104, `狂暴 -${data.selfRageHpCost}生命`, "#ff5a45");
 }
 
 function updateUndeadMage(unit, dt) {
@@ -16155,6 +16129,7 @@ function getManualActions(unit) {
       add("evolveGnawMiner", "咀矿者", "direct");
       break;
     case "swordsman":
+      add("swordsmanRage", "愤怒", "direct");
       add("jumpSlash", "跳劈", "target");
       break;
     case "spearman":
@@ -16341,6 +16316,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
+  if (button.id === "swordsmanRage" && (unit.swordsmanSelfRageTimer > 0 || unit.hp <= UNIT.swordsman.selfRageHpCost)) return true;
   if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return true;
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return true;
@@ -16491,6 +16467,10 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
+  if (button.id === "swordsmanRage") {
+    if (unit.swordsmanSelfRageTimer > 0) return "愤怒中";
+    if (unit.hp <= UNIT.swordsman.selfRageHpCost) return "生命不足";
+  }
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return "正在啃食";
   if (button.id === "reaperStealth" && unit.reaperStealthTimer > 0) return "已隐形";
   if (button.id === "scimitarRoar" && unit.scimitarRoarTimer > 0) return `冷却 ${Math.ceil(unit.scimitarRoarTimer)}秒`;
@@ -16583,6 +16563,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "spartanShield") {
     toggleSpartanShield(unit);
+    return;
+  }
+  if (action.id === "swordsmanRage") {
+    activateSwordsmanRage(unit);
     return;
   }
   if (action.id === "reaperStealth") {
@@ -16906,6 +16890,7 @@ function getManualActionCooldown(unit, id) {
     goblinHeavyArmor: UNIT.goblinExpert.heavyArmorDuration,
     priestSiphon: UNIT.priest.siphonCooldown,
     priestBlood: UNIT.priest.bloodSacrificeCooldown,
+    swordsmanRage: data.selfRageEvery,
     jumpSlash: data.jumpSlashCooldown,
     fireArrow: data.fireArrowCooldown ?? data.cooldown,
     orderMark: data.markCooldown,
@@ -17311,6 +17296,30 @@ function toggleSpartanShield(unit) {
 function finishSpartanShield(unit) {
   unit.spartanShieldTimer = 0;
   unit.spartanShieldCooldown = unit.spartanShieldCooldownDuration ?? UNIT.spartan.shieldStanceCooldown;
+}
+
+function activateSwordsmanRage(unit) {
+  const data = UNIT.swordsman;
+  if (unit.hp <= data.selfRageHpCost) {
+    popText(unit.x, unit.y - 116, "生命不足", "#d9d0b8");
+    return false;
+  }
+  if ((unit.swordsmanSelfRageTimer ?? 0) > 0) {
+    popText(unit.x, unit.y - 116, "愤怒中", "#ff5a45");
+    return false;
+  }
+  const cooldown = unit.manualSkillCooldowns?.swordsmanRage ?? 0;
+  if (cooldown > 0) {
+    popText(unit.x, unit.y - 116, `冷却 ${Math.ceil(cooldown)}秒`, "#d9d0b8");
+    return false;
+  }
+  unit.hp = Math.max(1, unit.hp - data.selfRageHpCost);
+  unit.swordsmanSelfRageTimer = data.selfRageDuration;
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.swordsmanRage = data.selfRageEvery;
+  state.blasts.push({ x: unit.x, y: unit.y - 42, radius: data.selfRageRange, life: 0.28, duration: 0.28, color: "#ff5a45" });
+  popText(unit.x, unit.y - 104, `愤怒 -${data.selfRageHpCost}生命`, "#ff5a45");
+  return true;
 }
 
 function castSwordsmanJumpSlash(unit, target) {
