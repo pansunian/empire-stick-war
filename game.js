@@ -168,7 +168,6 @@ const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_SURVIVAL_HP_TRAIT = { interval: 10, factor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
-const UNDEAD_CORPSE_MAGIC_COST = { normal: 5, heavy: 10, heavyHp: 350 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
 const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
   "covenantGuard",
@@ -7229,11 +7228,9 @@ function reviveNearestCorpse(unit) {
   const data = UNIT.graveDigger;
   const corpse = state.corpses
     .filter((item) => item.side === unit.side && item.reviveable && item.revives < 3 && !UNDEAD_CORPSE_EXCLUDED.has(item.type))
-    .filter((item) => canPayUndeadCorpseMagic(unit.side, item))
     .filter((item) => distanceTo(item.x, item.y, unit.x, unit.y) <= data.reviveRadius)
     .sort((a, b) => distanceTo(a.x, a.y, unit.x, unit.y) - distanceTo(b.x, b.y, unit.x, unit.y))[0];
   if (!corpse) return;
-  const magicCost = spendUndeadCorpseMagic(unit.side, corpse);
   corpse.revives += 1;
   const revived = spawnUnit(corpse.type, corpse.side, corpse.x);
   revived.y = corpse.y;
@@ -7241,24 +7238,7 @@ function reviveNearestCorpse(unit) {
   revived.hp = Math.max(1, Math.round(revived.maxHp * hpRatios[corpse.revives - 1]));
   revived.corpseRevives = corpse.revives;
   state.corpses = state.corpses.filter((item) => item !== corpse);
-  popText(revived.x, revived.y - 100, `掘墓复活 ${Math.round(hpRatios[corpse.revives - 1] * 100)}% -${magicCost}魔`, "#b8b0a5");
-}
-
-function getUndeadCorpseMagicCost(corpse) {
-  const maxHp = corpse.maxHp ?? UNIT[corpse.type]?.hp ?? 0;
-  return maxHp >= UNDEAD_CORPSE_MAGIC_COST.heavyHp
-    ? UNDEAD_CORPSE_MAGIC_COST.heavy
-    : UNDEAD_CORPSE_MAGIC_COST.normal;
-}
-
-function canPayUndeadCorpseMagic(side, corpse) {
-  return getSideMagic(side) >= getUndeadCorpseMagicCost(corpse);
-}
-
-function spendUndeadCorpseMagic(side, corpse) {
-  const cost = getUndeadCorpseMagicCost(corpse);
-  addSideMagic(side, -cost);
-  return cost;
+  popText(revived.x, revived.y - 100, `掘墓复活 ${Math.round(hpRatios[corpse.revives - 1] * 100)}%`, "#b8b0a5");
 }
 
 function releaseGraveGhosts(unit) {
@@ -7508,11 +7488,9 @@ function convertEnemyCorpseWithNecromancer(unit) {
   const corpse = state.corpses
     .filter((item) => item.side !== unit.side)
     .filter((item) => canNecromancerConvertCorpse(item))
-    .filter((item) => canPayUndeadCorpseMagic(unit.side, item))
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0];
   if (!corpse) return false;
   const type = getNecromancerConversionType(corpse);
-  const magicCost = spendUndeadCorpseMagic(unit.side, corpse);
   const converted = spawnUnit(type, unit.side, corpse.x);
   converted.y = corpse.y;
   const hpRatio = UNIT.necromancer.corpseHpRatio;
@@ -7524,7 +7502,7 @@ function convertEnemyCorpseWithNecromancer(unit) {
   converted.summonerId = unit.id;
   state.corpses = state.corpses.filter((item) => item !== corpse);
   state.blasts.push({ x: converted.x, y: converted.y - 36, radius: 46, life: 0.32, duration: 0.32, color: "#b8b0e8" });
-  popText(converted.x, converted.y - 106, `${getNecromancerConversionText(type)} -${magicCost}魔`, "#b8b0e8");
+  popText(converted.x, converted.y - 106, getNecromancerConversionText(type), "#b8b0e8");
   return true;
 }
 
