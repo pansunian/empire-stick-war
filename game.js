@@ -1897,6 +1897,9 @@ const FOUR_WAY_STARTERS = {
   element: ["earthElement", "waterElement", "fireElement", "windElement"],
 };
 const FOUR_WAY_START_GOLD = 600;
+const FOUR_WAY_MINE_LINE_SPACING = 80;
+const FOUR_WAY_MINE_BACK_DISTANCE = 210;
+const FOUR_WAY_MINE_SIDE_OFFSET = 105;
 const FOUR_WAY_FACTION_SKILL = {
   order: { cooldown: 30, duration: 15 },
   chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
@@ -2587,6 +2590,15 @@ function addSideMagic(side, amount) {
   }
 }
 
+function addSideGold(side, amount) {
+  if (side === "player") state.gold += amount;
+  else if (side === "enemy") state.enemyGold += amount;
+  else {
+    const ai = state.fourWaySides?.find((item) => item.side === side);
+    if (ai) ai.gold += amount;
+  }
+}
+
 function canAffordUnit(type, faction, side, gold) {
   return gold >= getUnitCost(type, faction, side) && getSideMagic(side) >= getUnitMagicCost(type, faction, side);
 }
@@ -3094,7 +3106,7 @@ function newFourWayGame() {
   homeBtn.classList.add("hidden");
   pauseBtn.classList.remove("active");
   pauseBtn.textContent = "暂停";
-  state = createBaseState(0, 0, { player: [], enemy: [] });
+  state = createBaseState(0, 0, createFourWaySideMines());
   state.fourWay = true;
   state.fourWayElapsed = 0;
   state.fourWayPlayerSide = selectedControlMode === "ai" ? null : selectedFaction;
@@ -3109,7 +3121,7 @@ function newFourWayGame() {
     magic: 0,
     hp: STATUE_MAX_HP,
     spawnTimer: 1 + Math.random() * 1.2,
-    incomeTimer: 1,
+    incomeTimer: 2,
     alive: true,
   }));
   state.fourWayBaseHp = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, STATUE_MAX_HP]));
@@ -4501,9 +4513,9 @@ function updateFourWayAi(dt) {
     if (!ai.alive) return;
     ai.incomeTimer -= dt;
     while (ai.incomeTimer <= 0) {
-      ai.incomeTimer += 1;
-      ai.gold += 20;
-      if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND;
+      ai.incomeTimer += 2;
+      ai.gold += 10;
+      ai.magic = (ai.magic ?? 0) + 5;
     }
     if (isFourWayPlayerSide(ai.side)) return;
     tryCastFourWayFactionSkill(ai);
@@ -5054,6 +5066,48 @@ function createSideMines() {
   };
 }
 
+function createFourWaySideMines() {
+  return Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, createFourWayMinesForSide(side)]));
+}
+
+function createFourWayMinesForSide(side) {
+  const base = FOUR_WAY_BASES[side];
+  if (!base) return [];
+  const center = { x: FOUR_WAY_FIELD.width / 2, y: FOUR_WAY_FIELD.height / 2 };
+  const dx = center.x - base.x;
+  const dy = center.y - base.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = dx / length;
+  const ny = dy / length;
+  const px = -ny;
+  const py = nx;
+  const mines = [];
+  [-1, 1].forEach((sideSign) => {
+    const lateral = sideSign * FOUR_WAY_MINE_SIDE_OFFSET;
+    for (let index = 0; index < 4; index += 1) {
+      const distance = FOUR_WAY_MINE_BACK_DISTANCE + index * FOUR_WAY_MINE_LINE_SPACING;
+      mines.push({
+        id: `${side}-gold-${sideSign}-${index}`,
+        resource: "gold",
+        x: base.x + nx * distance + px * lateral,
+        y: base.y + ny * distance + py * lateral,
+        remaining: NORMAL_MINE_CAPACITY,
+        capacity: NORMAL_MINE_CAPACITY,
+      });
+    }
+    const magicDistance = FOUR_WAY_MINE_BACK_DISTANCE + 4 * FOUR_WAY_MINE_LINE_SPACING;
+    mines.push({
+      id: `${side}-magic-${sideSign}`,
+      resource: "magic",
+      x: base.x + nx * magicDistance + px * lateral,
+      y: base.y + ny * magicDistance + py * lateral,
+      remaining: MAGIC_MINE_CAPACITY,
+      capacity: MAGIC_MINE_CAPACITY,
+    });
+  });
+  return mines;
+}
+
 function createMinesForSide(side) {
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   const dir = side === "player" ? 1 : -1;
@@ -5079,6 +5133,8 @@ function createMinesForSide(side) {
 }
 
 function getSideMines(side) {
+  if (state?.sideMines?.[side]) return state.sideMines[side];
+  if (FOUR_WAY_BASES[side]) return createFourWayMinesForSide(side);
   return state?.sideMines?.[side] ?? createMinesForSide(side);
 }
 
@@ -5134,6 +5190,20 @@ function getAvailableMineWorkSlot(side, mineId) {
 }
 
 function getMineWorkPoint(unit, mine) {
+  if (state?.fourWay && FOUR_WAY_BASES[unit.side]) {
+    const base = FOUR_WAY_BASES[unit.side];
+    const dx = mine.x - base.x;
+    const dy = mine.y - base.y;
+    const distance = Math.hypot(dx, dy) || 1;
+    const px = -dy / distance;
+    const py = dx / distance;
+    const slot = unit.mineWorkSlot ?? 0;
+    const offset = slot === 0 ? 18 : -18;
+    return {
+      x: mine.x + px * offset,
+      y: mine.y + py * offset,
+    };
+  }
   const dir = unit.side === "player" ? 1 : -1;
   const slot = unit.mineWorkSlot ?? 0;
   const xOffset = slot === 0 ? 20 : -22;
@@ -5142,6 +5212,16 @@ function getMineWorkPoint(unit, mine) {
     x: mine.x + dir * xOffset,
     y: mine.y + yOffset,
   };
+}
+
+function getMiningHomePoint(side) {
+  if (state?.fourWay && FOUR_WAY_BASES[side]) {
+    const base = FOUR_WAY_BASES[side];
+    return { x: base.x, y: base.y };
+  }
+  return side === "player"
+    ? { x: FIELD.playerGate - 36, y: FIELD.ground }
+    : { x: FIELD.enemyGate + 36, y: FIELD.ground };
 }
 
 function isMiningWorker(unit) {
@@ -5183,10 +5263,8 @@ function depositMinerCarry(unit, isPlayer) {
   const resource = getCarryResource(unit);
   if (resource === "magic") {
     addSideMagic(unit.side, unit.carry);
-  } else if (isPlayer) {
-    state.gold += unit.carry;
   } else {
-    state.enemyGold += unit.carry;
+    addSideGold(unit.side, unit.carry);
   }
   popText(unit.x, unit.y - 52, `入库 ${getResourceLabel(resource)} +${formatResourceAmount(unit.carry)}`, getResourceColor(resource, isPlayer));
 }
@@ -7893,7 +7971,7 @@ function updateWraithMiner(unit, dt) {
 }
 
 function updateMiner(unit, dt) {
-  const isPlayer = unit.side === "player";
+  const isPlayer = isPlayerControlledSide(unit.side);
   const minerCommand = isPlayer && isMiningWorker(unit) ? state.minerCommand : "mine";
 
   if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
@@ -7918,15 +7996,15 @@ function updateMiner(unit, dt) {
     return;
   }
 
-  const home = isPlayer ? FIELD.playerGate - 36 : FIELD.enemyGate + 36;
+  const home = getMiningHomePoint(unit.side);
   const mine = getMineForMiner(unit);
   const bagSize = getMiningBagSize(unit);
   const mustDeposit = unit.carry >= bagSize;
   const forcedHome = isPlayer && state.command === "retreat";
   const workPoint = mine ? getMineWorkPoint(unit, mine) : null;
   const returningHome = forcedHome || mustDeposit || !workPoint;
-  const targetX = returningHome ? home : workPoint.x;
-  const targetY = returningHome ? FIELD.ground : workPoint.y;
+  const targetX = returningHome ? home.x : workPoint.x;
+  const targetY = returningHome ? home.y : workPoint.y;
 
   if (returningHome) {
     unit.mineSlotId = null;
@@ -12321,6 +12399,7 @@ function draw() {
   state.corpses.forEach(drawCorpse);
   if (state.fourWay) {
     drawFourWayCenter();
+    FOUR_WAY_SIDES.forEach((side) => getSideMines(side).forEach((mine) => drawMine(mine, side)));
   } else if (isGoldRushActive()) {
     drawGoldRushMines();
   } else {
