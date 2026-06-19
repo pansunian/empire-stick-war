@@ -166,7 +166,6 @@ const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_SURVIVAL_HP_TRAIT = { interval: 10, factor: 1.2 };
-const CHAOS_FOUR_WAY_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
 const UNDEAD_CORPSE_MAGIC_COST = { normal: 5, heavy: 10, heavyHp: 350 };
@@ -1903,6 +1902,7 @@ const FOUR_WAY_FACTION_SKILL = {
   chaos: { cooldown: 30, duration: 15, summons: ["chaosGiant", "enslavedGiant"] },
   undeadEmpire: { cooldown: 30, duration: 15, summons: ["undeadMage", "necromancer"] },
   element: { cooldown: 30, duration: 15, summons: ["vUnit"] },
+  swarm: { cooldown: 30, duration: 15, summons: ["antQueen", "giantSpider", "caterpillar"] },
 };
 
 const UNIT_ICON = {
@@ -3015,6 +3015,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     barricades: [],
     slimeFields: [],
     webFields: [],
+    swarmEggs: [],
     corpses: [],
     ghosts: [],
     pendingMerges: [],
@@ -3099,8 +3100,8 @@ function newFourWayGame() {
   state.fourWayPlayerSide = selectedControlMode === "ai" ? null : selectedFaction;
   state.fourWayTeams = createFourWayTeams(state.fourWayPlayerSide ?? selectedFaction);
   state.fourWayPressure = Object.fromEntries(FOUR_WAY_SIDES.map((side) => [side, 0]));
-  state.fourWaySkillCooldowns = { order: 4, chaos: 7, undeadEmpire: 10, element: 13 };
-  state.fourWaySkillEffects = { order: 0, chaos: 0, undeadEmpire: 0, element: 0 };
+  state.fourWaySkillCooldowns = Object.fromEntries(Object.keys(FOUR_WAY_FACTION_SKILL).map((side, index) => [side, 4 + index * 3]));
+  state.fourWaySkillEffects = Object.fromEntries(Object.keys(FOUR_WAY_FACTION_SKILL).map((side) => [side, 0]));
   state.fourWaySides = FOUR_WAY_SIDES.map((side) => ({
     side,
     faction: side,
@@ -4535,6 +4536,7 @@ function tryCastFourWayFactionSkill(ai) {
   if (side === "chaos") return castFourWayChaosSkill(side);
   if (side === "undeadEmpire") return castFourWayUndeadSkill(side);
   if (side === "element") return castFourWayElementSkill(side);
+  if (side === "swarm") return castFourWaySwarmSkill(side);
   return false;
 }
 
@@ -4591,9 +4593,32 @@ function castFourWayElementSkill(side) {
   return true;
 }
 
+function castFourWaySwarmSkill(side) {
+  const config = FOUR_WAY_FACTION_SKILL.swarm;
+  const summons = summonFactionSkillUnits(side, config.summons, config.duration, 22);
+  state.fourWaySkillCooldowns[side] = config.cooldown;
+  state.fourWaySkillEffects[side] = 0;
+  const point = getSideTraitTextPoint(side);
+  state.blasts.push({ x: point.x, y: point.y + 78, radius: 96, life: 0.45, duration: 0.45, color: "#d7f59b" });
+  popText(point.x, point.y, `虫群增援 x${summons.length}`, "#d7f59b");
+  return true;
+}
+
 function summonFourWaySkillUnits(side, types, duration, startIndex = 0) {
   return types.map((type, offset) => {
     const unit = spawnFourWayUnit(type, side, startIndex + offset);
+    unit.timedLife = duration;
+    unit.noCorpse = true;
+    unit.forceCharge = true;
+    return unit;
+  });
+}
+
+function summonFactionSkillUnits(side, types, duration, startIndex = 0) {
+  return types.map((type, offset) => {
+    const unit = state.fourWay && FOUR_WAY_BASES[side]
+      ? spawnFourWayUnit(type, side, startIndex + offset)
+      : spawnTraitUnit(type, side, startIndex + offset);
     unit.timedLife = duration;
     unit.noCorpse = true;
     unit.forceCharge = true;
@@ -4660,12 +4685,15 @@ function updatePassiveGold(dt) {
 }
 
 function updateFactionTraits(dt) {
-  const sides = state.fourWay ? FOUR_WAY_SIDES : ["player", "enemy"];
+  const fourWaySides = state.fourWaySides?.map((ai) => ai.side) ?? [];
+  const sides = state.fourWay ? [...new Set([...FOUR_WAY_SIDES, ...fourWaySides])] : ["player", "enemy"];
   sides.forEach((side) => {
     const faction = factionForSide(side);
     if (faction === "undeadEmpire") updateUndeadSkeletonTrait(side, dt);
     if (faction === "order") updateOrderArmorTrait(side, dt);
+    if (faction === "swarm") updateSwarmEggTrait(side, dt);
   });
+  updateSwarmEggs(dt);
 }
 
 function getFactionTraitTimer(side) {
@@ -4674,8 +4702,57 @@ function getFactionTraitTimer(side) {
     undeadSkeletonElapsed: 0,
     orderLightArmorTimer: ORDER_ARMOR_TRAIT.light.interval,
     orderMediumArmorTimer: ORDER_ARMOR_TRAIT.medium.interval,
+    swarmEggTimer: 18,
   };
   return state.factionTraitTimers[side];
+}
+
+function canSwarmUnitLayEgg(unit) {
+  if (!unit || unit.hp <= 0 || factionForSide(unit.side) !== "swarm") return false;
+  if (isUnitHidden(unit) || UNIT[unit.type]?.untargetable || UNIT[unit.type]?.statueOnly) return false;
+  if (unit.timedLife !== undefined || unit.swarmEvolutionTimer > 0) return false;
+  const data = UNIT[unit.type];
+  return Boolean(data && !data.summonOnly && !data.hero);
+}
+
+function updateSwarmEggTrait(side, dt) {
+  const timer = getFactionTraitTimer(side);
+  timer.swarmEggTimer -= dt;
+  if (timer.swarmEggTimer > 0) return;
+  timer.swarmEggTimer += 18;
+  const eggs = state.units.filter((unit) => unit.side === side && canSwarmUnitLayEgg(unit)).map((unit) => ({
+    side,
+    type: unit.type,
+    x: unit.x,
+    y: unit.y,
+    life: 5,
+  }));
+  if (!eggs.length) return;
+  state.swarmEggs.push(...eggs);
+  const point = getSideTraitTextPoint(side);
+  popText(point.x, point.y, `虫卵 x${eggs.length}`, "#d7f59b");
+}
+
+function updateSwarmEggs(dt) {
+  if (!state.swarmEggs?.length) return;
+  const remaining = [];
+  state.swarmEggs.forEach((egg) => {
+    egg.life -= dt;
+    if (egg.life > 0) {
+      remaining.push(egg);
+      return;
+    }
+    const data = UNIT[egg.type];
+    if (!data) return;
+    const hatch = spawnUnit(egg.type, egg.side, egg.x);
+    hatch.y = egg.y;
+    hatch.hp = Math.max(1, Math.round((hatch.maxHp ?? data.hp) * 0.5));
+    hatch.forceCharge = true;
+    hatch.swarmHatched = true;
+    state.blasts.push({ x: hatch.x, y: hatch.y - 32, radius: 38, life: 0.3, duration: 0.3, color: "#d7f59b" });
+    popText(hatch.x, hatch.y - 86, "孵化", "#d7f59b");
+  });
+  state.swarmEggs = remaining;
 }
 
 function updateUndeadSkeletonTrait(side, dt) {
@@ -9108,7 +9185,6 @@ function getOrderAttackDamage(attacker, target, baseDamage) {
 function getAttackDamage(attacker, target, baseDamage) {
   let damage = getOrderAttackDamage(attacker, target, baseDamage);
   if (hasChaosOrcPackBonus(attacker)) damage *= CHAOS_ORC_PACK_TRAIT.damageFactor;
-  if (hasFourWayChaosPackBonus(attacker)) damage *= CHAOS_FOUR_WAY_PACK_TRAIT.damageFactor;
   return Math.max(1, Math.round(damage * 10) / 10);
 }
 
@@ -9122,18 +9198,6 @@ function hasChaosOrcPackBonus(unit) {
     distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= CHAOS_ORC_PACK_TRAIT.radius
   ));
   return nearbyOrcs.length >= CHAOS_ORC_PACK_TRAIT.count;
-}
-
-function hasFourWayChaosPackBonus(unit) {
-  if (!state?.fourWay || !unit || factionForSide(unit.side) !== "chaos") return false;
-  const nearbyChaos = state.units.filter((candidate) => (
-    candidate.side === unit.side &&
-    candidate.hp > 0 &&
-    !isUnitHidden(candidate) &&
-    !UNIT[candidate.type]?.untargetable &&
-    distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= CHAOS_FOUR_WAY_PACK_TRAIT.radius
-  ));
-  return nearbyChaos.length >= CHAOS_FOUR_WAY_PACK_TRAIT.count;
 }
 
 function hasOrderCommanderAura(unit) {
@@ -12253,6 +12317,7 @@ function draw() {
   (state.webFields ?? []).forEach(drawWebField);
   state.landMines.forEach(drawLandMine);
   state.barricades.forEach(drawBarricade);
+  (state.swarmEggs ?? []).forEach(drawSwarmEgg);
   state.corpses.forEach(drawCorpse);
   if (state.fourWay) {
     drawFourWayCenter();
@@ -12617,6 +12682,34 @@ function drawWebField(field) {
     ctx.ellipse(0, 0, radius * r, radius * 0.32 * r, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawSwarmEgg(egg) {
+  const pulse = Math.sin(performance.now() / 150 + egg.x * 0.02) * 0.08;
+  const hatchRatio = Math.max(0, Math.min(1, 1 - egg.life / 5));
+  ctx.save();
+  ctx.translate(egg.x, egg.y - 12);
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = "#3b4d22";
+  ctx.beginPath();
+  ctx.ellipse(0, 13, 18, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#cfe88a";
+  ctx.strokeStyle = "#6f8f3a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 12 * (1 + pulse), 17 * (1 - pulse), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(58, 82, 28, ${0.35 + hatchRatio * 0.45})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -13);
+  ctx.quadraticCurveTo(2, -4, -2, 12);
+  ctx.moveTo(5, -11);
+  ctx.quadraticCurveTo(-1, -3, 4, 10);
+  ctx.stroke();
   ctx.restore();
 }
 
