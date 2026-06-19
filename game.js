@@ -416,10 +416,10 @@ const UNIT = {
   },
   caterpillar: {
     name: "毛毛虫",
-    cost: 400,
+    cost: 450,
     magicCost: 100,
     hp: 200,
-    damage: 50,
+    damage: 35,
     range: 400,
     speed: 24,
     train: 6.2,
@@ -435,7 +435,7 @@ const UNIT = {
     name: "毛帽虫",
     cost: 0,
     hp: 200,
-    damage: 30,
+    damage: 20,
     range: 500,
     speed: 22,
     train: 0,
@@ -2748,8 +2748,8 @@ function formatSpecial(type) {
   if (type === "antQueen") notes.push("每8秒召唤2个铁蚁，召唤后自身眩晕2秒");
   if (type === "spider") notes.push("消耗100魔力训练；可进化巨蛛；技能生成蛛网，减速敌人50%，加速蜘蛛50%");
   if (type === "giantSpider") notes.push("每10秒召唤3个蜘蛛");
-  if (type === "caterpillar") notes.push("每2.5秒射出神经炸弹，范围50伤害，并让敌人后撤5秒；可进化毛帽虫");
-  if (type === "hoodCaterpillar") notes.push("进化单位；一次散射3枚神经炸弹，单枚30伤害，射程500");
+  if (type === "caterpillar") notes.push("每2.5秒射出神经炸弹，范围35伤害，并让敌人后撤5秒；可进化毛帽虫");
+  if (type === "hoodCaterpillar") notes.push("进化单位；一次散射3枚神经炸弹，单枚20伤害，射程500");
   if (type === "corrosiveSpitter") notes.push("远程腐蚀6秒；攻击叠加5%易伤，最多50%；20%概率范围伤并生成减速粘液");
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
