@@ -1060,7 +1060,7 @@ const UNIT = {
     speed: 32,
     train: 5,
     cooldown: 2,
-    convertEvery: 7.5,
+    convertEvery: 6,
     corpseHpRatio: 0.22,
     summonCooldown: 24,
     summonCount: 3,
@@ -1387,7 +1387,7 @@ const UNIT = {
     speed: 55,
     train: 5,
     cooldown: 1.2,
-    reviveEvery: 6,
+    reviveEvery: 5,
     reviveRadius: 150,
     ghostEvery: 24,
     ghostCount: 3,
@@ -2628,22 +2628,10 @@ function getElementMergeCost(type, side = null) {
   return 0;
 }
 
-function getElementMergeCount(side, type) {
-  if (!state || !side || !type) return 0;
-  return state.elementMergeCounts?.[side]?.[type] ?? 0;
-}
-
-function recordElementMerge(side, type) {
-  if (!state || !side || !MERGE_UNITS.has(type)) return;
-  state.elementMergeCounts[side] = state.elementMergeCounts[side] ?? {};
-  state.elementMergeCounts[side][type] = getElementMergeCount(side, type) + 1;
-}
-
 function getElementMergeMagicCost(type, side = null) {
+  void side;
   if (FREE_MERGE_UNITS.has(type)) return 0;
-  const baseCost = ELEMENT_MERGE_MAGIC_COSTS[type] ?? 0;
-  const discount = Math.min(1, getElementMergeCount(side, type) * 0.1);
-  return Math.max(0, Math.round(baseCost * (1 - discount)));
+  return ELEMENT_MERGE_MAGIC_COSTS[type] ?? 0;
 }
 
 function canAffordElementMerge(type, side = "player") {
@@ -3032,7 +3020,6 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     ghosts: [],
     pendingMerges: [],
     factionTraitTimers: {},
-    elementMergeCounts: {},
     floaters: [],
     spawnQueue: [],
     enemySpawnTimer: 0,
@@ -4111,7 +4098,6 @@ function mergeScaldStrike(side) {
   const dir = side === "player" ? 1 : -1;
   const blastX = target?.x ?? front ?? x + dir * 220;
   detonateScaldStrike(side, Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX)), FIELD.ground);
-  recordElementMerge(side, "scaldStrike");
   return true;
 }
 
@@ -4153,7 +4139,6 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const dir = side === "player" ? 1 : -1;
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
-  recordElementMerge(side, resultType);
   popText(result.x, result.y - 95, text, color);
   return true;
 }
@@ -4256,7 +4241,6 @@ function completeElementMerge(merge, materials, x, y) {
   const result = spawnUnit(merge.resultType, merge.side, x);
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
-  recordElementMerge(merge.side, merge.resultType);
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
 }
 
