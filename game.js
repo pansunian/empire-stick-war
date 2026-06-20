@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-ai-routing-element-threats";
+const APP_VERSION = "20260620-chaos-coordination-ai";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -199,6 +199,8 @@ const CHAOS_AI_FRONTLINE_UNITS = new Set(["creeper", "orc", "berserkOrc", "apeMa
 const CHAOS_AI_SUPPORT_UNITS = new Set(["goblinExpert", "shaman", "priest", "goblin"]);
 const CHAOS_AI_RAIDER_UNITS = new Set(["bomber", "javelinThrower", "goblinVulture", "griffinBomber", "minotaur", "rhinoMan"]);
 const CHAOS_AI_HIGH_TIER_PRIORITY = ["rhinoMan", "minotaur", "griffinBomber", "arrowShieldCart", "apeMan", "goblinExpert", "shaman", "priest", "berserkOrc"];
+const CHAOS_AI_PRESSURE_UNITS = ["orc", "berserkOrc", "apeMan", "minotaur", "rhinoMan"];
+const CHAOS_AI_BACKLINE_UNITS = ["javelinThrower", "goblinVulture", "griffinBomber", "bomber"];
 const AI_ROLE_PROFILES = {
   order: {
     frontline: ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry", "archon"],
@@ -5441,12 +5443,66 @@ function tryTrainSwarmAiEconomy(side, faction = "swarm", index = 0, ai = null) {
   return true;
 }
 
+function getChaosAiCoordinationPlan(side, livingCount = countFighters(side)) {
+  const own = state.units.filter((unit) => (
+    unit.side === side &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !ECONOMY_UNITS.has(unit.type)
+  ));
+  const enemies = state.units.filter((unit) => (
+    areHostileSides(side, unit.side) &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !ECONOMY_UNITS.has(unit.type) &&
+    !UNIT[unit.type]?.untargetable
+  ));
+  const countOwn = (types) => own.filter((unit) => types.includes(unit.type)).length;
+  const enemyRanged = enemies.filter((unit) => getUnitRange(unit) > 100).length;
+  const enemyDirect = enemies.filter((unit) => {
+    const type = unit.type;
+    return ["archer", "goldenArcher", "crossbow", "musketeer", "shotgunner", "summoner", "boneThrower", "candlelight", "corrosiveSpitter", "fireElement", "windElement"].includes(type);
+  }).length;
+  const enemyBackline = enemies.filter((unit) => getAiThreatValue(unit) + getElementHarassTargetBonus(unit) >= 230 && getUnitRange(unit) > 90).length;
+  const enemyFrontline = enemies.filter((unit) => getUnitRange(unit) <= 80 && (unit.maxHp ?? UNIT[unit.type]?.hp ?? 0) >= 120).length;
+  const arrowShieldCount = countOwn(["arrowShieldCart"]);
+  const rhinoCount = countOwn(["rhinoMan"]);
+  const pressureCount = countOwn(CHAOS_AI_PRESSURE_UNITS);
+  const backlineCount = countOwn(CHAOS_AI_BACKLINE_UNITS);
+  const sustainCount = countOwn(["shaman", "priest", "goblinExpert"]);
+  const hasScreen = arrowShieldCount > 0 || rhinoCount > 0 || pressureCount >= 3;
+  const needArrowShield = enemyRanged >= 3 && arrowShieldCount < Math.min(2, Math.ceil(enemyRanged / 4));
+  const needDirectShield = enemyDirect >= 3 && rhinoCount < 1 && livingCount >= 5;
+  return {
+    enemyRanged,
+    enemyDirect,
+    enemyBackline,
+    enemyFrontline,
+    hasScreen,
+    needArrowShield,
+    needDirectShield,
+    needProtection: needArrowShield || needDirectShield,
+    protectionPriority: [
+      ...(needArrowShield ? ["arrowShieldCart"] : []),
+      ...(needDirectShield ? ["rhinoMan"] : []),
+      "arrowShieldCart",
+      "rhinoMan",
+    ],
+    needPressure: pressureCount < Math.max(2, Math.ceil(livingCount * 0.36)) || enemyFrontline >= pressureCount + 2,
+    needBacklineCut: enemyBackline > 0 && backlineCount < Math.min(3, enemyBackline),
+    needDive: enemyBackline >= 2 || enemyFrontline >= 5,
+    needSustain: livingCount >= 6 && sustainCount < 2,
+    desiredRaiders: Math.min(4, Math.max(2, enemyBackline + 1)),
+  };
+}
+
 function chooseChaosStrategicUnit({ side, faction, affordableRoster, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
   if (!affordableRoster.length) return null;
   const frontlineAffordable = getPreferredAvailable(affordableRoster, ["orc", "creeper", "berserkOrc", "apeMan", "minotaur", "rhinoMan", "arrowShieldCart"]);
   const supportAffordable = getPreferredAvailable(affordableRoster, ["goblinExpert", "shaman", "priest", "goblin"]);
   const raiderAffordable = getPreferredAvailable(affordableRoster, ["bomber", "javelinThrower", "goblinVulture", "griffinBomber", "minotaur", "rhinoMan"]);
   const highAffordable = getPreferredAvailable(affordableRoster, CHAOS_AI_HIGH_TIER_PRIORITY);
+  const plan = getChaosAiCoordinationPlan(side, livingCount);
   const frontlineCount = countChaosRoleUnits(side, CHAOS_AI_FRONTLINE_UNITS);
   const supportCount = countChaosRoleUnits(side, CHAOS_AI_SUPPORT_UNITS);
   const raiderCount = countChaosRoleUnits(side, CHAOS_AI_RAIDER_UNITS);
@@ -5456,36 +5512,39 @@ function chooseChaosStrategicUnit({ side, faction, affordableRoster, fullRoster,
     return pickWeightedChaosUnit(frontlineAffordable, { orc: 2.2, creeper: 1.8, berserkOrc: 1.2 });
   }
 
+  const protectionPick = getPreferredAvailable(affordableRoster, plan.protectionPriority)[0];
+  if (protectionPick && plan.needProtection) return protectionPick;
+
   const desiredFrontline = Math.min(5, Math.max(3, Math.ceil(livingCount * 0.42)));
-  if (frontlineCount < desiredFrontline && frontlineAffordable.length) {
+  if ((frontlineCount < desiredFrontline || plan.needPressure) && frontlineAffordable.length) {
     return pickWeightedChaosUnit(frontlineAffordable, {
       orc: 2.1,
       creeper: 1.7,
       berserkOrc: 1.35,
       apeMan: 1.1,
-      arrowShieldCart: 0.95,
-      minotaur: 0.9,
-      rhinoMan: 0.85,
+      arrowShieldCart: plan.needArrowShield ? 1.35 : 0.7,
+      minotaur: plan.needDive ? 1.15 : 0.85,
+      rhinoMan: plan.needDirectShield ? 1.45 : 0.8,
     });
   }
 
-  if (hasHighThreat && raiderAffordable.length && (raiderCount < 3 || Math.random() < 0.58)) {
+  if ((hasHighThreat || plan.needBacklineCut) && raiderAffordable.length && (raiderCount < plan.desiredRaiders || Math.random() < 0.64)) {
     return pickWeightedChaosUnit(raiderAffordable, {
       bomber: 1.35,
-      javelinThrower: 1.25,
-      goblinVulture: 1.15,
-      griffinBomber: 0.95,
-      minotaur: 0.8,
-      rhinoMan: 0.75,
+      javelinThrower: plan.hasScreen ? 1.45 : 1.05,
+      goblinVulture: plan.hasScreen ? 1.35 : 0.95,
+      griffinBomber: plan.enemyBackline >= 3 ? 1.25 : 0.9,
+      minotaur: plan.needDive ? 1.05 : 0.75,
+      rhinoMan: plan.needDirectShield ? 0.95 : 0.65,
     });
   }
 
-  const desiredSupport = Math.min(2, Math.floor(frontlineCount / 3));
-  if (supportCount < desiredSupport && supportAffordable.length && Math.random() < 0.72) {
+  const desiredSupport = Math.min(3, Math.floor(frontlineCount / 3) + (plan.hasScreen && livingCount >= 6 ? 1 : 0));
+  if ((supportCount < desiredSupport || plan.needSustain) && supportAffordable.length && Math.random() < 0.78) {
     return pickWeightedChaosUnit(supportAffordable, {
-      goblinExpert: 1.35,
-      shaman: 1.2,
-      priest: 1.1,
+      goblinExpert: plan.hasScreen ? 1.45 : 1.1,
+      shaman: plan.needSustain ? 1.45 : 1.15,
+      priest: plan.needSustain ? 1.35 : 1.05,
       goblin: 0.7,
     });
   }
