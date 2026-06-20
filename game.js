@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-chaos-coordination-ai";
+const APP_VERSION = "20260620-campaign-order-birdcage";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2270,17 +2270,34 @@ const CAMPAIGN_LEVELS = {
       objective: "依托两座相距 800 的高墙抵御混沌进攻，并摧毁敌方前哨基地；高墙生命值 1500，可被敌人摧毁，攻击距离 300，上方各有五名弓箭手，每发 6 伤害",
     },
     2: {
-      title: "第二关：箭雨阵线",
-      playerRoster: ["miner", "swordsman", "spearman"],
-      playerStart: ["miner", "swordsman", "spearman", "spartan"],
-      enemyRoster: ["miner", "archer", "swordsman", "greatsword"],
-      enemyStart: ["miner", "archer", "swordsman", "greatsword"],
-      enemyFaction: "order",
-      startGold: 120,
-      enemyGold: 150,
-      arrowRain: { every: 20, total: 300, perSecond: 75, damage: 10, radius: 24 },
-      rewardText: "弓箭手与大剑兵",
-      objective: "借助唯一的斯巴达，穿过周期性箭雨击败敌军",
+      title: "第二关：笼中之鸟",
+      playerRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
+      playerStart: ["miner", "miner", "swordsman", "archer", "spearman"],
+      enemyRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "deadCorpse", "poisonZombie", "necromancer"],
+      enemyStart: ["summoner", "summoner", "machete", "undead", "poisonZombie"],
+      enemyFaction: "undeadEmpire",
+      enemyReinforcement: { type: "undead", every: 15, count: 1 },
+      delayedEnemyReinforcements: [
+        {
+          at: 360,
+          message: "亡灵增援到来",
+          statusText: "亡灵增援抵达战场，撑到 15 分钟即可胜利",
+          units: [
+            { type: "darkKnight", count: 3 },
+            { type: "undead", count: 8 },
+            { type: "poisonZombie", count: 3 },
+            { type: "graveDigger", count: 2 },
+            { type: "bannerBearer", count: 2 },
+          ],
+        },
+      ],
+      timeLimit: 900,
+      timeLimitVictory: true,
+      timeLimitWinText: "胜利！秩序军团撑过 15 分钟，亡灵围困被击退",
+      startGold: 220,
+      enemyGold: 220,
+      rewardText: "正式战役推进",
+      objective: "本关与亡灵帝国第一关相反：我方可以主动进攻，也可以守线拖延；撑到 15 分钟即可胜利，提前摧毁亡灵基地也可获胜",
     },
     3: {
       title: "第三关：反叛矛阵",
@@ -2699,6 +2716,16 @@ const CAMPAIGN_LEVELS = {
     },
   },
 };
+const LEGACY_CAMPAIGN_LEVELS = {
+  order: [3, 4, 5, 6, 7, 8, 9],
+  chaos: [2, 3, 4, 5, 6, 7, 8],
+  element: [2, 3, 4, 5, 6, 7, 8],
+};
+Object.entries(LEGACY_CAMPAIGN_LEVELS).forEach(([faction, levels]) => {
+  levels.forEach((level) => {
+    if (CAMPAIGN_LEVELS[faction]?.[level]) CAMPAIGN_LEVELS[faction][level].legacy = true;
+  });
+});
 let activeCampaign = null;
 let pendingCampaignBriefing = null;
 
@@ -3669,9 +3696,10 @@ function renderCampaignMap() {
     const config = CAMPAIGN_LEVELS[faction]?.[level];
     const available = Boolean(config) && level <= progress;
     const rewardText = config?.rewardText === "" ? "无" : (config?.rewardText ?? unitName);
-    const titleText = HIDE_EXISTING_CAMPAIGNS ? `隐藏关 ${level}` : (config?.title ?? (available ? "可挑战" : "未解锁"));
-    const unlockText = HIDE_EXISTING_CAMPAIGNS ? "隐藏奖励" : rewardText;
-    const hintText = HIDE_EXISTING_CAMPAIGNS
+    const legacy = Boolean(config?.legacy);
+    const titleText = (HIDE_EXISTING_CAMPAIGNS || legacy) ? `隐藏关 ${level}` : (config?.title ?? (available ? "可挑战" : "未解锁"));
+    const unlockText = (HIDE_EXISTING_CAMPAIGNS || legacy) ? "隐藏奖励" : rewardText;
+    const hintText = (HIDE_EXISTING_CAMPAIGNS || legacy)
       ? (available ? (config ? "点击进入隐藏关" : "隐藏关暂未开放") : `完成第 ${level - 1} 关后发现`)
       : (available ? (config ? "点击开始战斗" : "关卡暂未设计") : `完成第 ${level - 1} 关后开启`);
     return `
@@ -3788,7 +3816,10 @@ function describeCampaignMechanics(config) {
       mechanics.push(`${Math.round((wave.at ?? 0) / 60)} 分钟后敌方支援到来：${units}`);
     });
   }
-  if (config.timeLimit) mechanics.push(`${Math.round(config.timeLimit / 60)} 分钟内未摧毁敌方基地则失败`);
+  if (config.timeLimit) {
+    const minutes = Math.round(config.timeLimit / 60);
+    mechanics.push(config.timeLimitVictory ? `撑到 ${minutes} 分钟即可胜利` : `${minutes} 分钟内未摧毁敌方基地则失败`);
+  }
   if (config.arrowRain) mechanics.push(`每 ${config.arrowRain.every} 秒落下箭雨，总计 ${config.arrowRain.total} 支，每支 ${config.arrowRain.damage} 点伤害`);
   if (config.arrowRain?.side === "player") mechanics.push("本关箭雨只攻击敌方单位");
   if (config.goldRush) mechanics.push(`淘金热：中央共有 ${config.goldRush.columns * config.goldRush.rows} 个金矿，每个最多 ${config.goldRush.mineGold} 金币`);
@@ -3848,8 +3879,8 @@ function renderCampaignBriefing(config) {
     : "";
   const mechanics = describeCampaignMechanics(config);
 
-  briefingTitle.textContent = config.title;
-  briefingReward.textContent = `通关后解锁：${rewardText}`;
+  briefingTitle.textContent = config.legacy ? `隐藏关 ${config.level}` : config.title;
+  briefingReward.textContent = config.legacy ? "隐藏关奖励" : `通关后解锁：${rewardText}`;
   briefingContent.innerHTML = `
     <section class="briefing-section">
       <h4>敌方单位</h4>
@@ -5939,6 +5970,10 @@ function updateCampaignTimeLimit(dt) {
   state.campaignElapsed = (state.campaignElapsed ?? 0) + dt;
   const limit = activeCampaign.timeLimit;
   if (!limit || state.over || state.campaignElapsed < limit) return;
+  if (activeCampaign.timeLimitVictory) {
+    completeCampaignVictory(activeCampaign.timeLimitWinText);
+    return;
+  }
   state.over = true;
   state.winner = "enemy";
   statusEl.textContent = activeCampaign.timeLimitFailText ?? "失败，未能在时限内摧毁敌方基地";
@@ -13847,14 +13882,14 @@ function checkFourWayWin() {
   homeBtn.classList.remove("hidden");
 }
 
-function completeCampaignVictory() {
+function completeCampaignVictory(customText = "") {
   state.over = true;
   state.winner = "player";
   campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
   if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
   saveCampaignProgress();
   const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
-  statusEl.textContent = `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
+  statusEl.textContent = customText ? `${customText}${rewardText}，下一关已开启` : `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
   homeBtn.classList.remove("hidden");
 }
 

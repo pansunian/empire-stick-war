@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v167-chaos-coordination-ai";
+const CACHE_NAME = "stick-war-pwa-v168-campaign-order-birdcage";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-chaos-coordination-ai",
+  "./game.js?v=20260620-campaign-order-birdcage",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
