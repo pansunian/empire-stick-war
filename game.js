@@ -441,7 +441,7 @@ const UNIT = {
     cooldown: 2.5,
     splash: 76,
     aoeLimit: 5,
-    scatterCount: 3,
+    scatterCount: 6,
     scatterSpread: 44,
     neuralRetreatDuration: 5,
     summonOnly: true,
@@ -457,7 +457,7 @@ const UNIT = {
     cooldown: 1.25,
     rangedShieldThreshold: 35,
     rangedShieldCharges: 35,
-    dodgeThreshold: 35,
+    dodgeDuration: 6,
     summonOnly: true,
   },
   antQueen: {
@@ -2729,17 +2729,17 @@ function formatSpecial(type) {
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
-  if (type === "broodMother") notes.push("每12.5秒召唤5个飞行蝗虫");
+  if (type === "broodMother") notes.push("每12.5秒召唤7个飞行蝗虫");
   if (type === "locust") notes.push("飞行召唤单位，会俯冲攻击敌人");
-  if (type === "ashWorm") notes.push("不会攻击；每10秒召唤4个自爆虫");
+  if (type === "ashWorm") notes.push("不会攻击；每10秒召唤6个自爆虫");
   if (type === "blastBug") notes.push("靠近敌人后自爆，造成40范围伤害，最多5人");
   if (type === "ironAnt") notes.push("免疫小于15的伤害最多15次；可花100金币和50魔力原地进化为重蚁或蚁后");
-  if (type === "heavyAnt") notes.push("远程小于35的伤害免疫35次；躲避时不能移动或攻击，但免疫小于35的近战/远程伤害");
-  if (type === "antQueen") notes.push("每8秒召唤2个铁蚁，召唤后自身眩晕2秒");
+  if (type === "heavyAnt") notes.push("远程小于35的伤害免疫35次；技能开启后6秒内免疫直射攻击，不消耗次数");
+  if (type === "antQueen") notes.push("每8秒召唤4个铁蚁，召唤后自身眩晕2秒");
   if (type === "spider") notes.push("消耗100魔力训练；可进化巨蛛；技能生成蛛网，减速敌人50%，加速蜘蛛50%");
-  if (type === "giantSpider") notes.push("每10秒召唤3个蜘蛛");
+  if (type === "giantSpider") notes.push("每10秒召唤5个蜘蛛");
   if (type === "caterpillar") notes.push("每2.5秒射出神经炸弹，范围35伤害，并让敌人后撤5秒；可进化毛帽虫");
-  if (type === "hoodCaterpillar") notes.push("进化单位；一次散射3枚神经炸弹，单枚20伤害，射程500");
+  if (type === "hoodCaterpillar") notes.push("进化单位；一次散射6枚神经炸弹，单枚20伤害，射程500");
   if (type === "corrosiveSpitter") notes.push("远程腐蚀6秒；攻击叠加5%易伤，最多50%；20%概率范围伤并生成减速粘液");
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
@@ -3938,6 +3938,7 @@ function spawnUnit(type, side, x) {
     boneStingerBurrowTimer: 0,
     boneStingerBurrowCooldown: 0,
     heavyAntDodge: false,
+    heavyAntDodgeTimer: 0,
     swarmEvolutionTimer: 0,
     swarmEvolutionTarget: null,
     swarmEvolutionOriginalMaxHp: 0,
@@ -4763,6 +4764,7 @@ function canSwarmUnitLayEgg(unit) {
   if (!unit || unit.hp <= 0 || factionForSide(unit.side) !== "swarm") return false;
   if (isUnitHidden(unit) || UNIT[unit.type]?.untargetable || UNIT[unit.type]?.statueOnly) return false;
   if (unit.timedLife !== undefined || unit.swarmEvolutionTimer > 0) return false;
+  if (SWARM_EVOLUTION_SOURCE_BY_TYPE[unit.type]) return false;
   const data = UNIT[unit.type];
   return Boolean(data && !data.summonOnly && !data.hero);
 }
@@ -6115,6 +6117,8 @@ function updateUnits(dt) {
     unit.neuralRetreatTimer = Math.max(0, (unit.neuralRetreatTimer ?? 0) - dt);
     if (unit.neuralRetreatTimer <= 0) unit.neuralRetreatFromSide = null;
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
+    unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
+    if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
@@ -6171,10 +6175,6 @@ function updateUnits(dt) {
     if ((unit.swarmEvolutionTimer ?? 0) > 0) {
       unit.swarmEvolutionTimer = Math.max(0, unit.swarmEvolutionTimer - dt);
       if (unit.swarmEvolutionTimer <= 0) finishSwarmEvolution(unit);
-      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
-      continue;
-    }
-    if (unit.heavyAntDodge) {
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
@@ -8104,7 +8104,8 @@ function updateAntQueen(unit, dt) {
   if (unit.summonTimer > 0) return;
   unit.summonTimer = data.summonEvery;
   const dir = getUnitFacingDirection(unit);
-  for (let i = 0; i < data.summonCount; i += 1) {
+  const summonCount = getSwarmEvolutionSummonCount(unit);
+  for (let i = 0; i < summonCount; i += 1) {
     const ant = spawnUnit("ironAnt", unit.side, clampWorldX(unit.x - dir * (28 + i * 22)));
     ant.y = unit.y + (i % 2 ? 14 : -8);
     ant.forceCharge = true;
@@ -8112,11 +8113,17 @@ function updateAntQueen(unit, dt) {
   }
   applyStun(unit, data.summonStun);
   state.blasts.push({ x: unit.x, y: unit.y - 42, radius: 56, life: 0.32, duration: 0.32, color: "#cde69b" });
-  popText(unit.x, unit.y - 116, "产出铁蚁", "#cde69b");
+  popText(unit.x, unit.y - 116, `产出铁蚁 x${summonCount}`, "#cde69b");
 }
 
 function isSwarmSpawner(unit) {
   return unit?.type === "broodMother" || unit?.type === "ashWorm" || unit?.type === "giantSpider";
+}
+
+function getSwarmEvolutionSummonCount(unit) {
+  const data = UNIT[unit?.type] ?? {};
+  const baseCount = data.summonCount ?? 0;
+  return SWARM_EVOLUTION_SOURCE_BY_TYPE[unit?.type] && baseCount > 0 ? baseCount + 2 : baseCount;
 }
 
 function updateSwarmSpawner(unit, dt) {
@@ -8127,14 +8134,15 @@ function updateSwarmSpawner(unit, dt) {
   const summonType = unit.type === "broodMother" ? "locust" : unit.type === "ashWorm" ? "blastBug" : "spider";
   const label = unit.type === "broodMother" ? "蝗虫" : unit.type === "ashWorm" ? "自爆虫" : "蜘蛛";
   const dir = getUnitFacingDirection(unit);
-  for (let i = 0; i < data.summonCount; i += 1) {
+  const summonCount = getSwarmEvolutionSummonCount(unit);
+  for (let i = 0; i < summonCount; i += 1) {
     const spawn = spawnUnit(summonType, unit.side, clampWorldX(unit.x - dir * (30 + i * 18)));
-    spawn.y = unit.y + (i - (data.summonCount - 1) / 2) * 9;
+    spawn.y = unit.y + (i - (summonCount - 1) / 2) * 9;
     spawn.forceCharge = true;
     spawn.summonerId = unit.id;
   }
   state.blasts.push({ x: unit.x, y: unit.y - 42, radius: 58, life: 0.32, duration: 0.32, color: "#cde69b" });
-  popText(unit.x, unit.y - 116, `召唤${label} x${data.summonCount}`, "#cde69b");
+  popText(unit.x, unit.y - 116, `召唤${label} x${summonCount}`, "#cde69b");
 }
 
 function getMinerMoveSpeed(unit) {
@@ -8759,7 +8767,6 @@ function isAheadOf(unit, target) {
 function attack(unit, target) {
   const data = UNIT[unit.type];
   if (isUnitHidden(unit) || isUnitHidden(target)) return;
-  if (unit.heavyAntDodge) return;
   if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
@@ -11778,13 +11785,13 @@ function getModifiedDamage(target, amount, options = {}) {
     popText(target.x, target.y - 105, `铁壳 ${target.ironAntShieldCharges}`, "#cde69b");
     return 0;
   }
+  if (options.ranged && target.type === "heavyAnt" && target.heavyAntDodge) {
+    popText(target.x, target.y - 105, "直射免疫", "#cde69b");
+    return 0;
+  }
   if (options.ranged && target.type === "heavyAnt" && amount < (UNIT.heavyAnt.rangedShieldThreshold ?? 35) && (target.heavyAntRangedShieldCharges ?? 0) > 0) {
     target.heavyAntRangedShieldCharges -= 1;
     popText(target.x, target.y - 105, `重壳 ${target.heavyAntRangedShieldCharges}`, "#cde69b");
-    return 0;
-  }
-  if (target.type === "heavyAnt" && target.heavyAntDodge && amount < (UNIT.heavyAnt.dodgeThreshold ?? 35)) {
-    popText(target.x, target.y - 105, "躲避免疫", "#cde69b");
     return 0;
   }
   if (options.ranged && target.type === "boneGiant") {
@@ -16452,7 +16459,7 @@ function getManualActions(unit) {
       add("evolveHoodCaterpillar", "毛帽虫", "direct");
       break;
     case "heavyAnt":
-      add("heavyAntDodge", unit.heavyAntDodge ? "停躲避" : "躲避", "direct");
+      add("heavyAntDodge", unit.heavyAntDodge ? "免疫中" : "直免", "direct");
       break;
     case "boneStinger":
       add("boneStingerBurrow", "钻地", "direct");
@@ -17464,10 +17471,11 @@ function finishSwarmEvolution(unit) {
 }
 
 function toggleHeavyAntDodge(unit) {
-  unit.heavyAntDodge = !unit.heavyAntDodge;
+  const duration = UNIT.heavyAnt.dodgeDuration ?? 6;
+  unit.heavyAntDodge = true;
+  unit.heavyAntDodgeTimer = duration;
   unit.cooldown = 0;
-  unit.combatTimer = unit.heavyAntDodge ? 999 : 0;
-  popText(unit.x, unit.y - 116, unit.heavyAntDodge ? "躲避姿态" : "停止躲避", "#cde69b");
+  popText(unit.x, unit.y - 116, `直射免疫 ${duration}秒`, "#cde69b");
   return true;
 }
 
