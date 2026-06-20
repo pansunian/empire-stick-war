@@ -316,7 +316,6 @@ const UNIT = {
     firstSummonDelay: 5,
     summonEvery: 25,
     summonCount: 2,
-    maxWraiths: 4,
   },
   wraithMiner: {
     name: "亡魂",
@@ -2958,7 +2957,7 @@ function formatSpecial(type) {
   if (type === "corrosiveSpitter") notes.push("远程腐蚀6秒；攻击叠加5%易伤，最多50%；20%概率范围伤并生成减速粘液");
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
-  if (type === "summoner") notes.push(`矿工类单位；出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤；每名召唤师最多召唤 ${data.maxWraiths} 个亡魂`);
+  if (type === "summoner") notes.push(`矿工类单位；出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤；场上亡魂数量无限制`);
   if (type === "wraithMiner") notes.push(`召唤单位，矿工类指令；每秒挖 ${data.goldPerSwing} 金或 ${data.magicPerSwing} 魔力，生命每秒减少 ${data.lifeDrainPerSecond}`);
   if (data.splash) notes.push(`范围 ${data.splash}`);
   if (data.splashDamage) notes.push(`溅射 ${data.splashDamage}`);
@@ -8721,9 +8720,7 @@ function updateRangedEconomyAttack(unit, target, dt) {
 
 function summonWraithMiners(summoner) {
   const data = UNIT.summoner;
-  const activeWraiths = countActiveWraithMiners(summoner);
-  const remaining = Math.max(0, data.maxWraiths - activeWraiths);
-  const count = Math.min(data.summonCount, remaining);
+  const count = data.summonCount;
   if (count <= 0) return;
   const dir = summoner.side === "player" ? 1 : -1;
   for (let i = 0; i < count; i += 1) {
@@ -8733,10 +8730,6 @@ function summonWraithMiners(summoner) {
     wraith.summoned = true;
   }
   popText(summoner.x, summoner.y - 108, `召唤亡魂 x${count}`, "#7ed8ff");
-}
-
-function countActiveWraithMiners(summoner) {
-  return state.units.filter((unit) => unit.type === "wraithMiner" && unit.summonerId === summoner.id && unit.hp > 0 && !isUnitHidden(unit)).length;
 }
 
 function getSummonerDefensePoint(unit) {
