@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-remove-order-archon-commander";
+const APP_VERSION = "20260620-order-heavy-cannon-no-fire";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -144,6 +144,7 @@ const FOUR_WAY_MERGE_VALUES = {
   vUnit: 275,
 };
 const V_CONTROL_BLOCKED_UNITS = new Set([
+  "heavyCannon",
   "catapult",
   "rocketCart",
   "ironCavalry",
@@ -188,7 +189,7 @@ const ORDER_COMBAT_TRAIT = {
   rangedStun: 2.5,
   siegeKnockbackFactor: 1.5,
 };
-const ORDER_SIEGE_UNITS = new Set(["catapult", "rocketCart"]);
+const ORDER_SIEGE_UNITS = new Set(["heavyCannon", "catapult", "rocketCart"]);
 const CHAOS_KILL_GOLD = 3;
 const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
@@ -207,7 +208,7 @@ const AI_ROLE_PROFILES = {
     ranged: ["archer", "crossbow", "musketeer", "shotgunner", "mage"],
     support: ["monk", "barricadeEngineer"],
     raider: ["ironCavalry", "shotgunner", "swordsman", "spearman"],
-    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "shotgunner", "ironCavalry", "spartan"],
+    highPriority: ["rocketCart", "catapult", "heavyCannon", "mage", "musketeer", "shotgunner", "ironCavalry", "spartan"],
     clarity: "formation",
   },
   chaos: {
@@ -244,6 +245,7 @@ const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
 const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
   "covenantGuard",
   "ironCavalry",
+  "heavyCannon",
   "rocketCart",
   "catapult",
   "minotaur",
@@ -265,6 +267,7 @@ const MAGE_STONE_GOLEM_BLOCKED_UNITS = new Set([
   "vClone",
   "deathGod",
   "deathGodClone",
+  "heavyCannon",
   "catapult",
   "rocketCart",
   "undeadCatapult",
@@ -962,6 +965,19 @@ const UNIT = {
     cooldown: 3,
     blindSpot: 95,
     splash: 58,
+    aoeLimit: 5,
+  },
+  heavyCannon: {
+    name: "重炮",
+    cost: 550,
+    hp: 300,
+    damage: 50,
+    range: 600,
+    speed: 25,
+    train: 9,
+    cooldown: 4,
+    blindSpot: 120,
+    splash: 62,
     aoeLimit: 5,
   },
   enslavedGiant: {
@@ -1963,7 +1979,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "heavyCannon", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
@@ -2015,7 +2031,7 @@ const FOUR_WAY_BASES = {
   element: { x: 2670, y: 1550, label: "元素", color: "#5e9f92" },
 };
 const FOUR_WAY_AI_ROSTER = {
-  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "catapult", "rocketCart"],
+  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "heavyCannon", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
@@ -2066,6 +2082,7 @@ const UNIT_ICON = {
   covenantGuard: "spartan",
   berserker: "greatsword",
   archmage: "wizard-hat",
+  heavyCannon: "bomb",
   catapult: "bomb",
   enslavedGiant: "earth",
   rocketCart: "bomb-crossbow",
@@ -2156,7 +2173,7 @@ function normalizeUnitType(type) {
 }
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "heavyCannon", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
@@ -3027,6 +3044,7 @@ function formatSpecial(type) {
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "shotgunner") notes.push(`每 ${data.cooldown}秒散射 ${data.pellets} 发散弹，单颗 ${data.damage} 伤害；技能召唤 ${data.bombCount} 个小炸弹，冷却 ${data.bombSkillCooldown}秒`);
+  if (type === "heavyCannon") notes.push(`抛射重炮，落点范围伤害最多 ${data.aoeLimit} 人`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`毒爆不造成直接伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
@@ -7017,6 +7035,7 @@ function chooseEnemyUnit(affordable) {
     crossbow: 0.75,
     musketeer: 0.65,
     mage: 0.6,
+    heavyCannon: 0.36,
     catapult: 0.28,
     rocketCart: 0.32,
     earthElement: 1,
@@ -7861,7 +7880,7 @@ function getCollisionRadius(unit) {
   if (data.collisionRadius) return data.collisionRadius;
   if (data.giant) return 24;
   if (unit.type === "treeEnt") return 25;
-  if (unit.type === "rocketCart" || unit.type === "catapult" || unit.type === "undeadCatapult") return 28;
+  if (unit.type === "rocketCart" || unit.type === "heavyCannon" || unit.type === "catapult" || unit.type === "undeadCatapult") return 28;
   return 12 * (data.visualScale ?? 1);
 }
 
@@ -9791,7 +9810,7 @@ function isInsideBlindSpot(unit, target) {
 }
 
 function isSiegeUnit(unit) {
-  return unit?.type === "catapult" || unit?.type === "rocketCart" || unit?.type === "undeadCatapult";
+  return unit?.type === "heavyCannon" || unit?.type === "catapult" || unit?.type === "rocketCart" || unit?.type === "undeadCatapult";
 }
 
 function updateSiegeBlindTarget(unit, target) {
@@ -10108,7 +10127,7 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "catapult" || unit.type === "enslavedGiant" || unit.type === "undeadCatapult") {
+  if (unit.type === "heavyCannon" || unit.type === "catapult" || unit.type === "enslavedGiant" || unit.type === "undeadCatapult") {
     throwBoulder(unit, target);
     return;
   }
@@ -11322,14 +11341,14 @@ function throwBoulder(unit, target) {
     groundFireRadius: data.groundFireRadius,
     target,
     life: 0.8,
-    cannon: unit.type === "catapult",
+    cannon: unit.type === "heavyCannon" || unit.type === "catapult",
     type: "boulder",
   });
   popText(
     unit.x,
     unit.y - 138,
-    unit.type === "catapult" ? "开炮" : unit.type === "undeadCatapult" ? "鬼火投石" : "投石",
-    unit.type === "catapult" ? "#ffce7a" : unit.type === "undeadCatapult" ? "#ff8a3d" : "#c0a36d",
+    unit.type === "heavyCannon" ? "重炮抛射" : unit.type === "catapult" ? "开炮" : unit.type === "undeadCatapult" ? "鬼火投石" : "投石",
+    unit.type === "heavyCannon" ? "#ff9b45" : unit.type === "catapult" ? "#ffce7a" : unit.type === "undeadCatapult" ? "#ff8a3d" : "#c0a36d",
   );
 }
 
@@ -15028,7 +15047,7 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
-  if (unit.type === "catapult" || unit.type === "undeadCatapult") {
+  if (unit.type === "heavyCannon" || unit.type === "catapult" || unit.type === "undeadCatapult") {
     drawCatapultUnit(unit);
     ctx.restore();
     return;
@@ -15755,7 +15774,7 @@ function drawHillUnit(unit) {
 }
 
 function drawCatapultUnit(unit) {
-  if (unit.type === "catapult") {
+  if (unit.type === "heavyCannon" || unit.type === "catapult") {
     drawCannonUnit(unit);
     return;
   }
@@ -16051,6 +16070,7 @@ function getUnitColor(unit) {
   if (unit.type === "berserker") return "#a84032";
   if (unit.type === "archmage") return "#4c55b8";
   if (unit.type === "monk") return "#d8d0b2";
+  if (unit.type === "heavyCannon") return "#7b5a3c";
   if (unit.type === "catapult") return "#8b6f46";
   if (unit.type === "undeadCatapult") return "#4a3f4f";
   if (unit.type === "enslavedGiant") return "#8b6f46";
@@ -16188,6 +16208,7 @@ function getHeadColor(unit) {
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "archon") return "#dbe8ff";
   if (unit.type === "monk") return "#fff4d0";
+  if (unit.type === "heavyCannon") return "#ffce7a";
   if (unit.type === "catapult") return "#c0a36d";
   if (unit.type === "undeadCatapult") return "#d8c8e8";
   if (unit.type === "enslavedGiant") return "#c0a36d";
