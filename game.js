@@ -282,6 +282,8 @@ const UNIT = {
     speed: 60,
     train: 2.5,
     cooldown: 0.8,
+    evolveGoldCost: 100,
+    evolveMagicCost: 100,
   },
   poisonBug: {
     name: "毒虫",
@@ -311,7 +313,7 @@ const UNIT = {
     slimeRadius: 72,
     slimeSlow: 0.8,
     slimeDuration: 8,
-    evolveGoldCost: 50,
+    evolveGoldCost: 100,
     evolveMagicCost: 100,
     evolveDuration: 5,
   },
@@ -378,7 +380,7 @@ const UNIT = {
     lowDamageShieldThreshold: 15,
     lowDamageShieldCharges: 15,
     evolveGoldCost: 100,
-    evolveMagicCost: 50,
+    evolveMagicCost: 100,
     evolveDuration: 5,
   },
   spider: {
@@ -397,7 +399,7 @@ const UNIT = {
     webSpiderBoost: 1.5,
     webCooldown: 14,
     evolveGoldCost: 100,
-    evolveMagicCost: 50,
+    evolveMagicCost: 100,
     evolveDuration: 5,
   },
   giantSpider: {
@@ -427,7 +429,7 @@ const UNIT = {
     aoeLimit: 5,
     neuralRetreatDuration: 5,
     evolveGoldCost: 100,
-    evolveMagicCost: 50,
+    evolveMagicCost: 100,
     evolveDuration: 5,
   },
   hoodCaterpillar: {
@@ -511,7 +513,7 @@ const UNIT = {
     burrowReduction: 0.5,
     burrowCooldown: 16,
     evolveGoldCost: 100,
-    evolveMagicCost: 50,
+    evolveMagicCost: 100,
     evolveDuration: 5,
   },
   lurker: {
@@ -1059,7 +1061,7 @@ const UNIT = {
     speed: 32,
     train: 5,
     cooldown: 2,
-    convertEvery: 6,
+    convertEvery: 8,
     corpseHpRatio: 0.22,
     summonCooldown: 24,
     summonCount: 3,
@@ -1386,7 +1388,7 @@ const UNIT = {
     speed: 55,
     train: 5,
     cooldown: 1.2,
-    reviveEvery: 5,
+    reviveEvery: 7,
     reviveRadius: 150,
     ghostEvery: 24,
     ghostCount: 3,
@@ -2726,14 +2728,14 @@ function formatSpecial(type) {
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
   if (type === "gnawMiner") notes.push("虫群矿工；挖 4 次带回 100 金");
-  if (type === "crawler") notes.push("可免费原地进化成咀矿者");
+  if (type === "crawler") notes.push("可花100金币和100魔力原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
   if (type === "broodMother") notes.push("每12.5秒召唤7个飞行蝗虫");
   if (type === "locust") notes.push("飞行召唤单位，会俯冲攻击敌人");
   if (type === "ashWorm") notes.push("不会攻击；每10秒召唤6个自爆虫");
   if (type === "blastBug") notes.push("靠近敌人后自爆，造成40范围伤害，最多5人");
-  if (type === "ironAnt") notes.push("免疫小于15的伤害最多15次；可花100金币和50魔力原地进化为重蚁或蚁后");
+  if (type === "ironAnt") notes.push("免疫小于15的伤害最多15次；可花100金币和100魔力原地进化为重蚁或蚁后");
   if (type === "heavyAnt") notes.push("远程小于35的伤害免疫35次；技能开启后6秒内免疫直射攻击，不消耗次数");
   if (type === "antQueen") notes.push("每8秒召唤4个铁蚁，召唤后自身眩晕2秒");
   if (type === "spider") notes.push("消耗100魔力训练；可进化巨蛛；技能生成蛛网，减速敌人50%，加速蜘蛛50%");
