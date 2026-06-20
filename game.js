@@ -100,6 +100,23 @@ const RALLY = {
 
 const MERGE_UNITS = new Set(["treeEnt", "rog", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "vUnit"]);
 const BASIC_ELEMENT_UNITS = new Set(["earthElement", "waterElement", "fireElement", "windElement"]);
+const ELEMENT_MERGE_REVIVE_CHANCE = 0.6;
+const ELEMENT_MERGE_BLAST_CHANCE = 1;
+const ELEMENT_MERGE_BLAST_RADIUS = 140;
+const ELEMENT_MERGE_BLAST_DAMAGE = 15;
+const ELEMENT_MERGE_REVIVE_POOL = {
+  hill: ["earthElement"],
+  treeEnt: ["earthElement", "waterElement"],
+  linghan: ["waterElement", "windElement"],
+  rog: ["earthElement", "fireElement"],
+  redflame: ["fireElement", "earthElement"],
+  stormLich: ["windElement", "waterElement"],
+  dreadfire: ["fireElement", "windElement"],
+  hurricane: ["windElement"],
+  scaldStrike: ["waterElement", "fireElement"],
+  electricGate: ["earthElement", "windElement"],
+  vUnit: ["earthElement", "waterElement", "fireElement", "windElement"],
+};
 const ELEMENT_MERGE_MAGIC_COSTS = {
   hill: 100,
   treeEnt: 100,
@@ -4156,7 +4173,9 @@ function mergeScaldStrike(side) {
   const front = getFrontX(side);
   const dir = side === "player" ? 1 : -1;
   const blastX = target?.x ?? front ?? x + dir * 220;
-  detonateScaldStrike(side, Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX)), FIELD.ground);
+  const mergeX = Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX));
+  detonateScaldStrike(side, mergeX, FIELD.ground);
+  triggerElementMergeBlastTrait(side, mergeX, FIELD.ground, "#ffb36e");
   return true;
 }
 
@@ -4199,6 +4218,7 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
   popText(result.x, result.y - 95, text, color);
+  triggerElementMergeBlastTrait(side, result.x, result.y, color);
   return true;
 }
 
@@ -4294,6 +4314,7 @@ function completeElementMerge(merge, materials, x, y) {
   if (merge.onComplete) {
     merge.onComplete(merge, x, y, hpRatio);
     popText(x, y - 95, merge.text, merge.color);
+    triggerElementMergeBlastTrait(merge.side, x, y, merge.color);
     return;
   }
 
@@ -4301,6 +4322,24 @@ function completeElementMerge(merge, materials, x, y) {
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
+  triggerElementMergeBlastTrait(merge.side, x, y, merge.color);
+}
+
+function triggerElementMergeBlastTrait(side, x, y, color = "#d7ceff") {
+  if (factionForSide(side) !== "element") return false;
+  if (Math.random() >= ELEMENT_MERGE_BLAST_CHANCE) return false;
+  const targets = getUnitsInRadius(x, ELEMENT_MERGE_BLAST_RADIUS, side, Number.POSITIVE_INFINITY, null, y);
+  targets.forEach((enemy) => {
+    applyUnitDamage(enemy, ELEMENT_MERGE_BLAST_DAMAGE, {
+      label: "融合",
+      color,
+      yOffset: -82,
+      sourceSide: side,
+    });
+  });
+  state.blasts.push({ x, y: y - 30, radius: ELEMENT_MERGE_BLAST_RADIUS, life: 0.36, duration: 0.36, color });
+  popText(x, y - 118, "融合冲击", color);
+  return true;
 }
 
 function spawnVClones(v) {
@@ -12020,6 +12059,7 @@ function removeDead() {
         color: "#c0a36d",
       });
     }
+    maybeReviveElementFromMergedUnit(unit, deathSpawns);
     if (unit.poisonRaisesUndead && unit.poisonSourceSide && unit.type !== "undead") {
       deathSpawns.push({
         type: "undead",
@@ -12089,6 +12129,35 @@ function maybeLeaveCorpse(unit) {
     ritual,
     revives: unit.corpseRevives ?? 0,
   });
+}
+
+function maybeReviveElementFromMergedUnit(unit, deathSpawns) {
+  if (!unit || !MERGE_UNITS.has(unit.type)) return;
+  if (factionForSide(unit.side) !== "element") return;
+  if (unit.type === "electricGate" && unit.expired) return;
+  if (Math.random() >= ELEMENT_MERGE_REVIVE_CHANCE) return;
+  const pool = ELEMENT_MERGE_REVIVE_POOL[unit.type] ?? [...BASIC_ELEMENT_UNITS];
+  const type = pool[Math.floor(Math.random() * pool.length)];
+  deathSpawns.push({
+    type,
+    side: unit.side,
+    x: unit.x,
+    y: unit.y,
+    text: "融合复苏",
+    color: getElementReviveColor(type),
+    setup: (element) => {
+      element.forceCharge = true;
+      state.blasts.push({ x: element.x, y: element.y - 38, radius: 52, life: 0.32, duration: 0.32, color: getElementReviveColor(type) });
+    },
+  });
+}
+
+function getElementReviveColor(type) {
+  if (type === "earthElement") return "#c0a36d";
+  if (type === "waterElement") return "#8ee0cf";
+  if (type === "fireElement") return "#ff9b45";
+  if (type === "windElement") return "#9ee8ff";
+  return "#d7ceff";
 }
 
 function enrageSurvivingDarkKnightBrother(deadBrother) {
