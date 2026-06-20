@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-element-basic-costs";
+const APP_VERSION = "20260620-element-divine-punishment";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2640,19 +2640,68 @@ const CAMPAIGN_LEVELS = {
       objective: "摧毁中心控制之塔，拯救被控制的元素同胞，再摧毁亡灵基地；控制之塔每秒积累 20 金币、10 魔力，用这些资源建造土、水、火、风以及合成出的烫水击、电门、凌寒、山丘",
     },
     2: {
-      title: "第二关：冰地异变",
-      playerRoster: ["earthElement", "hill"],
-      playerStart: ["earthElement", "hill", "vUnit"],
-      enemyRoster: ["miner", "creeper", "bomber", "machete"],
-      enemyStart: ["miner", "creeper", "bomber", "machete"],
-      enemyFaction: "chaos",
-      startGold: 130,
-      enemyGold: 180,
-      godV: true,
-      iceRoad: { slowFactor: 0.8, fastFactor: 0.8 },
-      enemyDeathsBecomeWaterScorpion: true,
-      rewardText: "水元素、树精与凌寒",
-      objective: "在冰地上稳住阵线，利用敌军死亡后的水蝎子反击",
+      title: "第二关：天降神罚",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "redflame", "dreadfire", "hurricane", "electricGate", "scaldStrike", "vUnit"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement"],
+      enemyRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "crossbow", "musketeer", "shotgunner", "barricadeEngineer", "heavyCannon", "catapult", "rocketCart"],
+      enemyStart: ["miner", "miner", "swordsman", "archer", "spearman", "crossbow"],
+      enemyFaction: "order",
+      hideCenterTower: true,
+      whiteBrickGround: true,
+      campaignHighWalls: [
+        {
+          side: "enemy",
+          label: "神罚高城",
+          x: FIELD.playerBase + 2400,
+          y: FIELD.ground - 46,
+          hp: 6500,
+          length: 420,
+          width: 190,
+          archerCount: 10,
+          archerDamage: 6,
+          archerCooldown: 1.5,
+          archerRange: 300,
+          archerMissChance: 0.3,
+          cannons: 3,
+          cannonDamage: 50,
+          cannonCooldown: 4,
+          cannonRange: 600,
+          cannonSplash: 80,
+          cannonLimit: 5,
+        },
+      ],
+      campaignBuildings: [
+        { side: "enemy", label: "兵营房屋", x: 2690, y: FIELD.ground - 118, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "兵营房屋", x: 2815, y: FIELD.ground - 4, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "兵营房屋", x: 2940, y: FIELD.ground + 112, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "兵营房屋", x: 3065, y: FIELD.ground - 118, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "兵营房屋", x: 3190, y: FIELD.ground - 4, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "兵营房屋", x: 3315, y: FIELD.ground + 112, hp: 500, length: 92, width: 118, spawnType: "swordsman", spawnEvery: 10 },
+        { side: "enemy", label: "后方基地", x: 3060, y: FIELD.ground - 190, hp: 1600, length: 160, width: 150 },
+        { side: "enemy", label: "后方基地", x: 3310, y: FIELD.ground - 190, hp: 1600, length: 160, width: 150 },
+      ],
+      requireAllCampaignBuildingsDestroyed: true,
+      enemyBaseLabel: "神罚主城",
+      enemyBaseHp: 2600,
+      startGold: 220,
+      enemyGold: 260,
+      campaignMeteor: {
+        randomEvery: [6, 12],
+        countMin: 3,
+        countMax: 5,
+        damage: 80,
+        radius: 100,
+        duration: 2.1,
+        size: 18,
+        xCenter: 2000,
+        xSpread: 520,
+        groundFireDps: 5,
+        groundFireDuration: 10,
+        groundFireRadius: 88,
+        label: "神罚火球",
+      },
+      rewardText: "正式战役推进",
+      objective: "本关没有中心塔，地面为白砖。距离我方基地 2400 处有极高城池阻路，生命值 6500；城上 10 名弓箭手每 1.5 秒射击，单发 6 伤害且 30% 概率射歪，并有 3 门重炮。城后有 2 个基地和 6 座房子，房子生命值 500，每 10 秒召唤 1 名剑士。每 6 到 12 秒在 2000 距离附近落下 3 到 5 枚大火球，造成 80 伤害并留下火地。目标：摧毁所有建筑",
     },
     3: {
       title: "第三关：天火矿脉",
@@ -3232,6 +3281,7 @@ function newGame() {
   }
   spawnCampaignCenterElectricGate();
   spawnCampaignHighWalls();
+  spawnCampaignBuildings();
   spawnCampaignControlTower();
   spawnCampaignAcidTower();
   setCommand("guard");
@@ -3405,7 +3455,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     magmaGroundTick: 0,
     undeadMineWaveTimer: activeCampaign?.undeadMineWave?.every ?? 0,
     undeadMineWaveElapsed: 0,
-    campaignMeteorTimer: activeCampaign?.campaignMeteor?.every ?? 0,
+    campaignMeteorTimer: activeCampaign?.campaignMeteor ? getCampaignMeteorInterval(activeCampaign.campaignMeteor) : 0,
     campaignMeteorCooldownDelay: 0,
     campaignMissileTimer: activeCampaign?.campaignMissiles ? Math.max(0, activeCampaign.campaignMissiles.every - activeCampaign.campaignMissiles.warning) : 0,
     campaignMissileWarning: 0,
@@ -3617,6 +3667,7 @@ function spawnCampaignHighWalls() {
       archerCount: wall.archerCount ?? CAMPAIGN_HIGH_WALL.archerCount,
       archerDamage: wall.archerDamage ?? CAMPAIGN_HIGH_WALL.archerDamage,
       archerRange: wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
+      archerMissChance: wall.archerMissChance ?? 0,
       cannons: wall.cannons ?? 0,
       cannonTick: wall.cannonCooldown ?? 5,
       cannonTickEvery: wall.cannonCooldown ?? 5,
@@ -3624,6 +3675,35 @@ function spawnCampaignHighWalls() {
       cannonSplash: wall.cannonSplash ?? 70,
       cannonLimit: wall.cannonLimit ?? 3,
       cannonRange: wall.cannonRange ?? wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
+    });
+  });
+}
+
+function spawnCampaignBuildings() {
+  const buildings = activeCampaign?.campaignBuildings;
+  if (!buildings?.length) return;
+  buildings.forEach((building, index) => {
+    state.barricades.push({
+      id: `campaign-building-${index}-${state.nextId++}`,
+      ownerId: null,
+      side: building.side ?? "enemy",
+      x: Math.max(FIELD.playerGate + 240, Math.min(FIELD.enemyGate - 70, building.x ?? FIELD.enemyBase - 420)),
+      y: building.y ?? FIELD.ground - 70,
+      hp: building.hp ?? 500,
+      maxHp: building.hp ?? 500,
+      length: building.length ?? 110,
+      width: building.width ?? 110,
+      life: Infinity,
+      duration: Infinity,
+      tick: Infinity,
+      tickEvery: Infinity,
+      damage: 0,
+      slow: 0,
+      campaignBuilding: true,
+      label: building.label ?? "建筑",
+      spawnType: building.spawnType ?? null,
+      spawnTick: building.spawnEvery ?? 10,
+      spawnEvery: building.spawnEvery ?? 10,
     });
   });
 }
@@ -6576,10 +6656,14 @@ function updateCampaignMeteor(dt) {
   state.campaignMeteorTimer -= dt;
   if (state.campaignMeteorTimer > 0) return;
 
-  if (!meteor.cooldownAfterComplete) state.campaignMeteorTimer += meteor.every;
-  const minX = Math.min(FIELD.playerMineX, FIELD.enemyMineX);
-  const maxX = Math.max(FIELD.playerMineX, FIELD.enemyMineX);
-  const count = meteor.count ?? 1;
+  if (!meteor.cooldownAfterComplete) state.campaignMeteorTimer += getCampaignMeteorInterval(meteor);
+  const minX = Number.isFinite(meteor.xCenter)
+    ? meteor.xCenter - (meteor.xSpread ?? 0) / 2
+    : Math.min(FIELD.playerMineX, FIELD.enemyMineX);
+  const maxX = Number.isFinite(meteor.xCenter)
+    ? meteor.xCenter + (meteor.xSpread ?? 0) / 2
+    : Math.max(FIELD.playerMineX, FIELD.enemyMineX);
+  const count = getCampaignMeteorCount(meteor);
   const segmentWidth = (maxX - minX) / count;
   for (let i = 0; i < count; i += 1) {
     const segmentStart = minX + segmentWidth * i;
@@ -6594,13 +6678,35 @@ function updateCampaignMeteor(dt) {
       duration: meteor.duration + i * 0.18,
       size: meteor.size,
       campaign: true,
+      label: meteor.label,
+      groundFireDps: meteor.groundFireDps,
+      groundFireDuration: meteor.groundFireDuration,
+      groundFireRadius: meteor.groundFireRadius,
     });
-    popText(x, FIELD.ground - 160, "巨大陨石", "#ffb45e");
+    popText(x, FIELD.ground - 160, meteor.label ?? "巨大陨石", "#ffb45e");
   }
   if (meteor.cooldownAfterComplete) {
     state.campaignMeteorTimer = 0;
     state.campaignMeteorCooldownDelay = meteor.duration + (count - 1) * 0.18;
   }
+}
+
+function getCampaignMeteorInterval(meteor) {
+  if (Array.isArray(meteor.randomEvery) && meteor.randomEvery.length >= 2) {
+    const min = Math.min(meteor.randomEvery[0], meteor.randomEvery[1]);
+    const max = Math.max(meteor.randomEvery[0], meteor.randomEvery[1]);
+    return min + Math.random() * (max - min);
+  }
+  return meteor.every ?? 15;
+}
+
+function getCampaignMeteorCount(meteor) {
+  if (Number.isFinite(meteor.countMin) && Number.isFinite(meteor.countMax)) {
+    const min = Math.min(meteor.countMin, meteor.countMax);
+    const max = Math.max(meteor.countMin, meteor.countMax);
+    return Math.max(1, Math.floor(min + Math.random() * (max - min + 1)));
+  }
+  return meteor.count ?? 1;
 }
 
 function updateCampaignMagmaGround(dt) {
@@ -7262,6 +7368,9 @@ function launchBaseBoulder(side, target) {
 
 function updateUnits(dt) {
   for (const unit of state.units) {
+    if (unit.stoneGolemOriginal?.type === "vUnit" || unit.stoneGolemOriginal?.type === "godVUnit" || unit.stoneGolemOriginal?.type === "vClone") {
+      restoreMageStoneGolem(unit);
+    }
     const data = UNIT[unit.type];
     const beforeX = unit.x;
     const beforeY = unit.y;
@@ -8298,6 +8407,7 @@ function controlTargetWithV(v, target) {
 }
 
 function updateVClones(unit, dt) {
+  if (!unit || unit.type !== "vUnit") return;
   unit.cloneSpawnTimer = Math.max(0, unit.cloneSpawnTimer - dt);
   const cloneLimit = unit.cloneLimit ?? UNIT.vUnit.cloneLimit;
   const cloneRespawnDelay = unit.cloneRespawnDelay ?? UNIT.vUnit.cloneRespawnDelay;
@@ -8321,6 +8431,7 @@ function updateVClones(unit, dt) {
 }
 
 function updateVControlLink(unit) {
+  if (!unit || unit.type !== "vUnit") return;
   if (!unit.controlledTargetId) return;
   const target = state.units.find((candidate) => candidate.id === unit.controlledTargetId && candidate.hp > 0);
   if (target && target.controlledBy === unit.id) return;
@@ -10042,6 +10153,7 @@ function canTarget(attacker, target) {
   if (isUnitHidden(attacker) || isUnitHidden(target)) return false;
   if (isReaperStealthed(target)) return false;
   if (UNIT[target.type]?.untargetable) return false;
+  if (UNIT[target.type]?.flying && isSiegeUnit(attacker)) return false;
   return !(UNIT[target.type]?.flying && isMelee(attacker) && !UNIT[attacker.type]?.antiAir);
 }
 
@@ -12747,6 +12859,7 @@ function updateBarricades(dt = 0) {
   for (const barricade of state.barricades) {
     if (barricade.controlTower) updateControlTowerBarricade(barricade, dt);
     if (barricade.highWall) updateHighWallCannons(barricade, dt);
+    if (barricade.campaignBuilding) updateCampaignBuilding(barricade, dt);
     barricade.life -= dt;
     barricade.tick -= dt;
     while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
@@ -12757,6 +12870,18 @@ function updateBarricades(dt = 0) {
     }
   }
   state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function updateCampaignBuilding(building, dt) {
+  if (!building.spawnType || building.hp <= 0 || building.life <= 0) return;
+  building.spawnTick = (building.spawnTick ?? building.spawnEvery ?? 10) - dt;
+  if (building.spawnTick > 0) return;
+  building.spawnTick += building.spawnEvery ?? 10;
+  const dir = building.side === "player" ? 1 : -1;
+  const unit = spawnUnit(building.spawnType, building.side, building.x + dir * (building.length / 2 + 42));
+  unit.y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, building.y + (Math.random() - 0.5) * 70));
+  unit.forceCharge = true;
+  popText(building.x, building.y - building.width / 2 - 40, `${UNIT[building.spawnType]?.name ?? "单位"}出击`, "#ffb0a3");
 }
 
 function updateHighWallCannons(wall, dt) {
@@ -12882,14 +13007,16 @@ function fireHighWallArchers(wall) {
 
   targets.forEach((target, index) => {
     const xOffset = (index - (targets.length - 1) / 2) * 16;
+    const missed = Math.random() < (wall.archerMissChance ?? 0);
+    const missDrift = missed ? (Math.random() < 0.5 ? -1 : 1) * (55 + Math.random() * 60) : 0;
     state.arrows.push({
       x: wall.x + xOffset,
       y: wall.y - wall.width / 2 - 24,
-      tx: target.x,
-      ty: target.y - 48 + (UNIT[target.type]?.flying ? -42 : 0),
+      tx: target.x + missDrift,
+      ty: target.y - 48 + (UNIT[target.type]?.flying ? -42 : 0) + (missed ? (Math.random() - 0.5) * 50 : 0),
       side: wall.side,
-      damage: wall.archerDamage,
-      target,
+      damage: missed ? 0 : wall.archerDamage,
+      target: missed ? null : target,
       life: 0.45,
       duration: 0.45,
       type: "campaignHighWallArrow",
@@ -12906,6 +13033,7 @@ function fireHighWallCannons(wall) {
       !isUnitHidden(unit) &&
       !isReaperStealthed(unit) &&
       !UNIT[unit.type]?.untargetable &&
+      !UNIT[unit.type]?.flying &&
       (unit.x - wall.x) * front >= -80 &&
       Math.abs(unit.x - wall.x) <= wall.cannonRange &&
       Math.abs((unit.y ?? FIELD.ground) - wall.y) <= 280
@@ -13128,6 +13256,9 @@ function updateMeteors(dt) {
       getUnitsInRadius(meteor.x, radius, meteor.side, Infinity).forEach((unit) => {
         applyBurn(unit, meteor.burnDps, meteor.burnDuration);
       });
+    }
+    if (meteor.groundFireDuration) {
+      createGroundFire(meteor.x, meteor.y + 18, meteor.side, meteor.groundFireDps ?? 5, meteor.groundFireDuration, meteor.groundFireRadius ?? radius);
     }
     state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: meteor.color ?? "#ffb45e" });
   }
@@ -13918,6 +14049,7 @@ function checkWin() {
   }
   state.playerHp = Math.max(0, state.playerHp);
   state.enemyHp = Math.max(0, state.enemyHp);
+  const waitingForCampaignBuildings = activeCampaign?.requireAllCampaignBuildingsDestroyed && state.enemyHp <= 0 && areCampaignBuildingsAlive();
 
   if (activeCampaign?.secondPhase?.winByKillingType && state.campaignPhase === 2) {
     if (state.playerHp <= 0) {
@@ -13946,6 +14078,12 @@ function checkWin() {
     return;
   }
 
+  if (waitingForCampaignBuildings) {
+    state.enemyHp = 0;
+    statusEl.textContent = "主城已毁，继续摧毁剩余建筑";
+    return;
+  }
+
   if (state.enemyHp <= 0 || state.playerHp <= 0) {
     state.over = true;
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
@@ -13961,6 +14099,15 @@ function checkWin() {
 
 function isCampaignControlTowerAlive() {
   return (state.barricades ?? []).some((barricade) => barricade.controlTower && barricade.hp > 0);
+}
+
+function areCampaignBuildingsAlive() {
+  return (state.barricades ?? []).some((barricade) => (
+    (barricade.highWall || barricade.campaignBuilding) &&
+    areHostileSides("player", barricade.side) &&
+    barricade.hp > 0 &&
+    barricade.life > 0
+  ));
 }
 
 function releaseControlledElementUnits(tower) {
@@ -14171,7 +14318,7 @@ function draw() {
     getSideMines("player").forEach((mine) => drawMine(mine, "player"));
     getSideMines("enemy").forEach((mine) => drawMine(mine, "enemy"));
   }
-  if (!state.fourWay) drawCenterTower();
+  if (!state.fourWay && !activeCampaign?.hideCenterTower) drawCenterTower();
   if (state.fourWay) {
     FOUR_WAY_SIDES.forEach(drawFourWayCastle);
   } else {
@@ -14384,6 +14531,35 @@ function drawGround() {
     ctx.fillStyle = "rgba(180, 210, 105, 0.2)";
     ctx.fillRect(x, FIELD.ground - 142 + (x % 288 === 0 ? 86 : 0), 16, 3);
   }
+  drawWhiteBrickGround();
+}
+
+function drawWhiteBrickGround() {
+  if (!activeCampaign?.whiteBrickGround) return;
+  const top = FIELD.ground - 185;
+  ctx.save();
+  const gradient = ctx.createLinearGradient(0, top, 0, FIELD.ground + 150);
+  gradient.addColorStop(0, "rgba(236, 238, 228, 0.92)");
+  gradient.addColorStop(0.55, "rgba(204, 208, 198, 0.9)");
+  gradient.addColorStop(1, "rgba(154, 160, 154, 0.86)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, top, FIELD.width, FIELD.height - top);
+  ctx.strokeStyle = "rgba(104, 110, 108, 0.34)";
+  ctx.lineWidth = 2;
+  for (let y = top + 18; y < FIELD.ground + 145; y += 34) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(FIELD.width, y);
+    ctx.stroke();
+    const offset = Math.floor((y - top) / 34) % 2 ? 46 : 0;
+    for (let x = -offset; x < FIELD.width; x += 92) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 34);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 function drawFourWayCenter() {
@@ -14611,6 +14787,10 @@ function drawBarricade(barricade) {
     drawCampaignControlTower(barricade);
     return;
   }
+  if (barricade.campaignBuilding) {
+    drawCampaignBuilding(barricade);
+    return;
+  }
   if (barricade.highWall) {
     drawCampaignHighWall(barricade);
     return;
@@ -14644,6 +14824,48 @@ function drawBarricade(barricade) {
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84, 6);
   ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84 * ratio, 6);
+  ctx.restore();
+}
+
+function drawCampaignBuilding(building) {
+  const ratio = building.maxHp > 0 ? Math.max(0, building.hp / building.maxHp) : 0;
+  const isBase = (building.label ?? "").includes("基地");
+  ctx.save();
+  ctx.translate(building.x, building.y);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.ellipse(0, building.width / 2 + 14, building.length * 0.62, 17, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = isBase ? "#8f877b" : "#b9b0a0";
+  ctx.strokeStyle = "#393632";
+  ctx.lineWidth = 4;
+  ctx.fillRect(-building.length / 2, -building.width / 2, building.length, building.width);
+  ctx.strokeRect(-building.length / 2, -building.width / 2, building.length, building.width);
+
+  ctx.fillStyle = isBase ? "#5e5a54" : "#7f7465";
+  ctx.beginPath();
+  ctx.moveTo(-building.length / 2 - 10, -building.width / 2);
+  ctx.lineTo(0, -building.width / 2 - (isBase ? 52 : 36));
+  ctx.lineTo(building.length / 2 + 10, -building.width / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#5b4a3f";
+  ctx.fillRect(-16, building.width / 2 - 42, 32, 42);
+  ctx.fillStyle = "rgba(245, 230, 168, 0.56)";
+  ctx.fillRect(-building.length / 2 + 16, -building.width / 2 + 24, 20, 22);
+  ctx.fillRect(building.length / 2 - 36, -building.width / 2 + 24, 20, 22);
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
+  ctx.fillRect(-52, -building.width / 2 - (isBase ? 72 : 56), 104, 7);
+  ctx.fillStyle = ratio > 0.35 ? "#f8eac5" : "#ff8a6b";
+  ctx.fillRect(-52, -building.width / 2 - (isBase ? 72 : 56), 104 * ratio, 7);
+  ctx.fillStyle = "#f8eac5";
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(building.label ?? "建筑", 0, -building.width / 2 - (isBase ? 82 : 66));
   ctx.restore();
 }
 

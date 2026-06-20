@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v176-element-basic-costs";
+const CACHE_NAME = "stick-war-pwa-v177-element-divine-punishment";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-element-basic-costs",
+  "./game.js?v=20260620-element-divine-punishment",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
