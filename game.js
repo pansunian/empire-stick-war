@@ -6457,12 +6457,30 @@ function spendTeamAiUnitCost(ai, type) {
 }
 
 function getEnemyTargetMinerCount() {
-  const pressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 520).length;
+  const pressure = countCombatThreatsNear("player", FIELD.enemyGate - 520, "right");
   const enemyFighters = countFighters("enemy");
   if (pressure >= 5 && enemyFighters < 5) return 3;
   if (state.enemyGold > 260 || state.enemyAttackMood > 42) return 5;
   if (state.enemyGold > 150 || state.enemyAttackMood > 24) return 4;
   return 3;
+}
+
+function isAiCombatThreat(unit) {
+  return Boolean(
+    unit &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !UNIT[unit.type]?.untargetable &&
+    !ECONOMY_UNITS.has(unit.type) &&
+    unit.type !== "wraithMiner",
+  );
+}
+
+function countCombatThreatsNear(side, x, direction = "right") {
+  return state.units.filter((unit) => {
+    if (unit.side !== side || !isAiCombatThreat(unit)) return false;
+    return direction === "left" ? unit.x < x : unit.x > x;
+  }).length;
 }
 
 function updateEnemyCommand() {
@@ -6479,16 +6497,19 @@ function updateEnemyCommand() {
   const enemyPower = getArmyPower("enemy");
   const playerPower = getArmyPower("player");
   const enemyFighters = countFighters("enemy");
-  const playerPressure = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 430).length;
-  const playerAtGate = state.units.filter((unit) => unit.side === "player" && unit.hp > 0 && !isUnitHidden(unit) && unit.x > FIELD.enemyGate - 260).length;
+  const playerPressure = countCombatThreatsNear("player", FIELD.enemyGate - 430, "right");
+  const playerAtGate = countCombatThreatsNear("player", FIELD.enemyGate - 260, "right");
   const underAttack = (state.enemyCounterPushTimer ?? 0) > 0;
+  const committedAttack = state.enemyCommand === "attack" && (state.enemyAttackWaveTimer ?? 0) > 0;
   const canStartWave = state.enemyHoldTimer <= 0 && state.enemyAttackWaveTimer <= 0 && state.enemyAttackMood >= 18;
   const waveReady = enemyFighters >= 5 && enemyPower >= Math.max(300, playerPower * 0.98);
   const badlyOutmatched = enemyPower < playerPower * 0.62 || enemyFighters <= Math.max(1, playerPressure - 3);
   const baseUnderPressure = playerAtGate >= 2 || (playerPressure >= 4 && enemyPower < playerPower * 0.9);
   let nextCommand = "guard";
 
-  if ((state.enemyHp < 850 && baseUnderPressure) || (playerPressure >= 3 && badlyOutmatched) || (state.enemyHp < 360 && enemyPower < playerPower * 0.95)) {
+  if (committedAttack) {
+    nextCommand = "attack";
+  } else if ((state.enemyHp < 850 && baseUnderPressure) || (playerPressure >= 3 && badlyOutmatched) || (state.enemyHp < 360 && enemyPower < playerPower * 0.95)) {
     nextCommand = "retreat";
   } else if (underAttack && enemyFighters >= 3 && enemyPower >= playerPower * 0.62) {
     nextCommand = "guard";
@@ -6507,14 +6528,14 @@ function updateEnemyCommand() {
     const label = { retreat: "敌方撤退", guard: "敌方防守", attack: "敌方进攻" };
     popText(FIELD.enemyGate - 90, FIELD.ground - 135, label[nextCommand], "#ffb0a3");
     if (nextCommand === "attack") {
-      state.enemyAttackWaveTimer = 7 + Math.random() * 4;
-      state.enemyHoldTimer = 10 + Math.random() * 6;
+      state.enemyAttackWaveTimer = 16 + Math.random() * 6;
+      state.enemyHoldTimer = 14 + Math.random() * 6;
     } else if (nextCommand === "retreat") {
       state.enemyHoldTimer = 5 + Math.random() * 3;
       state.enemyAttackWaveTimer = Math.max(state.enemyAttackWaveTimer, 5);
     }
   }
-  state.enemyCommandTimer = nextCommand === "attack" ? 5 + Math.random() * 2 : nextCommand === "retreat" ? 2 + Math.random() * 1.5 : 3.5 + Math.random() * 2.5;
+  state.enemyCommandTimer = nextCommand === "attack" ? Math.min(state.enemyAttackWaveTimer ?? 6, 6 + Math.random() * 2) : nextCommand === "retreat" ? 2 + Math.random() * 1.5 : 3.5 + Math.random() * 2.5;
 }
 
 function updateEnemyBattleLine(dt) {
@@ -9505,6 +9526,7 @@ function markRetaliationTarget(target, attacker) {
 
 function triggerEnemyCounterPush(attacker) {
   if ((state.enemyCounterCooldown ?? 0) > 0) return;
+  if (!isAiCombatThreat(attacker)) return;
   const enemyFighters = countFighters("enemy");
   const enemyPower = getArmyPower("enemy");
   const playerPower = getArmyPower("player");

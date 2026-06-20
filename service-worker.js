@@ -1,16 +1,17 @@
-const CACHE_NAME = "stick-war-pwa-v156";
+const CACHE_NAME = "stick-war-pwa-v159-ai-attack-commit";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260617-spartan-sword-rage",
-  "./game.js?v=20260617-spartan-sword-rage",
-  "./manifest.webmanifest?v=20260617-spartan-sword-rage",
+  "./style.css?v=20260620-swarm-crest-alpha",
+  "./game.js?v=20260620-ai-attack-commit",
+  "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
   "./assets/factions/order-crest.png",
   "./assets/factions/chaos-crest.png",
   "./assets/factions/undead-crest.png",
-  "./assets/factions/element-crest.png"
+  "./assets/factions/element-crest.png",
+  "./assets/factions/swarm-crest.png?v=20260620-alpha"
 ];
 
 self.addEventListener("install", (event) => {
