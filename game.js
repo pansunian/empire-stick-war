@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-order-intimidation";
+const APP_VERSION = "20260620-element-basic-costs";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -1668,7 +1668,7 @@ const UNIT = {
   },
   waterElement: {
     name: "水元素",
-    cost: 175,
+    cost: 150,
     hp: 140,
     damage: 0,
     range: 34,
@@ -1681,7 +1681,7 @@ const UNIT = {
   },
   fireElement: {
     name: "火元素",
-    cost: 250,
+    cost: 220,
     hp: 100,
     damage: 17,
     range: 185,
@@ -1705,7 +1705,7 @@ const UNIT = {
   },
   windElement: {
     name: "风元素",
-    cost: 200,
+    cost: 175,
     hp: 85,
     damage: 28,
     range: 235,
