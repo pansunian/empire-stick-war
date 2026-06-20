@@ -155,8 +155,9 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
   "bannerBearer",
 ]);
 const ELEMENT_AI_BASIC_ELEMENTS = ["earthElement", "waterElement", "fireElement", "windElement"];
-const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "dreadfire", "redflame", "stormLich", "hurricane", "treeEnt", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
-const ELEMENT_AI_HARASSERS = new Set(["windElement", "fireElement", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
+const ELEMENT_AI_CASTER_CORE = ["vUnit", "treeEnt", "dreadfire", "redflame"];
+const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
+const ELEMENT_AI_HARASSERS = new Set(["windElement", "fireElement", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
 const SWARM_AI_SUMMONERS = ["antQueen", "broodMother", "ashWorm", "giantSpider"];
 const SWARM_AI_FIRE_SUPPORT = ["hoodCaterpillar", "caterpillar", "corrosiveSpitter", "boneStinger", "lurker"];
 const SWARM_AI_MEATSHIELDS = ["heavyAnt", "ironAnt", "swarmWorm"];
@@ -4792,7 +4793,7 @@ function tryElementAiStrategicMerge(side, elapsed = 0, fourWay = false) {
     if (type === "redflame" && canMergeRedflame(side)) return mergeRedflame(side);
     if (type === "stormLich" && canMergeStormLich(side)) return mergeStormLich(side);
     if (type === "hurricane" && canMergeHurricane(side)) return mergeHurricane(side);
-    if (type === "treeEnt" && !plan.urgent && canMergeTreeEnt(side)) return mergeTreeEnt(side);
+    if (type === "treeEnt" && canMergeTreeEnt(side)) return mergeTreeEnt(side);
     if (type === "rog" && !plan.urgent && canMergeRog(side)) return mergeRog(side);
     if (type === "hill" && !plan.urgent && canMergeHill(side)) return mergeHill(side);
     if (type === "linghan" && !plan.urgent && canMergeLinghan(side)) return mergeLinghan(side);
@@ -5227,31 +5228,49 @@ function chooseStrategicAiUnit(context) {
 
 function getElementAiStrategicPlan({ side, magic = getSideMagic(side), elapsed = 0, livingCount = countFighters(side), fourWay = false }) {
   const pressure = getHostileFormationPressure(side);
-  const hasV = countUnits(side, "vUnit") > 0;
-  const hasDreadfire = countUnits(side, "dreadfire") > 0;
-  const hasRedflame = countUnits(side, "redflame") > 0;
+  const highDanger = countHostileHighDangerUnits(side);
   const urgent = elapsed >= (fourWay ? 28 : 22) && (
     pressure >= 8 ||
-    hasHostileHighValueThreat(side) ||
+    highDanger > 0 ||
     getHostilePower(side) > getSideCombatPower(side) * 1.12
   );
-  const priority = urgent
-    ? [
-        ...(!hasV ? ["vUnit"] : []),
-        ...(!hasDreadfire ? ["dreadfire"] : []),
-        ...(!hasRedflame ? ["redflame"] : []),
-        "stormLich",
-        "hurricane",
-      ]
-    : ELEMENT_AI_MERGE_PRIORITY;
+  const priority = getElementAiMergePriority({ pressure, highDanger, urgent });
   const saveTarget = priority.find((type) => getElementMergeMagicCost(type, side) > magic);
   return {
     urgent,
     pressure,
+    highDanger,
     priority,
     saveMagicFor: urgent ? saveTarget ?? null : null,
-    basicReserve: urgent || !hasV ? 1 : livingCount < 5 ? 2 : 1,
+    basicReserve: urgent || countUnits(side, "vUnit") < 1 ? 1 : livingCount < 5 ? 2 : 1,
   };
+}
+
+function getElementAiMergePriority({ pressure = 0, highDanger = 0, urgent = false }) {
+  const needsFrontline = pressure >= 7;
+  const needsBacklineCut = highDanger > 0;
+  const needsWidePressure = pressure >= 5 && highDanger >= 2;
+  if (!urgent) {
+    if (needsBacklineCut) return ["vUnit", "dreadfire", "redflame", "treeEnt", "stormLich", "hurricane", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
+    if (needsFrontline) return ["treeEnt", "hill", "linghan", "vUnit", "redflame", "stormLich", "hurricane", "dreadfire", "rog", "electricGate", "scaldStrike"];
+    return ELEMENT_AI_MERGE_PRIORITY;
+  }
+  if (pressure >= 10 && highDanger > 0) return ["treeEnt", "vUnit", "dreadfire", "redflame", "stormLich", "hurricane", "rog", "hill", "linghan"];
+  if (pressure >= 10) return ["treeEnt", "vUnit", "redflame", "dreadfire", "stormLich", "hurricane", "hill", "linghan"];
+  if (needsWidePressure) return ["stormLich", "hurricane", "redflame", "treeEnt", "vUnit", "dreadfire", "rog"];
+  if (highDanger > 0) return ["vUnit", "dreadfire", "redflame", "treeEnt", "stormLich", "hurricane", "rog"];
+  return [...ELEMENT_AI_CASTER_CORE, "stormLich", "hurricane", "rog", "hill", "linghan"];
+}
+
+function countHostileHighDangerUnits(side) {
+  return state.units.filter((unit) => (
+    areHostileSides(side, unit.side) &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !ECONOMY_UNITS.has(unit.type) &&
+    !UNIT[unit.type]?.untargetable &&
+    getAiThreatValue(unit) + getElementHarassTargetBonus(unit) >= 280
+  )).length;
 }
 
 function getHostileFormationPressure(side) {
