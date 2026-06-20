@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-order-heavy-cannon-no-fire";
+const APP_VERSION = "20260620-heavy-cannon-blindspot-100";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -976,7 +976,7 @@ const UNIT = {
     speed: 25,
     train: 9,
     cooldown: 4,
-    blindSpot: 120,
+    blindSpot: 100,
     splash: 62,
     aoeLimit: 5,
   },
