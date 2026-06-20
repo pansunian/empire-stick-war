@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-undead-relic-campaign";
+const APP_VERSION = "20260620-order-intimidation";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -186,7 +186,8 @@ const ORDER_MELEE_VETERAN_TRAIT = {
 const ORDER_COMBAT_TRAIT = {
   chance: 0.3,
   meleeDamageFactor: 2,
-  rangedStun: 2.5,
+  rangedDisruptDuration: 5,
+  attackMissChance: 0.5,
   siegeKnockbackFactor: 1.5,
 };
 const ORDER_SIEGE_UNITS = new Set(["heavyCannon", "catapult", "rocketCart"]);
@@ -4386,6 +4387,7 @@ function spawnUnit(type, side, x) {
     spartanShieldCooldown: 0,
     orderMarkTimer: 0,
     orderMarkSide: null,
+    orderAimDisruptTimer: 0,
     barricadeBuildTimer: 0,
     barricadeBuildPending: null,
     barricadeBuildCooldown: 0,
@@ -7306,6 +7308,7 @@ function updateUnits(dt) {
     unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
     unit.orderMarkTimer = Math.max(0, (unit.orderMarkTimer ?? 0) - dt);
     if (unit.orderMarkTimer <= 0) unit.orderMarkSide = null;
+    unit.orderAimDisruptTimer = Math.max(0, (unit.orderAimDisruptTimer ?? 0) - dt);
     unit.barricadeBuildCooldown = Math.max(0, (unit.barricadeBuildCooldown ?? 0) - dt);
     unit.covenantSaveTimer = Math.max(0, (unit.covenantSaveTimer ?? 0) - dt);
     unit.covenantDamageReductionTimer = Math.max(0, (unit.covenantDamageReductionTimer ?? 0) - dt);
@@ -10057,6 +10060,7 @@ function attack(unit, target) {
   if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
+  if (tryOrderAimDisruptedAttackMiss(unit, target, data)) return;
   if (unit.type === "ironCavalry") {
     attackIronCavalry(unit, target, Math.abs(unit.x - target.x));
     return;
@@ -10570,8 +10574,7 @@ function maybeApplyOrderRangedStun(arrow, target, source = getArrowSource(arrow)
   if (!target || target.kind === "statue" || target.hp <= 0) return;
   if (!isOrderRangedTraitArrow(arrow, source)) return;
   if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
-  applyStun(target, ORDER_COMBAT_TRAIT.rangedStun);
-  popText(target.x, target.y - 112, "秩序震慑", "#dfe8ff");
+  applyOrderAimDisruption(target);
 }
 
 function maybeApplyOrderRangedStunFromUnit(unit, target) {
@@ -10579,8 +10582,21 @@ function maybeApplyOrderRangedStunFromUnit(unit, target) {
   if (factionForSide(unit.side) !== "order" || isOrderSiegeType(unit.type)) return;
   if ((UNIT[unit.type]?.range ?? 0) <= ORDER_MELEE_VETERAN_TRAIT.meleeRange) return;
   if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
-  applyStun(target, ORDER_COMBAT_TRAIT.rangedStun);
-  popText(target.x, target.y - 112, "秩序震慑", "#dfe8ff");
+  applyOrderAimDisruption(target);
+}
+
+function applyOrderAimDisruption(target) {
+  target.orderAimDisruptTimer = Math.max(target.orderAimDisruptTimer ?? 0, ORDER_COMBAT_TRAIT.rangedDisruptDuration);
+  popText(target.x, target.y - 112, "秩序威慑", "#dfe8ff");
+}
+
+function tryOrderAimDisruptedAttackMiss(unit, target, data) {
+  if (!unit || !target || (unit.orderAimDisruptTimer ?? 0) <= 0) return false;
+  if (Math.random() >= ORDER_COMBAT_TRAIT.attackMissChance) return false;
+  unit.cooldown = data?.cooldown ?? 0.9;
+  unit.combatTimer = 1.5;
+  popText(unit.x, unit.y - 104, "攻击落空", "#dfe8ff");
+  return true;
 }
 
 function maybeApplyOrderSiegeKnockback(arrow, target, damage, source = getArrowSource(arrow)) {

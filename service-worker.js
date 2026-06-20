@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v174-undead-relic-campaign";
+const CACHE_NAME = "stick-war-pwa-v175-order-intimidation";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-undead-relic-campaign",
+  "./game.js?v=20260620-order-intimidation",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
