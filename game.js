@@ -2170,8 +2170,17 @@ const MODE_GOLD_RUSH = {
   brawl: { columns: 6, rows: 5, mineGold: 2500 },
 };
 const CAMPAIGN_START_GOLD = 200;
-const CAMPAIGN_LEVEL_COUNT = 15;
-const HIDE_EXISTING_CAMPAIGNS = true;
+const CAMPAIGN_LEVEL_COUNT = 8;
+const HIDE_EXISTING_CAMPAIGNS = false;
+const CAMPAIGN_HIGH_WALL = {
+  hp: 2000,
+  length: 132,
+  width: 460,
+  archerCount: 5,
+  archerDamage: 6,
+  archerRange: 620,
+  archerCooldown: 1.25,
+};
 const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "boneThrower", "darkKnight", "deadCorpse", "poisonZombie", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "boneThrower", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "bannerBearer"]);
@@ -2205,16 +2214,22 @@ const CAMPAIGN_SAVE_KEY = "empireStickWarCampaignSave";
 const CAMPAIGN_LEVELS = {
   order: {
     1: {
-      title: "第一关：长矛守军",
-      playerRoster: ["miner", "swordsman"],
-      playerStart: ["miner", "swordsman", "swordsman"],
-      enemyRoster: ["spearman"],
-      enemyStart: ["miner", "spearman"],
-      enemyFaction: "order",
-      enemyReinforcement: { type: "spearman", every: 8 },
-      startGold: 120,
-      enemyGold: 120,
-      objective: "训练矿工和剑士，击败长矛守军",
+      title: "第一关：守城之战",
+      playerRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
+      playerStart: ["miner", "miner", "swordsman", "archer", "spearman"],
+      enemyRoster: ["miner", "creeper", "bomber", "orc", "berserkOrc", "javelinThrower", "goblinVulture", "apeMan"],
+      enemyStart: ["miner", "creeper", "orc", "bomber"],
+      enemyFaction: "chaos",
+      campaignHighWalls: [
+        { x: CENTER_TOWER.x + 200 },
+        { x: FIELD.playerBase + 1400 },
+        { x: FIELD.playerBase + 800 },
+      ],
+      enemyReinforcement: { type: "creeper", every: 12, count: 2 },
+      startGold: 220,
+      enemyGold: 220,
+      rewardText: "正式战役开启",
+      objective: "依托三座高城抵御混沌进攻，并摧毁敌方前哨基地；高城生命值 2000，可阻拦敌人前进，上方各有五名弓箭手，每发 6 伤害",
     },
     2: {
       title: "第二关：箭雨阵线",
@@ -2349,16 +2364,18 @@ const CAMPAIGN_LEVELS = {
   },
   chaos: {
     1: {
-      title: "第一关：砍刀试炼",
-      playerRoster: ["miner"],
-      playerStart: ["miner", "medusa"],
-      enemyRoster: ["machete"],
-      enemyStart: ["miner", "machete"],
-      enemyFaction: "chaos",
-      failOnDeath: "medusa",
-      startGold: 120,
-      enemyGold: 120,
-      objective: "保护美杜莎，击败砍刀兵",
+      title: "第一关：侦查平原",
+      playerRoster: ["miner", "orc", "berserkOrc", "javelinThrower", "apeMan", "goblinVulture", "griffinBomber"],
+      playerStart: ["miner", "miner", "orc", "javelinThrower"],
+      enemyRoster: ["summoner", "machete", "darkKnight", "undead", "poisonZombie", "deadCorpse", "graveDigger", "bannerBearer"],
+      enemyStart: ["summoner", "machete", "undead", "poisonZombie"],
+      enemyFaction: "undeadEmpire",
+      initialTowerOwner: "player",
+      enemyReinforcement: { type: "undead", every: 10 },
+      startGold: 220,
+      enemyGold: 180,
+      rewardText: "正式战役开启",
+      objective: "混沌侦查队已占据中心塔，推进平原并摧毁敌方古墓；敌方每 10 秒会召唤 1 只丧尸",
     },
     2: {
       title: "第二关：亡灵矿潮",
@@ -3024,6 +3041,7 @@ function newGame() {
     ].filter(Boolean);
   }
   spawnCampaignCenterElectricGate();
+  spawnCampaignHighWalls();
   setCommand("guard");
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
@@ -3170,7 +3188,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     groupAttackTargetId: null,
     groupMoveTarget: null,
     passiveGoldTimer: 2,
-    towerOwner: null,
+    towerOwner: activeCampaign?.initialTowerOwner ?? null,
     towerCaptureSide: null,
     towerCaptureTimer: 0,
     towerIncomeTimer: 1,
@@ -3368,6 +3386,36 @@ function spawnCampaignCenterElectricGate() {
   popText(gate.x, gate.y - 120, "无敌电门", "#9ee8ff");
 }
 
+function spawnCampaignHighWalls() {
+  const walls = activeCampaign?.campaignHighWalls;
+  if (!walls?.length) return;
+  walls.forEach((wall, index) => {
+    const x = Math.max(FIELD.playerGate + 220, Math.min(FIELD.enemyGate - 260, wall.x ?? FIELD.playerBase + 800));
+    state.barricades.push({
+      id: `campaign-high-wall-${index}-${state.nextId++}`,
+      ownerId: null,
+      side: "player",
+      x,
+      y: wall.y ?? FIELD.ground - 28,
+      hp: wall.hp ?? CAMPAIGN_HIGH_WALL.hp,
+      maxHp: wall.hp ?? CAMPAIGN_HIGH_WALL.hp,
+      length: wall.length ?? CAMPAIGN_HIGH_WALL.length,
+      width: wall.width ?? CAMPAIGN_HIGH_WALL.width,
+      life: Infinity,
+      duration: Infinity,
+      tick: wall.archerCooldown ?? CAMPAIGN_HIGH_WALL.archerCooldown,
+      tickEvery: wall.archerCooldown ?? CAMPAIGN_HIGH_WALL.archerCooldown,
+      damage: 0,
+      slow: 0,
+      highWall: true,
+      label: "高城",
+      archerCount: wall.archerCount ?? CAMPAIGN_HIGH_WALL.archerCount,
+      archerDamage: wall.archerDamage ?? CAMPAIGN_HIGH_WALL.archerDamage,
+      archerRange: wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
+    });
+  });
+}
+
 function spawnFourWayUnit(type, side, index = 0) {
   const base = FOUR_WAY_BASES[side];
   const unit = spawnUnit(type, side, base.x);
@@ -3423,12 +3471,12 @@ function renderCampaignMap() {
   const faction = selectedFaction;
   const progress = campaignProgressByFaction[faction] ?? 1;
   const unlocks = CAMPAIGN_UNLOCKS[faction];
-  const configuredLevels = Object.keys(CAMPAIGN_LEVELS[faction] ?? {}).length;
+  const configuredLevels = Math.min(CAMPAIGN_LEVEL_COUNT, Object.keys(CAMPAIGN_LEVELS[faction] ?? {}).length);
 
   campaignTitle.textContent = `${FACTIONS[faction].name}战役`;
   campaignProgress.textContent = configuredLevels
-    ? `第 ${Math.min(progress, configuredLevels)} 关可挑战，共 ${CAMPAIGN_LEVEL_COUNT} 个隐藏关`
-    : `隐藏关暂未开放，共 ${CAMPAIGN_LEVEL_COUNT} 个隐藏关`;
+    ? `第 ${Math.min(progress, configuredLevels)} 关可挑战，共 ${CAMPAIGN_LEVEL_COUNT} 关`
+    : `正式战役暂未开放，共 ${CAMPAIGN_LEVEL_COUNT} 关`;
   campaignPath.innerHTML = Array.from({ length: CAMPAIGN_LEVEL_COUNT }, (_, index) => {
     const level = index + 1;
     const unitType = unlocks[index];
@@ -5749,8 +5797,12 @@ function updateCampaignReinforcements(dt) {
   state.campaignReinforcementTimer -= dt;
   if (state.campaignReinforcementTimer > 0) return;
   state.campaignReinforcementTimer += reinforcement.every;
-  spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12);
-  popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援`, "#ffb0a3");
+  const count = reinforcement.count ?? 1;
+  for (let i = 0; i < count; i += 1) {
+    const unit = spawnUnit(reinforcement.type, "enemy", FIELD.enemyGate + 12 - i * 24);
+    unit.forceCharge = true;
+  }
+  popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援 x${count}`, "#ffb0a3");
 }
 
 function updateSecondPhaseReinforcements(dt) {
@@ -11913,10 +11965,44 @@ function updateBarricades(dt = 0) {
     barricade.tick -= dt;
     while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
       barricade.tick += barricade.tickEvery;
-      damageBarricadeRow(barricade);
+      if (barricade.highWall) fireHighWallArchers(barricade);
+      else damageBarricadeRow(barricade);
     }
   }
   state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function fireHighWallArchers(wall) {
+  const front = getBarricadeFrontDirection(wall);
+  const targets = state.units
+    .filter((unit) => (
+      areHostileSides(wall.side, unit.side) &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      !isReaperStealthed(unit) &&
+      !UNIT[unit.type]?.untargetable &&
+      (unit.x - wall.x) * front >= -40 &&
+      Math.abs(unit.x - wall.x) <= wall.archerRange &&
+      Math.abs((unit.y ?? FIELD.ground) - wall.y) <= 240
+    ))
+    .sort((a, b) => Math.abs(a.x - wall.x) - Math.abs(b.x - wall.x))
+    .slice(0, wall.archerCount);
+
+  targets.forEach((target, index) => {
+    const xOffset = (index - (targets.length - 1) / 2) * 16;
+    state.arrows.push({
+      x: wall.x + xOffset,
+      y: wall.y - wall.width / 2 - 24,
+      tx: target.x,
+      ty: target.y - 48 + (UNIT[target.type]?.flying ? -42 : 0),
+      side: wall.side,
+      damage: wall.archerDamage,
+      target,
+      life: 0.45,
+      duration: 0.45,
+      type: "campaignHighWallArrow",
+    });
+  });
 }
 
 function damageBarricadeRow(barricade) {
@@ -12348,10 +12434,11 @@ function applyDamage(target, amount, attackerSide, options = {}) {
     const barricade = state.barricades.find((item) => item.id === target.id);
     if (!barricade || barricade.hp <= 0) return 0;
     const damage = Math.max(0, Math.round(amount * 10) / 10);
+    const label = barricade.label ?? "拒马";
     barricade.hp = Math.max(0, barricade.hp - damage);
-    popText(barricade.x, barricade.y - 58, `拒马 -${damage}`, attackerSide === "player" ? "#9fc0ff" : "#ff9b8d");
+    popText(barricade.x, barricade.y - 58, `${label} -${damage}`, attackerSide === "player" ? "#9fc0ff" : "#ff9b8d");
     if (barricade.hp <= 0) {
-      popText(barricade.x, barricade.y - 82, "拒马摧毁", "#d7c090");
+      popText(barricade.x, barricade.y - 82, `${label}摧毁`, "#d7c090");
       state.blasts.push({ x: barricade.x, y: barricade.y - 28, radius: 42, life: 0.24, duration: 0.24, color: "#d7c090" });
     }
     return damage;
@@ -13540,6 +13627,10 @@ function drawLandMine(mine) {
 }
 
 function drawBarricade(barricade) {
+  if (barricade.highWall) {
+    drawCampaignHighWall(barricade);
+    return;
+  }
   const ratio = barricade.maxHp > 0 ? Math.max(0, barricade.hp / barricade.maxHp) : 0;
   const alpha = Number.isFinite(barricade.life) && Number.isFinite(barricade.duration)
     ? Math.max(0.35, Math.min(1, barricade.life / barricade.duration))
@@ -13569,6 +13660,59 @@ function drawBarricade(barricade) {
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84, 6);
   ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84 * ratio, 6);
+  ctx.restore();
+}
+
+function drawCampaignHighWall(wall) {
+  const ratio = wall.maxHp > 0 ? Math.max(0, wall.hp / wall.maxHp) : 0;
+  const width = wall.length;
+  const height = wall.width;
+  ctx.save();
+  ctx.translate(wall.x, wall.y);
+  ctx.fillStyle = "rgba(17, 18, 24, 0.32)";
+  ctx.fillRect(-width / 2 - 18, height / 2 - 8, width + 36, 18);
+  const gradient = ctx.createLinearGradient(-width / 2, -height / 2, width / 2, height / 2);
+  gradient.addColorStop(0, "#6d6a62");
+  gradient.addColorStop(0.55, "#3f403d");
+  gradient.addColorStop(1, "#242724");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(-width / 2, -height / 2, width, height);
+  ctx.strokeStyle = "#161815";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(-width / 2, -height / 2, width, height);
+  ctx.fillStyle = "#2d302c";
+  for (let y = -height / 2 + 18; y < height / 2 - 8; y += 30) {
+    for (let x = -width / 2 + ((Math.floor((y + height / 2) / 30) % 2) ? 14 : 4); x < width / 2 - 16; x += 30) {
+      ctx.fillRect(x, y, 22, 9);
+    }
+  }
+  ctx.fillStyle = "#58564e";
+  const merlonCount = 5;
+  for (let i = 0; i < merlonCount; i += 1) {
+    const x = -width / 2 + i * (width / (merlonCount - 1)) - 11;
+    ctx.fillRect(x, -height / 2 - 28, 22, 32);
+  }
+  for (let i = 0; i < wall.archerCount; i += 1) {
+    const x = -width / 2 + 18 + i * ((width - 36) / Math.max(1, wall.archerCount - 1));
+    ctx.fillStyle = "#d9c39a";
+    ctx.beginPath();
+    ctx.arc(x, -height / 2 - 42, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f0d27a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, -height / 2 - 32);
+    ctx.quadraticCurveTo(x - 16, -height / 2 - 42, x - 8, -height / 2 - 52);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+  ctx.fillRect(-52, -height / 2 - 62, 104, 7);
+  ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
+  ctx.fillRect(-52, -height / 2 - 62, 104 * ratio, 7);
+  ctx.fillStyle = "#f3e8c2";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("高城", 0, -height / 2 - 70);
   ctx.restore();
 }
 
