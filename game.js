@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-heavy-cannon-speed";
+const APP_VERSION = "20260620-shotgun-cone-order-trait";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -185,9 +185,6 @@ const ORDER_MELEE_VETERAN_TRAIT = {
 };
 const ORDER_COMBAT_TRAIT = {
   chance: 0.3,
-  meleeDamageFactor: 2,
-  rangedDisruptDuration: 5,
-  attackMissChance: 0.5,
   siegeKnockbackFactor: 1.5,
 };
 const ORDER_SIEGE_UNITS = new Set(["heavyCannon", "catapult", "rocketCart"]);
@@ -4467,7 +4464,6 @@ function spawnUnit(type, side, x) {
     spartanShieldCooldown: 0,
     orderMarkTimer: 0,
     orderMarkSide: null,
-    orderAimDisruptTimer: 0,
     barricadeBuildTimer: 0,
     barricadeBuildPending: null,
     barricadeBuildCooldown: 0,
@@ -7417,7 +7413,6 @@ function updateUnits(dt) {
     unit.spartanShieldCooldown = Math.max(0, (unit.spartanShieldCooldown ?? 0) - dt);
     unit.orderMarkTimer = Math.max(0, (unit.orderMarkTimer ?? 0) - dt);
     if (unit.orderMarkTimer <= 0) unit.orderMarkSide = null;
-    unit.orderAimDisruptTimer = Math.max(0, (unit.orderAimDisruptTimer ?? 0) - dt);
     unit.barricadeBuildCooldown = Math.max(0, (unit.barricadeBuildCooldown ?? 0) - dt);
     unit.covenantSaveTimer = Math.max(0, (unit.covenantSaveTimer ?? 0) - dt);
     unit.covenantDamageReductionTimer = Math.max(0, (unit.covenantDamageReductionTimer ?? 0) - dt);
@@ -8807,12 +8802,10 @@ function attackIronCavalry(unit, target, distance) {
   markRetaliationTarget(target, unit);
 
   if (distance <= data.spearRange) {
-    const critical = shouldTriggerOrderMeleeCritical(unit, target);
-    const damage = data.spearDamage * (critical ? ORDER_COMBAT_TRAIT.meleeDamageFactor : 1);
-    const dealt = applyDamage(target, damage, unit.side);
+    const dealt = applyDamage(target, data.spearDamage, unit.side);
     handleDamageDealt(unit, target, dealt);
     unit.cooldown = data.spearCooldown;
-    popText(unit.x, unit.y - 98, critical ? "长枪重击" : "长枪突刺", critical ? "#fff1a8" : "#dfe8ff");
+    popText(unit.x, unit.y - 98, "长枪突刺", "#dfe8ff");
     return;
   }
 
@@ -10172,7 +10165,6 @@ function attack(unit, target) {
   if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
-  if (tryOrderAimDisruptedAttackMiss(unit, target, data)) return;
   if (unit.type === "ironCavalry") {
     attackIronCavalry(unit, target, Math.abs(unit.x - target.x));
     return;
@@ -10385,15 +10377,12 @@ function attack(unit, target) {
   }
 
   const rawDamage = unit.damage ?? data.damage;
-  const orderMeleeCritical = shouldTriggerOrderMeleeCritical(unit, target);
   const veteranCleave = shouldTriggerOrderVeteranCleave(unit, target);
   const attackDamage = getAttackDamage(unit, target, rawDamage)
-    * (orderMeleeCritical ? ORDER_COMBAT_TRAIT.meleeDamageFactor : 1)
     * (veteranCleave ? 2 : 1);
   const dealt = applyDamage(target, attackDamage, unit.side);
   if (dealt > 0 && target.kind !== "statue") target.lastDamageUnitId = unit.id;
   handleDamageDealt(unit, target, dealt);
-  if (orderMeleeCritical && dealt > 0) popText(target.x, target.y - 108, "秩序重击", "#fff1a8");
   if (veteranCleave) applyOrderVeteranCleave(unit, target, attackDamage);
   if ((unit.poisonOnHit || data.poisonOnHit) && target.kind !== "statue") {
     applyPoison(target, unit.poisonHitDps ?? data.poisonDps ?? 2, data.poisonDuration ?? Infinity, { sourceSide: unit.side, sourceUnitId: unit.id });
@@ -10472,32 +10461,42 @@ function explodeOrderMiniBomb(unit, target = unit) {
 function fireShotgun(unit, target) {
   const data = UNIT.shotgunner;
   const dir = Math.sign((target?.x ?? unit.x) - unit.x) || getUnitFacingDirection(unit);
-  const candidates = state.units
-    .filter((enemy) => areHostileSides(unit.side, enemy.side))
-    .filter((enemy) => enemy.hp > 0 && !isUnitHidden(enemy) && canTarget(unit, enemy))
-    .filter((enemy) => Math.sign(enemy.x - unit.x || dir) === dir)
-    .filter((enemy) => Math.abs(enemy.x - unit.x) <= data.range)
-    .filter((enemy) => Math.abs((enemy.y ?? unit.y) - unit.y) <= data.spread);
-  if (!candidates.length && target?.kind === "statue") {
-    applyDamage(target, data.damage * Math.ceil(data.pellets * 0.35), unit.side);
-    popText(unit.x, unit.y - 106, "散弹齐射", "#dbe8ff");
-    return;
-  }
-  if (!candidates.length) return;
+  const muzzleX = unit.x + dir * 18;
+  const muzzleY = unit.y - 44;
+  const endX = muzzleX + dir * data.range;
+  const pellets = data.pellets ?? 30;
+  const spread = data.spread ?? 76;
+  const candidates = state.units.filter((enemy) => (
+    areHostileSides(unit.side, enemy.side) &&
+    enemy.hp > 0 &&
+    !isUnitHidden(enemy) &&
+    !UNIT[enemy.type]?.untargetable &&
+    canTarget(unit, enemy) &&
+    Math.sign(enemy.x - unit.x || dir) === dir &&
+    Math.abs(enemy.x - unit.x) <= data.range + 18 &&
+    Math.abs((enemy.y ?? unit.y) - unit.y) <= spread + 80
+  ));
   const hits = new Map();
-  for (let i = 0; i < data.pellets; i += 1) {
-    const pelletY = unit.y + (Math.random() - 0.5) * data.spread * 2;
-    const pelletX = unit.x + dir * (data.range * (0.55 + Math.random() * 0.42));
-    const best = candidates
-      .map((enemy) => ({ enemy, score: Math.abs((enemy.y ?? unit.y) - pelletY) + Math.abs(enemy.x - pelletX) * 0.18 }))
-      .sort((a, b) => a.score - b.score)[0]?.enemy;
-    if (!best) continue;
-    hits.set(best, (hits.get(best) ?? 0) + 1);
+  let statuePellets = 0;
+  for (let i = 0; i < pellets; i += 1) {
+    const ratio = pellets <= 1 ? 0 : (i / (pellets - 1)) * 2 - 1;
+    const jitter = (Math.random() - 0.5) * 0.08;
+    const pelletEndY = muzzleY + (ratio + jitter) * spread;
+    const pelletEndX = endX + dir * ((Math.random() - 0.5) * 16);
+    const pelletHit = findShotgunPelletHit(muzzleX, muzzleY, pelletEndX, pelletEndY, candidates);
+    if (pelletHit) {
+      hits.set(pelletHit, (hits.get(pelletHit) ?? 0) + 1);
+    } else if (target?.kind === "statue" && doesShotgunPelletHitStatue(muzzleX, muzzleY, pelletEndX, pelletEndY, target)) {
+      statuePellets += 1;
+    }
+    const visualTarget = pelletHit
+      ? { x: pelletHit.x, y: (pelletHit.y ?? unit.y) - 46 + (UNIT[pelletHit.type]?.flying ? -42 : 0) }
+      : { x: pelletEndX, y: pelletEndY };
     state.lightning.push({
-      x1: unit.x + dir * 18,
-      y1: unit.y - 44,
-      x2: best.x + (Math.random() - 0.5) * 20,
-      y2: (best.y ?? unit.y) - 46 + (Math.random() - 0.5) * 24,
+      x1: muzzleX,
+      y1: muzzleY,
+      x2: visualTarget.x,
+      y2: visualTarget.y,
       life: 0.1,
       duration: 0.1,
     });
@@ -10505,10 +10504,43 @@ function fireShotgun(unit, target) {
   hits.forEach((pellets, enemy) => {
     const dealt = applyDamage(enemy, data.damage * pellets, unit.side, { ranged: true });
     handleDamageDealt(unit, enemy, dealt);
-    maybeApplyOrderRangedStunFromUnit(unit, enemy);
   });
+  if (statuePellets > 0) applyDamage(target, data.damage * statuePellets, unit.side, { ranged: true });
   state.blasts.push({ x: unit.x + dir * 54, y: unit.y - 45, radius: 26, life: 0.16, duration: 0.16, color: "#dbe8ff" });
-  popText(unit.x, unit.y - 106, "散弹齐射", "#dbe8ff");
+  const totalHits = statuePellets + [...hits.values()].reduce((sum, count) => sum + count, 0);
+  popText(unit.x, unit.y - 106, totalHits ? `散弹 ${totalHits}/${pellets}` : "散弹落空", "#dbe8ff");
+}
+
+function findShotgunPelletHit(x1, y1, x2, y2, candidates) {
+  let best = null;
+  let bestT = Infinity;
+  candidates.forEach((enemy) => {
+    const hitRadius = UNIT[enemy.type]?.giant ? 34 : UNIT[enemy.type]?.flying ? 30 : 24;
+    const centerY = (enemy.y ?? FIELD.ground) - 46 + (UNIT[enemy.type]?.flying ? -42 : 0);
+    const hit = distanceFromPointToSegment(enemy.x, centerY, x1, y1, x2, y2);
+    if (hit.distance > hitRadius || hit.t < 0 || hit.t > 1) return;
+    if (hit.t < bestT) {
+      bestT = hit.t;
+      best = enemy;
+    }
+  });
+  return best;
+}
+
+function doesShotgunPelletHitStatue(x1, y1, x2, y2, statue) {
+  const hit = distanceFromPointToSegment(statue.x, statue.y ?? FIELD.ground - 80, x1, y1, x2, y2);
+  return hit.t >= 0 && hit.t <= 1 && hit.distance <= 70;
+}
+
+function distanceFromPointToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 0) return { distance: distanceTo(px, py, x1, y1), t: 0 };
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
+  const x = x1 + dx * t;
+  const y = y1 + dy * t;
+  return { distance: distanceTo(px, py, x, y), t };
 }
 
 function launchNeuralBombs(unit, target) {
@@ -10656,13 +10688,6 @@ function shouldTriggerOrderVeteranCleave(unit, target) {
   );
 }
 
-function shouldTriggerOrderMeleeCritical(unit, target) {
-  if (!unit || target?.kind === "statue" || factionForSide(unit.side) !== "order") return false;
-  if (isOrderSiegeType(unit.type)) return false;
-  const range = UNIT[unit.type]?.range ?? 0;
-  return range <= ORDER_MELEE_VETERAN_TRAIT.meleeRange && Math.random() < ORDER_COMBAT_TRAIT.chance;
-}
-
 function isOrderSiegeType(type) {
   return ORDER_SIEGE_UNITS.has(type);
 }
@@ -10683,32 +10708,11 @@ function isOrderSiegeTraitArrow(arrow, source = getArrowSource(arrow)) {
 }
 
 function maybeApplyOrderRangedStun(arrow, target, source = getArrowSource(arrow)) {
-  if (!target || target.kind === "statue" || target.hp <= 0) return;
-  if (!isOrderRangedTraitArrow(arrow, source)) return;
-  if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
-  applyOrderAimDisruption(target);
+  return;
 }
 
 function maybeApplyOrderRangedStunFromUnit(unit, target) {
-  if (!unit || !target || target.kind === "statue" || target.hp <= 0) return;
-  if (factionForSide(unit.side) !== "order" || isOrderSiegeType(unit.type)) return;
-  if ((UNIT[unit.type]?.range ?? 0) <= ORDER_MELEE_VETERAN_TRAIT.meleeRange) return;
-  if (Math.random() >= ORDER_COMBAT_TRAIT.chance) return;
-  applyOrderAimDisruption(target);
-}
-
-function applyOrderAimDisruption(target) {
-  target.orderAimDisruptTimer = Math.max(target.orderAimDisruptTimer ?? 0, ORDER_COMBAT_TRAIT.rangedDisruptDuration);
-  popText(target.x, target.y - 112, "秩序威慑", "#dfe8ff");
-}
-
-function tryOrderAimDisruptedAttackMiss(unit, target, data) {
-  if (!unit || !target || (unit.orderAimDisruptTimer ?? 0) <= 0) return false;
-  if (Math.random() >= ORDER_COMBAT_TRAIT.attackMissChance) return false;
-  unit.cooldown = data?.cooldown ?? 0.9;
-  unit.combatTimer = 1.5;
-  popText(unit.x, unit.y - 104, "攻击落空", "#dfe8ff");
-  return true;
+  return;
 }
 
 function maybeApplyOrderSiegeKnockback(arrow, target, damage, source = getArrowSource(arrow)) {

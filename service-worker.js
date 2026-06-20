@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v178-heavy-cannon-speed";
+const CACHE_NAME = "stick-war-pwa-v179-shotgun-cone-order-trait";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-heavy-cannon-speed",
+  "./game.js?v=20260620-shotgun-cone-order-trait",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
