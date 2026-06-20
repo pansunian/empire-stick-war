@@ -157,6 +157,10 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
 const ELEMENT_AI_BASIC_ELEMENTS = ["earthElement", "waterElement", "fireElement", "windElement"];
 const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "dreadfire", "redflame", "stormLich", "hurricane", "treeEnt", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
 const ELEMENT_AI_HARASSERS = new Set(["windElement", "fireElement", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
+const SWARM_AI_SUMMONERS = ["antQueen", "broodMother", "ashWorm", "giantSpider"];
+const SWARM_AI_FIRE_SUPPORT = ["hoodCaterpillar", "caterpillar", "corrosiveSpitter", "boneStinger", "lurker"];
+const SWARM_AI_MEATSHIELDS = ["heavyAnt", "ironAnt", "swarmWorm"];
+const SWARM_AI_EVOLUTION_PRIORITY = ["gnawMiner", "antQueen", "broodMother", "ashWorm", "giantSpider", "hoodCaterpillar", "heavyAnt", "lurker"];
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
@@ -5162,6 +5166,7 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
 
 function chooseStrategicAiUnit(context) {
   if (context.faction === "chaos") return chooseChaosStrategicUnit(context);
+  if (context.faction === "swarm") return chooseSwarmStrategicUnit(context);
   const profile = AI_ROLE_PROFILES[context.faction];
   if (!profile || !context.affordableRoster.length) return undefined;
   const { side, affordableRoster, livingCount } = context;
@@ -5277,6 +5282,140 @@ function getHostilePower(side) {
     if (!areHostileSides(side, unit.side) || unit.hp <= 0 || isUnitHidden(unit) || ECONOMY_UNITS.has(unit.type) || unit.type === "wraithMiner") return sum;
     return sum + getAiThreatValue(unit);
   }, 0);
+}
+
+function chooseSwarmStrategicUnit({ side, faction, affordableRoster, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
+  if (!affordableRoster.length) return null;
+  const plan = getSwarmAiStrategicPlan({ side, livingCount, elapsed, magic });
+  const sourceNeed = getSwarmAiNeededSource(plan, fullRoster);
+  if (sourceNeed && affordableRoster.includes(sourceNeed)) return sourceNeed;
+
+  if (plan.saveForEvolution) return null;
+
+  const cheapPressure = getPreferredAvailable(affordableRoster, ["crawler", "poisonBug", "swarmWorm", "ironAnt", "corrosiveSpitter"]);
+  const summonSources = getPreferredAvailable(affordableRoster, ["ironAnt", "swarmWorm", "spider"]);
+  const fireSupport = getPreferredAvailable(affordableRoster, ["caterpillar", "corrosiveSpitter", "boneStinger"]);
+  const meatSources = getPreferredAvailable(affordableRoster, ["ironAnt", "swarmWorm"]);
+  const economySource = getPreferredAvailable(affordableRoster, ["crawler"]);
+
+  if (!countUnits(side, "gnawMiner") && economySource.length && elapsed < 24) return "crawler";
+
+  if (plan.phase === "summon") {
+    if (summonSources.length && Math.random() < 0.72) {
+      return pickWeightedChaosUnit(summonSources, { ironAnt: 1.45, swarmWorm: 1.35, spider: 0.9 });
+    }
+    if (cheapPressure.length) return pickWeightedChaosUnit(cheapPressure, { crawler: 1.25, poisonBug: 1.1, swarmWorm: 1.05, ironAnt: 1.05, corrosiveSpitter: 0.8 });
+  }
+
+  if (plan.phase === "fire") {
+    if (fireSupport.length && Math.random() < 0.78) {
+      return pickWeightedChaosUnit(fireSupport, { caterpillar: 1.55, corrosiveSpitter: 1.15, boneStinger: 0.85 });
+    }
+    if (cheapPressure.length && livingCount < 11) return pickWeightedChaosUnit(cheapPressure, { crawler: 1.2, poisonBug: 1.15, swarmWorm: 1, ironAnt: 0.9, corrosiveSpitter: 1.05 });
+  }
+
+  if (plan.phase === "meat" && meatSources.length) {
+    return pickWeightedChaosUnit(meatSources, { ironAnt: 1.3, swarmWorm: 0.9 });
+  }
+
+  if (shouldFactionAiSaveForTech({ side, faction, fullRoster, livingCount, gold, magic, elapsed, fourWay })) return null;
+  const weighted = [
+    ...cheapPressure,
+    ...cheapPressure,
+    ...summonSources,
+    ...fireSupport,
+    ...meatSources,
+  ];
+  return weighted[Math.floor(Math.random() * weighted.length)] ?? affordableRoster[0];
+}
+
+function getSwarmAiStrategicPlan({ side, livingCount = countFighters(side), elapsed = 0, magic = getSideMagic(side) }) {
+  const summoners = countRoleUnits(side, SWARM_AI_SUMMONERS);
+  const fireSupport = countRoleUnits(side, SWARM_AI_FIRE_SUPPORT);
+  const meat = countRoleUnits(side, SWARM_AI_MEATSHIELDS);
+  const pressureReady = livingCount + countSwarmSummonedUnits(side) >= 10 || summoners >= 2;
+  let phase = "summon";
+  if (pressureReady && (fireSupport < 2 || elapsed > 45)) phase = "fire";
+  if (pressureReady && fireSupport >= 2 && meat < Math.max(2, Math.ceil(livingCount * 0.22))) phase = "meat";
+  const desiredEvolution = getSwarmAiDesiredEvolution(side, phase, elapsed);
+  const saveForEvolution = Boolean(desiredEvolution && magic < (UNIT[getSwarmEvolutionSourceType(desiredEvolution)]?.evolveMagicCost ?? 0) && elapsed > 18);
+  return { side, phase, summoners, fireSupport, meat, pressureReady, desiredEvolution, saveForEvolution };
+}
+
+function countSwarmSummonedUnits(side) {
+  return state.units.filter((unit) => (
+    unit.side === side &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    ["locust", "blastBug", "spider"].includes(unit.type)
+  )).length;
+}
+
+function getSwarmAiDesiredEvolution(side, phase, elapsed = 0) {
+  if (!countUnits(side, "gnawMiner") && countUnits(side, "crawler") > 0) return "gnawMiner";
+  if (phase === "summon") {
+    if (countUnits(side, "antQueen") < 1) return "antQueen";
+    if (countUnits(side, "broodMother") < 1) return "broodMother";
+    if (elapsed > 36 && countUnits(side, "ashWorm") < 1) return "ashWorm";
+    if (elapsed > 42 && countUnits(side, "giantSpider") < 1) return "giantSpider";
+  }
+  if (phase === "fire") {
+    if (countUnits(side, "hoodCaterpillar") < 1 && countUnits(side, "caterpillar") > 0) return "hoodCaterpillar";
+    if (countUnits(side, "lurker") < 1 && countUnits(side, "boneStinger") > 0 && elapsed > 55) return "lurker";
+  }
+  if (phase === "meat" && countUnits(side, "heavyAnt") < 2) return "heavyAnt";
+  return null;
+}
+
+function getSwarmAiNeededSource(plan, fullRoster) {
+  const target = plan.desiredEvolution;
+  if (!target) return null;
+  const source = getSwarmEvolutionSourceType(target);
+  if (!source || !fullRoster.includes(source)) return null;
+  if (countUnitsForEvolutionSource(plan.side, source) > 0) return null;
+  return source;
+}
+
+function countUnitsForEvolutionSource(side, sourceType) {
+  return state.units.filter((unit) => (
+    unit.side === side &&
+    unit.type === sourceType &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    (unit.swarmEvolutionTimer ?? 0) <= 0
+  )).length;
+}
+
+function trySwarmAiEvolution(side, elapsed = 0) {
+  if (factionForSide(side) !== "swarm") return false;
+  const plan = getSwarmAiStrategicPlan({ side, elapsed });
+  const priority = [
+    plan.desiredEvolution,
+    ...(plan.phase === "summon" ? ["antQueen", "broodMother", "ashWorm", "giantSpider"] : []),
+    ...(plan.phase === "fire" ? ["hoodCaterpillar", "lurker"] : []),
+    ...(plan.phase === "meat" ? ["heavyAnt"] : []),
+    ...SWARM_AI_EVOLUTION_PRIORITY,
+  ].filter(Boolean);
+  for (const targetType of priority) {
+    if (!canStartSwarmEvolutionFromShop(side, targetType)) continue;
+    if (evolveFirstSwarmUnit(side, targetType)) return true;
+  }
+  return false;
+}
+
+function tryTrainSwarmAiEconomy(side, faction = "swarm", index = 0, ai = null) {
+  if (canStartSwarmEvolutionFromShop(side, "gnawMiner")) {
+    return evolveFirstSwarmUnit(side, "gnawMiner");
+  }
+  if (ai) {
+    if (!canTeamAiAffordUnit(ai, "crawler")) return false;
+    spendTeamAiUnitCost(ai, "crawler");
+  } else {
+    if (!canAffordUnit("crawler", faction, side, getSideGoldAmount(side))) return false;
+    spendUnitCost("crawler", faction, side, getSideGoldAmount(side));
+  }
+  spawnTrainedUnit("crawler", side, index);
+  return true;
 }
 
 function chooseChaosStrategicUnit({ side, faction, affordableRoster, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
@@ -6443,12 +6582,19 @@ function updateEnemyAi(dt) {
   if (opponentFaction() === "element" && state.enemyAttackMood > 18 && tryElementAiStrategicMerge("enemy", state.enemyAttackMood)) {
     state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3.2);
   }
+  if (opponentFaction() === "swarm" && state.enemyAttackMood > 12 && trySwarmAiEvolution("enemy", state.enemyAttackMood)) {
+    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 2.8);
+  }
 
   if (opponentFaction() === "element" && enemyMiners < 2 && state.enemyMinerTimer <= 0 && (!savingForV || canElementAiSpareEarthForMiner("enemy", state.enemyAttackMood)) && convertEarthToMiner("enemy")) {
     state.enemyMinerTimer = 8;
   }
 
-  if (state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && canAffordUnit(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold)) {
+  if (opponentFaction() === "swarm" && state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && tryTrainSwarmAiEconomy("enemy", opponentFaction(), enemyMiners)) {
+    state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
+  }
+
+  if (opponentFaction() !== "swarm" && state.enemyMinerTimer <= 0 && enemyMiners < targetEnemyMiners && canAffordUnit(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold)) {
     spendUnitCost(enemyEconomyType, opponentFaction(), "enemy", state.enemyGold);
     state.enemyMinerTimer = enemyMiners < 3 ? 8 : 11;
     spawnTrainedUnit(enemyEconomyType, "enemy", enemyMiners);
@@ -6500,7 +6646,11 @@ function updateTeamAi(dt) {
     ai.spawnTimer -= dt;
     const economyType = getFactionEconomyUnit(ai.faction);
     const miners = state.units.filter((unit) => unit.side === ai.side && unit.type === economyType && unit.hp > 0).length;
-    if (ai.minerTimer <= 0 && miners < 5 && canTeamAiAffordUnit(ai, economyType)) {
+    if (ai.faction === "swarm" && ai.minerTimer <= 0 && miners < 5 && tryTrainSwarmAiEconomy(ai.side, ai.faction, miners, ai)) {
+      ai.minerTimer = miners < 3 ? 9 : 13;
+      return;
+    }
+    if (ai.faction !== "swarm" && ai.minerTimer <= 0 && miners < 5 && canTeamAiAffordUnit(ai, economyType)) {
       spendTeamAiUnitCost(ai, economyType);
       ai.minerTimer = miners < 3 ? 9 : 13;
       spawnTrainedUnit(economyType, ai.side, miners);
@@ -6509,6 +6659,10 @@ function updateTeamAi(dt) {
     if (ai.spawnTimer > 0) return;
     if (ai.faction === "element" && tryElementAiStrategicMerge(ai.side, state.enemyAttackMood ?? 0)) {
       ai.spawnTimer = 3.2;
+      return;
+    }
+    if (ai.faction === "swarm" && trySwarmAiEvolution(ai.side, state.enemyAttackMood ?? 0)) {
+      ai.spawnTimer = 2.8;
       return;
     }
     const roster = FACTIONS[ai.faction].roster
