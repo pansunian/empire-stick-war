@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-shotgun-cone-order-trait";
+const APP_VERSION = "20260620-miner-castle-meteor-targets";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2695,6 +2695,7 @@ const CAMPAIGN_LEVELS = {
         groundFireDps: 5,
         groundFireDuration: 10,
         groundFireRadius: 88,
+        targetSide: "enemy",
         label: "神罚火球",
       },
       rewardText: "正式战役推进",
@@ -4354,7 +4355,7 @@ function getCommandStatusText() {
 
 function setMinerCommand(command) {
   state.minerCommand = command;
-  if (command !== "retreat" && state.command !== "retreat") {
+  if (command !== "retreat") {
     state.units.forEach((unit) => {
       if (unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner") && unit.inCastle) unit.inCastle = false;
     });
@@ -6644,7 +6645,7 @@ function updateCampaignMeteor(dt) {
   if (state.campaignMeteorCooldownDelay > 0) {
     state.campaignMeteorCooldownDelay = Math.max(0, state.campaignMeteorCooldownDelay - dt);
     if (state.campaignMeteorCooldownDelay <= 0) {
-      state.campaignMeteorTimer = meteor.every;
+      state.campaignMeteorTimer = getCampaignMeteorInterval(meteor);
     }
     return;
   }
@@ -6678,6 +6679,7 @@ function updateCampaignMeteor(dt) {
       groundFireDps: meteor.groundFireDps,
       groundFireDuration: meteor.groundFireDuration,
       groundFireRadius: meteor.groundFireRadius,
+      targetSide: meteor.targetSide,
     });
     popText(x, FIELD.ground - 160, meteor.label ?? "巨大陨石", "#ffb45e");
   }
@@ -7378,8 +7380,11 @@ function updateUnits(dt) {
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
+    if (unit.inCastle && canEnterCastle(unit) && state.minerCommand !== "retreat") {
+      unit.inCastle = false;
+    }
     if (isUnitHidden(unit)) {
-      if (unit.side === "player" && state.command === "retreat") continue;
+      if (unit.side === "player" && state.minerCommand === "retreat") continue;
       unit.inCastle = false;
     }
     updateChaosSurvivalHpTrait(unit, dt);
@@ -9376,7 +9381,7 @@ function updateMiner(unit, dt) {
   const mine = getMineForMiner(unit);
   const bagSize = getMiningBagSize(unit);
   const mustDeposit = unit.carry >= bagSize;
-  const forcedHome = isPlayer && state.command === "retreat";
+  const forcedHome = isPlayer && minerCommand === "retreat";
   const workPoint = mine ? getMineWorkPoint(unit, mine) : null;
   const returningHome = forcedHome || mustDeposit || !workPoint;
   const targetX = returningHome ? home.x : workPoint.x;
@@ -9612,11 +9617,16 @@ function updateAttackingMiner(unit, dt) {
 }
 
 function canEnterCastle(unit) {
-  return unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner");
+  return unit.side === "player" && isCastleEconomyUnit(unit);
+}
+
+function isCastleEconomyUnit(unit) {
+  return unit?.type === "miner" || unit?.type === "gnawMiner" || unit?.type === "summoner" || unit?.type === "wraithMiner";
 }
 
 function isUnitHidden(unit) {
-  return (unit.inCastle && canEnterCastle(unit)) || (unit.type === "swarmWorm" && unit.wormBurrowed);
+  if (unit.type === "swarmWorm" && unit.wormBurrowed) return true;
+  return unit.inCastle && canEnterCastle(unit) && state.minerCommand === "retreat";
 }
 
 function isReaperStealthed(unit) {
@@ -9624,7 +9634,7 @@ function isReaperStealthed(unit) {
 }
 
 function shouldEnterPlayerCastle(unit) {
-  return canEnterCastle(unit) && state.command === "retreat";
+  return canEnterCastle(unit) && state.minerCommand === "retreat";
 }
 
 function isPlayerRetreating(unit) {
@@ -12067,11 +12077,12 @@ function explodeUndeadVultureOrb(arrow) {
   popText(arrow.tx, arrow.ty - 36, "能量爆裂", "#7ed8ff");
 }
 
-function createGroundFire(x, y, side, dps, duration, radius) {
+function createGroundFire(x, y, side, dps, duration, radius, options = {}) {
   state.groundFires.push({
     x,
     y: Math.max(FIELD.ground - 150, Math.min(FIELD.ground + 130, y)),
     side,
+    targetSide: options.targetSide,
     dps,
     radius,
     life: duration,
@@ -13255,14 +13266,15 @@ function updateMeteors(dt) {
     meteor.life -= dt;
     if (meteor.life > 0) continue;
     const radius = meteor.radius ?? 18;
-    damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.label ?? (meteor.campaign ? "陨石" : "流星"));
+    damageUnitsInRadius(meteor.x, radius, meteor.side, meteor.damage, meteor.label ?? (meteor.campaign ? "陨石" : "流星"), { targetSide: meteor.targetSide });
+    if (meteor.targetSide) damageCampaignStructuresInRadius(meteor.x, radius, meteor.targetSide, meteor.damage, meteor.label ?? "陨石");
     if (meteor.burnDps) {
-      getUnitsInRadius(meteor.x, radius, meteor.side, Infinity).forEach((unit) => {
+      getUnitsInRadiusForTarget(meteor.x, radius, meteor.side, Infinity, null, null, meteor.targetSide).forEach((unit) => {
         applyBurn(unit, meteor.burnDps, meteor.burnDuration);
       });
     }
     if (meteor.groundFireDuration) {
-      createGroundFire(meteor.x, meteor.y + 18, meteor.side, meteor.groundFireDps ?? 5, meteor.groundFireDuration, meteor.groundFireRadius ?? radius);
+      createGroundFire(meteor.x, meteor.y + 18, meteor.side, meteor.groundFireDps ?? 5, meteor.groundFireDuration, meteor.groundFireRadius ?? radius, { targetSide: meteor.targetSide });
     }
     state.blasts.push({ x: meteor.x, y: meteor.y, radius: meteor.campaign ? radius : 22, life: 0.32, duration: 0.32, color: meteor.color ?? "#ffb45e" });
   }
@@ -13341,7 +13353,7 @@ function updateHealingFields(dt) {
 }
 
 function damageGroundFire(fire) {
-  getUnitsInRadius(fire.x, fire.radius, fire.side, Infinity).forEach((unit) => {
+  getUnitsInRadiusForTarget(fire.x, fire.radius, fire.side, Infinity, null, null, fire.targetSide).forEach((unit) => {
     if (Math.abs((unit.y ?? FIELD.ground) - fire.y) > fire.radius) return;
     applyUnitDamage(unit, fire.dps, { label: "地火", color: "#ff8a3d", yOffset: -96 });
   });
@@ -13463,10 +13475,26 @@ function updateIceFieldEffects(dt) {
   }
 }
 
-function damageUnitsInRadius(x, radius, attackerSide, amount, label) {
-  getUnitsInRadius(x, radius, attackerSide).forEach((unit) => {
+function damageUnitsInRadius(x, radius, attackerSide, amount, label, options = {}) {
+  getUnitsInRadiusForTarget(x, radius, attackerSide, AOE_TARGET_LIMIT, null, null, options.targetSide).forEach((unit) => {
     applyUnitDamage(unit, amount, { label, color: "#ffb45e", yOffset: -80, sourceSide: attackerSide });
   });
+}
+
+function damageCampaignStructuresInRadius(x, radius, targetSide, amount, label) {
+  state.barricades.forEach((item) => {
+    if (item.hp <= 0 || item.side !== targetSide || (!item.highWall && !item.campaignBuilding)) return;
+    const halfLength = (item.length ?? 0) / 2;
+    if (Math.abs(item.x - x) > radius + halfLength) return;
+    applyDamage({ kind: "barricade", id: item.id }, amount, "neutral");
+    popText(item.x, item.y - (item.width ?? 100) - 18, label, "#ffb45e");
+  });
+  if (targetSide === "enemy" && Math.abs(FIELD.enemyBase - x) <= radius + 38) {
+    applyDamage({ kind: "statue", side: "enemy", x: FIELD.enemyBase }, amount, "neutral");
+  }
+  if (targetSide === "player" && Math.abs(FIELD.playerBase - x) <= radius + 38) {
+    applyDamage({ kind: "statue", side: "player", x: FIELD.playerBase }, amount, "neutral");
+  }
 }
 
 function stunUnitsInRadius(x, radius, attackerSide, duration) {
@@ -13476,9 +13504,15 @@ function stunUnitsInRadius(x, radius, attackerSide, duration) {
 }
 
 function getUnitsInRadius(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null, y = null) {
+  return getUnitsInRadiusForTarget(x, radius, attackerSide, limit, exclude, y);
+}
+
+function getUnitsInRadiusForTarget(x, radius, attackerSide, limit = AOE_TARGET_LIMIT, exclude = null, y = null, targetSide = null) {
   return state.units
     .filter((unit) => {
-      if ((attackerSide !== "neutral" && unit.side === attackerSide) || unit.hp <= 0 || unit === exclude || isUnitHidden(unit) || isReaperStealthed(unit) || UNIT[unit.type]?.untargetable) return false;
+      if (targetSide && unit.side !== targetSide) return false;
+      if (!targetSide && attackerSide !== "neutral" && unit.side === attackerSide) return false;
+      if (unit.hp <= 0 || unit === exclude || isUnitHidden(unit) || isReaperStealthed(unit) || UNIT[unit.type]?.untargetable) return false;
       if (!state?.fourWay || y === null) return Math.abs(unit.x - x) <= radius;
       return distanceTo(unit.x, unit.y, x, y) <= radius;
     })
