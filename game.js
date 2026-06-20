@@ -204,6 +204,19 @@ const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
   "hurricane",
   "dreadfire",
 ]);
+const MAGE_STONE_GOLEM_BLOCKED_UNITS = new Set([
+  "vUnit",
+  "godVUnit",
+  "vClone",
+  "deathGod",
+  "deathGodClone",
+  "catapult",
+  "rocketCart",
+  "undeadCatapult",
+  "arrowShieldCart",
+  "electricGate",
+  "scaldStrike",
+]);
 const MAGIC_MINE_CAPACITY = 1600;
 const MAGIC_INCOME_PER_SECOND = 6;
 const STATUE_MAX_HP = 3000;
@@ -729,6 +742,7 @@ const UNIT = {
     speed: 32,
     train: 5.8,
     cooldown: 6,
+    skillCooldown: 15,
     explosionRadius: 76,
     iceRadius: 120,
     iceDuration: 5,
@@ -738,6 +752,18 @@ const UNIT = {
     electricWallDamage: 16,
     electricWallDuration: 6,
     electricWallWidth: 58,
+    stoneGolemDuration: 10,
+    stoneGolemMaxHp: 500,
+  },
+  stoneGolem: {
+    name: "石头人",
+    hp: 1,
+    damage: 12,
+    range: 38,
+    speed: 18,
+    train: 0,
+    cooldown: 2,
+    summonOnly: true,
   },
   commander: {
     name: "号令官",
@@ -2814,7 +2840,7 @@ function formatSpecial(type) {
   if (type === "linghan") notes.push(`拥有合成入口后可直接融合；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`拥有合成入口后可直接释放；一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`拥有合成入口后可直接融合；持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
-  if (type === "mage") notes.push(`按顺序释放魔爆 / 冰地 / 电墙；电墙每秒 ${data.electricWallDamage} 伤害，持续 ${data.electricWallDuration}秒`);
+  if (type === "mage") notes.push(`手动技能：魔爆 / 冰地 / 电墙 / 化石，全部冷却 ${data.skillCooldown}秒；化石可将生命低于 ${data.stoneGolemMaxHp} 的生物敌人暂变石头人 ${data.stoneGolemDuration}秒`);
   if (type === "goldenSpartan") notes.push(`英雄单位；双击后向最前方敌人投出一次黄金长矛，造成 ${data.goldenSpearDamage} 点伤害`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
@@ -4011,6 +4037,8 @@ function spawnUnit(type, side, x) {
     fearDamageMultiplier: 1,
     neuralRetreatTimer: 0,
     neuralRetreatFromSide: null,
+    stoneGolemTimer: 0,
+    stoneGolemOriginal: null,
     hero: Boolean(data.hero),
     spawnedClones: false,
     summonerId: null,
@@ -6157,6 +6185,10 @@ function updateUnits(dt) {
     if (unit.fearTimer <= 0) unit.fearDamageMultiplier = 1;
     unit.neuralRetreatTimer = Math.max(0, (unit.neuralRetreatTimer ?? 0) - dt);
     if (unit.neuralRetreatTimer <= 0) unit.neuralRetreatFromSide = null;
+    if ((unit.stoneGolemTimer ?? 0) > 0) {
+      unit.stoneGolemTimer = Math.max(0, unit.stoneGolemTimer - dt);
+      if (unit.stoneGolemTimer <= 0) restoreMageStoneGolem(unit);
+    }
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
     if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
@@ -8879,11 +8911,6 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "mage") {
-    castMageSpell(unit, target);
-    return;
-  }
-
   if (unit.type === "dreadfire") {
     castDreadfireSpell(unit, target);
     return;
@@ -9573,23 +9600,6 @@ function castTreeRoot(unit, target) {
   }
 }
 
-function castMageSpell(unit, target) {
-  if (unit.nextSpell === "blast") {
-    castMagicBlast(unit, target);
-    unit.nextSpell = "ice";
-    return;
-  }
-
-  if (unit.nextSpell === "ice") {
-    castIceField(unit, target);
-    unit.nextSpell = "wall";
-    return;
-  }
-
-  castMageElectricWall(unit, target);
-  unit.nextSpell = "blast";
-}
-
 function castMageElectricWall(unit, target) {
   const data = UNIT.mage;
   const x = Math.max(FIELD.playerGate + 90, Math.min(FIELD.enemyGate - 90, target.x));
@@ -9634,6 +9644,86 @@ function castIceField(unit, target) {
     duration: data.iceDuration,
   });
   popText(target.x, FIELD.ground - 70, "冰地", "#9ee8ff");
+}
+
+function isMageStoneGolemBiologicalTarget(target) {
+  if (!target || target.kind === "statue" || target.hp <= 0 || isUnitHidden(target)) return false;
+  if (UNIT[target.type]?.untargetable || UNIT[target.type]?.statueOnly) return false;
+  if (MAGE_STONE_GOLEM_BLOCKED_UNITS.has(target.type)) return false;
+  if (BASIC_ELEMENT_UNITS.has(target.type) || MERGE_UNITS.has(target.type)) return false;
+  if (isSiegeUnit(target)) return false;
+  return true;
+}
+
+function canMageStoneGolem(unit, target) {
+  if (!unit || unit.type !== "mage") return false;
+  const data = UNIT.mage;
+  if (!areHostileSides(unit.side, target?.side)) return false;
+  if (!isMageStoneGolemBiologicalTarget(target)) return false;
+  if ((target.hp ?? 0) >= data.stoneGolemMaxHp) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= data.range;
+}
+
+function findMageStoneGolemTarget(unit, point = null) {
+  const candidates = state.units
+    .filter((target) => canMageStoneGolem(unit, target))
+    .map((target) => ({
+      target,
+      pointDistance: point ? distanceTo(point.x, point.y, target.x, target.y - 48) : 0,
+      unitDistance: distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y),
+    }));
+  if (!candidates.length) return null;
+  const nearby = point ? candidates.filter((item) => item.pointDistance <= 150) : candidates;
+  const pool = nearby.length ? nearby : candidates;
+  return pool
+    .sort((a, b) => (b.target.hp - a.target.hp) || (a.unitDistance - b.unitDistance))[0]
+    .target;
+}
+
+function castMageStoneGolem(unit, target) {
+  if (!canMageStoneGolem(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法转化", "#b88cff");
+    return false;
+  }
+  const data = UNIT.mage;
+  const golem = UNIT.stoneGolem;
+  target.stoneGolemOriginal = {
+    type: target.type,
+    damage: target.damage,
+    range: target.range,
+    speed: target.speed,
+    maxHp: target.maxHp,
+  };
+  target.type = "stoneGolem";
+  target.damage = golem.damage;
+  target.range = golem.range;
+  target.speed = golem.speed;
+  target.maxHp = Math.max(1, target.stoneGolemOriginal.maxHp ?? target.hp);
+  target.hp = Math.min(target.maxHp, target.hp);
+  target.stoneGolemTimer = data.stoneGolemDuration;
+  target.cooldown = Math.max(target.cooldown ?? 0, 0.5);
+  target.controlledBy = null;
+  target.controlLockTimer = 0;
+  state.blasts.push({ x: target.x, y: (target.y ?? FIELD.ground) - 32, radius: 68, life: 0.36, duration: 0.36, color: "#9f9278" });
+  state.lightning.push({ x1: unit.x, y1: unit.y - 72, x2: target.x, y2: (target.y ?? FIELD.ground) - 68, life: 0.28, duration: 0.28 });
+  popText(target.x, target.y - 108, "化为石头人", "#d6c090");
+  return true;
+}
+
+function restoreMageStoneGolem(unit) {
+  const original = unit?.stoneGolemOriginal;
+  if (!unit || !original) return;
+  const hp = unit.hp;
+  unit.type = original.type;
+  unit.damage = original.damage;
+  unit.range = original.range;
+  unit.speed = original.speed;
+  unit.maxHp = Math.max(1, original.maxHp ?? UNIT[unit.type]?.hp ?? hp);
+  unit.hp = Math.min(unit.maxHp, hp);
+  unit.stoneGolemOriginal = null;
+  unit.stoneGolemTimer = 0;
+  state.blasts.push({ x: unit.x, y: (unit.y ?? FIELD.ground) - 32, radius: 54, life: 0.28, duration: 0.28, color: "#b88cff" });
+  popText(unit.x, unit.y - 108, "恢复原样", "#d7ceff");
 }
 
 function castUndeadStaffSlam(unit, target) {
@@ -14260,6 +14350,7 @@ function getUnitColor(unit) {
   if (unit.type === "vUnit") return "#f7f7f2";
   if (unit.type === "vClone") return "#7369c8";
   if (unit.type === "mage") return "#786bd8";
+  if (unit.type === "stoneGolem") return "#8f816b";
   if (unit.type === "commander") return "#3f6fb8";
   if (unit.type === "barricadeEngineer") return "#9a7652";
   if (unit.type === "covenantGuard") return "#6f7f91";
@@ -14390,6 +14481,7 @@ function getHeadColor(unit) {
   if (unit.type === "candlelight") return "#e8ddcf";
   if (unit.type === "reaper") return "#d8d0c8";
   if (unit.type === "mage") return "#d7ceff";
+  if (unit.type === "stoneGolem") return "#d6c090";
   if (unit.type === "commander") return "#fff1a8";
   if (unit.type === "barricadeEngineer") return "#e0c08a";
   if (unit.type === "covenantGuard") return "#f8eac5";
@@ -15140,6 +15232,21 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(36, -66, 7, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "stoneGolem") {
+    ctx.strokeStyle = "#6f6452";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(11, -49);
+    ctx.lineTo(33, -56);
+    ctx.moveTo(33, -56);
+    ctx.lineTo(48, -38);
+    ctx.stroke();
+    ctx.fillStyle = "#a99a7a";
+    [-10, 10, 28].forEach((x, index) => {
+      ctx.beginPath();
+      ctx.arc(x, -50 - index * 5, 6, 0, Math.PI * 2);
+      ctx.fill();
+    });
   } else if (type === "archmage") {
     ctx.strokeStyle = "#d7ceff";
     ctx.lineWidth = 5;
@@ -16431,6 +16538,7 @@ function getManualActions(unit) {
       add("magicBlast", "魔爆");
       add("iceField", "冰地");
       add("mageWall", "电墙");
+      add("mageStoneGolem", "化石", "target");
       break;
     case "commander":
       add("orderMark", "标记", "target");
@@ -16613,6 +16721,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "vControl" && (unit.controlTimer > 0 || unit.controlledTargetId)) return true;
   if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return true;
   if (button.id === "boneHarvest") return !canBoneHarvest(unit);
+  if (button.id === "mageStoneGolem") return !findMageStoneGolemTarget(unit);
   if ((unit.manualSkillCooldowns?.[button.id] ?? 0) > 0) return true;
   return button.id !== "attack" && unit.cooldown > 0;
 }
@@ -16736,6 +16845,7 @@ function getManualDisabledLabel(unit, button) {
     if ((unit.boneAmmo ?? 0) >= UNIT.boneThrower.maxBoneAmmo) return "骨头已满";
     if (!findBoneHarvestCorpse(unit)) return "附近没有敌方尸体";
   }
+  if (button.id === "mageStoneGolem" && !findMageStoneGolemTarget(unit)) return "没有可转化目标";
   if (button.id === "evolveGnawMiner") return getSwarmEvolveDisabledLabel(unit, "gnawMiner");
   if (button.id === "evolveBroodMother") return getSwarmEvolveDisabledLabel(unit, "broodMother");
   if (button.id === "evolveAshWorm") return getSwarmEvolveDisabledLabel(unit, "ashWorm");
@@ -16956,6 +17066,11 @@ function findManualAttackTarget(unit, range) {
 }
 
 function getManualTargetAt(unit, point, actionId = null) {
+  if (actionId === "mageStoneGolem") {
+    const clickedEnemy = findUnitAt(point);
+    if (clickedEnemy && canMageStoneGolem(unit, clickedEnemy)) return clickedEnemy;
+    return findMageStoneGolemTarget(unit, point);
+  }
   if (actionId === "covenantGuard") {
     const clickedAlly = findUnitAt(point);
     if (clickedAlly && canCovenantGuardAlly(unit, clickedAlly)) return clickedAlly;
@@ -17174,6 +17289,10 @@ function getManualActionCooldown(unit, id) {
     orderMark: data.markCooldown,
     buildBarricade: data.barricadeCooldown,
     covenantGuard: data.guardCooldown,
+    magicBlast: data.skillCooldown,
+    iceField: data.skillCooldown,
+    mageWall: data.skillCooldown,
+    mageStoneGolem: data.skillCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -17199,6 +17318,8 @@ function castManualSkill(unit, id, target) {
     case "mageWall":
       castMageElectricWall(unit, target);
       return true;
+    case "mageStoneGolem":
+      return castMageStoneGolem(unit, target);
     case "medusaSlay":
       if (!canMedusaSlay(unit, target)) {
         popText(unit.x, unit.y - 116, "无法石化", "#93d96b");
