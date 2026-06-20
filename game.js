@@ -1,6 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
+const APP_VERSION = "20260620-ai-routing-element-threats";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -157,7 +158,7 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
 const ELEMENT_AI_BASIC_ELEMENTS = ["earthElement", "waterElement", "fireElement", "windElement"];
 const ELEMENT_AI_CASTER_CORE = ["vUnit", "treeEnt", "dreadfire", "redflame"];
 const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
-const ELEMENT_AI_HARASSERS = new Set(["windElement", "fireElement", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
+const ELEMENT_AI_HARASSERS = new Set(["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
 const SWARM_AI_SUMMONERS = ["antQueen", "broodMother", "ashWorm", "giantSpider"];
 const SWARM_AI_FIRE_SUPPORT = ["hoodCaterpillar", "caterpillar", "corrosiveSpitter", "boneStinger", "lurker"];
 const SWARM_AI_MEATSHIELDS = ["heavyAnt", "ironAnt", "swarmWorm"];
@@ -653,6 +654,7 @@ const UNIT = {
     speed: 44,
     train: 4.4,
     cooldown: 1.35,
+    fireArrowDamage: 10,
     fireArrowBurnDps: 3,
     fireArrowBurnDuration: 5,
   },
@@ -2165,6 +2167,7 @@ let selectedFaction = "order";
 let enemyFaction = "chaos";
 let selectedEnemyFaction = "chaos";
 let selectedMode = "versus";
+let pendingRuleMode = "versus";
 let selectedTeamMode = "solo";
 let selectedControlMode = "human";
 let playerAllyFaction = null;
@@ -3015,6 +3018,7 @@ function formatSpecial(type) {
   if (type === "deathGod") notes.push(`技能尖刺：${data.spikeRadius} 范围内长出 ${data.spikeCount} 根尖刺，每根 ${data.spikeDamage} 伤害，冷却 ${data.spikeCooldown}秒；技能分身：召唤不可移动分身 ${UNIT.deathGodClone.duration}秒，生命 ${UNIT.deathGodClone.hp}，攻击 ${UNIT.deathGodClone.damage}`);
   if (type === "goblinVulture") notes.push("飞行单位，背上哥布林使用短弩攻击");
   if (type === "griffinBomber") notes.push(`飞行轰炸单位，不停前进循环补弹；每轮 ${data.ammo} 颗炸弹，${data.cooldown}秒投 1 颗，${data.damage} 范围伤害，最多 ${data.bombLimit} 人；飞过基地时剩余炸弹砸向基地`);
+  if (type === "archer") notes.push(`技能火箭：命中造成 ${data.fireArrowDamage ?? 10} 伤害，并灼烧 ${data.fireArrowBurnDps ?? 3}/秒 ${data.fireArrowBurnDuration ?? 5}秒`);
   if (data.poisonDps) notes.push(data.poisonDuration === Infinity ? `中毒 ${data.poisonDps}/秒，直到解毒或死亡` : `中毒 ${data.poisonDps}/秒 ${data.poisonDuration}秒`);
   if (data.burnDps) notes.push(`灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (data.stunDuration) notes.push(`眩晕 ${data.stunDuration}秒`);
@@ -9795,7 +9799,17 @@ function getElementHarassTargetBonus(target) {
   let bonus = 0;
   if ((data.range ?? 0) > 120) bonus += 45;
   if (data.magicCost || MERGE_UNITS.has(target.type)) bonus += 35;
-  if (["mage", "musketeer", "crossbow", "shotgunner", "catapult", "rocketCart", "necromancer", "undeadMage", "graveDigger", "bannerBearer", "goblinExpert", "shaman", "priest", "caterpillar", "corrosiveSpitter"].includes(target.type)) bonus += 70;
+  if (["archer", "goldenArcher", "mage", "musketeer", "crossbow", "shotgunner", "catapult", "rocketCart", "necromancer", "undeadMage", "graveDigger", "bannerBearer", "goblinExpert", "shaman", "priest", "caterpillar", "corrosiveSpitter"].includes(target.type)) bonus += 70;
+  if (target.type === "archer" || target.type === "goldenArcher") {
+    const nearbyArchers = state.units.filter((unit) => (
+      unit.side === target.side &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      (unit.type === "archer" || unit.type === "goldenArcher") &&
+      distanceTo(unit.x, unit.y, target.x, target.y) <= 180
+    )).length;
+    bonus += Math.max(0, nearbyArchers - 1) * 42;
+  }
   if ((target.hp ?? 0) < (target.maxHp ?? data.hp ?? 1) * 0.45) bonus += 25;
   return bonus;
 }
@@ -19353,7 +19367,7 @@ function shootArcherFireArrow(unit, target) {
     tx: target.x,
     ty: target.y - 48,
     side: unit.side,
-    damage: unit.damage ?? data.damage,
+    damage: data.fireArrowDamage ?? 10,
     target,
     sourceId: unit.id,
     sourceType: unit.type,
@@ -19849,6 +19863,7 @@ function closeRuleDialog() {
 }
 
 function openRuleDialog() {
+  pendingRuleMode = selectedMode;
   normalizeEnemyFaction();
   if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
     statusEl.textContent = selectedMode === "campaign"
@@ -19861,6 +19876,7 @@ function openRuleDialog() {
     openCampaignMap();
     return;
   }
+  updateRuleDialogHint();
   renderAiMatchupPicker();
   ruleDialog?.classList.remove("hidden");
 }
@@ -19883,6 +19899,21 @@ function renderAiMatchupPicker() {
       })
       .join("");
   });
+}
+
+function getModeLabel(mode = selectedMode) {
+  if (mode === "brawl") return "淘金热";
+  if (mode === "quad") return "四国对战";
+  if (mode === "campaign") return "战役模式";
+  return "对战模式";
+}
+
+function updateRuleDialogHint() {
+  const hint = ruleStartBtn?.querySelector("small");
+  if (!hint) return;
+  const controlLabel = selectedControlMode === "ai" ? "AI 对战" : "人机对战";
+  const teamLabel = selectedTeamMode === "duo" ? "2 打 2" : "单线对抗";
+  hint.textContent = `${getModeLabel(pendingRuleMode)} · ${controlLabel} · ${teamLabel}`;
 }
 
 function returnToMainMenu() {
@@ -19916,6 +19947,7 @@ function returnToMainMenu() {
 }
 
 async function startSelectedBattle(faction = selectedFaction) {
+  selectedMode = pendingRuleMode || selectedMode;
   selectedFaction = faction || "order";
   normalizeEnemyFaction();
   if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
@@ -20022,7 +20054,7 @@ async function handleInstallClick() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const refreshKey = "stick-war-sw-refresh-20260617-spartan-sword-rage";
+  const refreshKey = `stick-war-sw-refresh-${APP_VERSION}`;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (sessionStorage.getItem(refreshKey) === "done") return;
     sessionStorage.setItem(refreshKey, "done");
@@ -20803,6 +20835,7 @@ teamModeButtons.forEach((button) => {
     teamModeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    updateRuleDialogHint();
   });
 });
 
@@ -20813,6 +20846,7 @@ controlModeButtons.forEach((button) => {
     controlModeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    updateRuleDialogHint();
     renderAiMatchupPicker();
   });
 });
