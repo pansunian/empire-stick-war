@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-element-divine-punishment";
+const APP_VERSION = "20260620-heavy-cannon-speed";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -975,7 +975,7 @@ const UNIT = {
     hp: 300,
     damage: 50,
     range: 600,
-    speed: 25,
+    speed: 35,
     train: 9,
     cooldown: 4,
     blindSpot: 100,
