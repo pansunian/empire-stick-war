@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v169-chaos-high-wall-siege";
+const CACHE_NAME = "stick-war-pwa-v170-remove-order-archon-commander";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-chaos-high-wall-siege",
+  "./game.js?v=20260620-remove-order-archon-commander",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

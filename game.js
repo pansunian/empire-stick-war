@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-chaos-high-wall-siege";
+const APP_VERSION = "20260620-remove-order-archon-commander";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -203,11 +203,11 @@ const CHAOS_AI_PRESSURE_UNITS = ["orc", "berserkOrc", "apeMan", "minotaur", "rhi
 const CHAOS_AI_BACKLINE_UNITS = ["javelinThrower", "goblinVulture", "griffinBomber", "bomber"];
 const AI_ROLE_PROFILES = {
   order: {
-    frontline: ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry", "archon"],
+    frontline: ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry"],
     ranged: ["archer", "crossbow", "musketeer", "shotgunner", "mage"],
-    support: ["monk", "commander", "barricadeEngineer"],
+    support: ["monk", "barricadeEngineer"],
     raider: ["ironCavalry", "shotgunner", "swordsman", "spearman"],
-    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "shotgunner", "ironCavalry", "spartan", "archon", "commander"],
+    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "shotgunner", "ironCavalry", "spartan"],
     clarity: "formation",
   },
   chaos: {
@@ -1963,7 +1963,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
@@ -2015,7 +2015,7 @@ const FOUR_WAY_BASES = {
   element: { x: 2670, y: 1550, label: "元素", color: "#5e9f92" },
 };
 const FOUR_WAY_AI_ROSTER = {
-  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
+  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
@@ -2156,7 +2156,7 @@ function normalizeUnitType(type) {
 }
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "monk", "crossbow", "musketeer", "shotgunner", "mage", "barricadeEngineer", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
@@ -2376,8 +2376,8 @@ const CAMPAIGN_LEVELS = {
     },
     7: {
       title: "第七关：负隅顽抗",
-      playerRoster: ["miner", "swordsman", "greatsword", "archon", "crossbow", "rocketCart"],
-      playerStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart", "rocketCart"],
+      playerRoster: ["miner", "swordsman", "greatsword", "spartan", "crossbow", "rocketCart"],
+      playerStart: ["miner", "miner", "swordsman", "spartan", "crossbow", "rocketCart", "rocketCart"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       enemyStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane", "vUnit"],
       enemyFaction: "element",
@@ -2390,7 +2390,7 @@ const CAMPAIGN_LEVELS = {
     },
     8: {
       title: "第八关：岩浆箭雨",
-      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
       playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "swordsman", "swordsman", "goldenArcher"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire", "vUnit"],
       enemyStart: ["miner", "miner", "vUnit", "prometheus", "fireElement"],
@@ -2406,7 +2406,7 @@ const CAMPAIGN_LEVELS = {
     },
     9: {
       title: "第九关：黄金战矛",
-      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
+      playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
       playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "greatsword", "spartan", "goldenSpartan"],
       enemyRoster: ["miner", "creeper", "undead", "poisonZombie", "machete", "darkKnight", "ghoul", "undeadMage", "executioner"],
       enemyStart: ["miner", "miner", "creeper", "undead", "machete", "darkKnight"],
@@ -2436,7 +2436,7 @@ const CAMPAIGN_LEVELS = {
       title: "第二关：攻入高城",
       playerRoster: ["miner", "orc", "berserkOrc", "apeMan", "javelinThrower", "goblinVulture", "griffinBomber", "goblin", "goblinExpert", "arrowShieldCart"],
       playerStart: ["miner", "miner", "griffinBomber", "griffinBomber", "orc", "orc", "orc"],
-      enemyRoster: ["miner", "swordsman", "greatsword", "archer", "crossbow", "musketeer", "shotgunner", "spearman", "archon"],
+      enemyRoster: ["miner", "swordsman", "greatsword", "archer", "crossbow", "musketeer", "shotgunner", "spearman", "spartan"],
       enemyStart: ["miner", "miner", "swordsman", "archer", "spearman", "crossbow"],
       enemyFaction: "order",
       campaignHighWalls: [
@@ -2515,7 +2515,7 @@ const CAMPAIGN_LEVELS = {
       title: "第七关：淘金热",
       playerRoster: ["miner", "machete", "undead", "poisonZombie", "ghoul", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
       playerStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
-      enemyRoster: ["miner", "swordsman", "greatsword", "archon", "musketeer", "crossbow", "catapult"],
+      enemyRoster: ["miner", "swordsman", "greatsword", "spartan", "musketeer", "crossbow", "catapult"],
       enemyStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
       enemyFaction: "order",
       startGold: 120,
@@ -2661,8 +2661,8 @@ const CAMPAIGN_LEVELS = {
       title: "第六关：导弹前线",
       playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate", "hurricane", "dreadfire"],
       playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hurricane"],
-      enemyRoster: ["miner", "swordsman", "archon", "crossbow", "rocketCart"],
-      enemyStart: ["miner", "miner", "swordsman", "archon", "crossbow", "rocketCart"],
+      enemyRoster: ["miner", "swordsman", "spartan", "crossbow", "rocketCart"],
+      enemyStart: ["miner", "miner", "swordsman", "spartan", "crossbow", "rocketCart"],
       enemyFaction: "order",
       startGold: 220,
       enemyGold: 260,
@@ -5645,9 +5645,9 @@ function pickWeightedChaosUnit(types, weights = {}) {
 function getProfileWeights(faction, role) {
   const table = {
     order: {
-      frontline: { swordsman: 1.45, spearman: 1.2, greatsword: 1.1, spartan: 1, ironCavalry: 0.9, archon: 0.75 },
+      frontline: { swordsman: 1.45, spearman: 1.2, greatsword: 1.1, spartan: 1, ironCavalry: 0.9 },
       ranged: { archer: 1, crossbow: 1.05, musketeer: 0.95, shotgunner: 1.05, mage: 1.15 },
-      support: { monk: 1.15, commander: 1.05, barricadeEngineer: 0.95 },
+      support: { monk: 1.15, barricadeEngineer: 0.95 },
       raider: { ironCavalry: 1.35, shotgunner: 0.85, swordsman: 0.75, spearman: 0.7 },
     },
     undeadEmpire: {
