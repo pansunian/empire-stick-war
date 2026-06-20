@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-miner-castle-meteor-targets";
+const APP_VERSION = "20260621-siege-mode";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -87,6 +87,20 @@ const FIELD = {
   mineDistance: 300,
 };
 const DEFAULT_FIELD = { ...FIELD };
+const SIEGE_FIELD = {
+  width: 8000,
+  height: 1200,
+  ground: 780,
+  playerBase: 80,
+  enemyBase: 7920,
+  playerGate: 175,
+  enemyGate: 7780,
+  playerMineX: 620,
+  enemyMineX: 7350,
+  mineDistance: 340,
+  minY: 300,
+  maxY: 1040,
+};
 const MINE_LANES = [-205, -72, 72, 185];
 const NORMAL_MINE_COLUMNS = [0, 170];
 const MAGIC_MINE_COLUMN_OFFSET = 340;
@@ -2198,6 +2212,7 @@ const BATTLEFIELD_ZOOM_STEP = 1.22;
 const MODE_START_GOLD = {
   versus: 120,
   brawl: 1500,
+  siege: 220,
 };
 const MODE_GOLD_RUSH = {
   brawl: { columns: 6, rows: 5, mineGold: 2500 },
@@ -2213,6 +2228,28 @@ const CAMPAIGN_HIGH_WALL = {
   archerDamage: 6,
   archerRange: 620,
   archerCooldown: 1.25,
+};
+const SIEGE_STRUCTURE_ROWS = [SIEGE_FIELD.ground - 185, SIEGE_FIELD.ground + 130];
+const SIEGE_ATTACKER_INCOME = { every: 2, gold: 30, magic: 10 };
+const SIEGE_CITY_FIRE = {
+  archerDamage: 6,
+  archerCooldown: 1.5,
+  archerRange: 300,
+  archerMissChance: 0.3,
+  cannonDamage: 50,
+  cannonCooldown: 4,
+  cannonRange: 600,
+  cannonSplash: 80,
+  cannonLimit: 5,
+};
+const SIEGE_CASTLE_VOLLEY = {
+  side: "enemy",
+  range: 760,
+  cooldown: 2,
+  arrowCount: 6,
+  arrowDamage: 8,
+  arrowSplash: 0,
+  arrowLimit: 1,
 };
 const CAMPAIGN_CONTROL_TOWER = {
   hp: 2600,
@@ -2260,6 +2297,111 @@ const campaignProgressByFaction = {
   element: 1,
   swarm: 1,
 };
+
+function createSiegeBattleConfig() {
+  const row = (index) => SIEGE_STRUCTURE_ROWS[index % SIEGE_STRUCTURE_ROWS.length];
+  const house = (x, index) => ({ side: "enemy", label: "守城房屋", x, y: row(index), hp: 500, length: 92, width: 118 });
+  const base = (x, index) => ({ side: "enemy", label: "守城基地", x, y: row(index), hp: 1600, length: 150, width: 138 });
+  const outpost = (x, index, extra = {}) => ({ side: "enemy", label: "哨站", x, y: row(index), hp: 1500, length: 118, width: 142, muskets: 3, musketDamage: 45, musketRange: 350, musketCooldown: 2.25, ...extra });
+  const tower = (x, index, extra = {}) => ({ side: "enemy", label: "高塔", x, y: row(index), hp: 1500, length: 120, width: 220, cannons: 2, cannonCooldown: 4, cannonDamage: 50, cannonRange: 600, cannonSplash: 80, cannonLimit: 5, ...extra });
+  const rocketWall = (x, index, rockets = 1) => ({
+    side: "enemy",
+    label: rockets > 1 ? "火箭高城" : "侧翼高城",
+    x,
+    y: row(index),
+    hp: 2600,
+    length: 170,
+    width: 310,
+    archerCount: 0,
+    rockets,
+    rocketCooldown: 1.5,
+    rocketDamage: UNIT.rocketCart.damage,
+    rocketRange: 520,
+    rocketSplash: UNIT.rocketCart.splash,
+    rocketLimit: 3,
+  });
+
+  return {
+    title: "高城之战",
+    nonCampaignMode: true,
+    siegeMode: true,
+    playerRoster: FACTIONS[selectedFaction]?.roster ?? FACTIONS.order.roster,
+    enemyRoster: FACTIONS[opponentFaction()]?.roster ?? FACTIONS.chaos.roster,
+    playerStart: FACTIONS[selectedFaction]?.startingUnits ?? FACTIONS.order.startingUnits,
+    enemyStart: FACTIONS[opponentFaction()]?.startingUnits ?? FACTIONS.chaos.startingUnits,
+    enemyFaction: opponentFaction(),
+    hideCenterTower: true,
+    startGold: MODE_START_GOLD.siege,
+    enemyGold: MODE_START_GOLD.versus,
+    enemyBaseHp: 4000,
+    enemyBaseLabel: "最终城堡",
+    attackerIncome: SIEGE_ATTACKER_INCOME,
+    castleVolley: SIEGE_CASTLE_VOLLEY,
+    requireAllCampaignBuildingsDestroyed: false,
+    campaignHighWalls: [
+      {
+        side: "enemy",
+        label: "第一城池",
+        x: 1600,
+        y: SIEGE_FIELD.ground - 30,
+        hp: 8000,
+        length: 260,
+        width: 820,
+        archerCount: 10,
+        cannons: 3,
+        ...SIEGE_CITY_FIRE,
+      },
+      {
+        side: "enemy",
+        label: "第二高城",
+        x: 3650,
+        y: SIEGE_FIELD.ground - 30,
+        hp: 6500,
+        length: 240,
+        width: 760,
+        archerCount: 0,
+        rockets: 4,
+        rocketCooldown: 1.5,
+        rocketDamage: UNIT.rocketCart.damage,
+        rocketRange: 540,
+        rocketSplash: UNIT.rocketCart.splash,
+        rocketLimit: 3,
+      },
+      {
+        side: "enemy",
+        label: "后方城池",
+        x: 6200,
+        y: SIEGE_FIELD.ground - 30,
+        hp: 8000,
+        length: 260,
+        width: 820,
+        archerCount: 0,
+        muskets: 6,
+        musketDamage: 45,
+        musketRange: 350,
+        musketCooldown: 2.25,
+        cannons: 4,
+        ...SIEGE_CITY_FIRE,
+      },
+      rocketWall(5450, 0, 1),
+      rocketWall(5650, 1, 1),
+      rocketWall(7200, 0, 1),
+      rocketWall(7420, 1, 1),
+    ],
+    campaignBuildings: [
+      house(2060, 0), house(2185, 1), house(2310, 0),
+      house(2435, 1), house(2560, 0), house(2685, 1),
+      outpost(2860, 0), outpost(3025, 1),
+      base(3230, 0), base(3420, 1),
+      tower(4100, 0), tower(4300, 1),
+      house(4650, 0), house(4775, 1), house(4900, 0), house(5025, 1),
+      outpost(5200, 0), outpost(5325, 1),
+      outpost(6750, 0, { label: "重炮哨站", muskets: 0, cannons: 2 }),
+      outpost(6950, 1, { label: "重炮哨站", muskets: 0, cannons: 2 }),
+    ],
+    objective: "选择一个进攻阵营，突破多层城池、房屋、哨站、高塔和高城防线，摧毁最右侧最终城堡。进攻方每 2 秒获得 30 金币、10 魔力；守城方需要自行采矿。",
+  };
+}
 const campaignAbilities = {
   element: {
     earthMiner: false,
@@ -2840,6 +2982,7 @@ function factionForSide(side) {
 
 function isDuoBattle() {
   if (selectedMode === "campaign" || activeCampaign) return false;
+  if (selectedMode === "siege") return false;
   return selectedTeamMode === "duo";
 }
 
@@ -3283,16 +3426,18 @@ function newGame() {
   spawnCampaignControlTower();
   spawnCampaignAcidTower();
   setCommand("guard");
-  if (selectedControlMode === "ai" && !activeCampaign) {
+  if (selectedControlMode === "ai" && (!activeCampaign || activeCampaign.nonCampaignMode)) {
     state.command = "attack";
     state.attackIntent = "statue";
     state.commandLevel = 2;
   }
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
+  if (selectedMode === "siege") statusEl.textContent = "高城之战：进攻方突破层层防线，摧毁最终城堡";
   if (selectedMode === "brawl") statusEl.textContent = "淘金热：双方 1500 金币开局，中央金矿可争夺";
-  if (selectedControlMode === "ai" && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} AI 对战：${FACTIONS[selectedFaction].name} 对 ${FACTIONS[opponentFaction()].name}`;
-  if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} 2 打 2：AI 队友会自动出兵`;
+  if (selectedControlMode === "ai" && !activeCampaign) statusEl.textContent = `${getModeLabel(selectedMode)} AI 对战：${FACTIONS[selectedFaction].name} 对 ${FACTIONS[opponentFaction()].name}`;
+  if (selectedControlMode === "ai" && selectedMode === "siege") statusEl.textContent = `高城之战 AI 对战：${FACTIONS[selectedFaction].name} 进攻 ${FACTIONS[opponentFaction()].name}守城`;
+  if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${getModeLabel(selectedMode)} 2 打 2：AI 队友会自动出兵`;
   updateHud();
 }
 
@@ -3308,7 +3453,7 @@ function createTeamAiState(side, faction, gold) {
 }
 
 function applyFieldMode(fourWay) {
-  const source = fourWay ? createFourWayFieldConfig() : DEFAULT_FIELD;
+  const source = fourWay ? createFourWayFieldConfig() : selectedMode === "siege" ? SIEGE_FIELD : DEFAULT_FIELD;
   currentFieldModeFourWay = fourWay;
   document.body.classList.toggle("quad-watch", fourWay);
   FIELD.width = source.width;
@@ -3321,6 +3466,10 @@ function applyFieldMode(fourWay) {
   FIELD.playerMineX = source.playerMineX ?? DEFAULT_FIELD.playerMineX;
   FIELD.enemyMineX = source.enemyMineX ?? DEFAULT_FIELD.enemyMineX;
   FIELD.mineDistance = source.mineDistance ?? DEFAULT_FIELD.mineDistance;
+  if (Number.isFinite(source.minY)) FIELD.minY = source.minY;
+  else delete FIELD.minY;
+  if (Number.isFinite(source.maxY)) FIELD.maxY = source.maxY;
+  else delete FIELD.maxY;
   if (fourWay) configureFourWayLayout(source);
   canvas.width = FIELD.width;
   canvas.height = FIELD.height;
@@ -3673,6 +3822,18 @@ function spawnCampaignHighWalls() {
       cannonSplash: wall.cannonSplash ?? 70,
       cannonLimit: wall.cannonLimit ?? 3,
       cannonRange: wall.cannonRange ?? wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
+      muskets: wall.muskets ?? 0,
+      musketTick: wall.musketCooldown ?? 2.25,
+      musketTickEvery: wall.musketCooldown ?? 2.25,
+      musketDamage: wall.musketDamage ?? UNIT.musketeer.damage,
+      musketRange: wall.musketRange ?? UNIT.musketeer.range,
+      rockets: wall.rockets ?? 0,
+      rocketTick: wall.rocketCooldown ?? 1.5,
+      rocketTickEvery: wall.rocketCooldown ?? 1.5,
+      rocketDamage: wall.rocketDamage ?? UNIT.rocketCart.damage,
+      rocketRange: wall.rocketRange ?? UNIT.rocketCart.range,
+      rocketSplash: wall.rocketSplash ?? UNIT.rocketCart.splash,
+      rocketLimit: wall.rocketLimit ?? 3,
     });
   });
 }
@@ -3702,6 +3863,25 @@ function spawnCampaignBuildings() {
       spawnType: building.spawnType ?? null,
       spawnTick: building.spawnEvery ?? 10,
       spawnEvery: building.spawnEvery ?? 10,
+      cannons: building.cannons ?? 0,
+      cannonTick: building.cannonCooldown ?? 5,
+      cannonTickEvery: building.cannonCooldown ?? 5,
+      cannonDamage: building.cannonDamage ?? 40,
+      cannonSplash: building.cannonSplash ?? 70,
+      cannonLimit: building.cannonLimit ?? 3,
+      cannonRange: building.cannonRange ?? 600,
+      muskets: building.muskets ?? 0,
+      musketTick: building.musketCooldown ?? 2.25,
+      musketTickEvery: building.musketCooldown ?? 2.25,
+      musketDamage: building.musketDamage ?? UNIT.musketeer.damage,
+      musketRange: building.musketRange ?? UNIT.musketeer.range,
+      rockets: building.rockets ?? 0,
+      rocketTick: building.rocketCooldown ?? 1.5,
+      rocketTickEvery: building.rocketCooldown ?? 1.5,
+      rocketDamage: building.rocketDamage ?? UNIT.rocketCart.damage,
+      rocketRange: building.rocketRange ?? UNIT.rocketCart.range,
+      rocketSplash: building.rocketSplash ?? UNIT.rocketCart.splash,
+      rocketLimit: building.rocketLimit ?? 3,
     });
   });
 }
@@ -5851,6 +6031,13 @@ function updatePassiveGold(dt) {
   state.passiveGoldTimer -= dt;
   if (state.passiveGoldTimer > 0) return;
 
+  if (selectedMode === "siege") {
+    const income = activeCampaign?.attackerIncome ?? SIEGE_ATTACKER_INCOME;
+    state.passiveGoldTimer += income.every ?? 2;
+    state.gold += income.gold ?? 30;
+    state.magic = (state.magic ?? 0) + (income.magic ?? 10);
+    return;
+  }
   state.passiveGoldTimer += 2;
   state.gold += 10;
   state.enemyGold += 10;
@@ -7278,6 +7465,9 @@ function findBaseTarget(side) {
 }
 
 function getBaseAttackProfile(side) {
+  if (selectedMode === "siege" && side === "enemy" && activeCampaign?.castleVolley) {
+    return { type: "orderVolley", ...activeCampaign.castleVolley };
+  }
   const faction = factionForSide(side);
   if (faction === "order") {
     return { type: "orderVolley", range: BASE_ATTACK.range, cooldown: BASE_ATTACK.orderCooldown };
@@ -7302,19 +7492,21 @@ function launchBaseAttack(side, target) {
 }
 
 function launchBaseArrowVolley(side, target) {
+  const profile = getBaseAttackProfile(side);
   const baseX = side === "player" ? FIELD.playerBase : FIELD.enemyBase;
   const dir = side === "player" ? 1 : -1;
-  for (let i = 0; i < BASE_ATTACK.orderArrowCount; i += 1) {
-    const drift = (i - (BASE_ATTACK.orderArrowCount - 1) / 2) * 4 + (Math.random() - 0.5) * 18;
+  const count = profile.arrowCount ?? BASE_ATTACK.orderArrowCount;
+  for (let i = 0; i < count; i += 1) {
+    const drift = (i - (count - 1) / 2) * 4 + (Math.random() - 0.5) * 18;
     state.arrows.push({
       x: baseX + dir * 10,
       y: FIELD.ground - 142 - (i % 5) * 4,
       tx: target.x + drift,
       ty: target.y ? target.y - 40 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 112,
       side,
-      damage: BASE_ATTACK.orderArrowDamage,
-      splash: BASE_ATTACK.orderArrowSplash,
-      limit: BASE_ATTACK.orderArrowLimit,
+      damage: profile.arrowDamage ?? BASE_ATTACK.orderArrowDamage,
+      splash: profile.arrowSplash ?? BASE_ATTACK.orderArrowSplash,
+      limit: profile.arrowLimit ?? BASE_ATTACK.orderArrowLimit,
       target,
       life: 0.52 + (i % 4) * 0.03,
       duration: 0.52 + (i % 4) * 0.03,
@@ -12094,7 +12286,7 @@ function createGroundFire(x, y, side, dps, duration, radius, options = {}) {
 
 function explodeRocketArrow(arrow) {
   const source = getArrowSource(arrow);
-  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, 3, null, arrow.ty);
+  const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.aoeLimit ?? 3, null, arrow.ty);
   targets.forEach((target) => {
     const dealt = applyUnitDamage(target, arrow.damage, { label: "火箭", color: "#ffce7a", yOffset: -78, ranged: true, sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
     handleDamageDealt(source, target, dealt);
@@ -12122,6 +12314,14 @@ function explodeIronCavalryBomb(arrow) {
 }
 
 function explodeBaseVolleyArrow(arrow) {
+  if ((arrow.splash ?? 0) <= 0) {
+    if (arrow.target && arrow.target.kind !== "statue" && arrow.target.hp > 0) {
+      applyUnitDamage(arrow.target, arrow.damage, { label: "城堡箭", color: "#ffce7a", yOffset: -78, ranged: true, sourceSide: arrow.side });
+    } else if (arrow.target?.kind === "statue") {
+      applyDamage(arrow.target, arrow.damage, arrow.side);
+    }
+    return;
+  }
   const targets = getUnitsInRadius(arrow.tx, arrow.splash, arrow.side, arrow.limit ?? 2, null, arrow.ty);
   targets.forEach((target) => {
     applyUnitDamage(target, arrow.damage, { label: "爆箭", color: "#ffce7a", yOffset: -78 });
@@ -12874,6 +13074,7 @@ function updateBarricades(dt = 0) {
   for (const barricade of state.barricades) {
     if (barricade.controlTower) updateControlTowerBarricade(barricade, dt);
     if (barricade.highWall) updateHighWallCannons(barricade, dt);
+    if (barricade.highWall || barricade.campaignBuilding) updateStructureMountedWeapons(barricade, dt);
     if (barricade.campaignBuilding) updateCampaignBuilding(barricade, dt);
     barricade.life -= dt;
     barricade.tick -= dt;
@@ -12885,6 +13086,25 @@ function updateBarricades(dt = 0) {
     }
   }
   state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function updateStructureMountedWeapons(structure, dt) {
+  if (structure.hp <= 0 || structure.life <= 0) return;
+  if (structure.campaignBuilding && structure.cannons > 0) updateHighWallCannons(structure, dt);
+  if (structure.muskets > 0) {
+    structure.musketTick = (structure.musketTick ?? structure.musketTickEvery ?? 2.25) - dt;
+    while (structure.musketTick <= 0 && structure.hp > 0) {
+      structure.musketTick += structure.musketTickEvery ?? 2.25;
+      fireStructureMuskets(structure);
+    }
+  }
+  if (structure.rockets > 0) {
+    structure.rocketTick = (structure.rocketTick ?? structure.rocketTickEvery ?? 1.5) - dt;
+    while (structure.rocketTick <= 0 && structure.hp > 0) {
+      structure.rocketTick += structure.rocketTickEvery ?? 1.5;
+      fireStructureRockets(structure);
+    }
+  }
 }
 
 function updateCampaignBuilding(building, dt) {
@@ -13075,6 +13295,66 @@ function fireHighWallCannons(wall) {
     });
   });
   if (targets.length) popText(wall.x, wall.y - wall.width / 2 - 82, "高城重炮", "#ffce7a");
+}
+
+function getStructureTargets(structure, range, limit, options = {}) {
+  const front = getBarricadeFrontDirection(structure);
+  return state.units
+    .filter((unit) => (
+      areHostileSides(structure.side, unit.side) &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      !isReaperStealthed(unit) &&
+      !UNIT[unit.type]?.untargetable &&
+      (!options.groundOnly || !UNIT[unit.type]?.flying) &&
+      (unit.x - structure.x) * front >= -80 &&
+      Math.abs(unit.x - structure.x) <= range &&
+      Math.abs((unit.y ?? FIELD.ground) - structure.y) <= (options.yRange ?? 320)
+    ))
+    .sort((a, b) => Math.abs(a.x - structure.x) - Math.abs(b.x - structure.x))
+    .slice(0, limit);
+}
+
+function fireStructureMuskets(structure) {
+  const targets = getStructureTargets(structure, structure.musketRange ?? UNIT.musketeer.range, structure.muskets ?? 1);
+  targets.forEach((target, index) => {
+    const xOffset = (index - (targets.length - 1) / 2) * 14;
+    state.arrows.push({
+      x: structure.x + xOffset,
+      y: structure.y - structure.width / 2 - 42,
+      tx: target.x,
+      ty: target.y ? target.y - 42 + (UNIT[target.type]?.flying ? -42 : 0) : FIELD.ground - 100,
+      side: structure.side,
+      damage: structure.musketDamage ?? UNIT.musketeer.damage,
+      target,
+      life: 0.45,
+      duration: 0.45,
+      type: "musketeer",
+    });
+  });
+  if (targets.length) popText(structure.x, structure.y - structure.width / 2 - 72, "火枪齐射", "#dbe8ff");
+}
+
+function fireStructureRockets(structure) {
+  const targets = getStructureTargets(structure, structure.rocketRange ?? UNIT.rocketCart.range, structure.rockets ?? 1, { groundOnly: true });
+  targets.forEach((target, index) => {
+    const drift = (Math.random() - 0.5) * 38;
+    state.arrows.push({
+      x: structure.x + (index - (targets.length - 1) / 2) * 18,
+      y: structure.y - structure.width / 2 - 54,
+      tx: target.x + drift,
+      ty: (target.y ?? FIELD.ground) - 28 + (Math.random() - 0.5) * 16,
+      side: structure.side,
+      damage: structure.rocketDamage ?? UNIT.rocketCart.damage,
+      target,
+      life: 1.05,
+      duration: 1.05,
+      type: "rocketVolley",
+      splash: structure.rocketSplash ?? UNIT.rocketCart.splash,
+      aoeLimit: structure.rocketLimit ?? 3,
+    });
+  });
+  if (targets.length) popText(structure.x, structure.y - structure.width / 2 - 86, "城防火箭", "#ffce7a");
 }
 
 function damageBarricadeRow(barricade) {
@@ -14201,6 +14481,11 @@ function checkFourWayWin() {
 function completeCampaignVictory(customText = "") {
   state.over = true;
   state.winner = "player";
+  if (activeCampaign?.nonCampaignMode) {
+    statusEl.textContent = customText || activeCampaign.victoryText || `${activeCampaign.title}胜利，最终城堡已被摧毁`;
+    homeBtn.classList.remove("hidden");
+    return;
+  }
   campaignProgressByFaction[activeCampaign.faction] = Math.max(campaignProgressByFaction[activeCampaign.faction], activeCampaign.level + 1);
   if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
   saveCampaignProgress();
@@ -14895,6 +15180,7 @@ function drawCampaignBuilding(building) {
   ctx.fillStyle = "rgba(245, 230, 168, 0.56)";
   ctx.fillRect(-building.length / 2 + 16, -building.width / 2 + 24, 20, 22);
   ctx.fillRect(building.length / 2 - 36, -building.width / 2 + 24, 20, 22);
+  drawStructureWeaponMarks(building, -building.width / 2 - 12);
 
   ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
   ctx.fillRect(-52, -building.width / 2 - (isBase ? 72 : 56), 104, 7);
@@ -15080,6 +15366,7 @@ function drawCampaignHighWall(wall) {
       ctx.strokeRect(x - 13, -height / 2 - 54, 26, 16);
     }
   }
+  drawStructureWeaponMarks(wall, -height / 2 - 86);
   ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
   ctx.fillRect(-52, -height / 2 - 62, 104, 7);
   ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
@@ -15089,6 +15376,33 @@ function drawCampaignHighWall(wall) {
   ctx.textAlign = "center";
   ctx.fillText(wall.label ?? "高墙", 0, -height / 2 - 70);
   ctx.restore();
+}
+
+function drawStructureWeaponMarks(structure, y) {
+  const marks = [
+    { count: structure.muskets ?? 0, label: "枪", color: "#dbe8ff" },
+    { count: structure.cannons ?? 0, label: "炮", color: "#ffce7a" },
+    { count: structure.rockets ?? 0, label: "箭", color: "#ff8a3d" },
+  ].filter((item) => item.count > 0);
+  if (!marks.length) return;
+  const total = marks.reduce((sum, item) => sum + item.count, 0);
+  let index = 0;
+  marks.forEach((mark) => {
+    for (let i = 0; i < mark.count; i += 1) {
+      const x = (index - (total - 1) / 2) * 24;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = mark.color;
+      ctx.font = "800 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(mark.label, x, y + 0.5);
+      index += 1;
+    }
+  });
+  ctx.textBaseline = "alphabetic";
 }
 
 function drawMine(mine, side) {
@@ -20375,6 +20689,7 @@ function closeRuleDialog() {
 function openRuleDialog() {
   pendingRuleMode = selectedMode;
   normalizeEnemyFaction();
+  syncRuleOptionsForMode();
   if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
     statusEl.textContent = selectedMode === "campaign"
       ? "虫群帝国隐藏战役暂未开放"
@@ -20392,7 +20707,7 @@ function openRuleDialog() {
 }
 
 function shouldShowAiMatchupPicker() {
-  return selectedControlMode === "ai" && (selectedMode === "versus" || selectedMode === "brawl");
+  return selectedControlMode === "ai" && (selectedMode === "versus" || selectedMode === "brawl" || selectedMode === "siege");
 }
 
 function renderAiMatchupPicker() {
@@ -20414,6 +20729,7 @@ function renderAiMatchupPicker() {
 function getModeLabel(mode = selectedMode) {
   if (mode === "brawl") return "淘金热";
   if (mode === "quad") return "四国对战";
+  if (mode === "siege") return "高城之战";
   if (mode === "campaign") return "战役模式";
   return "对战模式";
 }
@@ -20422,8 +20738,19 @@ function updateRuleDialogHint() {
   const hint = ruleStartBtn?.querySelector("small");
   if (!hint) return;
   const controlLabel = selectedControlMode === "ai" ? "AI 对战" : "人机对战";
-  const teamLabel = selectedTeamMode === "duo" ? "2 打 2" : "单线对抗";
+  const teamLabel = pendingRuleMode === "siege" ? "1 打 1" : selectedTeamMode === "duo" ? "2 打 2" : "单线对抗";
   hint.textContent = `${getModeLabel(pendingRuleMode)} · ${controlLabel} · ${teamLabel}`;
+}
+
+function syncRuleOptionsForMode() {
+  const siegeSoloOnly = selectedMode === "siege";
+  if (siegeSoloOnly) selectedTeamMode = "solo";
+  teamModeButtons.forEach((button) => {
+    const disabled = siegeSoloOnly && button.dataset.teamMode === "duo";
+    button.disabled = disabled;
+    button.classList.toggle("disabled", disabled);
+    button.classList.toggle("active", button.dataset.teamMode === selectedTeamMode);
+  });
 }
 
 function returnToMainMenu() {
@@ -20441,6 +20768,8 @@ function returnToMainMenu() {
   });
   teamModeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.teamMode === selectedTeamMode);
+    button.disabled = false;
+    button.classList.remove("disabled");
   });
   controlModeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.controlMode === selectedControlMode);
@@ -20475,7 +20804,7 @@ async function startSelectedBattle(faction = selectedFaction) {
     return;
   }
   if (!isIosDevice()) await enterFullscreen();
-  activeCampaign = null;
+  activeCampaign = selectedMode === "siege" ? createSiegeBattleConfig() : null;
   closeRuleDialog();
   factionSelect.classList.add("hidden");
   newGame();
@@ -21317,6 +21646,7 @@ modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedMode = button.dataset.mode;
     if (selectedMode !== "campaign") activeCampaign = null;
+    syncRuleOptionsForMode();
     normalizeEnemyFaction();
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
@@ -21341,6 +21671,7 @@ ruleDialog?.addEventListener("click", (event) => {
 
 teamModeButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    if (button.disabled) return;
     selectedTeamMode = button.dataset.teamMode;
     teamModeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);

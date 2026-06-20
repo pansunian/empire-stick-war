@@ -327,6 +327,12 @@ body {
   border-color: rgba(230, 184, 74, 0.75);
 }
 
+.option-card:disabled,
+.option-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .mode-card strong,
 .option-card strong {
   font-size: 22px;

@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v180-miner-castle-meteor-targets";
+const CACHE_NAME = "stick-war-pwa-v181-siege-mode";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-miner-castle-meteor-targets",
+  "./style.css?v=20260621-siege-mode",
+  "./game.js?v=20260621-siege-mode",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
