@@ -327,8 +327,11 @@ const UNIT = {
     speed: 46,
     train: 0,
     cooldown: 1,
-    goldPerSwing: 11,
-    bagSize: 55,
+    goldPerSwing: 10,
+    bagSize: 60,
+    magicPerSwing: 5,
+    magicBagSize: 30,
+    lifeDrainPerSecond: 2,
     summonOnly: true,
   },
   gnawMiner: {
@@ -1444,11 +1447,11 @@ const UNIT = {
     hp: 400,
     damage: 30,
     range: 200,
-    speed: 50,
+    speed: 120,
     train: 7.5,
     cooldown: 1.5,
     flying: true,
-    ammo: 6,
+    ammo: 8,
     bombRadius: 72,
     bombLimit: 5,
   },
@@ -2240,18 +2243,17 @@ const CAMPAIGN_LEVELS = {
       playerRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
       playerStart: ["miner", "miner", "swordsman", "archer", "spearman"],
       enemyRoster: ["miner", "creeper", "bomber", "orc", "berserkOrc", "javelinThrower", "goblinVulture", "apeMan"],
-      enemyStart: ["miner", "creeper", "orc", "bomber"],
+      enemyStart: ["miner", "miner", "orc", "orc", "berserkOrc", "berserkOrc", "javelinThrower", "javelinThrower", "javelinThrower"],
       enemyFaction: "chaos",
       campaignHighWalls: [
         { x: CENTER_TOWER.x + 200 },
         { x: FIELD.playerBase + 1400 },
-        { x: FIELD.playerBase + 800 },
       ],
       enemyReinforcement: { type: "creeper", every: 12, count: 2 },
       startGold: 220,
       enemyGold: 220,
       rewardText: "正式战役开启",
-      objective: "依托三座高城抵御混沌进攻，并摧毁敌方前哨基地；高城生命值 2000，可阻拦敌人前进，上方各有五名弓箭手，每发 6 伤害",
+      objective: "依托两座高城抵御混沌进攻，并摧毁敌方前哨基地；高城生命值 2000，可阻拦敌人前进，上方各有五名弓箭手，每发 6 伤害",
     },
     2: {
       title: "第二关：箭雨阵线",
@@ -2390,7 +2392,7 @@ const CAMPAIGN_LEVELS = {
       playerRoster: ["miner", "orc", "berserkOrc", "javelinThrower", "apeMan", "goblinVulture", "griffinBomber"],
       playerStart: ["miner", "miner", "orc", "javelinThrower"],
       enemyRoster: ["summoner", "machete", "darkKnight", "undead", "poisonZombie", "deadCorpse", "graveDigger", "bannerBearer"],
-      enemyStart: ["summoner", "machete", "undead", "poisonZombie"],
+      enemyStart: ["summoner", "undead", "undead", "poisonZombie", "machete", "machete"],
       enemyFaction: "undeadEmpire",
       initialTowerOwner: "player",
       enemyReinforcement: { type: "undead", every: 10 },
@@ -2957,7 +2959,7 @@ function formatSpecial(type) {
   if (type === "boneStinger") notes.push("骨刺最多穿透2名敌人；可钻地10秒，伤害变8且不穿透，受到伤害减半；可进化潜伏者");
   if (type === "lurker") notes.push("进化单位；不可移动，钻地攻击，地刺距离100并穿透，受到伤害减半");
   if (type === "summoner") notes.push(`矿工类单位；出场 ${data.firstSummonDelay}秒后召唤 ${data.summonCount} 个亡魂挖矿，之后每 ${data.summonEvery}秒再次召唤；每名召唤师最多召唤 ${data.maxWraiths} 个亡魂`);
-  if (type === "wraithMiner") notes.push(`召唤单位，矿工类指令；挖 ${data.bagSize / data.goldPerSwing} 次可带回 ${data.bagSize} 金`);
+  if (type === "wraithMiner") notes.push(`召唤单位，矿工类指令；每秒挖 ${data.goldPerSwing} 金或 ${data.magicPerSwing} 魔力，生命每秒减少 ${data.lifeDrainPerSecond}`);
   if (data.splash) notes.push(`范围 ${data.splash}`);
   if (data.splashDamage) notes.push(`溅射 ${data.splashDamage}`);
   if (data.flying) notes.push("飞行");
@@ -5920,7 +5922,7 @@ function getCarryResource(unit) {
 }
 
 function getMinerResource(unit) {
-  if (unit.type !== "miner" && unit.type !== "gnawMiner") return "gold";
+  if (unit.type !== "miner" && unit.type !== "gnawMiner" && unit.type !== "wraithMiner") return "gold";
   if (unit.miningResource) return unit.miningResource;
   if (unit.side === "player") return state.minerResource ?? "gold";
   return getSideMagic(unit.side) < getFactionMagicDemand(factionForSide(unit.side), unit.side) ? "magic" : "gold";
@@ -6814,6 +6816,14 @@ function updateUnits(dt) {
         unit.hp = 0;
       }
     }
+    if (unit.type === "wraithMiner") {
+      unit.hp -= (UNIT.wraithMiner.lifeDrainPerSecond ?? 2) * dt;
+      if (unit.hp <= 0) {
+        unit.noCorpse = true;
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
+    }
     unit.chaosWarCryTimer = Math.max(0, (unit.chaosWarCryTimer ?? 0) - dt);
     unit.retaliateTimer = Math.max(0, (unit.retaliateTimer ?? 0) - dt);
     if (unit.retaliateTimer <= 0) unit.retaliateTargetId = null;
@@ -6936,6 +6946,21 @@ function updateUnits(dt) {
         continue;
       }
       if (updateGroupAttackUnit(unit, dt)) {
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
+      if (unit.type === "summoner") {
+        updateSummoner(unit, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
+      if (unit.type === "wraithMiner") {
+        updateWraithMiner(unit, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
+      if (unit.type === "miner" || unit.type === "gnawMiner") {
+        updateMiner(unit, dt);
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
@@ -8658,25 +8683,15 @@ function updateBerserker(unit, dt) {
 }
 
 function updateSummoner(unit, dt) {
-  const isPlayer = unit.side === "player";
-  const minerCommand = isPlayer ? state.minerCommand : "mine";
-  if (shouldEnterPlayerCastle(unit) || (isPlayer && minerCommand === "retreat")) {
-    moveTowardCastle(unit, dt);
-    return;
-  }
-
-  if (unit.side === "player" && state.minerCommand === "attack") {
-    const target = nearestEnemy(unit, 230) ?? { kind: "statue", side: "enemy", x: FIELD.enemyBase, y: FIELD.ground - 80 };
-    updateRangedEconomyAttack(unit, target, dt);
-  } else {
-    const danger = nearestEnemy(unit, getUnitRange(unit));
-    if (danger && unit.cooldown <= 0) attack(unit, danger);
-    if (!danger) updateSummonerMinePatrol(unit, dt);
+  const danger = nearestEnemy(unit, getUnitRange(unit));
+  if (danger && unit.cooldown <= 0) attack(unit, danger);
+  const point = getSummonerDefensePoint(unit);
+  if (!danger || distanceTo(unit.x, unit.y, point.x, point.y) > getGuardPointTolerance(unit)) {
+    moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? UNIT.summoner.speed, dt, getGuardPointTolerance(unit));
   }
   const data = UNIT.summoner;
   unit.summonTimer -= dt;
   if (unit.summonTimer > 0) return;
-  if ((unit.totalWraithsSummoned ?? 0) >= data.maxWraiths) return;
   unit.summonTimer += data.summonEvery;
   summonWraithMiners(unit);
 }
@@ -8706,7 +8721,8 @@ function updateRangedEconomyAttack(unit, target, dt) {
 
 function summonWraithMiners(summoner) {
   const data = UNIT.summoner;
-  const remaining = Math.max(0, data.maxWraiths - (summoner.totalWraithsSummoned ?? 0));
+  const activeWraiths = countActiveWraithMiners(summoner);
+  const remaining = Math.max(0, data.maxWraiths - activeWraiths);
   const count = Math.min(data.summonCount, remaining);
   if (count <= 0) return;
   const dir = summoner.side === "player" ? 1 : -1;
@@ -8716,8 +8732,39 @@ function summonWraithMiners(summoner) {
     wraith.summonerId = summoner.id;
     wraith.summoned = true;
   }
-  summoner.totalWraithsSummoned = (summoner.totalWraithsSummoned ?? 0) + count;
   popText(summoner.x, summoner.y - 108, `召唤亡魂 x${count}`, "#7ed8ff");
+}
+
+function countActiveWraithMiners(summoner) {
+  return state.units.filter((unit) => unit.type === "wraithMiner" && unit.summonerId === summoner.id && unit.hp > 0 && !isUnitHidden(unit)).length;
+}
+
+function getSummonerDefensePoint(unit) {
+  if (state?.fourWay && FOUR_WAY_BASES[unit.side]) {
+    const base = FOUR_WAY_BASES[unit.side];
+    const center = { x: FIELD.width / 2, y: FIELD.height / 2 };
+    const dx = center.x - base.x;
+    const dy = center.y - base.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const px = -ny;
+    const py = nx;
+    const index = getSideUnitOrdinal(unit);
+    return {
+      x: base.x + nx * 145 + px * ((index % 5) - 2) * 24,
+      y: base.y + ny * 145 + py * ((index % 5) - 2) * 24,
+    };
+  }
+  return getGuardFormationPoint(unit, unit.side, unit.side === "enemy" ? state.enemyLineX : null);
+}
+
+function getSideUnitOrdinal(unit) {
+  const index = state.units
+    .filter((candidate) => candidate.side === unit.side && candidate.hp > 0 && candidate.type === unit.type)
+    .sort((a, b) => a.id - b.id)
+    .findIndex((candidate) => candidate.id === unit.id);
+  return Math.max(0, index);
 }
 
 function updateWraithMiner(unit, dt) {
@@ -11507,7 +11554,7 @@ function applyPoison(target, dps, duration, options = {}) {
 }
 
 function isPoisonImmune(unit) {
-  return unit.type === "undead" || unit.type === "poisonZombie" || unit.type === "deadCorpse";
+  return factionForSide(unit.side) === "undeadEmpire" || unit.type === "undead" || unit.type === "poisonZombie" || unit.type === "deadCorpse";
 }
 
 function clearPoison(unit, label = "解毒") {
@@ -12473,7 +12520,7 @@ function updateChaosRecovery(dt) {
   const regenEvery = 2;
   const regenAmount = 5;
   state.units.forEach((unit) => {
-    if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "undeadEmpire" || unit.combatTimer > 0) return;
+    if (unit.hp <= 0 || isUnitHidden(unit) || factionForSide(unit.side) !== "chaos" || unit.combatTimer > 0) return;
     unit.chaosRegenTick += dt;
     unit.chaosCleanseTimer -= dt;
 
@@ -12482,7 +12529,7 @@ function updateChaosRecovery(dt) {
       const healed = Math.min(regenAmount, unit.maxHp - unit.hp);
       if (healed > 0) {
         unit.hp += healed;
-        popText(unit.x, unit.y - 96, `亡灵恢复 +${healed}`, "#b8b0e8");
+        popText(unit.x, unit.y - 96, `混沌恢复 +${healed}`, "#ff8a3d");
       }
     }
 
@@ -17252,7 +17299,7 @@ function drawUnitHp(unit) {
 
 function getInspectedUnitInfoLayout(unit) {
   const data = UNIT[unit.type] ?? {};
-  const canChooseMineResource = isPlayerControlledSide(unit.side) && unit.type === "miner";
+  const canChooseMineResource = isPlayerControlledSide(unit.side) && isMiningWorker(unit);
   const stats = [
     { id: "hp", label: "生命", value: formatStat(unit.maxHp), valueColor: "#e94f4f" },
     { id: "speed", label: "移速", value: formatStat(unit.speed ?? data.speed ?? 0), valueColor: "#4f8cff" },
@@ -17942,7 +17989,7 @@ function handleInspectedInfoButton(point) {
 }
 
 function setMinerUnitResource(unit, resource) {
-  if (!unit || (unit.type !== "miner" && unit.type !== "gnawMiner") || !isPlayerControlledSide(unit.side)) return false;
+  if (!unit || !isMiningWorker(unit) || !isPlayerControlledSide(unit.side)) return false;
   if (unit.carry > 0) {
     popText(unit.x, unit.y - 112, "先运回当前资源", "#f3c963");
     return true;
