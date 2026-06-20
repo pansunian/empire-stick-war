@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-catapult-stun-tune";
+const APP_VERSION = "20260620-undead-relic-campaign";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2586,6 +2586,36 @@ const CAMPAIGN_LEVELS = {
       rewardText: "正式战役开启",
       objective: "摧毁敌方基地。敌方不会主动进攻我方基地；6分钟后秩序支援到来，15分钟内未摧毁敌方基地则失败",
     },
+    2: {
+      title: "第二关：古神遗迹",
+      playerRoster: ["summoner", "darkKnight", "undeadVulture", "undead", "poisonZombie", "ghoul", "graveDigger", "bannerBearer", "reaper", "candlelight"],
+      playerStart: [
+        "machete", "machete", "machete", "machete", "machete", "machete",
+        "darkKnight", "darkKnight", "darkKnight", "darkKnight",
+        "poisonZombie", "poisonZombie", "poisonZombie",
+        "ghoul", "ghoul", "ghoul", "ghoul",
+        "undeadMage", "graveDigger", "bannerBearer",
+        "reaper", "reaper", "reaper",
+      ],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "dreadfire", "vUnit"],
+      enemyStart: ["vUnit", "earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "dreadfire"],
+      enemyFaction: "element",
+      enemyBaseLabel: "古神遗迹",
+      enemyBaseHp: 1800,
+      playerBaseLabel: "亡灵残阵",
+      playerBaseHp: 1800,
+      disablePlayerTraining: true,
+      disableEnemyTraining: true,
+      startGold: 0,
+      enemyGold: 0,
+      startMagic: 0,
+      enemyMagic: 0,
+      rewardText: "灵能基地",
+      victoryText: "古神遗迹已转化为亡灵基地，灵能开始涌动；视野前移，虫群军队正在逼近",
+      victoryPopText: "虫群军队到临",
+      victoryPanForward: { distance: 640 },
+      objective: "本关无法建造兵种。依靠开局亡灵部队击溃遗迹守军，摧毁古神遗迹守兵后，将遗迹能量转化为我方灵能基地；遗迹处有金矿与魔力，胜利后虫群军队将到临",
+    },
   },
   element: {
     1: {
@@ -3862,6 +3892,8 @@ function describeCampaignMechanics(config) {
   if (config.enemyHealthGrowth) mechanics.push(`敌方单位每 ${config.enemyHealthGrowth.every} 秒增加 ${Math.round(config.enemyHealthGrowth.percent * 100)}% 生命值`);
   if (config.enemyDeathsBecomePlayerUndead) mechanics.push("敌方阵亡后会在原地转化为我方亡灵");
   if (config.enemyDeathsBecomeWaterScorpion) mechanics.push("敌方阵亡后会在原地转化为水蝎子");
+  if (config.disablePlayerTraining) mechanics.push("本关无法建造兵种，只能依靠开局部队推进");
+  if (config.disableEnemyTraining) mechanics.push("敌方只保留遗迹守军，不会继续训练单位");
   const hasPlayerGodV = config.godV || config.playerStart?.includes("godVUnit");
   if (hasPlayerGodV) mechanics.push(`神明 V 加入我方战斗，控制距离 ${GOD_V_CONTROL_RANGE}，若神明 V 死亡则挑战失败`);
   if (config.enemyGodV) mechanics.push(`敌方英雄单位神明 V 加入战斗，控制距离 ${GOD_V_CONTROL_RANGE}，被击败后会退出战场`);
@@ -4034,7 +4066,7 @@ function renderShop() {
   mobileUnitsToggle.classList.remove("hidden");
   const showElementConvertButton = selectedFaction === "element" && selectedMode !== "quad" && (!activeCampaign || canUseEarthMinerConversion());
   const allowedElementMerges = getAvailableElementMerges();
-  const shopRoster = currentPlayerRoster().filter((type) => !MERGE_UNITS.has(type));
+  const shopRoster = (activeCampaign?.disablePlayerTraining ? [] : currentPlayerRoster()).filter((type) => !MERGE_UNITS.has(type));
   const allowedElementMergeTypes = new Set(allowedElementMerges.map((merge) => merge.type));
   const elementShopItems = selectedFaction === "element"
     ? ELEMENT_SHOP_LAYOUT.flatMap((column) => column).filter((type) => shopRoster.includes(type) || allowedElementMergeTypes.has(type))
@@ -4882,6 +4914,10 @@ function queueUnit(type) {
   if (selectedControlMode === "ai" && !state.fourWay) return;
   if (state.fourWay) {
     queueFourWayPlayerUnit(type);
+    return;
+  }
+  if (activeCampaign?.disablePlayerTraining) {
+    popText(FIELD.playerGate, FIELD.ground - 95, "本关无法建造兵种", "#f3c963");
     return;
   }
   if (MERGE_UNITS.has(type)) {
@@ -6719,6 +6755,7 @@ function updateEnemyAi(dt) {
   if (state.enemyCounterPushTimer <= 0) state.enemyCounterTargetX = null;
   updateEnemyCommand();
   updateEnemyBattleLine(dt);
+  if (activeCampaign?.disableEnemyTraining) return;
   if (activeCampaign?.secondPhase?.disableEnemyTraining && state.campaignPhase === 2) return;
 
   const enemyEconomyType = getFactionEconomyUnit(opponentFaction());
@@ -13967,7 +14004,18 @@ function completeCampaignVictory(customText = "") {
   if (activeCampaign.faction === "element" && activeCampaign.level === 1) campaignAbilities.element.earthMiner = true;
   saveCampaignProgress();
   const rewardText = activeCampaign.rewardText ? `，解锁：${activeCampaign.rewardText}` : "";
-  statusEl.textContent = customText ? `${customText}${rewardText}，下一关已开启` : `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
+  if (activeCampaign.victoryPanForward && battlefieldWrap) {
+    const distance = activeCampaign.victoryPanForward.distance ?? 520;
+    battlefieldWrap.scrollLeft = Math.min(
+      battlefieldWrap.scrollWidth - battlefieldWrap.clientWidth,
+      battlefieldWrap.scrollLeft + distance
+    );
+  }
+  if (activeCampaign.victoryPopText) {
+    popText(Math.min(FIELD.enemyGate - 120, FIELD.playerGate + 980), FIELD.ground - 170, activeCampaign.victoryPopText, "#b7f56e");
+  }
+  const configuredText = customText || activeCampaign.victoryText || "";
+  statusEl.textContent = configuredText ? `${configuredText}${rewardText}，下一关已开启` : `胜利！${activeCampaign.title}完成${rewardText}，下一关已开启`;
   homeBtn.classList.remove("hidden");
 }
 
