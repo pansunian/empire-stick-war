@@ -2181,6 +2181,15 @@ const CAMPAIGN_HIGH_WALL = {
   archerRange: 620,
   archerCooldown: 1.25,
 };
+const CAMPAIGN_CONTROL_TOWER = {
+  hp: 2600,
+  length: 150,
+  width: 330,
+  goldPerSecond: 20,
+  magicPerSecond: 10,
+  spawnEvery: 8,
+  spawnTypes: ["earthElement", "waterElement", "fireElement", "windElement", "scaldStrike", "electricGate", "linghan", "hill"],
+};
 const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "boneThrower", "darkKnight", "deadCorpse", "poisonZombie", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "boneThrower", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "bannerBearer"]);
@@ -2481,23 +2490,24 @@ const CAMPAIGN_LEVELS = {
   },
   element: {
     1: {
-      title: "第一关：亡灵毒潮",
-      playerRoster: [],
-      playerStart: [
-        "earthElement", "earthElement",
-        "waterElement", "waterElement",
-        "fireElement", "fireElement",
-        "windElement", "windElement",
-        "vUnit", "godVUnit",
-      ],
-      enemyRoster: ["undead", "poisonZombie"],
-      enemyStart: ["miner", "undead", "poisonZombie"],
-      enemyFaction: "chaos",
-      startGold: 0,
-      enemyGold: 120,
-      disableEnemyBaseAttack: true,
-      rewardText: "土元素、土化矿工能力与山丘",
-      objective: "守护神明 V，击败亡灵与毒尸",
+      title: "第一关：笼中之鸟",
+      playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "dreadfire", "hurricane", "vUnit"],
+      playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "vUnit"],
+      enemyRoster: ["summoner", "machete", "darkKnight", "undead", "poisonZombie", "reaper", "candlelight"],
+      enemyStart: ["summoner", "machete", "undead", "poisonZombie"],
+      enemyFaction: "undeadEmpire",
+      campaignControlTower: {
+        side: "enemy",
+        label: "控制之塔",
+        x: CENTER_TOWER.x,
+        hp: CAMPAIGN_CONTROL_TOWER.hp,
+        spawnTypes: CAMPAIGN_CONTROL_TOWER.spawnTypes,
+      },
+      requireControlTowerDestroyed: true,
+      startGold: 180,
+      enemyGold: 180,
+      rewardText: "正式战役开启",
+      objective: "摧毁中心控制之塔，拯救被控制的元素同胞，再摧毁亡灵基地；控制之塔会生成土、水、火、风、烫水击、电门、凌寒、山丘，并每秒为亡灵获得 20 金币、10 魔力",
     },
     2: {
       title: "第二关：冰地异变",
@@ -3042,6 +3052,7 @@ function newGame() {
   }
   spawnCampaignCenterElectricGate();
   spawnCampaignHighWalls();
+  spawnCampaignControlTower();
   setCommand("guard");
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
@@ -3416,6 +3427,36 @@ function spawnCampaignHighWalls() {
   });
 }
 
+function spawnCampaignControlTower() {
+  const tower = activeCampaign?.campaignControlTower;
+  if (!tower) return;
+  state.barricades.push({
+    id: `campaign-control-tower-${state.nextId++}`,
+    ownerId: null,
+    side: tower.side ?? "enemy",
+    x: Math.max(FIELD.playerGate + 260, Math.min(FIELD.enemyGate - 260, tower.x ?? CENTER_TOWER.x)),
+    y: tower.y ?? CENTER_TOWER.y + 32,
+    hp: tower.hp ?? CAMPAIGN_CONTROL_TOWER.hp,
+    maxHp: tower.hp ?? CAMPAIGN_CONTROL_TOWER.hp,
+    length: tower.length ?? CAMPAIGN_CONTROL_TOWER.length,
+    width: tower.width ?? CAMPAIGN_CONTROL_TOWER.width,
+    life: Infinity,
+    duration: Infinity,
+    tick: 1,
+    tickEvery: 1,
+    damage: 0,
+    slow: 0,
+    controlTower: true,
+    label: tower.label ?? "控制之塔",
+    resourceTick: 1,
+    spawnTick: tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery,
+    spawnEvery: tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery,
+    spawnTypes: tower.spawnTypes ?? CAMPAIGN_CONTROL_TOWER.spawnTypes,
+    goldPerSecond: tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond,
+    magicPerSecond: tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond,
+  });
+}
+
 function spawnFourWayUnit(type, side, index = 0) {
   const base = FOUR_WAY_BASES[side];
   const unit = spawnUnit(type, side, base.x);
@@ -3529,13 +3570,17 @@ function launchCampaignBriefing() {
   if (!pendingCampaignBriefing) return;
   activeCampaign = pendingCampaignBriefing;
   pendingCampaignBriefing = null;
-  closeCampaignBriefing();
+  hideCampaignBriefing();
   campaignMap.classList.add("hidden");
   newGame();
 }
 
 function closeCampaignBriefing() {
   pendingCampaignBriefing = null;
+  hideCampaignBriefing();
+}
+
+function hideCampaignBriefing() {
   campaignBriefing.classList.add("hidden");
 }
 
@@ -3624,6 +3669,7 @@ function describeCampaignMechanics(config) {
     if (config.stormClouds.healWindFused) mechanics.push(`乌云出现时，风元素合成单位与宙斯每秒恢复 ${config.stormClouds.healWindFused} 点生命值`);
   }
   if (config.centerElectricGate) mechanics.push("地图中间存在无敌电门，敌人会无视它继续前进");
+  if (config.campaignControlTower) mechanics.push(`中心控制之塔会为敌方每秒提供 ${config.campaignControlTower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond} 金币、${config.campaignControlTower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond} 魔力，并周期生成被控制的元素单位；摧毁后这些元素单位会归我方使用`);
   if (config.snow) mechanics.push(`雪地：单位移速降低 ${Math.round((1 - config.snow.moveFactor) * 100)}%`);
   if (config.secondPhase) {
     mechanics.push(config.secondPhase.message ?? "摧毁第一座基地后进入第二阶段");
@@ -5316,6 +5362,7 @@ function getSideTraitTextPoint(side) {
 }
 
 function updateCenterTower(dt) {
+  if (activeCampaign?.campaignControlTower) return;
   state.towerIncomeTimer -= dt;
   if (state.towerIncomeTimer <= 0) {
     state.towerIncomeTimer += 1;
@@ -11961,6 +12008,7 @@ function updateLandMines(dt = 0) {
 
 function updateBarricades(dt = 0) {
   for (const barricade of state.barricades) {
+    if (barricade.controlTower) updateControlTowerBarricade(barricade, dt);
     barricade.life -= dt;
     barricade.tick -= dt;
     while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
@@ -11970,6 +12018,26 @@ function updateBarricades(dt = 0) {
     }
   }
   state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function updateControlTowerBarricade(tower, dt) {
+  tower.resourceTick = (tower.resourceTick ?? 1) - dt;
+  while (tower.resourceTick <= 0 && tower.hp > 0) {
+    tower.resourceTick += 1;
+    addSideGold(tower.side, tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond);
+    addSideMagic(tower.side, tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond);
+  }
+  tower.spawnTick = (tower.spawnTick ?? tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery) - dt;
+  if (tower.spawnTick > 0 || tower.hp <= 0) return;
+  tower.spawnTick += tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery;
+  const pool = tower.spawnTypes?.length ? tower.spawnTypes : CAMPAIGN_CONTROL_TOWER.spawnTypes;
+  const type = pool[Math.floor(Math.random() * pool.length)];
+  const offset = tower.side === "enemy" ? 72 : -72;
+  const unit = spawnUnit(type, tower.side, tower.x + offset);
+  unit.y = tower.y + (Math.random() - 0.5) * 110;
+  unit.forceCharge = true;
+  unit.controlledByTower = true;
+  popText(tower.x, tower.y - 170, `${UNIT[type]?.name ?? "元素"}被控制`, "#b88cff");
 }
 
 function fireHighWallArchers(wall) {
@@ -12440,6 +12508,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
     if (barricade.hp <= 0) {
       popText(barricade.x, barricade.y - 82, `${label}摧毁`, "#d7c090");
       state.blasts.push({ x: barricade.x, y: barricade.y - 28, radius: 42, life: 0.24, duration: 0.24, color: "#d7c090" });
+      if (barricade.controlTower) releaseControlledElementUnits(barricade);
     }
     return damage;
   }
@@ -13009,6 +13078,13 @@ function checkWin() {
     return;
   }
 
+  if (state.enemyHp <= 0 && activeCampaign?.requireControlTowerDestroyed && isCampaignControlTowerAlive()) {
+    state.enemyHp = 1;
+    statusEl.textContent = "控制之塔仍在运转，先摧毁它才能击溃亡灵基地";
+    popText(CENTER_TOWER.x, CENTER_TOWER.y - 130, "先摧毁控制之塔", "#b88cff");
+    return;
+  }
+
   if (state.enemyHp <= 0 || state.playerHp <= 0) {
     state.over = true;
     state.winner = state.enemyHp <= 0 ? "player" : "enemy";
@@ -13019,6 +13095,33 @@ function checkWin() {
     statusEl.textContent =
       state.winner === "player" ? `胜利！${FACTIONS[opponentFaction()].name}基地已被摧毁` : "失败，我方基地倒塌";
     homeBtn.classList.remove("hidden");
+  }
+}
+
+function isCampaignControlTowerAlive() {
+  return (state.barricades ?? []).some((barricade) => barricade.controlTower && barricade.hp > 0);
+}
+
+function releaseControlledElementUnits(tower) {
+  let released = 0;
+  state.units.forEach((unit) => {
+    if (!unit.controlledByTower || unit.hp <= 0 || isUnitHidden(unit)) return;
+    if (!BASIC_ELEMENT_UNITS.has(unit.type) && !MERGE_UNITS.has(unit.type)) return;
+    unit.side = "player";
+    unit.controlledByTower = false;
+    unit.targetId = null;
+    unit.manualTargetId = null;
+    unit.groupAttackTargetId = null;
+    unit.forceCharge = false;
+    unit.combatTimer = 0;
+    unit.rallyX = Math.max(FIELD.playerGate + 180, tower.x - 140 - released * 18);
+    unit.rallyY = unit.y;
+    released += 1;
+    popText(unit.x, unit.y - 112, "解除控制", "#8ee0cf");
+  });
+  if (released > 0) {
+    popText(tower.x, tower.y - 190, `同胞归队 x${released}`, "#8ee0cf");
+    statusEl.textContent = `控制之塔被摧毁，${released} 个元素同胞归队`;
   }
 }
 
@@ -13627,6 +13730,10 @@ function drawLandMine(mine) {
 }
 
 function drawBarricade(barricade) {
+  if (barricade.controlTower) {
+    drawCampaignControlTower(barricade);
+    return;
+  }
   if (barricade.highWall) {
     drawCampaignHighWall(barricade);
     return;
@@ -13660,6 +13767,63 @@ function drawBarricade(barricade) {
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84, 6);
   ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84 * ratio, 6);
+  ctx.restore();
+}
+
+function drawCampaignControlTower(tower) {
+  const ratio = tower.maxHp > 0 ? Math.max(0, tower.hp / tower.maxHp) : 0;
+  ctx.save();
+  ctx.translate(tower.x, tower.y);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0, 118, 110, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const gradient = ctx.createLinearGradient(0, -170, 0, 105);
+  gradient.addColorStop(0, "#5e456f");
+  gradient.addColorStop(0.55, "#2f2940");
+  gradient.addColorStop(1, "#1b1d25");
+  ctx.fillStyle = gradient;
+  ctx.strokeStyle = "#15131b";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-46, 98);
+  ctx.lineTo(-32, -130);
+  ctx.lineTo(32, -130);
+  ctx.lineTo(46, 98);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#7c5b96";
+  ctx.fillRect(-58, -152, 116, 30);
+  ctx.strokeRect(-58, -152, 116, 30);
+  ctx.fillStyle = "#b88cff";
+  ctx.beginPath();
+  ctx.arc(0, -176, 22 + Math.sin(Date.now() / 180) * 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#efe6ff";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(184, 140, 255, 0.55)";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 5; i += 1) {
+    const angle = (Date.now() / 650) + i * (Math.PI * 2 / 5);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * 34, -176 + Math.sin(angle) * 14);
+    ctx.lineTo(Math.cos(angle + 0.7) * 76, -176 + Math.sin(angle + 0.7) * 28);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
+  ctx.fillRect(-62, -215, 124, 8);
+  ctx.fillStyle = ratio > 0.35 ? "#b88cff" : "#ff8a6b";
+  ctx.fillRect(-62, -215, 124 * ratio, 8);
+  ctx.fillStyle = "#efe6ff";
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(tower.label ?? "控制之塔", 0, -225);
   ctx.restore();
 }
 
@@ -13778,6 +13942,7 @@ function drawGoldRushMines() {
 }
 
 function drawCenterTower() {
+  if (activeCampaign?.campaignControlTower) return;
   const owner = state.towerOwner;
   const captureRatio = state.towerCaptureSide ? Math.min(1, state.towerCaptureTimer / CENTER_TOWER.captureTime) : 0;
   const bannerColor = owner === "player" ? "#75a7ff" : owner === "enemy" ? "#e2675d" : "#d8c7a0";
