@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v161-order-wall-tuning";
+const CACHE_NAME = "stick-war-pwa-v162-element-ai-strategy";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260620-swarm-crest-alpha",
-  "./game.js?v=20260620-order-wall-tuning",
+  "./game.js?v=20260620-element-ai-strategy",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

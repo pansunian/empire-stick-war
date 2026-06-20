@@ -154,6 +154,9 @@ const V_CONTROL_BLOCKED_UNITS = new Set([
   "boneGiant",
   "bannerBearer",
 ]);
+const ELEMENT_AI_BASIC_ELEMENTS = ["earthElement", "waterElement", "fireElement", "windElement"];
+const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "dreadfire", "redflame", "stormLich", "hurricane", "treeEnt", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
+const ELEMENT_AI_HARASSERS = new Set(["windElement", "fireElement", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
@@ -4774,6 +4777,34 @@ function canMergeV(side) {
   return Boolean(getVMaterials(side));
 }
 
+function tryElementAiStrategicMerge(side, elapsed = 0, fourWay = false) {
+  if (factionForSide(side) !== "element") return false;
+  const plan = getElementAiStrategicPlan({ side, magic: getSideMagic(side), elapsed, fourWay });
+  const priority = plan.urgent ? plan.priority : ELEMENT_AI_MERGE_PRIORITY;
+  for (const type of priority) {
+    if (!canAffordElementMerge(type, side)) continue;
+    if (type === "vUnit" && canMergeV(side)) return mergeV(side);
+    if (type === "dreadfire" && canMergeDreadfire(side)) return mergeDreadfire(side);
+    if (type === "redflame" && canMergeRedflame(side)) return mergeRedflame(side);
+    if (type === "stormLich" && canMergeStormLich(side)) return mergeStormLich(side);
+    if (type === "hurricane" && canMergeHurricane(side)) return mergeHurricane(side);
+    if (type === "treeEnt" && !plan.urgent && canMergeTreeEnt(side)) return mergeTreeEnt(side);
+    if (type === "rog" && !plan.urgent && canMergeRog(side)) return mergeRog(side);
+    if (type === "hill" && !plan.urgent && canMergeHill(side)) return mergeHill(side);
+    if (type === "linghan" && !plan.urgent && canMergeLinghan(side)) return mergeLinghan(side);
+    if (type === "electricGate" && !plan.urgent && canMergeElectricGate(side)) return mergeElectricGate(side);
+    if (type === "scaldStrike" && !plan.urgent && canMergeScaldStrike(side)) return mergeScaldStrike(side);
+  }
+  return false;
+}
+
+function canElementAiSpareEarthForMiner(side, elapsed = 0) {
+  if (factionForSide(side) !== "element") return true;
+  const plan = getElementAiStrategicPlan({ side, magic: getSideMagic(side), elapsed });
+  const reserve = plan.urgent || plan.saveMagicFor === "vUnit" ? 1 : 0;
+  return countUnits(side, "earthElement") > reserve + 1;
+}
+
 function queueUnit(type) {
   if (state.over) return;
   if (selectedControlMode === "ai" && !state.fourWay) return;
@@ -5145,8 +5176,12 @@ function chooseStrategicAiUnit(context) {
   const hasHighThreat = hasHostileHighValueThreat(side);
 
   if (context.faction === "element") {
-    const missingBasic = ["earthElement", "waterElement", "fireElement", "windElement"].find((type) => countUnits(side, type) < 2 && affordableRoster.includes(type));
-    if (missingBasic && (context.elapsed < FOUR_WAY_TECH_UNLOCK || Math.random() < 0.55)) return missingBasic;
+    const elementPlan = getElementAiStrategicPlan(context);
+    const powerMerge = elementPlan.priority.find((type) => affordableRoster.includes(type));
+    if (powerMerge && (elementPlan.urgent || Math.random() < 0.72)) return powerMerge;
+    const missingBasic = ELEMENT_AI_BASIC_ELEMENTS.find((type) => countUnits(side, type) < elementPlan.basicReserve && affordableRoster.includes(type));
+    if (missingBasic) return missingBasic;
+    if (elementPlan.saveMagicFor && !powerMerge && context.livingCount >= 5) return null;
   }
 
   if (livingCount <= 2 && frontlineAffordable.length) return pickWeightedChaosUnit(frontlineAffordable, getProfileWeights(context.faction, "frontline"));
@@ -5183,6 +5218,65 @@ function chooseStrategicAiUnit(context) {
     ...highAffordable,
   ];
   return weighted[Math.floor(Math.random() * weighted.length)] ?? affordableRoster[0];
+}
+
+function getElementAiStrategicPlan({ side, magic = getSideMagic(side), elapsed = 0, livingCount = countFighters(side), fourWay = false }) {
+  const pressure = getHostileFormationPressure(side);
+  const hasV = countUnits(side, "vUnit") > 0;
+  const hasDreadfire = countUnits(side, "dreadfire") > 0;
+  const hasRedflame = countUnits(side, "redflame") > 0;
+  const urgent = elapsed >= (fourWay ? 28 : 22) && (
+    pressure >= 8 ||
+    hasHostileHighValueThreat(side) ||
+    getHostilePower(side) > getSideCombatPower(side) * 1.12
+  );
+  const priority = urgent
+    ? [
+        ...(!hasV ? ["vUnit"] : []),
+        ...(!hasDreadfire ? ["dreadfire"] : []),
+        ...(!hasRedflame ? ["redflame"] : []),
+        "stormLich",
+        "hurricane",
+      ]
+    : ELEMENT_AI_MERGE_PRIORITY;
+  const saveTarget = priority.find((type) => getElementMergeMagicCost(type, side) > magic);
+  return {
+    urgent,
+    pressure,
+    priority,
+    saveMagicFor: urgent ? saveTarget ?? null : null,
+    basicReserve: urgent || !hasV ? 1 : livingCount < 5 ? 2 : 1,
+  };
+}
+
+function getHostileFormationPressure(side) {
+  const enemies = state.units.filter((unit) => (
+    areHostileSides(side, unit.side) &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !ECONOMY_UNITS.has(unit.type) &&
+    unit.type !== "wraithMiner" &&
+    !UNIT[unit.type]?.untargetable
+  ));
+  const frontliners = enemies.filter((unit) => getUnitRange(unit) <= 80 && (unit.maxHp ?? UNIT[unit.type]?.hp ?? 0) >= 130).length;
+  const ranged = enemies.filter((unit) => getUnitRange(unit) > 100).length;
+  const highThreats = enemies.filter((unit) => getAiThreatValue(unit) >= 260).length;
+  const orderLine = enemies.filter((unit) => factionForSide(unit.side) === "order").length >= 6 ? 2 : 0;
+  return frontliners * 1.25 + ranged * 1.15 + highThreats * 1.8 + orderLine;
+}
+
+function getSideCombatPower(side) {
+  return state.units.reduce((sum, unit) => {
+    if (unit.side !== side || unit.hp <= 0 || isUnitHidden(unit) || ECONOMY_UNITS.has(unit.type) || unit.type === "wraithMiner") return sum;
+    return sum + getAiThreatValue(unit);
+  }, 0);
+}
+
+function getHostilePower(side) {
+  return state.units.reduce((sum, unit) => {
+    if (!areHostileSides(side, unit.side) || unit.hp <= 0 || isUnitHidden(unit) || ECONOMY_UNITS.has(unit.type) || unit.type === "wraithMiner") return sum;
+    return sum + getAiThreatValue(unit);
+  }, 0);
 }
 
 function chooseChaosStrategicUnit({ side, faction, affordableRoster, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
@@ -6346,38 +6440,11 @@ function updateEnemyAi(dt) {
   const savingForV = shouldEnemySaveForV();
   const targetEnemyMiners = getEnemyTargetMinerCount();
 
-  if (opponentFaction() === "element" && state.enemyAttackMood > 34 && canMergeV("enemy") && mergeV("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 5);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 18 && canMergeTreeEnt("enemy") && mergeTreeEnt("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 24 && canMergeRog("enemy") && mergeRog("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 28 && canMergeDreadfire("enemy") && mergeDreadfire("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 26 && canMergeRedflame("enemy") && mergeRedflame("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 27 && canMergeStormLich("enemy") && mergeStormLich("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 32 && canMergeHurricane("enemy") && mergeHurricane("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 20 && canMergeHill("enemy") && mergeHill("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeScaldStrike("enemy") && mergeScaldStrike("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
-  }
-  if (opponentFaction() === "element" && state.enemyAttackMood > 30 && canMergeElectricGate("enemy") && mergeElectricGate("enemy")) {
-    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3);
+  if (opponentFaction() === "element" && state.enemyAttackMood > 18 && tryElementAiStrategicMerge("enemy", state.enemyAttackMood)) {
+    state.enemySpawnTimer = Math.max(state.enemySpawnTimer, 3.2);
   }
 
-  if (opponentFaction() === "element" && enemyMiners < 2 && state.enemyMinerTimer <= 0 && (!savingForV || countUnits("enemy", "earthElement") > 2) && convertEarthToMiner("enemy")) {
+  if (opponentFaction() === "element" && enemyMiners < 2 && state.enemyMinerTimer <= 0 && (!savingForV || canElementAiSpareEarthForMiner("enemy", state.enemyAttackMood)) && convertEarthToMiner("enemy")) {
     state.enemyMinerTimer = 8;
   }
 
@@ -6440,6 +6507,10 @@ function updateTeamAi(dt) {
       return;
     }
     if (ai.spawnTimer > 0) return;
+    if (ai.faction === "element" && tryElementAiStrategicMerge(ai.side, state.enemyAttackMood ?? 0)) {
+      ai.spawnTimer = 3.2;
+      return;
+    }
     const roster = FACTIONS[ai.faction].roster
       .filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type) && !UNIT[type]?.summonOnly && !UNIT[type]?.statueOnly);
     if (shouldFactionAiSaveForTech({
@@ -6635,7 +6706,8 @@ function chooseEnemyUnit(affordable) {
   if (state.enemyAttackMood < 12 && affordable.includes("undead")) return "undead";
   if (state.enemyAttackMood < 12 && affordable.includes("swordsman")) return "swordsman";
   if (opponentFaction() === "element" && shouldEnemySaveForV()) {
-    const missing = ["earthElement", "waterElement", "fireElement", "windElement"].find((type) => countUnits("enemy", type) < 2 && affordable.includes(type));
+    const plan = getElementAiStrategicPlan({ side: "enemy", magic: state.enemyMagic ?? 0, elapsed: state.enemyAttackMood });
+    const missing = ELEMENT_AI_BASIC_ELEMENTS.find((type) => countUnits("enemy", type) < plan.basicReserve && affordable.includes(type));
     if (missing) return missing;
   }
   const fullRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
@@ -6717,7 +6789,9 @@ function chooseEnemyUnit(affordable) {
 }
 
 function shouldEnemySaveForV() {
-  return opponentFaction() === "element" && state.enemyAttackMood > 22 && !state.units.some((unit) => unit.side === "enemy" && unit.type === "vUnit" && unit.hp > 0);
+  if (opponentFaction() !== "element" || state.enemyAttackMood <= 22) return false;
+  const plan = getElementAiStrategicPlan({ side: "enemy", magic: state.enemyMagic ?? 0, elapsed: state.enemyAttackMood });
+  return plan.urgent || !state.units.some((unit) => unit.side === "enemy" && unit.type === "vUnit" && unit.hp > 0);
 }
 
 function countUnits(side, type) {
@@ -9525,8 +9599,9 @@ function getAiPriorityTarget(unit) {
   if (!unit || isPlayerControlledSide(unit.side)) return null;
   const faction = factionForSide(unit.side);
   const profile = AI_ROLE_PROFILES[faction];
-  if (!profile?.raider?.includes(unit.type) && !(faction === "chaos" && CHAOS_AI_RAIDER_UNITS.has(unit.type))) return null;
-  const searchRange = Math.max(430, getUnitRange(unit) + 220);
+  const elementHarasser = faction === "element" && ELEMENT_AI_HARASSERS.has(unit.type);
+  if (!elementHarasser && !profile?.raider?.includes(unit.type) && !(faction === "chaos" && CHAOS_AI_RAIDER_UNITS.has(unit.type))) return null;
+  const searchRange = Math.max(elementHarasser ? 520 : 430, getUnitRange(unit) + (elementHarasser ? 280 : 220));
   const candidates = state.units
     .filter((target) => areHostileSides(unit.side, target.side))
     .filter((target) => target.hp > 0 && !isUnitHidden(target) && canTarget(unit, target))
@@ -9534,12 +9609,22 @@ function getAiPriorityTarget(unit) {
     .filter((target) => distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= searchRange)
     .map((target) => ({
       target,
-      threat: getAiThreatValue(target),
+      threat: getAiThreatValue(target) + (elementHarasser ? getElementHarassTargetBonus(target) : 0),
       distance: distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y),
     }))
-    .filter((item) => item.threat >= 260)
+    .filter((item) => item.threat >= (elementHarasser ? 190 : 260))
     .sort((a, b) => (b.threat - a.threat) || (a.distance - b.distance));
   return candidates[0]?.target ?? null;
+}
+
+function getElementHarassTargetBonus(target) {
+  const data = UNIT[target.type] ?? {};
+  let bonus = 0;
+  if ((data.range ?? 0) > 120) bonus += 45;
+  if (data.magicCost || MERGE_UNITS.has(target.type)) bonus += 35;
+  if (["mage", "musketeer", "crossbow", "shotgunner", "catapult", "rocketCart", "necromancer", "undeadMage", "graveDigger", "bannerBearer", "goblinExpert", "shaman", "priest", "caterpillar", "corrosiveSpitter"].includes(target.type)) bonus += 70;
+  if ((target.hp ?? 0) < (target.maxHp ?? data.hp ?? 1) * 0.45) bonus += 25;
+  return bonus;
 }
 
 function getRetaliationTarget(unit) {
