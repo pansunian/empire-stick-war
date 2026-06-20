@@ -2488,6 +2488,37 @@ const CAMPAIGN_LEVELS = {
       objective: "敌方英雄宙斯参战：头顶雷云会自动攻击下方敌人，并周期召唤移动乌云、电墙和电门；战场会周期出现雷云，强化风元素合成单位与宙斯",
     },
   },
+  undeadEmpire: {
+    1: {
+      title: "第一关：逃命亡徒",
+      playerRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "deadCorpse", "poisonZombie", "necromancer"],
+      playerStart: ["summoner", "summoner", "machete", "undead", "poisonZombie"],
+      enemyRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
+      enemyStart: ["miner", "miner", "swordsman", "archer", "spearman"],
+      enemyFaction: "order",
+      disableEnemyBaseAttack: true,
+      delayedEnemyReinforcements: [
+        {
+          at: 360,
+          message: "秩序支援到来",
+          statusText: "秩序支援抵达战场，尽快摧毁敌方基地",
+          units: [
+            { type: "musketeer", count: 3 },
+            { type: "swordsman", count: 8 },
+            { type: "greatsword", count: 3 },
+            { type: "monk", count: 2 },
+            { type: "spartan", count: 2 },
+          ],
+        },
+      ],
+      timeLimit: 900,
+      timeLimitFailText: "失败，15分钟内未能摧毁敌方基地",
+      startGold: 220,
+      enemyGold: 220,
+      rewardText: "正式战役开启",
+      objective: "摧毁敌方基地。敌方不会主动进攻我方基地；6分钟后秩序支援到来，15分钟内未摧毁敌方基地则失败",
+    },
+  },
   element: {
     1: {
       title: "第一关：笼中之鸟",
@@ -2507,7 +2538,7 @@ const CAMPAIGN_LEVELS = {
       startGold: 180,
       enemyGold: 180,
       rewardText: "正式战役开启",
-      objective: "摧毁中心控制之塔，拯救被控制的元素同胞，再摧毁亡灵基地；控制之塔会生成土、水、火、风、烫水击、电门、凌寒、山丘，并每秒为亡灵获得 20 金币、10 魔力",
+      objective: "摧毁中心控制之塔，拯救被控制的元素同胞，再摧毁亡灵基地；控制之塔每秒积累 20 金币、10 魔力，用这些资源建造土、水、火、风以及合成出的烫水击、电门、凌寒、山丘",
     },
     2: {
       title: "第二关：冰地异变",
@@ -3226,6 +3257,8 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     stormCloudHealTick: 0,
     campaignPhase: 1,
     secondPhaseReinforcementTimers: [],
+    campaignElapsed: 0,
+    delayedEnemyReinforcementsDone: [],
     campaignDarknessElapsed: 0,
     screenShake: 0,
     playerGodVAssigned: false,
@@ -3452,6 +3485,8 @@ function spawnCampaignControlTower() {
     spawnTick: tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery,
     spawnEvery: tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery,
     spawnTypes: tower.spawnTypes ?? CAMPAIGN_CONTROL_TOWER.spawnTypes,
+    gold: tower.startGold ?? 0,
+    magic: tower.startMagic ?? 0,
     goldPerSecond: tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond,
     magicPerSecond: tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond,
   });
@@ -3635,6 +3670,16 @@ function describeCampaignMechanics(config) {
     const count = config.enemyReinforcement.count ?? 1;
     mechanics.push(`敌方每 ${config.enemyReinforcement.every} 秒增援 ${count} 个${UNIT[config.enemyReinforcement.type]?.name ?? "单位"}`);
   }
+  if (config.disableEnemyBaseAttack) mechanics.push("敌方不会主动进攻我方基地");
+  if (config.delayedEnemyReinforcements?.length) {
+    config.delayedEnemyReinforcements.forEach((wave) => {
+      const units = (wave.units ?? [])
+        .map((entry) => `${entry.count ?? 1} 个${UNIT[entry.type]?.name ?? entry.type}`)
+        .join("、");
+      mechanics.push(`${Math.round((wave.at ?? 0) / 60)} 分钟后敌方支援到来：${units}`);
+    });
+  }
+  if (config.timeLimit) mechanics.push(`${Math.round(config.timeLimit / 60)} 分钟内未摧毁敌方基地则失败`);
   if (config.arrowRain) mechanics.push(`每 ${config.arrowRain.every} 秒落下箭雨，总计 ${config.arrowRain.total} 支，每支 ${config.arrowRain.damage} 点伤害`);
   if (config.arrowRain?.side === "player") mechanics.push("本关箭雨只攻击敌方单位");
   if (config.goldRush) mechanics.push(`淘金热：中央共有 ${config.goldRush.columns * config.goldRush.rows} 个金矿，每个最多 ${config.goldRush.mineGold} 金币`);
@@ -3669,7 +3714,7 @@ function describeCampaignMechanics(config) {
     if (config.stormClouds.healWindFused) mechanics.push(`乌云出现时，风元素合成单位与宙斯每秒恢复 ${config.stormClouds.healWindFused} 点生命值`);
   }
   if (config.centerElectricGate) mechanics.push("地图中间存在无敌电门，敌人会无视它继续前进");
-  if (config.campaignControlTower) mechanics.push(`中心控制之塔会为敌方每秒提供 ${config.campaignControlTower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond} 金币、${config.campaignControlTower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond} 魔力，并周期生成被控制的元素单位；摧毁后这些元素单位会归我方使用`);
+  if (config.campaignControlTower) mechanics.push(`中心控制之塔每秒积累 ${config.campaignControlTower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond} 金币、${config.campaignControlTower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond} 魔力，并消耗这些资源周期建造被控制的元素单位；摧毁后这些元素单位会归我方使用`);
   if (config.snow) mechanics.push(`雪地：单位移速降低 ${Math.round((1 - config.snow.moveFactor) * 100)}%`);
   if (config.secondPhase) {
     mechanics.push(config.secondPhase.message ?? "摧毁第一座基地后进入第二阶段");
@@ -3762,7 +3807,7 @@ const UNDEAD_SHOP_LAYOUT = [
   ["summoner", "undead", "candlelight"],
   ["machete", "ghoul", "reaper"],
   ["undeadVulture", "boneThrower", "deathGod"],
-  ["darkKnight", "poisonZombie", null],
+  ["darkKnight", "poisonZombie", "deadCorpse"],
   ["undeadMage", "necromancer", null],
   ["graveDigger", null, null],
   ["boneGiant", null, null],
@@ -5438,7 +5483,9 @@ function updateQueue(dt) {
 }
 
 function updateCampaignRules(dt) {
+  updateCampaignTimeLimit(dt);
   updateCampaignReinforcements(dt);
+  updateDelayedEnemyReinforcements(dt);
   updateSecondPhaseReinforcements(dt);
   updateCampaignArrowRain(dt);
   updateCampaignUndeadMineWave(dt);
@@ -5448,6 +5495,17 @@ function updateCampaignRules(dt) {
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
   updateCampaignStormClouds(dt);
+}
+
+function updateCampaignTimeLimit(dt) {
+  if (!activeCampaign) return;
+  state.campaignElapsed = (state.campaignElapsed ?? 0) + dt;
+  const limit = activeCampaign.timeLimit;
+  if (!limit || state.over || state.campaignElapsed < limit) return;
+  state.over = true;
+  state.winner = "enemy";
+  statusEl.textContent = activeCampaign.timeLimitFailText ?? "失败，未能在时限内摧毁敌方基地";
+  homeBtn.classList.remove("hidden");
 }
 
 function updateCampaignDarkness(dt) {
@@ -5850,6 +5908,32 @@ function updateCampaignReinforcements(dt) {
     unit.forceCharge = true;
   }
   popText(FIELD.enemyGate - 60, FIELD.ground - 112, `${UNIT[reinforcement.type].name}增援 x${count}`, "#ffb0a3");
+}
+
+function updateDelayedEnemyReinforcements(dt) {
+  const reinforcements = activeCampaign?.delayedEnemyReinforcements;
+  if (!reinforcements?.length) return;
+  state.delayedEnemyReinforcementsDone = state.delayedEnemyReinforcementsDone ?? [];
+  reinforcements.forEach((wave, index) => {
+    if (state.delayedEnemyReinforcementsDone.includes(index)) return;
+    if ((state.campaignElapsed ?? 0) < wave.at) return;
+    state.delayedEnemyReinforcementsDone.push(index);
+    spawnEnemyReinforcementWave(wave);
+  });
+}
+
+function spawnEnemyReinforcementWave(wave) {
+  let offset = 0;
+  (wave.units ?? []).forEach((entry) => {
+    const count = entry.count ?? 1;
+    for (let i = 0; i < count; i += 1) {
+      const unit = spawnUnit(entry.type, "enemy", FIELD.enemyGate + 18 - offset * 22);
+      unit.forceCharge = Boolean(wave.forceCharge);
+      offset += 1;
+    }
+  });
+  popText(FIELD.enemyGate - 80, FIELD.ground - 130, wave.message ?? "敌方支援到来", "#ffb0a3");
+  if (wave.statusText) statusEl.textContent = wave.statusText;
 }
 
 function updateSecondPhaseReinforcements(dt) {
@@ -6290,6 +6374,14 @@ function getEnemyTargetMinerCount() {
 }
 
 function updateEnemyCommand() {
+  if (activeCampaign?.disableEnemyBaseAttack) {
+    if (state.enemyCommand !== "guard") {
+      state.enemyCommand = "guard";
+      popText(FIELD.enemyGate - 90, FIELD.ground - 135, "敌方固守基地", "#ffb0a3");
+    }
+    state.enemyCommandTimer = Math.max(state.enemyCommandTimer, 2);
+    return;
+  }
   if (state.enemyCommandTimer > 0) return;
 
   const enemyPower = getArmyPower("enemy");
@@ -6500,6 +6592,7 @@ function updateBaseAttacks(dt) {
 }
 
 function isBaseAttackDisabled(side) {
+  if (side === "enemy" && activeCampaign?.disableEnemyBaseAttack) return true;
   return false;
 }
 
@@ -12024,20 +12117,48 @@ function updateControlTowerBarricade(tower, dt) {
   tower.resourceTick = (tower.resourceTick ?? 1) - dt;
   while (tower.resourceTick <= 0 && tower.hp > 0) {
     tower.resourceTick += 1;
-    addSideGold(tower.side, tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond);
-    addSideMagic(tower.side, tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond);
+    tower.gold = (tower.gold ?? 0) + (tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond);
+    tower.magic = (tower.magic ?? 0) + (tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond);
   }
   tower.spawnTick = (tower.spawnTick ?? tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery) - dt;
   if (tower.spawnTick > 0 || tower.hp <= 0) return;
   tower.spawnTick += tower.spawnEvery ?? CAMPAIGN_CONTROL_TOWER.spawnEvery;
   const pool = tower.spawnTypes?.length ? tower.spawnTypes : CAMPAIGN_CONTROL_TOWER.spawnTypes;
-  const type = pool[Math.floor(Math.random() * pool.length)];
+  const affordable = pool.filter((type) => canControlTowerAffordUnit(tower, type));
+  if (!affordable.length) {
+    popText(tower.x, tower.y - 170, "控制塔蓄能", "#b88cff");
+    return;
+  }
+  const type = affordable[Math.floor(Math.random() * affordable.length)];
+  spendControlTowerUnitCost(tower, type);
   const offset = tower.side === "enemy" ? 72 : -72;
   const unit = spawnUnit(type, tower.side, tower.x + offset);
   unit.y = tower.y + (Math.random() - 0.5) * 110;
   unit.forceCharge = true;
   unit.controlledByTower = true;
   popText(tower.x, tower.y - 170, `${UNIT[type]?.name ?? "元素"}被控制`, "#b88cff");
+}
+
+function getControlTowerUnitCost(type) {
+  if (BASIC_ELEMENT_UNITS.has(type)) {
+    return { gold: getUnitCost(type, "element"), magic: 0 };
+  }
+  if (MERGE_UNITS.has(type)) {
+    const magic = getElementMergeMagicCost(type, null) || (type === "scaldStrike" || type === "electricGate" ? 100 : 0);
+    return { gold: 0, magic };
+  }
+  return { gold: getUnitCost(type, "element"), magic: getUnitMagicCost(type, "element") };
+}
+
+function canControlTowerAffordUnit(tower, type) {
+  const cost = getControlTowerUnitCost(type);
+  return (tower.gold ?? 0) >= cost.gold && (tower.magic ?? 0) >= cost.magic;
+}
+
+function spendControlTowerUnitCost(tower, type) {
+  const cost = getControlTowerUnitCost(type);
+  tower.gold = Math.max(0, (tower.gold ?? 0) - cost.gold);
+  tower.magic = Math.max(0, (tower.magic ?? 0) - cost.magic);
 }
 
 function fireHighWallArchers(wall) {
