@@ -185,6 +185,49 @@ const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_SURVIVAL_HP_TRAIT = { interval: 10, factor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
 const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
+const CHAOS_AI_FRONTLINE_UNITS = new Set(["creeper", "orc", "berserkOrc", "apeMan", "minotaur", "rhinoMan", "arrowShieldCart"]);
+const CHAOS_AI_SUPPORT_UNITS = new Set(["goblinExpert", "shaman", "priest", "goblin"]);
+const CHAOS_AI_RAIDER_UNITS = new Set(["bomber", "javelinThrower", "goblinVulture", "griffinBomber", "minotaur", "rhinoMan"]);
+const CHAOS_AI_HIGH_TIER_PRIORITY = ["rhinoMan", "minotaur", "griffinBomber", "arrowShieldCart", "apeMan", "goblinExpert", "shaman", "priest", "berserkOrc"];
+const AI_ROLE_PROFILES = {
+  order: {
+    frontline: ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry", "archon"],
+    ranged: ["archer", "crossbow", "musketeer", "mage"],
+    support: ["monk", "commander", "barricadeEngineer"],
+    raider: ["ironCavalry", "swordsman", "spearman"],
+    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "ironCavalry", "spartan", "archon", "commander"],
+    clarity: "formation",
+  },
+  chaos: {
+    frontline: [...CHAOS_AI_FRONTLINE_UNITS],
+    ranged: ["javelinThrower", "goblinVulture", "griffinBomber"],
+    support: [...CHAOS_AI_SUPPORT_UNITS],
+    raider: [...CHAOS_AI_RAIDER_UNITS],
+    highPriority: CHAOS_AI_HIGH_TIER_PRIORITY,
+    clarity: "assault",
+  },
+  undeadEmpire: {
+    frontline: ["machete", "undead", "ghoul", "darkKnight", "boneGiant"],
+    ranged: ["boneThrower", "poisonZombie", "candlelight", "undeadVulture"],
+    support: ["graveDigger", "bannerBearer", "undeadMage", "necromancer"],
+    raider: ["reaper", "darkKnight", "undeadVulture"],
+    highPriority: ["deathGod", "boneGiant", "necromancer", "graveDigger", "bannerBearer", "undeadMage", "darkKnight"],
+  },
+  element: {
+    frontline: ["earthElement", "waterElement", "hill", "treeEnt", "rog", "vUnit"],
+    ranged: ["fireElement", "windElement", "linghan", "redflame", "stormLich", "hurricane", "dreadfire"],
+    support: ["waterElement", "electricGate"],
+    raider: ["windElement", "scaldStrike", "vUnit"],
+    highPriority: ["vUnit", "dreadfire", "hurricane", "stormLich", "redflame", "linghan", "treeEnt", "rog", "hill"],
+  },
+  swarm: {
+    frontline: ["crawler", "ironAnt", "swarmWorm", "heavyAnt", "giantSpider", "broodMother"],
+    ranged: ["corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"],
+    support: ["spider", "antQueen", "ashWorm"],
+    raider: ["poisonBug", "blastBug", "locust"],
+    highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
+  },
+};
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
 const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
   "covenantGuard",
@@ -4765,6 +4808,18 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
     if (UNIT[type]?.hero || UNIT[type]?.statueOnly || UNIT[type]?.summonOnly) return false;
     return Boolean(UNIT[type]);
   });
+  const strategic = chooseStrategicAiUnit({
+    side: ai.side,
+    faction: ai.faction,
+    affordableRoster,
+    fullRoster,
+    livingCount,
+    gold: ai.gold,
+    magic: ai.magic ?? 0,
+    elapsed: state.fourWayElapsed,
+    fourWay: true,
+  });
+  if (strategic !== undefined) return strategic;
   const highTargets = fullRoster
     .filter((type) => getFourWayUnitValue(type, ai.faction, ai.side) >= FOUR_WAY_HIGH_TIER_COST)
     .sort((a, b) => getFourWayUnitValue(b, ai.faction, ai.side) - getFourWayUnitValue(a, ai.faction, ai.side));
@@ -4797,6 +4852,233 @@ function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
     ...cheapAffordable,
   ];
   return weighted[Math.floor(Math.random() * weighted.length)] ?? affordable[0];
+}
+
+function chooseStrategicAiUnit(context) {
+  if (context.faction === "chaos") return chooseChaosStrategicUnit(context);
+  const profile = AI_ROLE_PROFILES[context.faction];
+  if (!profile || !context.affordableRoster.length) return undefined;
+  const { side, affordableRoster, livingCount } = context;
+  const frontlineAffordable = getPreferredAvailable(affordableRoster, profile.frontline ?? []);
+  const rangedAffordable = getPreferredAvailable(affordableRoster, profile.ranged ?? []);
+  const supportAffordable = getPreferredAvailable(affordableRoster, profile.support ?? []);
+  const raiderAffordable = getPreferredAvailable(affordableRoster, profile.raider ?? []);
+  const highAffordable = getPreferredAvailable(affordableRoster, profile.highPriority ?? []);
+  const frontlineCount = countRoleUnits(side, profile.frontline);
+  const rangedCount = countRoleUnits(side, profile.ranged);
+  const supportCount = countRoleUnits(side, profile.support);
+  const hasHighThreat = hasHostileHighValueThreat(side);
+
+  if (context.faction === "element") {
+    const missingBasic = ["earthElement", "waterElement", "fireElement", "windElement"].find((type) => countUnits(side, type) < 2 && affordableRoster.includes(type));
+    if (missingBasic && (context.elapsed < FOUR_WAY_TECH_UNLOCK || Math.random() < 0.55)) return missingBasic;
+  }
+
+  if (livingCount <= 2 && frontlineAffordable.length) return pickWeightedChaosUnit(frontlineAffordable, getProfileWeights(context.faction, "frontline"));
+
+  const desiredFrontline = Math.min(context.faction === "undeadEmpire" ? 7 : 5, Math.max(3, Math.ceil(livingCount * 0.38)));
+  if (frontlineCount < desiredFrontline && frontlineAffordable.length) {
+    return pickWeightedChaosUnit(frontlineAffordable, getProfileWeights(context.faction, "frontline"));
+  }
+
+  const desiredRanged = Math.min(4, Math.max(1, Math.floor(frontlineCount * 0.75)));
+  if (rangedCount < desiredRanged && rangedAffordable.length && Math.random() < 0.78) {
+    return pickWeightedChaosUnit(rangedAffordable, getProfileWeights(context.faction, "ranged"));
+  }
+
+  const desiredSupport = Math.min(context.faction === "undeadEmpire" ? 3 : 2, Math.floor(frontlineCount / 3));
+  if (supportCount < desiredSupport && supportAffordable.length && Math.random() < 0.72) {
+    return pickWeightedChaosUnit(supportAffordable, getProfileWeights(context.faction, "support"));
+  }
+
+  if (hasHighThreat && raiderAffordable.length && Math.random() < 0.62) {
+    return pickWeightedChaosUnit(raiderAffordable, getProfileWeights(context.faction, "raider"));
+  }
+
+  if (shouldFactionAiSaveForTech(context)) return null;
+  if (highAffordable.length && context.elapsed >= (context.fourWay ? FOUR_WAY_TECH_UNLOCK : 24) && Math.random() < 0.7) return highAffordable[0];
+
+  const weighted = [
+    ...frontlineAffordable,
+    ...frontlineAffordable,
+    ...rangedAffordable,
+    ...rangedAffordable,
+    ...supportAffordable,
+    ...raiderAffordable,
+    ...highAffordable,
+  ];
+  return weighted[Math.floor(Math.random() * weighted.length)] ?? affordableRoster[0];
+}
+
+function chooseChaosStrategicUnit({ side, faction, affordableRoster, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
+  if (!affordableRoster.length) return null;
+  const frontlineAffordable = getPreferredAvailable(affordableRoster, ["orc", "creeper", "berserkOrc", "apeMan", "minotaur", "rhinoMan", "arrowShieldCart"]);
+  const supportAffordable = getPreferredAvailable(affordableRoster, ["goblinExpert", "shaman", "priest", "goblin"]);
+  const raiderAffordable = getPreferredAvailable(affordableRoster, ["bomber", "javelinThrower", "goblinVulture", "griffinBomber", "minotaur", "rhinoMan"]);
+  const highAffordable = getPreferredAvailable(affordableRoster, CHAOS_AI_HIGH_TIER_PRIORITY);
+  const frontlineCount = countChaosRoleUnits(side, CHAOS_AI_FRONTLINE_UNITS);
+  const supportCount = countChaosRoleUnits(side, CHAOS_AI_SUPPORT_UNITS);
+  const raiderCount = countChaosRoleUnits(side, CHAOS_AI_RAIDER_UNITS);
+  const hasHighThreat = hasHostileHighValueThreat(side);
+
+  if (livingCount <= 2 && frontlineAffordable.length) {
+    return pickWeightedChaosUnit(frontlineAffordable, { orc: 2.2, creeper: 1.8, berserkOrc: 1.2 });
+  }
+
+  const desiredFrontline = Math.min(5, Math.max(3, Math.ceil(livingCount * 0.42)));
+  if (frontlineCount < desiredFrontline && frontlineAffordable.length) {
+    return pickWeightedChaosUnit(frontlineAffordable, {
+      orc: 2.1,
+      creeper: 1.7,
+      berserkOrc: 1.35,
+      apeMan: 1.1,
+      arrowShieldCart: 0.95,
+      minotaur: 0.9,
+      rhinoMan: 0.85,
+    });
+  }
+
+  if (hasHighThreat && raiderAffordable.length && (raiderCount < 3 || Math.random() < 0.58)) {
+    return pickWeightedChaosUnit(raiderAffordable, {
+      bomber: 1.35,
+      javelinThrower: 1.25,
+      goblinVulture: 1.15,
+      griffinBomber: 0.95,
+      minotaur: 0.8,
+      rhinoMan: 0.75,
+    });
+  }
+
+  const desiredSupport = Math.min(2, Math.floor(frontlineCount / 3));
+  if (supportCount < desiredSupport && supportAffordable.length && Math.random() < 0.72) {
+    return pickWeightedChaosUnit(supportAffordable, {
+      goblinExpert: 1.35,
+      shaman: 1.2,
+      priest: 1.1,
+      goblin: 0.7,
+    });
+  }
+
+  const shouldTech = elapsed >= (fourWay ? FOUR_WAY_TECH_UNLOCK : 24) && frontlineCount >= 3 && livingCount >= 5;
+  if (shouldTech) {
+    if (highAffordable.length && Math.random() < 0.76) return highAffordable[0];
+    if (shouldFactionAiSaveForTech({ side, faction, fullRoster, livingCount, gold, magic, elapsed, fourWay })) return null;
+  }
+
+  const weighted = [
+    ...frontlineAffordable,
+    ...frontlineAffordable,
+    ...raiderAffordable,
+    ...supportAffordable,
+    ...highAffordable,
+  ];
+  return weighted[Math.floor(Math.random() * weighted.length)] ?? affordableRoster[0];
+}
+
+function shouldFactionAiSaveForTech({ side, faction, fullRoster, livingCount, gold, magic, elapsed, fourWay }) {
+  const profile = AI_ROLE_PROFILES[faction];
+  if (!profile?.highPriority?.length) return false;
+  if (elapsed < (fourWay ? FOUR_WAY_TECH_UNLOCK : 24)) return false;
+  if (livingCount < 5 || countRoleUnits(side, profile.frontline) < 3) return false;
+  const target = profile.highPriority
+    .filter((type) => fullRoster.includes(type))
+    .find((type) => !canFactionAiPayForType(type, faction, side, gold, magic, fourWay));
+  if (!target) return false;
+  const goldCost = fourWay ? getFourWayUnitCost(target, faction, side) : getUnitCost(target, faction, side);
+  const magicCost = getUnitMagicCost(target, faction, side);
+  const closeToGold = gold >= goldCost * (faction === "chaos" || faction === "order" ? 0.62 : 0.72);
+  const closeToMagic = magicCost <= 0 || magic >= magicCost * 0.55 || getFactionMagicDemand(faction, side) > 0;
+  return closeToGold && closeToMagic;
+}
+
+function canFactionAiPayForType(type, faction, side, gold, magic, fourWay) {
+  const goldCost = fourWay ? getFourWayUnitCost(type, faction, side) : getUnitCost(type, faction, side);
+  return gold >= goldCost && magic >= getUnitMagicCost(type, faction, side);
+}
+
+function getPreferredAvailable(available, preferred) {
+  return preferred.filter((type) => available.includes(type));
+}
+
+function pickWeightedChaosUnit(types, weights = {}) {
+  const total = types.reduce((sum, type) => sum + (weights[type] ?? 1), 0);
+  let roll = Math.random() * total;
+  for (const type of types) {
+    roll -= weights[type] ?? 1;
+    if (roll <= 0) return type;
+  }
+  return types[0] ?? null;
+}
+
+function getProfileWeights(faction, role) {
+  const table = {
+    order: {
+      frontline: { swordsman: 1.45, spearman: 1.2, greatsword: 1.1, spartan: 1, ironCavalry: 0.9, archon: 0.75 },
+      ranged: { archer: 1, crossbow: 1.05, musketeer: 0.95, mage: 1.15 },
+      support: { monk: 1.15, commander: 1.05, barricadeEngineer: 0.95 },
+      raider: { ironCavalry: 1.35, swordsman: 0.75, spearman: 0.7 },
+    },
+    undeadEmpire: {
+      frontline: { machete: 1.2, undead: 1.45, ghoul: 1.05, darkKnight: 0.9, boneGiant: 0.75 },
+      ranged: { boneThrower: 1.15, poisonZombie: 1.15, candlelight: 1, undeadVulture: 0.9 },
+      support: { necromancer: 1.35, graveDigger: 1.15, undeadMage: 1.05, bannerBearer: 0.95 },
+      raider: { reaper: 1.25, darkKnight: 1.1, undeadVulture: 0.95 },
+    },
+    element: {
+      frontline: { earthElement: 1.35, waterElement: 1.1, hill: 1.05, treeEnt: 0.95, rog: 0.9, vUnit: 0.65 },
+      ranged: { fireElement: 1.2, windElement: 1.1, linghan: 1.05, redflame: 0.95, stormLich: 0.95, hurricane: 0.9, dreadfire: 0.85 },
+      support: { waterElement: 1.25, electricGate: 0.9 },
+      raider: { windElement: 1.25, scaldStrike: 1.05, vUnit: 0.8 },
+    },
+    swarm: {
+      frontline: { crawler: 1.4, ironAnt: 1.25, swarmWorm: 1.05, heavyAnt: 0.95, giantSpider: 0.85, broodMother: 0.75 },
+      ranged: { corrosiveSpitter: 1.25, boneStinger: 1.15, caterpillar: 1.05, lurker: 0.95, hoodCaterpillar: 0.85 },
+      support: { spider: 1.1, antQueen: 1, ashWorm: 0.9 },
+      raider: { poisonBug: 1.25, blastBug: 1.05, locust: 0.8 },
+    },
+  };
+  return table[faction]?.[role] ?? {};
+}
+
+function countRoleUnits(side, roleList = []) {
+  const roleSet = new Set(roleList);
+  if (!roleSet.size) return 0;
+  return state.units.filter((unit) =>
+    unit.side === side &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    roleSet.has(unit.type)
+  ).length;
+}
+
+function countChaosRoleUnits(side, roleSet) {
+  return state.units.filter((unit) =>
+    unit.side === side &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    roleSet.has(unit.type)
+  ).length;
+}
+
+function hasHostileHighValueThreat(side) {
+  return state.units.some((unit) =>
+    areHostileSides(side, unit.side) &&
+    unit.hp > 0 &&
+    !isUnitHidden(unit) &&
+    !ECONOMY_UNITS.has(unit.type) &&
+    !UNIT[unit.type]?.untargetable &&
+    getAiThreatValue(unit) >= 260
+  );
+}
+
+function getAiThreatValue(unit) {
+  const data = UNIT[unit.type] ?? {};
+  const faction = factionForSide(unit.side);
+  const cost = getUnitCost(unit.type, faction, unit.side) + getUnitMagicCost(unit.type, faction, unit.side) * 1.4;
+  const damage = unit.damage ?? data.damage ?? 0;
+  const rangeBonus = (data.range ?? 0) > 100 ? 55 : 0;
+  const hp = unit.maxHp ?? data.hp ?? unit.hp ?? 0;
+  return cost + hp * 0.28 + damage * 8 + rangeBonus;
 }
 
 function updatePassiveGold(dt) {
@@ -5772,6 +6054,19 @@ function updateEnemyAi(dt) {
 
   if (state.enemySpawnTimer <= 0) {
     const enemyRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
+    if (shouldFactionAiSaveForTech({
+      side: "enemy",
+      faction: opponentFaction(),
+      fullRoster: enemyRoster,
+      livingCount: countFighters("enemy"),
+      gold: state.enemyGold,
+      magic: state.enemyMagic ?? 0,
+      elapsed: state.enemyAttackMood,
+      fourWay: false,
+    })) {
+      state.enemySpawnTimer = 0.8;
+      return;
+    }
     const affordable = enemyRoster.filter((type) => canAffordUnit(type, opponentFaction(), "enemy", state.enemyGold));
     if (!affordable.length) {
       state.enemySpawnTimer = 0.8;
@@ -5779,6 +6074,10 @@ function updateEnemyAi(dt) {
     }
 
     const type = chooseEnemyUnit(affordable);
+    if (!type) {
+      state.enemySpawnTimer = 0.8;
+      return;
+    }
     spendUnitCost(type, opponentFaction(), "enemy", state.enemyGold);
     state.enemySpawnTimer = opponentFaction() === "element" ? 1.8 + Math.random() * 2.1 : 1.35 + Math.random() * 1.55;
     spawnTrainedUnit(type, "enemy", Math.floor(Math.random() * 8));
@@ -5803,12 +6102,39 @@ function updateTeamAi(dt) {
     if (ai.spawnTimer > 0) return;
     const roster = FACTIONS[ai.faction].roster
       .filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type) && !UNIT[type]?.summonOnly && !UNIT[type]?.statueOnly);
+    if (shouldFactionAiSaveForTech({
+      side: ai.side,
+      faction: ai.faction,
+      fullRoster: roster,
+      livingCount: countFighters(ai.side),
+      gold: ai.gold,
+      magic: ai.magic ?? 0,
+      elapsed: state.enemyAttackMood ?? 0,
+      fourWay: false,
+    })) {
+      ai.spawnTimer = 0.9;
+      return;
+    }
     const affordable = roster.filter((type) => canTeamAiAffordUnit(ai, type));
     if (!affordable.length) {
       ai.spawnTimer = 0.9;
       return;
     }
-    const type = affordable[Math.floor(Math.random() * affordable.length)];
+    const type = chooseStrategicAiUnit({
+      side: ai.side,
+      faction: ai.faction,
+      affordableRoster: affordable,
+      fullRoster: roster,
+      livingCount: countFighters(ai.side),
+      gold: ai.gold,
+      magic: ai.magic ?? 0,
+      elapsed: state.enemyAttackMood ?? 0,
+      fourWay: false,
+    });
+    if (!type) {
+      ai.spawnTimer = 0.9;
+      return;
+    }
     spendTeamAiUnitCost(ai, type);
     ai.spawnTimer = ai.faction === "element" ? 2.2 + Math.random() * 2.4 : 1.6 + Math.random() * 1.8;
     spawnTrainedUnit(type, ai.side, Math.floor(Math.random() * 8));
@@ -5937,6 +6263,19 @@ function chooseEnemyUnit(affordable) {
     const missing = ["earthElement", "waterElement", "fireElement", "windElement"].find((type) => countUnits("enemy", type) < 2 && affordable.includes(type));
     if (missing) return missing;
   }
+  const fullRoster = currentEnemyRoster().filter((type) => !ECONOMY_UNITS.has(type) && !UNIT[type]?.hero && !MERGE_UNITS.has(type));
+  const strategic = chooseStrategicAiUnit({
+    side: "enemy",
+    faction: opponentFaction(),
+    affordableRoster: affordable,
+    fullRoster,
+    livingCount: countFighters("enemy"),
+    gold: state.enemyGold,
+    magic: state.enemyMagic ?? 0,
+    elapsed: state.enemyAttackMood,
+    fourWay: false,
+  });
+  if (strategic) return strategic;
 
   const weights = {
     swordsman: 1.1,
@@ -8733,6 +9072,8 @@ function findTarget(unit) {
   }
   const retaliationTarget = getRetaliationTarget(unit);
   if (retaliationTarget) return retaliationTarget;
+  const priorityTarget = getAiPriorityTarget(unit);
+  if (priorityTarget) return priorityTarget;
 
   let nearby = null;
   let nearestDistance = Infinity;
@@ -8763,6 +9104,27 @@ function findTarget(unit) {
   }
 
   return null;
+}
+
+function getAiPriorityTarget(unit) {
+  if (!unit || isPlayerControlledSide(unit.side)) return null;
+  const faction = factionForSide(unit.side);
+  const profile = AI_ROLE_PROFILES[faction];
+  if (!profile?.raider?.includes(unit.type) && !(faction === "chaos" && CHAOS_AI_RAIDER_UNITS.has(unit.type))) return null;
+  const searchRange = Math.max(430, getUnitRange(unit) + 220);
+  const candidates = state.units
+    .filter((target) => areHostileSides(unit.side, target.side))
+    .filter((target) => target.hp > 0 && !isUnitHidden(target) && canTarget(unit, target))
+    .filter((target) => state?.fourWay || isAheadOf(unit, target))
+    .filter((target) => distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= searchRange)
+    .map((target) => ({
+      target,
+      threat: getAiThreatValue(target),
+      distance: distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y),
+    }))
+    .filter((item) => item.threat >= 260)
+    .sort((a, b) => (b.threat - a.threat) || (a.distance - b.distance));
+  return candidates[0]?.target ?? null;
 }
 
 function getRetaliationTarget(unit) {
