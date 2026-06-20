@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-campaign-order-birdcage";
+const APP_VERSION = "20260620-chaos-high-wall-siege";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2232,7 +2232,7 @@ const BANNER_INSPIRE_LABELS = {
 const ECONOMY_UNITS = new Set(["miner", "summoner", "gnawMiner"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
-  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
+  chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "ghoul", "poisonZombie", "darkKnight", "undeadMage"],
   undeadEmpire: ["summoner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
   swarm: ["crawler", "poisonBug", "ironAnt", "swarmWorm", "antQueen", "heavyAnt", "gnawMiner", "corrosiveSpitter"],
@@ -2273,7 +2273,7 @@ const CAMPAIGN_LEVELS = {
       title: "第二关：笼中之鸟",
       playerRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
       playerStart: ["miner", "miner", "swordsman", "archer", "spearman"],
-      enemyRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "deadCorpse", "poisonZombie", "necromancer"],
+      enemyRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "ghoul", "poisonZombie", "necromancer"],
       enemyStart: ["summoner", "summoner", "machete", "undead", "poisonZombie"],
       enemyFaction: "undeadEmpire",
       enemyReinforcement: { type: "undead", every: 15, count: 1 },
@@ -2408,7 +2408,7 @@ const CAMPAIGN_LEVELS = {
       title: "第九关：黄金战矛",
       playerRoster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "archon", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart"],
       playerStart: ["miner", "miner", "miner", "miner", "swordsman", "swordsman", "greatsword", "spartan", "goldenSpartan"],
-      enemyRoster: ["miner", "creeper", "undead", "poisonZombie", "machete", "darkKnight", "deadCorpse", "undeadMage", "executioner"],
+      enemyRoster: ["miner", "creeper", "undead", "poisonZombie", "machete", "darkKnight", "ghoul", "undeadMage", "executioner"],
       enemyStart: ["miner", "miner", "creeper", "undead", "machete", "darkKnight"],
       enemyFaction: "chaos",
       startGold: 300,
@@ -2422,7 +2422,7 @@ const CAMPAIGN_LEVELS = {
       title: "第一关：侦查平原",
       playerRoster: ["miner", "orc", "berserkOrc", "javelinThrower", "apeMan", "goblinVulture", "griffinBomber"],
       playerStart: ["miner", "miner", "orc", "javelinThrower"],
-      enemyRoster: ["summoner", "machete", "darkKnight", "undead", "poisonZombie", "deadCorpse", "graveDigger", "bannerBearer"],
+      enemyRoster: ["summoner", "machete", "darkKnight", "undead", "poisonZombie", "ghoul", "graveDigger", "bannerBearer"],
       enemyStart: ["summoner", "undead", "undead", "poisonZombie", "machete", "machete"],
       enemyFaction: "undeadEmpire",
       initialTowerOwner: "player",
@@ -2433,18 +2433,22 @@ const CAMPAIGN_LEVELS = {
       objective: "混沌侦查队已占据中心塔，推进平原并摧毁敌方古墓；敌方每 10 秒会召唤 1 只丧尸",
     },
     2: {
-      title: "第二关：亡灵矿潮",
-      playerRoster: ["miner", "machete", "darkKnight"],
-      playerStart: ["miner", "machete", "darkKnight", "medusa"],
-      enemyRoster: ["miner", "undead", "poisonZombie", "deadCorpse"],
-      enemyStart: ["miner", "undead", "poisonZombie", "deadCorpse"],
-      enemyFaction: "chaos",
-      failOnDeath: "medusa",
-      startGold: 140,
-      enemyGold: 150,
-      undeadMineWave: { every: 10, baseCount: 1, increaseEvery: 60 },
-      rewardText: "亡灵与毒尸",
-      objective: "保护美杜莎，在亡灵矿潮中击败敌军",
+      title: "第二关：攻入高城",
+      playerRoster: ["miner", "orc", "berserkOrc", "apeMan", "javelinThrower", "goblinVulture", "griffinBomber", "goblin", "goblinExpert", "arrowShieldCart"],
+      playerStart: ["miner", "miner", "griffinBomber", "griffinBomber", "orc", "orc", "orc"],
+      enemyRoster: ["miner", "swordsman", "greatsword", "archer", "crossbow", "musketeer", "shotgunner", "spearman", "archon"],
+      enemyStart: ["miner", "miner", "swordsman", "archer", "spearman", "crossbow"],
+      enemyFaction: "order",
+      campaignHighWalls: [
+        { side: "enemy", label: "第一座高城", x: CENTER_TOWER.x - 600, hp: 1500, archerRange: 300, archerCooldown: 2 },
+        { side: "enemy", label: "第二座高城", x: CENTER_TOWER.x + 200, hp: 1500, archerRange: 300, archerCooldown: 2, cannons: 2, cannonCooldown: 5, cannonDamage: 40, cannonSplash: 70, cannonLimit: 3 },
+      ],
+      enemyBaseLabel: "第三座高城",
+      enemyBaseHp: 2200,
+      startGold: 240,
+      enemyGold: 230,
+      rewardText: "正式战役推进",
+      objective: "攻破敌方三座高城：前两座高城位置与秩序第一关相同，第二座高城上有 2 门重炮，每 5 秒抛射炮弹造成 40 范围伤害，最多 3 人；第三座高城为敌方基地，摧毁后胜利",
     },
     3: {
       title: "第三关：黑暗降临",
@@ -2496,8 +2500,8 @@ const CAMPAIGN_LEVELS = {
     },
     6: {
       title: "第六关：大法师围城",
-      playerRoster: ["miner", "undead", "poisonZombie", "deadCorpse", "undeadMage"],
-      playerStart: ["miner", "undead", "poisonZombie", "deadCorpse", "undeadMage", "suikai"],
+      playerRoster: ["miner", "undead", "poisonZombie", "ghoul", "undeadMage"],
+      playerStart: ["miner", "undead", "poisonZombie", "ghoul", "undeadMage", "suikai"],
       enemyRoster: ["miner", "archer", "greatsword", "crossbow", "monk", "mage", "archmage"],
       enemyStart: ["miner", "archer", "greatsword", "crossbow", "monk", "mage", "archmage"],
       enemyFaction: "order",
@@ -2509,7 +2513,7 @@ const CAMPAIGN_LEVELS = {
     },
     7: {
       title: "第七关：淘金热",
-      playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "ghoul", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
       playerStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
       enemyRoster: ["miner", "swordsman", "greatsword", "archon", "musketeer", "crossbow", "catapult"],
       enemyStart: ["miner", "miner", "miner", "miner", "miner", "miner"],
@@ -2522,7 +2526,7 @@ const CAMPAIGN_LEVELS = {
     },
     8: {
       title: "第八关：雷霆神王",
-      playerRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
+      playerRoster: ["miner", "machete", "undead", "poisonZombie", "ghoul", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
       playerStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
       enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
       enemyStart: ["miner", "miner", "vUnit", "zeus", "windElement"],
@@ -2537,7 +2541,7 @@ const CAMPAIGN_LEVELS = {
   undeadEmpire: {
     1: {
       title: "第一关：逃命亡徒",
-      playerRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "deadCorpse", "poisonZombie", "necromancer"],
+      playerRoster: ["summoner", "machete", "darkKnight", "bannerBearer", "graveDigger", "undead", "ghoul", "poisonZombie", "necromancer"],
       playerStart: ["summoner", "summoner", "machete", "undead", "poisonZombie"],
       enemyRoster: ["miner", "swordsman", "greatsword", "archer", "spearman", "spartan", "crossbow"],
       enemyStart: ["miner", "miner", "swordsman", "archer", "spearman"],
@@ -2633,8 +2637,8 @@ const CAMPAIGN_LEVELS = {
       title: "第五关：雪中电门",
       playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "hill", "linghan", "redflame", "stormLich", "scaldStrike", "electricGate"],
       playerStart: ["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "rog", "redflame", "vUnit"],
-      enemyRoster: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage"],
-      enemyStart: ["miner", "undead", "poisonZombie", "deadCorpse", "suikai", "undeadMage"],
+      enemyRoster: ["miner", "undead", "poisonZombie", "ghoul", "suikai", "undeadMage"],
+      enemyStart: ["miner", "undead", "poisonZombie", "ghoul", "suikai", "undeadMage"],
       enemyFaction: "chaos",
       startGold: 180,
       enemyGold: 220,
@@ -2682,7 +2686,7 @@ const CAMPAIGN_LEVELS = {
       title: "第八关：黑骑士兄长",
       playerRoster: ["earthElement", "waterElement", "fireElement", "windElement", "hill", "linghan", "redflame", "stormLich", "vUnit", "zeus"],
       playerStart: ["miner", "miner", "vUnit", "zeus", "windElement"],
-      enemyRoster: ["miner", "machete", "undead", "poisonZombie", "deadCorpse", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
+      enemyRoster: ["miner", "machete", "undead", "poisonZombie", "ghoul", "undeadMage", "bomber", "darkKnight", "chaosGiant", "creeper"],
       enemyStart: ["miner", "miner", "miner", "miner", "machete", "machete", "machete", "darkKnightBrother", "darkKnightBrother"],
       enemyFaction: "chaos",
       startGold: 260,
@@ -2718,7 +2722,7 @@ const CAMPAIGN_LEVELS = {
 };
 const LEGACY_CAMPAIGN_LEVELS = {
   order: [3, 4, 5, 6, 7, 8, 9],
-  chaos: [2, 3, 4, 5, 6, 7, 8],
+  chaos: [3, 4, 5, 6, 7, 8],
   element: [2, 3, 4, 5, 6, 7, 8],
 };
 Object.entries(LEGACY_CAMPAIGN_LEVELS).forEach(([faction, levels]) => {
@@ -3545,7 +3549,7 @@ function spawnCampaignHighWalls() {
     state.barricades.push({
       id: `campaign-high-wall-${index}-${state.nextId++}`,
       ownerId: null,
-      side: "player",
+      side: wall.side ?? "player",
       x,
       y: wall.y ?? FIELD.ground - 28,
       hp: wall.hp ?? CAMPAIGN_HIGH_WALL.hp,
@@ -3563,6 +3567,13 @@ function spawnCampaignHighWalls() {
       archerCount: wall.archerCount ?? CAMPAIGN_HIGH_WALL.archerCount,
       archerDamage: wall.archerDamage ?? CAMPAIGN_HIGH_WALL.archerDamage,
       archerRange: wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
+      cannons: wall.cannons ?? 0,
+      cannonTick: wall.cannonCooldown ?? 5,
+      cannonTickEvery: wall.cannonCooldown ?? 5,
+      cannonDamage: wall.cannonDamage ?? 40,
+      cannonSplash: wall.cannonSplash ?? 70,
+      cannonLimit: wall.cannonLimit ?? 3,
+      cannonRange: wall.cannonRange ?? wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
     });
   });
 }
@@ -3953,7 +3964,7 @@ const UNDEAD_SHOP_LAYOUT = [
   ["summoner", "undead", "candlelight"],
   ["machete", "ghoul", "reaper"],
   ["undeadVulture", "boneThrower", "deathGod"],
-  ["darkKnight", "poisonZombie", "deadCorpse"],
+  ["darkKnight", "poisonZombie", null],
   ["undeadMage", "necromancer", null],
   ["graveDigger", null, null],
   ["boneGiant", null, null],
@@ -12662,6 +12673,7 @@ function updateLandMines(dt = 0) {
 function updateBarricades(dt = 0) {
   for (const barricade of state.barricades) {
     if (barricade.controlTower) updateControlTowerBarricade(barricade, dt);
+    if (barricade.highWall) updateHighWallCannons(barricade, dt);
     barricade.life -= dt;
     barricade.tick -= dt;
     while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
@@ -12672,6 +12684,15 @@ function updateBarricades(dt = 0) {
     }
   }
   state.barricades = state.barricades.filter((barricade) => barricade.life > 0 && barricade.hp > 0);
+}
+
+function updateHighWallCannons(wall, dt) {
+  if (!wall.cannons || wall.cannons <= 0 || wall.hp <= 0 || wall.life <= 0) return;
+  wall.cannonTick = (wall.cannonTick ?? wall.cannonTickEvery ?? 5) - dt;
+  while (wall.cannonTick <= 0 && wall.hp > 0) {
+    wall.cannonTick += wall.cannonTickEvery ?? 5;
+    fireHighWallCannons(wall);
+  }
 }
 
 function updateControlTowerBarricade(tower, dt) {
@@ -12801,6 +12822,43 @@ function fireHighWallArchers(wall) {
       type: "campaignHighWallArrow",
     });
   });
+}
+
+function fireHighWallCannons(wall) {
+  const front = getBarricadeFrontDirection(wall);
+  const targets = state.units
+    .filter((unit) => (
+      areHostileSides(wall.side, unit.side) &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      !isReaperStealthed(unit) &&
+      !UNIT[unit.type]?.untargetable &&
+      (unit.x - wall.x) * front >= -80 &&
+      Math.abs(unit.x - wall.x) <= wall.cannonRange &&
+      Math.abs((unit.y ?? FIELD.ground) - wall.y) <= 280
+    ))
+    .sort((a, b) => Math.abs(a.x - wall.x) - Math.abs(b.x - wall.x))
+    .slice(0, wall.cannons);
+
+  targets.forEach((target, index) => {
+    const cannonX = wall.x + (index - (targets.length - 1) / 2) * 38;
+    state.arrows.push({
+      x: cannonX,
+      y: wall.y - wall.width / 2 - 46,
+      tx: target.x,
+      ty: (target.y ?? FIELD.ground) - 22,
+      side: wall.side,
+      damage: wall.cannonDamage,
+      target,
+      life: 0.85,
+      duration: 0.85,
+      type: "boulder",
+      cannon: true,
+      splash: wall.cannonSplash,
+      aoeLimit: wall.cannonLimit,
+    });
+  });
+  if (targets.length) popText(wall.x, wall.y - wall.width / 2 - 82, "高城重炮", "#ffce7a");
 }
 
 function damageBarricadeRow(barricade) {
@@ -14665,6 +14723,18 @@ function drawCampaignHighWall(wall) {
     ctx.moveTo(x - 8, -height / 2 - 32);
     ctx.quadraticCurveTo(x - 16, -height / 2 - 42, x - 8, -height / 2 - 52);
     ctx.stroke();
+  }
+  if (wall.cannons > 0) {
+    for (let i = 0; i < wall.cannons; i += 1) {
+      const x = (i - (wall.cannons - 1) / 2) * 40;
+      ctx.fillStyle = "#22242a";
+      ctx.fillRect(x - 13, -height / 2 - 54, 26, 16);
+      ctx.fillStyle = "#3c4147";
+      ctx.fillRect(x - 5, -height / 2 - 72, 10, 28);
+      ctx.strokeStyle = "#ffce7a";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 13, -height / 2 - 54, 26, 16);
+    }
   }
   ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
   ctx.fillRect(-52, -height / 2 - 62, 104, 7);
