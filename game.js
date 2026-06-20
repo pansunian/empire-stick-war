@@ -282,8 +282,8 @@ const UNIT = {
     speed: 60,
     train: 2.5,
     cooldown: 0.8,
-    evolveGoldCost: 100,
-    evolveMagicCost: 100,
+    evolveGoldCost: 0,
+    evolveMagicCost: 0,
   },
   poisonBug: {
     name: "毒虫",
@@ -2728,7 +2728,7 @@ function formatSpecial(type) {
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
   if (type === "gnawMiner") notes.push("虫群矿工；挖 4 次带回 100 金");
-  if (type === "crawler") notes.push("可花100金币和100魔力原地进化成咀矿者");
+  if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
   if (type === "broodMother") notes.push("每12.5秒召唤7个飞行蝗虫");
