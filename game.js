@@ -758,11 +758,13 @@ const UNIT = {
   stoneGolem: {
     name: "石头人",
     hp: 1,
-    damage: 12,
+    damage: 15,
     range: 38,
     speed: 18,
     train: 0,
-    cooldown: 2,
+    cooldown: 1.5,
+    splash: 58,
+    aoeLimit: 3,
     summonOnly: true,
   },
   commander: {
@@ -2840,7 +2842,7 @@ function formatSpecial(type) {
   if (type === "linghan") notes.push(`拥有合成入口后可直接融合；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`拥有合成入口后可直接释放；一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`拥有合成入口后可直接融合；持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
-  if (type === "mage") notes.push(`手动技能：魔爆 / 冰地 / 电墙 / 化石，全部冷却 ${data.skillCooldown}秒；化石可将生命低于 ${data.stoneGolemMaxHp} 的生物敌人暂变石头人 ${data.stoneGolemDuration}秒`);
+  if (type === "mage") notes.push(`手动技能：魔爆 / 冰地 / 电墙 / 化石，全部冷却 ${data.skillCooldown}秒；化石可将生命低于 ${data.stoneGolemMaxHp} 的生物敌人暂变我方石头人 ${data.stoneGolemDuration}秒，石头人范围攻击最多3人`);
   if (type === "goldenSpartan") notes.push(`英雄单位；双击后向最前方敌人投出一次黄金长矛，造成 ${data.goldenSpearDamage} 点伤害`);
   if (type === "berserker") notes.push(`英雄单位；每 ${data.rageEvery}秒使自己和周围剑士/大剑兵狂暴 ${data.rageDuration}秒`);
   if (type === "archmage") notes.push(`英雄单位；连锁闪电 ${data.chainDamages.join("/")}; 每 ${data.fireballEvery}秒召唤 ${data.fireballCount} 个大火球；五次普攻后近距离奥术爆炸`);
@@ -8911,6 +8913,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "stoneGolem") {
+    attackStoneGolem(unit, target);
+    return;
+  }
+
   if (unit.type === "dreadfire") {
     castDreadfireSpell(unit, target);
     return;
@@ -9689,12 +9696,14 @@ function castMageStoneGolem(unit, target) {
   const golem = UNIT.stoneGolem;
   target.stoneGolemOriginal = {
     type: target.type,
+    side: target.side,
     damage: target.damage,
     range: target.range,
     speed: target.speed,
     maxHp: target.maxHp,
   };
   target.type = "stoneGolem";
+  target.side = unit.side;
   target.damage = golem.damage;
   target.range = golem.range;
   target.speed = golem.speed;
@@ -9715,6 +9724,7 @@ function restoreMageStoneGolem(unit) {
   if (!unit || !original) return;
   const hp = unit.hp;
   unit.type = original.type;
+  unit.side = original.side;
   unit.damage = original.damage;
   unit.range = original.range;
   unit.speed = original.speed;
@@ -9722,8 +9732,36 @@ function restoreMageStoneGolem(unit) {
   unit.hp = Math.min(unit.maxHp, hp);
   unit.stoneGolemOriginal = null;
   unit.stoneGolemTimer = 0;
+  if (state.controlledUnitId === unit.id && !isPlayerControlledSide(unit.side)) {
+    state.controlledUnitId = null;
+    state.pendingManualAction = null;
+    state.manualMoveTarget = null;
+    stopManualJoystick();
+  }
   state.blasts.push({ x: unit.x, y: (unit.y ?? FIELD.ground) - 32, radius: 54, life: 0.28, duration: 0.28, color: "#b88cff" });
   popText(unit.x, unit.y - 108, "恢复原样", "#d7ceff");
+}
+
+function attackStoneGolem(unit, target) {
+  const data = UNIT.stoneGolem;
+  const y = target.y ?? unit.y;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, y);
+  if (!targets.includes(target) && target.kind !== "statue") targets.unshift(target);
+  targets.slice(0, data.aoeLimit).forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.damage, {
+      label: "石拳",
+      color: "#d6c090",
+      yOffset: -82,
+      sourceSide: unit.side,
+      sourceUnitId: unit.id,
+    });
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  if (target.kind === "statue") {
+    const dealt = applyDamage(target, data.damage, unit.side);
+    handleDamageDealt(unit, target, dealt);
+  }
+  state.blasts.push({ x: target.x, y: y - 30, radius: data.splash, life: 0.24, duration: 0.24, color: "#d6c090" });
 }
 
 function castUndeadStaffSlam(unit, target) {
