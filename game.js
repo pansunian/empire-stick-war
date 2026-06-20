@@ -2190,6 +2190,17 @@ const CAMPAIGN_CONTROL_TOWER = {
   spawnEvery: 8,
   spawnTypes: ["earthElement", "waterElement", "fireElement", "windElement", "scaldStrike", "electricGate", "linghan", "hill"],
 };
+const CAMPAIGN_ACID_TOWER = {
+  hp: 1000,
+  length: 132,
+  width: 300,
+  damage: 30,
+  range: 620,
+  cooldown: 2,
+  slimeRadius: 90,
+  slimeSlow: 0.5,
+  slimeDuration: 8,
+};
 const UNDEAD_BASE_UNITS = new Set(["summoner", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "machete", "boneThrower", "darkKnight", "deadCorpse", "poisonZombie", "undeadMage", "bannerBearer", "graveDigger"]);
 const UNDEAD_CORPSE_EXCLUDED = new Set(["reaper", "deathGod", "deathGodClone", "catapult", "undeadCatapult", "boneGiant"]);
 const SKELETON_UNITS = new Set(["machete", "boneThrower", "undeadVulture", "darkKnight", "undeadMage", "graveDigger", "boneGiant", "bannerBearer"]);
@@ -2207,12 +2218,14 @@ const CAMPAIGN_UNLOCKS = {
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "deadCorpse", "poisonZombie", "darkKnight", "undeadMage"],
   undeadEmpire: ["summoner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
+  swarm: ["crawler", "poisonBug", "ironAnt", "swarmWorm", "antQueen", "heavyAnt", "gnawMiner", "corrosiveSpitter"],
 };
 const campaignProgressByFaction = {
   order: 1,
   chaos: 1,
   undeadEmpire: 1,
   element: 1,
+  swarm: 1,
 };
 const campaignAbilities = {
   element: {
@@ -2646,6 +2659,29 @@ const CAMPAIGN_LEVELS = {
       objective: "本关相当于混沌帝国第八关双方互换；敌方黑骑士兄长成对参战，其中一人倒下时，另一人狂暴 60 秒，攻速与移速翻倍",
     },
   },
+  swarm: {
+    1: {
+      title: "第一关：生命之心",
+      playerRoster: ["crawler", "poisonBug", "ironAnt", "swarmWorm", "antQueen", "heavyAnt", "gnawMiner"],
+      playerStart: ["crawler", "crawler", "ironAnt", "poisonBug"],
+      enemyRoster: ["earthElement", "waterElement", "fireElement", "windElement", "rog", "treeEnt", "hurricane", "dreadfire"],
+      enemyStart: ["earthElement", "waterElement", "fireElement", "windElement"],
+      enemyFaction: "element",
+      playerBaseHp: 2500,
+      playerBaseLabel: "虫群之心",
+      heartSummon: { type: "ironAnt", every: 8 },
+      campaignAcidTower: {
+        side: "player",
+        label: "酸蚀炮塔",
+        x: CENTER_TOWER.x,
+        hp: CAMPAIGN_ACID_TOWER.hp,
+      },
+      startGold: 200,
+      enemyGold: 220,
+      rewardText: "正式战役开启",
+      objective: "保护生命值 2500 的虫群之心并摧毁元素基地；虫群之心每 8 秒召唤 1 个铁蚁。中心酸蚀炮塔生命值 1000，攻击 30，攻速 2 秒，攻击会生成减速 50% 的粘液，被摧毁后消失",
+    },
+  },
 };
 let activeCampaign = null;
 let pendingCampaignBriefing = null;
@@ -2675,7 +2711,7 @@ function getFactionEconomyUnit(faction) {
 }
 
 function isFactionUnavailableForMode(faction, mode, controlMode = selectedControlMode) {
-  return faction === "swarm" && (mode === "campaign" || mode === "quad" || controlMode === "ai");
+  return faction === "swarm" && (mode === "quad" || (controlMode === "ai" && mode !== "campaign"));
 }
 
 function chooseUnusedFaction(excluded = []) {
@@ -3084,6 +3120,7 @@ function newGame() {
   spawnCampaignCenterElectricGate();
   spawnCampaignHighWalls();
   spawnCampaignControlTower();
+  spawnCampaignAcidTower();
   setCommand("guard");
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
@@ -3164,6 +3201,8 @@ function configureFourWayLayout(source) {
 }
 
 function createBaseState(startGold, enemyStartGold, sideMines = createSideMines()) {
+  const playerMaxHp = activeCampaign?.playerBaseHp ?? STATUE_MAX_HP;
+  const enemyMaxHp = activeCampaign?.enemyBaseHp ?? STATUE_MAX_HP;
   return {
     gold: startGold,
     enemyGold: enemyStartGold,
@@ -3177,8 +3216,10 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     paused: false,
     over: false,
     winner: null,
-    playerHp: STATUE_MAX_HP,
-    enemyHp: STATUE_MAX_HP,
+    playerMaxHp,
+    enemyMaxHp,
+    playerHp: playerMaxHp,
+    enemyHp: enemyMaxHp,
     units: [],
     arrows: [],
     blasts: [],
@@ -3235,6 +3276,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     towerCaptureTimer: 0,
     towerIncomeTimer: 1,
     campaignReinforcementTimer: activeCampaign?.enemyReinforcement?.every ?? 0,
+    campaignHeartSummonTimer: activeCampaign?.heartSummon?.every ?? 0,
     campaignTrainCounts: {},
     arrowRainTimer: activeCampaign?.arrowRain?.every ?? 0,
     arrowRainRemaining: 0,
@@ -3489,6 +3531,35 @@ function spawnCampaignControlTower() {
     magic: tower.startMagic ?? 0,
     goldPerSecond: tower.goldPerSecond ?? CAMPAIGN_CONTROL_TOWER.goldPerSecond,
     magicPerSecond: tower.magicPerSecond ?? CAMPAIGN_CONTROL_TOWER.magicPerSecond,
+  });
+}
+
+function spawnCampaignAcidTower() {
+  const tower = activeCampaign?.campaignAcidTower;
+  if (!tower) return;
+  state.barricades.push({
+    id: `campaign-acid-tower-${state.nextId++}`,
+    ownerId: null,
+    side: tower.side ?? "player",
+    x: Math.max(FIELD.playerGate + 260, Math.min(FIELD.enemyGate - 260, tower.x ?? CENTER_TOWER.x)),
+    y: tower.y ?? CENTER_TOWER.y + 32,
+    hp: tower.hp ?? CAMPAIGN_ACID_TOWER.hp,
+    maxHp: tower.hp ?? CAMPAIGN_ACID_TOWER.hp,
+    length: tower.length ?? CAMPAIGN_ACID_TOWER.length,
+    width: tower.width ?? CAMPAIGN_ACID_TOWER.width,
+    life: Infinity,
+    duration: Infinity,
+    tick: tower.cooldown ?? CAMPAIGN_ACID_TOWER.cooldown,
+    tickEvery: tower.cooldown ?? CAMPAIGN_ACID_TOWER.cooldown,
+    damage: 0,
+    slow: 0,
+    acidTower: true,
+    label: tower.label ?? "酸蚀炮塔",
+    acidDamage: tower.damage ?? CAMPAIGN_ACID_TOWER.damage,
+    acidRange: tower.range ?? CAMPAIGN_ACID_TOWER.range,
+    slimeRadius: tower.slimeRadius ?? CAMPAIGN_ACID_TOWER.slimeRadius,
+    slimeSlow: tower.slimeSlow ?? CAMPAIGN_ACID_TOWER.slimeSlow,
+    slimeDuration: tower.slimeDuration ?? CAMPAIGN_ACID_TOWER.slimeDuration,
   });
 }
 
@@ -3867,7 +3938,11 @@ function renderShop() {
     ? UNDEAD_SHOP_LAYOUT.flatMap((column) => column).filter((type) => type === null || shopRoster.includes(type))
     : [];
   const swarmShopItems = selectedFaction === "swarm"
-    ? SWARM_SHOP_LAYOUT.flatMap((column) => column).filter((type) => type === null || shopRoster.includes(type) || SWARM_EVOLUTION_SOURCE_BY_TYPE[type])
+    ? SWARM_SHOP_LAYOUT.flatMap((column) => column).filter((type) => {
+      if (type === null || shopRoster.includes(type)) return true;
+      const source = SWARM_EVOLUTION_SOURCE_BY_TYPE[type];
+      return Boolean(source && shopRoster.includes(source));
+    })
     : [];
   const elementShopItemCount = elementShopItems.length + (showElementConvertButton ? 1 : 0);
 
@@ -5407,7 +5482,7 @@ function getSideTraitTextPoint(side) {
 }
 
 function updateCenterTower(dt) {
-  if (activeCampaign?.campaignControlTower) return;
+  if (activeCampaign?.campaignControlTower || activeCampaign?.campaignAcidTower) return;
   state.towerIncomeTimer -= dt;
   if (state.towerIncomeTimer <= 0) {
     state.towerIncomeTimer += 1;
@@ -5484,6 +5559,7 @@ function updateQueue(dt) {
 
 function updateCampaignRules(dt) {
   updateCampaignTimeLimit(dt);
+  updateCampaignHeartSummon(dt);
   updateCampaignReinforcements(dt);
   updateDelayedEnemyReinforcements(dt);
   updateSecondPhaseReinforcements(dt);
@@ -5495,6 +5571,21 @@ function updateCampaignRules(dt) {
   updateCampaignDarkness(dt);
   updateCampaignEnemyHealthGrowth(dt);
   updateCampaignStormClouds(dt);
+}
+
+function updateCampaignHeartSummon(dt) {
+  const heart = activeCampaign?.heartSummon;
+  if (!heart || state.over || state.playerHp <= 0) return;
+  state.campaignHeartSummonTimer -= dt;
+  if (state.campaignHeartSummonTimer > 0) return;
+  state.campaignHeartSummonTimer += heart.every ?? 8;
+  const type = heart.type ?? "ironAnt";
+  const count = heart.count ?? 1;
+  for (let i = 0; i < count; i += 1) {
+    spawnTraitUnit(type, "player", countUnits("player", type) + i);
+  }
+  const point = getSideTraitTextPoint("player");
+  popText(point.x, point.y, `虫群之心孵化${UNIT[type]?.name ?? "铁蚁"}`, "#cde69b");
 }
 
 function updateCampaignTimeLimit(dt) {
@@ -12106,7 +12197,8 @@ function updateBarricades(dt = 0) {
     barricade.tick -= dt;
     while (barricade.tick <= 0 && barricade.life > 0 && barricade.hp > 0) {
       barricade.tick += barricade.tickEvery;
-      if (barricade.highWall) fireHighWallArchers(barricade);
+      if (barricade.acidTower) fireAcidTower(barricade);
+      else if (barricade.highWall) fireHighWallArchers(barricade);
       else damageBarricadeRow(barricade);
     }
   }
@@ -12159,6 +12251,54 @@ function spendControlTowerUnitCost(tower, type) {
   const cost = getControlTowerUnitCost(type);
   tower.gold = Math.max(0, (tower.gold ?? 0) - cost.gold);
   tower.magic = Math.max(0, (tower.magic ?? 0) - cost.magic);
+}
+
+function fireAcidTower(tower) {
+  const target = state.units
+    .filter((unit) => (
+      areHostileSides(tower.side, unit.side) &&
+      unit.hp > 0 &&
+      !isUnitHidden(unit) &&
+      !isReaperStealthed(unit) &&
+      !UNIT[unit.type]?.untargetable &&
+      Math.abs(unit.x - tower.x) <= tower.acidRange &&
+      Math.abs((unit.y ?? FIELD.ground) - tower.y) <= 280
+    ))
+    .sort((a, b) => Math.abs(a.x - tower.x) - Math.abs(b.x - tower.x))[0];
+  if (!target) return;
+  const damage = applyUnitDamage(target, tower.acidDamage, {
+    label: "酸蚀",
+    color: "#b7e06b",
+    yOffset: -88,
+    sourceSide: tower.side,
+  });
+  if (damage > 0) {
+    createSlimeField({
+      x: target.x,
+      y: target.y ?? FIELD.ground,
+      side: tower.side,
+      radius: tower.slimeRadius,
+      slow: tower.slimeSlow,
+      duration: tower.slimeDuration,
+      label: "酸蚀粘液",
+    });
+  }
+  state.blasts.push({
+    x: target.x,
+    y: (target.y ?? FIELD.ground) - 36,
+    radius: 34,
+    life: 0.28,
+    duration: 0.28,
+    color: "#b7e06b",
+  });
+  state.lightning.push({
+    x1: tower.x,
+    y1: tower.y - tower.width / 2 - 70,
+    x2: target.x,
+    y2: (target.y ?? FIELD.ground) - 56,
+    life: 0.18,
+    duration: 0.18,
+  });
 }
 
 function fireHighWallArchers(wall) {
@@ -13288,7 +13428,8 @@ function startCampaignSecondPhase() {
   const phase = activeCampaign.secondPhase;
   state.campaignPhase = 2;
   enemyFaction = phase.enemyFaction;
-  state.enemyHp = STATUE_MAX_HP;
+  state.enemyMaxHp = phase.enemyBaseHp ?? STATUE_MAX_HP;
+  state.enemyHp = state.enemyMaxHp;
   state.enemyGold = phase.enemyGold ?? state.enemyGold;
   state.enemySpawnTimer = 1.2;
   state.enemyMinerTimer = 3;
@@ -13851,6 +13992,10 @@ function drawLandMine(mine) {
 }
 
 function drawBarricade(barricade) {
+  if (barricade.acidTower) {
+    drawCampaignAcidTower(barricade);
+    return;
+  }
   if (barricade.controlTower) {
     drawCampaignControlTower(barricade);
     return;
@@ -13888,6 +14033,68 @@ function drawBarricade(barricade) {
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84, 6);
   ctx.fillStyle = ratio > 0.35 ? "#d7c090" : "#ff8a6b";
   ctx.fillRect(-42, -barricade.width / 2 - 14, 84 * ratio, 6);
+  ctx.restore();
+}
+
+function drawCampaignAcidTower(tower) {
+  const ratio = tower.maxHp > 0 ? Math.max(0, tower.hp / tower.maxHp) : 0;
+  const pulse = Math.sin(Date.now() / 210) * 3;
+  ctx.save();
+  ctx.translate(tower.x, tower.y);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.ellipse(0, 118, 108, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const gradient = ctx.createLinearGradient(0, -165, 0, 105);
+  gradient.addColorStop(0, "#536d39");
+  gradient.addColorStop(0.52, "#283b28");
+  gradient.addColorStop(1, "#171f18");
+  ctx.fillStyle = gradient;
+  ctx.strokeStyle = "#0e150f";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-52, 98);
+  ctx.lineTo(-38, -118);
+  ctx.lineTo(38, -118);
+  ctx.lineTo(52, 98);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#7da94b";
+  ctx.fillRect(-64, -146, 128, 30);
+  ctx.strokeRect(-64, -146, 128, 30);
+  ctx.fillStyle = "rgba(183, 224, 107, 0.32)";
+  ctx.beginPath();
+  ctx.arc(0, -174, 34 + pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#cde69b";
+  ctx.beginPath();
+  ctx.arc(0, -174, 18 + pulse * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#eef8cf";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(183, 224, 107, 0.58)";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i += 1) {
+    const angle = Date.now() / 720 + i * Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * 28, -174 + Math.sin(angle) * 10);
+    ctx.lineTo(Math.cos(angle + 0.6) * 72, -174 + Math.sin(angle + 0.6) * 24);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
+  ctx.fillRect(-62, -214, 124, 8);
+  ctx.fillStyle = ratio > 0.35 ? "#b7e06b" : "#ff8a6b";
+  ctx.fillRect(-62, -214, 124 * ratio, 8);
+  ctx.fillStyle = "#eef8cf";
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(tower.label ?? "酸蚀炮塔", 0, -224);
   ctx.restore();
 }
 
@@ -14063,7 +14270,7 @@ function drawGoldRushMines() {
 }
 
 function drawCenterTower() {
-  if (activeCampaign?.campaignControlTower) return;
+  if (activeCampaign?.campaignControlTower || activeCampaign?.campaignAcidTower) return;
   const owner = state.towerOwner;
   const captureRatio = state.towerCaptureSide ? Math.min(1, state.towerCaptureTimer / CENTER_TOWER.captureTime) : 0;
   const bannerColor = owner === "player" ? "#75a7ff" : owner === "enemy" ? "#e2675d" : "#d8c7a0";
@@ -14122,7 +14329,15 @@ function drawCastle(side) {
   const isPlayer = side === "player";
   const baseX = isPlayer ? FIELD.playerBase : FIELD.enemyBase;
   const faction = factionForSide(side);
-  const color = faction === "order" ? "#415f8f" : faction === "element" ? "#5e8d85" : "#813b34";
+  const color = faction === "order"
+    ? "#415f8f"
+    : faction === "element"
+      ? "#5e8d85"
+      : faction === "swarm"
+        ? "#6d8f3e"
+        : faction === "undeadEmpire"
+          ? "#6e6680"
+          : "#813b34";
   const hp = isPlayer ? state.playerHp : state.enemyHp;
 
   ctx.save();
@@ -14214,6 +14429,8 @@ function drawFourWayCastleHpBar(side) {
 function drawCastleHpBar(baseX, hp, isPlayer) {
   const width = 175;
   const y = FIELD.ground - 238;
+  const maxHp = isPlayer ? (state.playerMaxHp ?? STATUE_MAX_HP) : (state.enemyMaxHp ?? STATUE_MAX_HP);
+  const label = isPlayer ? (activeCampaign?.playerBaseLabel ?? "我方基地") : (activeCampaign?.enemyBaseLabel ?? "敌方基地");
   ctx.save();
   ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
   ctx.fillRect(baseX - width / 2, y, width, 14);
@@ -14221,11 +14438,11 @@ function drawCastleHpBar(baseX, hp, isPlayer) {
   ctx.lineWidth = 2;
   ctx.strokeRect(baseX - width / 2, y, width, 14);
   ctx.fillStyle = isPlayer ? "#5be887" : "#5be887";
-  ctx.fillRect(baseX - width / 2 + 2, y + 2, (width - 4) * Math.max(0, hp / STATUE_MAX_HP), 10);
+  ctx.fillRect(baseX - width / 2 + 2, y + 2, (width - 4) * Math.max(0, hp / maxHp), 10);
   ctx.fillStyle = "#f8eac5";
   ctx.font = "700 13px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(isPlayer ? "我方基地" : "敌方基地", baseX, y - 7);
+  ctx.fillText(label, baseX, y - 7);
   ctx.restore();
 }
 
@@ -19563,8 +19780,8 @@ function updateHud() {
   }
   goldEl.innerHTML = `<span class="money-label">金</span><span class="money-value">${Math.floor(state.gold)}</span><span class="money-label magic">魔</span><span class="money-value magic">${Math.floor(state.magic ?? 0)}</span>`;
   enemyGoldEl.innerHTML = `<span class="money-label">金</span><span class="money-value">${Math.floor(state.enemyGold)}</span><span class="money-label magic">魔</span><span class="money-value magic">${Math.floor(state.enemyMagic ?? 0)}</span>`;
-  playerHpBar.style.width = `${(state.playerHp / STATUE_MAX_HP) * 100}%`;
-  enemyHpBar.style.width = `${(state.enemyHp / STATUE_MAX_HP) * 100}%`;
+  playerHpBar.style.width = `${(state.playerHp / (state.playerMaxHp ?? STATUE_MAX_HP)) * 100}%`;
+  enemyHpBar.style.width = `${(state.enemyHp / (state.enemyMaxHp ?? STATUE_MAX_HP)) * 100}%`;
   const trainingProgress = new Map();
   state.spawnQueue.forEach((item) => {
     const duration = item.duration ?? UNIT[item.type]?.train ?? 0;
