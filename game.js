@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260620-heavy-cannon-blindspot-100";
+const APP_VERSION = "20260620-catapult-stun-tune";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -956,9 +956,9 @@ const UNIT = {
   },
   catapult: {
     name: "火炮",
-    cost: 1000,
+    cost: 850,
     hp: 560,
-    damage: 60,
+    damage: 65,
     range: 500,
     speed: 35,
     train: 8,
@@ -966,6 +966,7 @@ const UNIT = {
     blindSpot: 95,
     splash: 58,
     aoeLimit: 5,
+    stunDuration: 3,
   },
   heavyCannon: {
     name: "重炮",
