@@ -71,6 +71,7 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
+  overflow: auto;
   background:
     radial-gradient(circle at 50% 34%, rgba(230, 184, 74, 0.16), transparent 36%),
     rgba(7, 9, 9, 0.72);
@@ -83,6 +84,8 @@ body {
 
 .rule-panel {
   width: min(760px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
   padding: 20px;
   border: 1px solid rgba(230, 184, 74, 0.36);
   border-radius: 8px;
@@ -334,6 +337,69 @@ body {
   color: rgba(245, 240, 223, 0.76);
 }
 
+.ai-matchup-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid rgba(230, 184, 74, 0.26);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(230, 184, 74, 0.08), transparent 48%, rgba(142, 224, 207, 0.08)),
+    rgba(8, 10, 10, 0.34);
+}
+
+.ai-matchup-picker.hidden {
+  display: none;
+}
+
+.matchup-column {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.matchup-column > strong,
+.matchup-versus {
+  color: #ffe08a;
+  font-size: 16px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.matchup-versus {
+  align-self: center;
+  padding: 0 2px;
+  font-size: 18px;
+}
+
+.matchup-factions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.matchup-faction {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: rgba(245, 240, 223, 0.82);
+  background: rgba(14, 17, 14, 0.58);
+  font-size: 14px;
+}
+
+.matchup-faction.active {
+  border-color: rgba(230, 184, 74, 0.9);
+  color: #ffe08a;
+  background: linear-gradient(145deg, rgba(133, 97, 42, 0.78), rgba(36, 31, 24, 0.9));
+}
+
+.matchup-faction:disabled {
+  opacity: 0.36;
+}
+
 @media (max-width: 640px) {
   .rule-dialog {
     padding: 14px;
@@ -351,6 +417,14 @@ body {
 
   .rule-actions {
     display: grid;
+  }
+
+  .ai-matchup-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .matchup-versus {
+    justify-self: center;
   }
 
   .rule-cancel-btn,

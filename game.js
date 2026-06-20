@@ -7,6 +7,7 @@ const factionButtons = [...document.querySelectorAll(".faction-card")];
 const modeButtons = [...document.querySelectorAll(".mode-card")];
 const teamModeButtons = [...document.querySelectorAll("[data-team-mode]")];
 const controlModeButtons = [...document.querySelectorAll("[data-control-mode]")];
+const aiMatchupPicker = document.querySelector("#aiMatchupPicker");
 const ruleDialog = document.querySelector("#ruleDialog");
 const homeStartBtn = document.querySelector("#homeStartBtn");
 const ruleStartBtn = document.querySelector("#ruleStartBtn");
@@ -2154,6 +2155,7 @@ let state = null;
 let lastTime = performance.now();
 let selectedFaction = "order";
 let enemyFaction = "chaos";
+let selectedEnemyFaction = "chaos";
 let selectedMode = "versus";
 let selectedTeamMode = "solo";
 let selectedControlMode = "human";
@@ -2245,14 +2247,14 @@ const CAMPAIGN_LEVELS = {
       enemyStart: ["miner", "miner", "orc", "orc", "berserkOrc", "berserkOrc", "javelinThrower", "javelinThrower", "javelinThrower"],
       enemyFaction: "chaos",
       campaignHighWalls: [
-        { x: CENTER_TOWER.x + 200 },
-        { x: FIELD.playerBase + 1400 },
+        { x: CENTER_TOWER.x - 600, hp: 1500, archerRange: 300 },
+        { x: CENTER_TOWER.x + 200, hp: 1500, archerRange: 300 },
       ],
       enemyReinforcement: { type: "creeper", every: 12, count: 2 },
       startGold: 220,
       enemyGold: 220,
       rewardText: "正式战役开启",
-      objective: "依托两座高城抵御混沌进攻，并摧毁敌方前哨基地；高城生命值 2000，可阻拦敌人前进，上方各有五名弓箭手，每发 6 伤害",
+      objective: "依托两座相距 800 的高墙抵御混沌进攻，并摧毁敌方前哨基地；高墙生命值 1500，可被敌人摧毁，攻击距离 300，上方各有五名弓箭手，每发 6 伤害",
     },
     2: {
       title: "第二关：箭雨阵线",
@@ -2712,22 +2714,30 @@ function getFactionEconomyUnit(faction) {
 }
 
 function isFactionUnavailableForMode(faction, mode, controlMode = selectedControlMode) {
-  return faction === "swarm" && (mode === "quad" || (controlMode === "ai" && mode !== "campaign"));
+  void controlMode;
+  return faction === "swarm" && mode === "quad";
 }
 
 function chooseUnusedFaction(excluded = []) {
   const blocked = new Set(excluded.filter(Boolean));
-  const available = Object.keys(FACTIONS).filter((faction) => !blocked.has(faction));
+  const available = Object.keys(FACTIONS).filter((faction) => !blocked.has(faction) && !isFactionUnavailableForMode(faction, selectedMode));
   return available[Math.floor(Math.random() * available.length)] ?? "chaos";
 }
 
 function setupTeamFactions() {
   playerAllyFaction = null;
   enemyAllyFaction = null;
-  enemyFaction = activeCampaign?.enemyFaction ?? chooseUnusedFaction([selectedFaction]);
+  enemyFaction = activeCampaign?.enemyFaction ?? normalizeEnemyFaction();
   if (!isDuoBattle()) return;
   playerAllyFaction = chooseUnusedFaction([selectedFaction, enemyFaction]);
   enemyAllyFaction = chooseUnusedFaction([selectedFaction, playerAllyFaction, enemyFaction]);
+}
+
+function normalizeEnemyFaction() {
+  if (!selectedEnemyFaction || selectedEnemyFaction === selectedFaction || isFactionUnavailableForMode(selectedEnemyFaction, selectedMode)) {
+    selectedEnemyFaction = chooseUnusedFaction([selectedFaction]);
+  }
+  return selectedEnemyFaction;
 }
 
 function getFourWayTeam(side) {
@@ -2741,7 +2751,8 @@ function areFourWayEnemies(a, b) {
 }
 
 function getPlayerControlledSide() {
-  return state?.fourWay ? state.fourWayPlayerSide : "player";
+  if (state?.fourWay) return state.fourWayPlayerSide;
+  return selectedControlMode === "ai" ? null : "player";
 }
 
 function isPlayerControlledSide(side) {
@@ -3112,8 +3123,14 @@ function newGame() {
       spawnTrainedUnit(type, "enemy", index + enemyStart.length + 4);
     });
   }
+  if (selectedControlMode === "ai") {
+    state.teamAi = [
+      { ...createTeamAiState("player", selectedFaction, startGold), sharedEconomy: true },
+    ];
+  }
   if (isDuoBattle()) {
     state.teamAi = [
+      ...(state.teamAi ?? []),
       playerAllyFaction ? createTeamAiState("player", playerAllyFaction, startGold * 0.65) : null,
       enemyAllyFaction ? createTeamAiState("enemy", enemyAllyFaction, enemyStartGold * 0.65) : null,
     ].filter(Boolean);
@@ -3123,9 +3140,15 @@ function newGame() {
   spawnCampaignControlTower();
   spawnCampaignAcidTower();
   setCommand("guard");
+  if (selectedControlMode === "ai" && !activeCampaign) {
+    state.command = "attack";
+    state.attackIntent = "statue";
+    state.commandLevel = 2;
+  }
   setMinerCommand("mine");
   if (activeCampaign) statusEl.textContent = activeCampaign.title;
   if (selectedMode === "brawl") statusEl.textContent = "淘金热：双方 1500 金币开局，中央金矿可争夺";
+  if (selectedControlMode === "ai" && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} AI 对战：${FACTIONS[selectedFaction].name} 对 ${FACTIONS[opponentFaction()].name}`;
   if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${selectedMode === "brawl" ? "淘金热" : "对战"} 2 打 2：AI 队友会自动出兵`;
   updateHud();
 }
@@ -3495,7 +3518,7 @@ function spawnCampaignHighWalls() {
       damage: 0,
       slow: 0,
       highWall: true,
-      label: "高城",
+      label: wall.label ?? "高墙",
       archerCount: wall.archerCount ?? CAMPAIGN_HIGH_WALL.archerCount,
       archerDamage: wall.archerDamage ?? CAMPAIGN_HIGH_WALL.archerDamage,
       archerRange: wall.archerRange ?? CAMPAIGN_HIGH_WALL.archerRange,
@@ -3845,12 +3868,18 @@ function renderFactionUi() {
     enemyCard.classList.add("element");
     return;
   }
-  playerNameEl.textContent = FACTIONS[selectedFaction].name;
+  playerNameEl.textContent = selectedControlMode === "ai" ? `AI：${FACTIONS[selectedFaction].name}` : FACTIONS[selectedFaction].name;
   enemyNameEl.textContent = FACTIONS[opponentFaction()].name;
   playerCard.classList.remove("order", "chaos", "undead", "element", "swarm");
   enemyCard.classList.remove("order", "chaos", "undead", "element", "swarm");
   playerCard.classList.add(getFactionKey(selectedFaction));
   enemyCard.classList.add(getFactionKey(opponentFaction()));
+}
+
+function syncFactionButtons() {
+  factionButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.faction === selectedFaction);
+  });
 }
 
 const ELEMENT_MERGE_ACTIONS = [
@@ -4747,6 +4776,7 @@ function canMergeV(side) {
 
 function queueUnit(type) {
   if (state.over) return;
+  if (selectedControlMode === "ai" && !state.fourWay) return;
   if (state.fourWay) {
     queueFourWayPlayerUnit(type);
     return;
@@ -6392,8 +6422,13 @@ function updateEnemyAi(dt) {
 function updateTeamAi(dt) {
   if (!state.teamAi?.length || state.over) return;
   state.teamAi.forEach((ai) => {
-    ai.gold += 5 * dt;
-    if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
+    if (ai.sharedEconomy) {
+      ai.gold = getSideGoldAmount(ai.side);
+      ai.magic = getSideMagic(ai.side);
+    } else {
+      ai.gold += 5 * dt;
+      if (getFactionMagicDemand(ai.faction, ai.side) > 0) ai.magic = (ai.magic ?? 0) + MAGIC_INCOME_PER_SECOND * dt;
+    }
     ai.minerTimer -= dt;
     ai.spawnTimer -= dt;
     const economyType = getFactionEconomyUnit(ai.faction);
@@ -6452,6 +6487,12 @@ function canTeamAiAffordUnit(ai, type) {
 }
 
 function spendTeamAiUnitCost(ai, type) {
+  if (ai.sharedEconomy) {
+    spendUnitCost(type, ai.faction, ai.side, getSideGoldAmount(ai.side));
+    ai.gold = getSideGoldAmount(ai.side);
+    ai.magic = getSideMagic(ai.side);
+    return;
+  }
   ai.gold -= getUnitCost(type, ai.faction, ai.side);
   ai.magic = (ai.magic ?? 0) - getUnitMagicCost(type, ai.faction, ai.side);
 }
@@ -14266,7 +14307,7 @@ function drawCampaignHighWall(wall) {
   ctx.fillStyle = "#f3e8c2";
   ctx.font = "12px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("高城", 0, -height / 2 - 70);
+  ctx.fillText(wall.label ?? "高墙", 0, -height / 2 - 70);
   ctx.restore();
 }
 
@@ -19550,6 +19591,7 @@ function closeRuleDialog() {
 }
 
 function openRuleDialog() {
+  normalizeEnemyFaction();
   if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
     statusEl.textContent = selectedMode === "campaign"
       ? "虫群帝国隐藏战役暂未开放"
@@ -19561,7 +19603,28 @@ function openRuleDialog() {
     openCampaignMap();
     return;
   }
+  renderAiMatchupPicker();
   ruleDialog?.classList.remove("hidden");
+}
+
+function shouldShowAiMatchupPicker() {
+  return selectedControlMode === "ai" && (selectedMode === "versus" || selectedMode === "brawl");
+}
+
+function renderAiMatchupPicker() {
+  if (!aiMatchupPicker) return;
+  aiMatchupPicker.classList.toggle("hidden", !shouldShowAiMatchupPicker());
+  aiMatchupPicker.querySelectorAll(".matchup-factions").forEach((group) => {
+    const side = group.dataset.matchupSide;
+    group.innerHTML = Object.entries(FACTIONS)
+      .filter(([faction]) => !isFactionUnavailableForMode(faction, selectedMode))
+      .map(([faction, config]) => {
+        const active = side === "player" ? faction === selectedFaction : faction === selectedEnemyFaction;
+        const disabled = side === "enemy" && faction === selectedFaction;
+        return `<button class="matchup-faction ${getFactionKey(faction)} ${active ? "active" : ""}" data-matchup-select="${side}" data-faction="${faction}" type="button" ${disabled ? "disabled" : ""}>${config.name}</button>`;
+      })
+      .join("");
+  });
 }
 
 function returnToMainMenu() {
@@ -19572,6 +19635,7 @@ function returnToMainMenu() {
   selectedControlMode = "human";
   selectedFaction = "order";
   enemyFaction = "chaos";
+  selectedEnemyFaction = "chaos";
   applyFieldMode(false);
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === selectedMode);
@@ -19595,18 +19659,13 @@ function returnToMainMenu() {
 
 async function startSelectedBattle(faction = selectedFaction) {
   selectedFaction = faction || "order";
+  normalizeEnemyFaction();
   if (isFactionUnavailableForMode(selectedFaction, selectedMode)) {
     statusEl.textContent = selectedMode === "campaign"
       ? "虫群帝国隐藏战役暂未开放"
       : "虫群帝国暂不加入四国对战";
     closeRuleDialog();
     return;
-  }
-  if (selectedControlMode === "ai" && selectedMode !== "campaign") {
-    selectedMode = "quad";
-    modeButtons.forEach((button) => {
-      button.classList.toggle("active", button.dataset.mode === selectedMode);
-    });
   }
   factionButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.faction === selectedFaction);
@@ -19923,7 +19982,7 @@ function updateHud() {
       return;
     }
     if (!type) return;
-    button.disabled = !canAffordUnit(type, selectedFaction, "player", state.gold) || state.over || !canQueueCampaignUnit(type);
+    button.disabled = selectedControlMode === "ai" || !canAffordUnit(type, selectedFaction, "player", state.gold) || state.over || !canQueueCampaignUnit(type);
   });
 }
 
@@ -20458,9 +20517,11 @@ modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedMode = button.dataset.mode;
     if (selectedMode !== "campaign") activeCampaign = null;
+    normalizeEnemyFaction();
     modeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    renderAiMatchupPicker();
   });
 });
 
@@ -20490,19 +20551,36 @@ teamModeButtons.forEach((button) => {
 controlModeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedControlMode = button.dataset.controlMode;
+    normalizeEnemyFaction();
     controlModeButtons.forEach((candidate) => {
       candidate.classList.toggle("active", candidate === button);
     });
+    renderAiMatchupPicker();
   });
 });
 
 factionButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedFaction = button.dataset.faction || "order";
-    factionButtons.forEach((candidate) => {
-      candidate.classList.toggle("active", candidate === button);
-    });
+    normalizeEnemyFaction();
+    syncFactionButtons();
+    renderAiMatchupPicker();
   });
+});
+
+aiMatchupPicker?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-matchup-select]");
+  if (!button || button.disabled) return;
+  const faction = button.dataset.faction || "order";
+  if (button.dataset.matchupSelect === "player") {
+    selectedFaction = faction;
+    normalizeEnemyFaction();
+    syncFactionButtons();
+  } else {
+    selectedEnemyFaction = faction;
+    normalizeEnemyFaction();
+  }
+  renderAiMatchupPicker();
 });
 
 loadCampaignSave();

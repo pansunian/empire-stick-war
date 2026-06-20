@@ -113,8 +113,19 @@
             </button>
             <button class="option-card" data-control-mode="ai">
               <strong>AI 对战</strong>
-              <small>四方 AI 自动战斗，玩家观战</small>
+              <small>双方 AI 自动战斗，玩家观战</small>
             </button>
+          </div>
+        </div>
+        <div id="aiMatchupPicker" class="ai-matchup-picker hidden" aria-label="选择 AI 对战双方帝国">
+          <div class="matchup-column">
+            <strong>左方帝国</strong>
+            <div class="matchup-factions" data-matchup-side="player"></div>
+          </div>
+          <div class="matchup-versus">VS</div>
+          <div class="matchup-column">
+            <strong>右方帝国</strong>
+            <div class="matchup-factions" data-matchup-side="enemy"></div>
           </div>
         </div>
         <div class="rule-actions">
@@ -303,6 +314,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260620-ai-attack-commit"></script>
+    <script src="./game.js?v=20260620-order-wall-tuning"></script>
   </body>
 </html>
