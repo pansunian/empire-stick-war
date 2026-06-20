@@ -104,6 +104,8 @@ const ELEMENT_MERGE_REVIVE_CHANCE = 0.6;
 const ELEMENT_MERGE_BLAST_CHANCE = 1;
 const ELEMENT_MERGE_BLAST_RADIUS = 140;
 const ELEMENT_MERGE_BLAST_DAMAGE = 15;
+const ELEMENT_MERGE_BLAST_EXCLUDED_UNITS = new Set(["scaldStrike", "electricGate"]);
+const ELEMENT_MERGE_REVIVE_EXCLUDED_UNITS = new Set(["scaldStrike", "electricGate"]);
 const ELEMENT_MERGE_REVIVE_POOL = {
   hill: ["earthElement"],
   treeEnt: ["earthElement", "waterElement"],
@@ -113,8 +115,6 @@ const ELEMENT_MERGE_REVIVE_POOL = {
   stormLich: ["windElement", "waterElement"],
   dreadfire: ["fireElement", "windElement"],
   hurricane: ["windElement"],
-  scaldStrike: ["waterElement", "fireElement"],
-  electricGate: ["earthElement", "windElement"],
   vUnit: ["earthElement", "waterElement", "fireElement", "windElement"],
 };
 const ELEMENT_MERGE_MAGIC_COSTS = {
@@ -4175,7 +4175,6 @@ function mergeScaldStrike(side) {
   const blastX = target?.x ?? front ?? x + dir * 220;
   const mergeX = Math.max(FIELD.playerGate + 38, Math.min(FIELD.enemyGate - 38, blastX));
   detonateScaldStrike(side, mergeX, FIELD.ground);
-  triggerElementMergeBlastTrait(side, mergeX, FIELD.ground, "#ffb36e");
   return true;
 }
 
@@ -4218,7 +4217,7 @@ function beginDirectElementMerge(side, resultType, text, color) {
   const spawnX = x + dir * 60;
   const result = spawnUnit(resultType, side, spawnX);
   popText(result.x, result.y - 95, text, color);
-  triggerElementMergeBlastTrait(side, result.x, result.y, color);
+  triggerElementMergeBlastTrait(side, resultType, result.x, result.y, color);
   return true;
 }
 
@@ -4314,7 +4313,7 @@ function completeElementMerge(merge, materials, x, y) {
   if (merge.onComplete) {
     merge.onComplete(merge, x, y, hpRatio);
     popText(x, y - 95, merge.text, merge.color);
-    triggerElementMergeBlastTrait(merge.side, x, y, merge.color);
+    triggerElementMergeBlastTrait(merge.side, merge.resultType, x, y, merge.color);
     return;
   }
 
@@ -4322,11 +4321,12 @@ function completeElementMerge(merge, materials, x, y) {
   result.y = y;
   result.hp = Math.max(1, Math.round(result.maxHp * hpRatio));
   popText(x, y - 95, `${merge.text} ${Math.round(hpRatio * 100)}%`, merge.color);
-  triggerElementMergeBlastTrait(merge.side, x, y, merge.color);
+  triggerElementMergeBlastTrait(merge.side, merge.resultType, x, y, merge.color);
 }
 
-function triggerElementMergeBlastTrait(side, x, y, color = "#d7ceff") {
+function triggerElementMergeBlastTrait(side, resultType, x, y, color = "#d7ceff") {
   if (factionForSide(side) !== "element") return false;
+  if (ELEMENT_MERGE_BLAST_EXCLUDED_UNITS.has(resultType)) return false;
   if (Math.random() >= ELEMENT_MERGE_BLAST_CHANCE) return false;
   const targets = getUnitsInRadius(x, ELEMENT_MERGE_BLAST_RADIUS, side, Number.POSITIVE_INFINITY, null, y);
   targets.forEach((enemy) => {
@@ -12134,6 +12134,7 @@ function maybeLeaveCorpse(unit) {
 function maybeReviveElementFromMergedUnit(unit, deathSpawns) {
   if (!unit || !MERGE_UNITS.has(unit.type)) return;
   if (factionForSide(unit.side) !== "element") return;
+  if (ELEMENT_MERGE_REVIVE_EXCLUDED_UNITS.has(unit.type)) return;
   if (unit.type === "electricGate" && unit.expired) return;
   if (Math.random() >= ELEMENT_MERGE_REVIVE_CHANCE) return;
   const pool = ELEMENT_MERGE_REVIVE_POOL[unit.type] ?? [...BASIC_ELEMENT_UNITS];
