@@ -192,10 +192,10 @@ const CHAOS_AI_HIGH_TIER_PRIORITY = ["rhinoMan", "minotaur", "griffinBomber", "a
 const AI_ROLE_PROFILES = {
   order: {
     frontline: ["swordsman", "spearman", "greatsword", "spartan", "ironCavalry", "archon"],
-    ranged: ["archer", "crossbow", "musketeer", "mage"],
+    ranged: ["archer", "crossbow", "musketeer", "shotgunner", "mage"],
     support: ["monk", "commander", "barricadeEngineer"],
-    raider: ["ironCavalry", "swordsman", "spearman"],
-    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "ironCavalry", "spartan", "archon", "commander"],
+    raider: ["ironCavalry", "shotgunner", "swordsman", "spearman"],
+    highPriority: ["rocketCart", "catapult", "mage", "musketeer", "shotgunner", "ironCavalry", "spartan", "archon", "commander"],
     clarity: "formation",
   },
   chaos: {
@@ -774,6 +774,34 @@ const UNIT = {
     speed: 34,
     train: 5.2,
     cooldown: 2.25,
+  },
+  shotgunner: {
+    name: "散弹枪手",
+    cost: 260,
+    hp: 145,
+    damage: 4,
+    range: 230,
+    speed: 36,
+    train: 5.6,
+    cooldown: 3,
+    pellets: 30,
+    spread: 76,
+    bombSkillCooldown: 16,
+    bombCount: 3,
+  },
+  orderMiniBomb: {
+    name: "小炸弹",
+    cost: 0,
+    hp: 40,
+    damage: 15,
+    range: 30,
+    speed: 30,
+    train: 0,
+    cooldown: 0.4,
+    splash: 58,
+    aoeLimit: 5,
+    duration: 10,
+    summonOnly: true,
   },
   mage: {
     name: "法师",
@@ -1920,7 +1948,7 @@ const UNIT = {
 const FACTIONS = {
   order: {
     name: "秩序帝国",
-    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
+    roster: ["miner", "swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
     startingUnits: ["miner", "swordsman", "archer"],
     mineColor: "#e2b64e",
   },
@@ -1972,7 +2000,7 @@ const FOUR_WAY_BASES = {
   element: { x: 2670, y: 1550, label: "元素", color: "#5e9f92" },
 };
 const FOUR_WAY_AI_ROSTER = {
-  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
+  order: ["swordsman", "spearman", "archer", "greatsword", "spartan", "ironCavalry", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "catapult", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture"],
   undeadEmpire: ["machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["earthElement", "waterElement", "fireElement", "windElement", "electricGate", "hill", "linghan", "redflame", "stormLich", "treeEnt", "rog", "dreadfire", "hurricane", "scaldStrike", "vUnit"],
@@ -2016,6 +2044,7 @@ const UNIT_ICON = {
   monk: "monk",
   crossbow: "bomb-crossbow",
   musketeer: "gun",
+  shotgunner: "gun",
   mage: "wizard-hat",
   commander: "spartan",
   barricadeEngineer: "miner",
@@ -2112,7 +2141,7 @@ function normalizeUnitType(type) {
 }
 
 const STAT_GROUPS = [
-  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "mage", "commander", "barricadeEngineer", "berserker", "archmage", "catapult", "rocketCart"]],
+  ["秩序帝国", ["miner", "swordsman", "spearman", "archer", "goldenArcher", "greatsword", "spartan", "ironCavalry", "goldenSpartan", "archon", "monk", "crossbow", "musketeer", "shotgunner", "mage", "commander", "barricadeEngineer", "berserker", "archmage", "catapult", "rocketCart"]],
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
@@ -2847,6 +2876,7 @@ function formatSpecial(type) {
   if (type === "swordsman") notes.push(`手动技能愤怒：消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5，持续 ${data.selfRageDuration}秒，冷却 ${data.selfRageEvery}秒`);
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
+  if (type === "shotgunner") notes.push(`每 ${data.cooldown}秒散射 ${data.pellets} 发散弹，单颗 ${data.damage} 伤害；技能召唤 ${data.bombCount} 个小炸弹，冷却 ${data.bombSkillCooldown}秒`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`毒爆不造成直接伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
@@ -5014,9 +5044,9 @@ function getProfileWeights(faction, role) {
   const table = {
     order: {
       frontline: { swordsman: 1.45, spearman: 1.2, greatsword: 1.1, spartan: 1, ironCavalry: 0.9, archon: 0.75 },
-      ranged: { archer: 1, crossbow: 1.05, musketeer: 0.95, mage: 1.15 },
+      ranged: { archer: 1, crossbow: 1.05, musketeer: 0.95, shotgunner: 1.05, mage: 1.15 },
       support: { monk: 1.15, commander: 1.05, barricadeEngineer: 0.95 },
-      raider: { ironCavalry: 1.35, swordsman: 0.75, spearman: 0.7 },
+      raider: { ironCavalry: 1.35, shotgunner: 0.85, swordsman: 0.75, spearman: 0.7 },
     },
     undeadEmpire: {
       frontline: { machete: 1.2, undead: 1.45, ghoul: 1.05, darkKnight: 0.9, boneGiant: 0.75 },
@@ -9265,6 +9295,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "orderMiniBomb") {
+    explodeOrderMiniBomb(unit, target);
+    return;
+  }
+
   if (unit.type === "windElement") {
     strikeLightning(unit, target);
     return;
@@ -9272,6 +9307,11 @@ function attack(unit, target) {
 
   if (unit.type === "archmage") {
     castChainLightning(unit, target);
+    return;
+  }
+
+  if (unit.type === "shotgunner") {
+    fireShotgun(unit, target);
     return;
   }
 
@@ -9470,6 +9510,69 @@ function explodeBlastBug(unit, target) {
   });
   state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#ffb45e" });
   popText(unit.x, unit.y - 84, "自爆", "#ffb45e");
+}
+
+function explodeOrderMiniBomb(unit, target = unit) {
+  const data = UNIT.orderMiniBomb;
+  unit.exploded = true;
+  unit.noCorpse = true;
+  unit.hp = 0;
+  const x = target?.x ?? unit.x;
+  const y = target?.y ?? unit.y;
+  getUnitsInRadius(x, data.splash, unit.side, data.aoeLimit, null, y).forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.damage, {
+      label: "小炸弹",
+      color: "#ffce7a",
+      yOffset: -78,
+      sourceSide: unit.side,
+      sourceUnitId: unit.id,
+    });
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.blasts.push({ x, y: y - 24, radius: data.splash, life: 0.3, duration: 0.3, color: "#ffce7a" });
+  popText(x, y - 70, "小炸弹爆炸", "#ffce7a");
+}
+
+function fireShotgun(unit, target) {
+  const data = UNIT.shotgunner;
+  const dir = Math.sign((target?.x ?? unit.x) - unit.x) || getUnitFacingDirection(unit);
+  const candidates = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side))
+    .filter((enemy) => enemy.hp > 0 && !isUnitHidden(enemy) && canTarget(unit, enemy))
+    .filter((enemy) => Math.sign(enemy.x - unit.x || dir) === dir)
+    .filter((enemy) => Math.abs(enemy.x - unit.x) <= data.range)
+    .filter((enemy) => Math.abs((enemy.y ?? unit.y) - unit.y) <= data.spread);
+  if (!candidates.length && target?.kind === "statue") {
+    applyDamage(target, data.damage * Math.ceil(data.pellets * 0.35), unit.side);
+    popText(unit.x, unit.y - 106, "散弹齐射", "#dbe8ff");
+    return;
+  }
+  if (!candidates.length) return;
+  const hits = new Map();
+  for (let i = 0; i < data.pellets; i += 1) {
+    const pelletY = unit.y + (Math.random() - 0.5) * data.spread * 2;
+    const pelletX = unit.x + dir * (data.range * (0.55 + Math.random() * 0.42));
+    const best = candidates
+      .map((enemy) => ({ enemy, score: Math.abs((enemy.y ?? unit.y) - pelletY) + Math.abs(enemy.x - pelletX) * 0.18 }))
+      .sort((a, b) => a.score - b.score)[0]?.enemy;
+    if (!best) continue;
+    hits.set(best, (hits.get(best) ?? 0) + 1);
+    state.lightning.push({
+      x1: unit.x + dir * 18,
+      y1: unit.y - 44,
+      x2: best.x + (Math.random() - 0.5) * 20,
+      y2: (best.y ?? unit.y) - 46 + (Math.random() - 0.5) * 24,
+      life: 0.1,
+      duration: 0.1,
+    });
+  }
+  hits.forEach((pellets, enemy) => {
+    const dealt = applyDamage(enemy, data.damage * pellets, unit.side, { ranged: true });
+    handleDamageDealt(unit, enemy, dealt);
+    maybeApplyOrderRangedStunFromUnit(unit, enemy);
+  });
+  state.blasts.push({ x: unit.x + dir * 54, y: unit.y - 45, radius: 26, life: 0.16, duration: 0.16, color: "#dbe8ff" });
+  popText(unit.x, unit.y - 106, "散弹齐射", "#dbe8ff");
 }
 
 function launchNeuralBombs(unit, target) {
@@ -12475,6 +12578,9 @@ function removeDead() {
         burnDuration: UNIT.bomber.burnDuration,
       });
     }
+    if (unit.type === "orderMiniBomb" && !unit.exploded) {
+      explodeOrderMiniBomb(unit);
+    }
     if (unit.type === "waterElement") {
       releaseFrozenTarget(unit);
       healNearbyAllies(unit);
@@ -14727,6 +14833,8 @@ function getUnitColor(unit) {
   if (unit.type === "goldenArcher") return "#e0b84f";
   if (unit.type === "goldenSpartan") return "#d7a92e";
   if (unit.type === "ironCavalry") return "#5e6f7f";
+  if (unit.type === "shotgunner") return "#596c78";
+  if (unit.type === "orderMiniBomb") return "#d8a548";
   if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
@@ -14888,6 +14996,8 @@ function getHeadColor(unit) {
   if (unit.type === "goldenArcher") return "#fff1a8";
   if (unit.type === "goldenSpartan") return "#fff1a8";
   if (unit.type === "ironCavalry") return "#dbe8ff";
+  if (unit.type === "shotgunner") return "#dbe8ff";
+  if (unit.type === "orderMiniBomb") return "#ffce7a";
   if (unit.type === "berserker") return "#ffd0bd";
   if (unit.type === "archmage") return "#f0e8ff";
   if (unit.type === "archon") return "#dbe8ff";
@@ -15620,6 +15730,36 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.moveTo(19, -31);
     ctx.lineTo(31, -23);
+    ctx.stroke();
+  } else if (type === "shotgunner") {
+    ctx.strokeStyle = "#2e2d2a";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(12, -36);
+    ctx.lineTo(55, -39);
+    ctx.stroke();
+    ctx.strokeStyle = "#8a6a46";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(49, -42);
+    ctx.lineTo(67, -44);
+    ctx.stroke();
+    ctx.strokeStyle = "#dbe8ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(18, -31);
+    ctx.lineTo(31, -22);
+    ctx.stroke();
+  } else if (type === "orderMiniBomb") {
+    ctx.fillStyle = "#2f2c2a";
+    ctx.beginPath();
+    ctx.arc(0, -34, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffce7a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(8, -45);
+    ctx.quadraticCurveTo(18, -58, 30, -53);
     ctx.stroke();
   } else if (type === "mage") {
     ctx.strokeStyle = "#d7ceff";
@@ -16923,6 +17063,9 @@ function getManualActions(unit) {
     case "archer":
       add("fireArrow", "火箭", "target");
       break;
+    case "shotgunner":
+      add("shotgunBombs", "小炸弹", "direct");
+      break;
     case "spartan":
       add("spartanShield", unit.spartanShieldTimer > 0 ? "收盾" : "举盾", "direct");
       break;
@@ -17115,6 +17258,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "buildBarricade") return !canStartBuildBarricade(unit);
   if (button.id === "orderMark" && (unit.manualSkillCooldowns?.orderMark ?? 0) > 0) return true;
   if (button.id === "covenantGuard" && (unit.manualSkillCooldowns?.covenantGuard ?? 0) > 0) return true;
+  if (button.id === "shotgunBombs" && (unit.manualSkillCooldowns?.shotgunBombs ?? 0) > 0) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
@@ -17413,6 +17557,10 @@ function executeManualAction(unit, action, point) {
     throwGoldenSpear(unit);
     return;
   }
+  if (action.id === "shotgunBombs") {
+    summonShotgunnerBombs(unit);
+    return;
+  }
   if (action.id === "scaldExplode") {
     explodeScaldStrike(unit);
     return;
@@ -17686,6 +17834,7 @@ function getManualActionCooldown(unit, id) {
     swordsmanRage: data.selfRageEvery,
     jumpSlash: data.jumpSlashCooldown,
     fireArrow: data.fireArrowCooldown ?? data.cooldown,
+    shotgunBombs: data.bombSkillCooldown,
     orderMark: data.markCooldown,
     buildBarricade: data.barricadeCooldown,
     covenantGuard: data.guardCooldown,
@@ -18206,6 +18355,26 @@ function shootArcherFireArrow(unit, target) {
     burnDuration: data.fireArrowBurnDuration,
   });
   popText(unit.x, unit.y - 112, "火箭", "#ff9b45");
+  return true;
+}
+
+function summonShotgunnerBombs(unit) {
+  const data = UNIT.shotgunner;
+  const bombData = UNIT.orderMiniBomb;
+  const dir = getUnitFacingDirection(unit);
+  for (let i = 0; i < data.bombCount; i += 1) {
+    const bomb = spawnUnit("orderMiniBomb", unit.side, unit.x + dir * (26 + i * 12));
+    bomb.y = unit.y + (i - 1) * 26;
+    bomb.timedLife = bombData.duration;
+    bomb.noCorpse = true;
+    bomb.forceCharge = true;
+    bomb.facingDir = dir;
+    bomb.combatTimer = bombData.duration;
+  }
+  unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+  unit.manualSkillCooldowns.shotgunBombs = data.bombSkillCooldown;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, 0.45);
+  popText(unit.x, unit.y - 112, "释放小炸弹", "#ffce7a");
   return true;
 }
 
