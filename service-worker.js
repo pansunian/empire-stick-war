@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v198-elf-transparent";
+const CACHE_NAME = "stick-war-pwa-v199-home-layout";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-elf-transparent",
-  "./game.js?v=20260621-elf-transparent",
+  "./style.css?v=20260621-home-layout",
+  "./game.js?v=20260621-home-layout",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

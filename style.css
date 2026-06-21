@@ -120,7 +120,7 @@ body {
 }
 
 .faction-panel {
-  width: min(920px, 100%);
+  width: min(1280px, 100%);
   padding: 34px;
   border: 0;
   background: transparent;
@@ -144,7 +144,7 @@ body {
   display: block;
   width: min(760px, 100%);
   height: auto;
-  max-height: 190px;
+  max-height: 170px;
   object-fit: contain;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
 }
@@ -159,6 +159,13 @@ body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+.home-selection-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.8fr);
+  gap: 16px;
+  align-items: stretch;
 }
 
 .selection-section {
@@ -195,6 +202,10 @@ body {
 }
 
 .selection-section.faction-section {
+  margin-bottom: 0;
+}
+
+.home-selection-grid .selection-section {
   margin-bottom: 0;
 }
 
@@ -242,6 +253,11 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 0 0 18px;
+}
+
+.home-selection-grid .mode-options {
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .mode-card {
@@ -664,6 +680,31 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.home-selection-grid .faction-options.six {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-selection-grid .faction-card {
+  min-height: 0;
+  padding: 14px;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px 12px;
+}
+
+.home-selection-grid .crest {
+  width: 58px;
+  height: 58px;
+}
+
+.home-selection-grid .faction-card strong {
+  font-size: 21px;
+}
+
+.home-selection-grid .faction-card small {
+  font-size: 11px;
+  line-height: 1.34;
+}
+
 .faction-options.four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -762,6 +803,32 @@ body {
   grid-column: 1 / -1;
   color: rgba(245, 240, 223, 0.78);
   line-height: 1.5;
+}
+
+.faction-card small span {
+  display: block;
+}
+
+.faction-card small span + span {
+  margin-top: 5px;
+  color: rgba(255, 231, 178, 0.8);
+}
+
+@media (max-width: 1080px) {
+  .home-selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-selection-grid .mode-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .home-selection-grid .mode-options,
+  .home-selection-grid .faction-options.six {
+    grid-template-columns: 1fr;
+  }
 }
 
 .start-row {

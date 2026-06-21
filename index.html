@@ -13,7 +13,7 @@
     <link rel="manifest" href="./manifest.webmanifest?v=20260620-swarm-crest-alpha" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260621-elf-transparent" />
+    <link rel="stylesheet" href="./style.css?v=20260621-home-layout" />
   </head>
   <body>
     <section id="factionSelect" class="faction-select" aria-label="选择阵营">
@@ -22,72 +22,92 @@
           <img src="./assets/title/medieval-stick-title.png" alt="中世纪帝国战争 Medieval Empire War" />
           <h1>中世纪帝国战争</h1>
         </div>
-        <div class="selection-section mode-section" aria-label="第 1 步：选择模式">
-          <div class="selection-label">
-            <b>1</b>
-            <span>选择模式</span>
-            <small>先决定战场规则</small>
+        <div class="home-selection-grid">
+          <div class="selection-section mode-section" aria-label="第 1 步：选择模式">
+            <div class="selection-label">
+              <b>1</b>
+              <span>选择模式</span>
+              <small>先决定战场规则</small>
+            </div>
+            <div class="mode-options" aria-label="选择游戏模式">
+              <button class="mode-card active" data-mode="versus">
+                <strong>对战模式</strong>
+                <small>人机对战，正常开局金币</small>
+              </button>
+              <button class="mode-card" data-mode="brawl">
+                <strong>淘金热</strong>
+                <small>双方开局 1500 金币，中央金矿争夺</small>
+              </button>
+              <button class="mode-card" data-mode="quad">
+                <strong>四国对战</strong>
+                <small>四个帝国占据四角，可混战或 2 打 2</small>
+              </button>
+              <button class="mode-card" data-mode="siege">
+                <strong>高城之战</strong>
+                <small>突破层层防线，摧毁最终城堡</small>
+              </button>
+              <button class="mode-card" data-mode="campaign">
+                <strong>战役模式</strong>
+                <small>选择阵营，进入 8 关正式战役地图</small>
+              </button>
+            </div>
           </div>
-          <div class="mode-options" aria-label="选择游戏模式">
-            <button class="mode-card active" data-mode="versus">
-              <strong>对战模式</strong>
-              <small>人机对战，正常开局金币</small>
-            </button>
-            <button class="mode-card" data-mode="brawl">
-              <strong>淘金热</strong>
-              <small>双方开局 1500 金币，中央金矿争夺</small>
-            </button>
-            <button class="mode-card" data-mode="quad">
-              <strong>四国对战</strong>
-              <small>四个帝国占据四角，可混战或 2 打 2</small>
-            </button>
-            <button class="mode-card" data-mode="siege">
-              <strong>高城之战</strong>
-              <small>突破层层防线，摧毁最终城堡</small>
-            </button>
-            <button class="mode-card" data-mode="campaign">
-              <strong>战役模式</strong>
-              <small>选择阵营，进入 8 关正式战役地图</small>
-            </button>
-          </div>
-        </div>
-        <div class="selection-section faction-section" aria-label="第 2 步：选择帝国">
-          <div class="selection-label">
-            <b>2</b>
-            <span>选择帝国</span>
-            <small>选好后点击开始</small>
-          </div>
-          <div class="faction-options six">
-            <button class="faction-card order active" data-faction="order">
-              <span class="crest"></span>
-              <strong>秩序帝国</strong>
-              <small>矿工、剑士、长矛兵、弓箭手、大剑兵、斯巴达、铁骑兵、修道士、弩手、火枪手、法师、火炮、火箭车</small>
-            </button>
-            <button class="faction-card chaos" data-faction="chaos">
-              <span class="crest"></span>
-              <strong>混沌帝国</strong>
-              <small>矿工、爬行者、地精、地精专家、遮箭车、萨满、祭司、猿人、兽人、狂兽人、巨角骑士、犀牛人、炸弹客、投矛手、持弩哨兵、狮鹫轰炸机</small>
-            </button>
-            <button class="faction-card undead" data-faction="undeadEmpire">
-              <span class="crest"></span>
-              <strong>亡灵帝国</strong>
-              <small>召唤师、骷髅兵、秃鹫、黑骑士、骨巫、掘墓者、骸骨、掌旗手、丧尸、食尸鬼、死尸、毒尸、死灵法师、烛光、收割者、死神</small>
-            </button>
-            <button class="faction-card element" data-faction="element">
-              <span class="crest"></span>
-              <strong>元素帝国</strong>
-              <small>土元素、水元素、电门、火元素、风元素、山丘、凌寒、V、赤焰、风暴巫妖、树精、罗格、烫水击、厄火、飓风</small>
-            </button>
-            <button class="faction-card swarm" data-faction="swarm">
-              <span class="crest"></span>
-              <strong>虫群帝国</strong>
-              <small>爬虫、铁蚁、毒虫、沙虫、蜘蛛、腐蚀者、骨刺者、毛毛虫；咀矿者、虫母、灰烬、巨蛛、毛帽虫等通过进化获得</small>
-            </button>
-            <button class="faction-card elf" data-faction="elf">
-              <span class="crest"></span>
-              <strong>精灵帝国</strong>
-              <small>小精灵、佣兵、侦察兵、游侠、影林猎手、树卫、月鹿骑手、树人、藤蔓术士、星辰祭司、古树贤者、精灵女王、森林弩炮；擅长游击、控制、缠绕、治疗与重弩压制</small>
-            </button>
+          <div class="selection-section faction-section" aria-label="第 2 步：选择帝国">
+            <div class="selection-label">
+              <b>2</b>
+              <span>选择帝国</span>
+              <small>选好后点击开始</small>
+            </div>
+            <div class="faction-options six">
+              <button class="faction-card order active" data-faction="order">
+                <span class="crest"></span>
+                <strong>秩序帝国</strong>
+                <small>
+                  <span>兵种：矿工、剑士、长矛兵、弓箭手、大剑兵、斯巴达、铁骑兵、修道士、弩手、火枪手、散弹兵、法师、拒马工兵、重炮、火炮、火箭车</span>
+                  <span>特点：阵线最稳，靠拒马、举盾、治疗、远程火力层层推进，越成型越难突破。</span>
+                </small>
+              </button>
+              <button class="faction-card chaos" data-faction="chaos">
+                <span class="crest"></span>
+                <strong>混沌帝国</strong>
+                <small>
+                  <span>兵种：矿工、爬行者、地精、地精专家、遮箭车、萨满、祭司、猿人、兽人、狂兽人、巨角骑士、犀牛人、炸弹客、投矛手、持弩哨兵、狮鹫轰炸机</span>
+                  <span>特点：前中期压制强，突进、飞行骚扰、护甲、地雷和功能单位需要相互配合。</span>
+                </small>
+              </button>
+              <button class="faction-card undead" data-faction="undeadEmpire">
+                <span class="crest"></span>
+                <strong>亡灵帝国</strong>
+                <small>
+                  <span>兵种：召唤师、骷髅兵、秃鹫、黑骑士、骨巫、掘墓者、骸骨、掌旗手、丧尸、食尸鬼、死尸、毒尸、死灵法师、烛光、收割者、死神</span>
+                  <span>特点：越打越强，依靠尸体、复活、转化和毒爆滚雪球，后期人海压迫感极强。</span>
+                </small>
+              </button>
+              <button class="faction-card element" data-faction="element">
+                <span class="crest"></span>
+                <strong>元素帝国</strong>
+                <small>
+                  <span>兵种：土元素、水元素、电门、火元素、风元素、山丘、凌寒、V、赤焰、风暴巫妖、树精、罗格、烫水击、厄火、飓风</span>
+                  <span>特点：合成单位质量极高，前期要保护基础元素，中后期靠施法者和高阶单位碾压。</span>
+                </small>
+              </button>
+              <button class="faction-card swarm" data-faction="swarm">
+                <span class="crest"></span>
+                <strong>虫群帝国</strong>
+                <small>
+                  <span>兵种：爬虫、铁蚁、毒虫、沙虫、蜘蛛、腐蚀者、骨刺者、毛毛虫；咀矿者、虫母、灰烬、巨蛛、毛帽虫等通过进化获得</span>
+                  <span>特点：数量、进化和召唤铺场能力强，成型后满屏虫海，但节奏被断会很伤。</span>
+                </small>
+              </button>
+              <button class="faction-card elf" data-faction="elf">
+                <span class="crest"></span>
+                <strong>精灵帝国</strong>
+                <small>
+                  <span>兵种：小精灵、佣兵、侦察兵、游侠、影林猎手、树卫、月鹿骑手、树人、藤蔓术士、星辰祭司、古树贤者、精灵女王、森林弩炮</span>
+                  <span>特点：游击、控制、缠绕、治疗和护盾完整，阵型细腻，中后期韧性很强。</span>
+                </small>
+              </button>
+            </div>
           </div>
         </div>
         <button id="homeStartBtn" class="quick-start-btn home-start-btn" type="button">
@@ -323,6 +343,6 @@
       </div>
     </section>
 
-    <script src="./game.js?v=20260621-elf-transparent"></script>
+    <script src="./game.js?v=20260621-home-layout"></script>
   </body>
 </html>
