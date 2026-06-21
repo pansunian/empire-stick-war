@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-sentries";
+const APP_VERSION = "20260621-elf-arc";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -3650,7 +3650,7 @@ function formatSpecial(type) {
   if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
   if (type === "elfBladeDancer") notes.push(`机动护卫；攻速 ${data.cooldown}秒，移速 ${data.speed}，受到攻击时 ${Math.round(data.dodgeChance * 100)}% 概率闪避`);
   if (type === "elfSentryKeeper") notes.push(`无普攻；每 ${data.sentryEvery} 秒在附近种 1 座翡翠哨塔，单个哨塔师最多维持 ${data.sentryMax} 座`);
-  if (type === "elfSentryTower") notes.push(`召唤哨塔；术士能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人，攻速 ${data.cooldown}秒`);
+  if (type === "elfSentryTower") notes.push(`召唤哨塔；术士高抛能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人，攻速 ${data.cooldown}秒`);
   if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`一棵树卫，挥舞大棒造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人`);
   if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
@@ -3695,7 +3695,7 @@ function formatSpecial(type) {
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
   if (type === "shotgunner") notes.push(`每 ${data.cooldown}秒散射 ${data.pellets} 发散弹，单颗 ${data.damage} 伤害；技能召唤 ${data.bombCount} 个小炸弹，冷却 ${data.bombSkillCooldown}秒`);
-  if (type === "heavyCannon") notes.push(`抛射重炮，落点范围伤害最多 ${data.aoeLimit} 人`);
+  if (type === "heavyCannon") notes.push(`高抛重炮，落点范围伤害最多 ${data.aoeLimit} 人`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
   if (type === "deadCorpse") notes.push(`毒爆不造成直接伤害，范围中毒 ${data.poisonDps}/秒并减速；中毒目标受伤翻倍，死亡变亡灵`);
@@ -11188,6 +11188,7 @@ function attack(unit, target) {
       sourceType: unit.type,
       target,
       life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : unit.type === "elfSentryTower" ? 0.5 : 0.55,
+      arcHeight: unit.type === "elfSentryTower" ? 92 : undefined,
       type: unit.type,
       splash: data.splash,
       aoeLimit: data.aoeLimit,
@@ -12926,6 +12927,7 @@ function throwBoulder(unit, target) {
     groundFireRadius: data.groundFireRadius,
     target,
     life: 0.8,
+    arcHeight: unit.type === "heavyCannon" ? 118 : undefined,
     cannon: unit.type === "heavyCannon" || unit.type === "catapult",
     type: "boulder",
   });
@@ -13140,6 +13142,7 @@ function getArrowDuration(arrow) {
 }
 
 function getArrowArcHeight(arrow) {
+  if (arrow.arcHeight !== undefined) return arrow.arcHeight;
   if (arrow.type === "campaignRain") return 0;
   if (arrow.type === "boulder") return 70;
   if (arrow.type === "rocketVolley") return 52;
@@ -14502,6 +14505,7 @@ function fireHighWallCannons(wall) {
       duration: 0.85,
       type: "boulder",
       cannon: true,
+      arcHeight: 118,
       splash: wall.cannonSplash,
       aoeLimit: wall.cannonLimit,
     });
