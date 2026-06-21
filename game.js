@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-star-priest";
+const APP_VERSION = "20260621-elf-shadow-ballista";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -254,10 +254,10 @@ const AI_ROLE_PROFILES = {
   },
   elf: {
     frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
-    ranged: ["elfScout", "elfRanger"],
+    ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista"],
     support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit"],
-    raider: ["elfScout", "elfRanger", "elfWisp"],
-    highPriority: ["elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
+    highPriority: ["elfForestBallista", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -436,6 +436,31 @@ const UNIT = {
     meleeCooldown: 1,
     poisonDps: 2,
     poisonDuration: Infinity,
+  },
+  elfShadowHunter: {
+    name: "影林猎手",
+    cost: 250,
+    magicCost: 50,
+    hp: 200,
+    damage: 6,
+    range: 260,
+    speed: 52,
+    train: 5.2,
+    cooldown: 2,
+    arrowsPerVolley: 4,
+    dodgeChance: 0.2,
+    controlArrowEvery: 10,
+    controlArrowStun: 3,
+  },
+  elfForestBallista: {
+    name: "森林弩炮",
+    cost: 500,
+    hp: 300,
+    damage: 40,
+    range: 500,
+    speed: 24,
+    train: 7,
+    cooldown: 3,
   },
   elfTreeGuard: {
     name: "树卫",
@@ -2196,7 +2221,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2363,6 +2388,8 @@ const UNIT_ICON = {
   elfMercenary: "spear",
   elfScout: "bow",
   elfRanger: "bow",
+  elfShadowHunter: "bow",
+  elfForestBallista: "bomb-crossbow",
   elfTreeGuard: "spartan",
   elfMoonDeerRider: "spear",
   elfTreeMan: "tree",
@@ -2382,7 +2409,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3431,6 +3458,8 @@ function formatSpecial(type) {
   if (type === "elfMercenary") notes.push(`弯矛范围攻击，最多 ${data.aoeLimit} 人`);
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
+  if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
+  if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`巨矛范围攻击，最多 ${data.aoeLimit} 人；技能盾顶眩晕最多 ${data.shieldBashLimit} 名敌人 ${data.shieldBashStun} 秒`);
   if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
   if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
@@ -4888,6 +4917,7 @@ function spawnUnit(type, side, x) {
     vineEntangleTimer: data.entangleEvery ?? 0,
     vineRootFieldCooldown: 0,
     starSpiritTimer: data.spiritEvery ?? 0,
+    shadowControlArrowTimer: data.controlArrowEvery ?? 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
@@ -7864,6 +7894,7 @@ function updateUnits(dt) {
     if (unit.vulnerabilityTimer <= 0) unit.vulnerabilityBonus = 0;
     unit.vineRootTimer = Math.max(0, (unit.vineRootTimer ?? 0) - dt);
     unit.vineRootFieldCooldown = Math.max(0, (unit.vineRootFieldCooldown ?? 0) - dt);
+    unit.shadowControlArrowTimer = Math.max(0, (unit.shadowControlArrowTimer ?? 0) - dt);
     unit.boneStingerBurrowCooldown = Math.max(0, (unit.boneStingerBurrowCooldown ?? 0) - dt);
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
     unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
@@ -10599,6 +10630,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "elfShadowHunter") {
+    attackElfShadowHunter(unit, target);
+    return;
+  }
+
   if (unit.type === "elfTreeGuard") {
     attackElfTreeGuard(unit, target);
     return;
@@ -10765,7 +10801,8 @@ function attack(unit, target) {
     unit.type === "goblinVulture" ||
     unit.type === "undeadVulture" ||
     unit.type === "corrosiveSpitter" ||
-    unit.type === "antQueen"
+    unit.type === "antQueen" ||
+    unit.type === "elfForestBallista"
   ) {
     if (unit.type === "boneThrower") {
       if ((unit.boneAmmo ?? 0) <= 0) {
@@ -10784,7 +10821,7 @@ function attack(unit, target) {
       sourceId: unit.id,
       sourceType: unit.type,
       target,
-      life: unit.type === "crossbow" ? 0.42 : 0.55,
+      life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : 0.55,
       type: unit.type,
       splash: data.splash,
       aoeLimit: data.aoeLimit,
@@ -10909,19 +10946,43 @@ function attackElfRanger(unit, target) {
   });
 }
 
+function attackElfShadowHunter(unit, target) {
+  const data = UNIT.elfShadowHunter;
+  const count = data.arrowsPerVolley ?? 4;
+  for (let i = 0; i < count; i += 1) {
+    shootElfArrow(unit, target, data.damage, "elfShadowHunter", {
+      yOffset: (i - (count - 1) / 2) * 9,
+      delay: i * 0.04,
+    });
+  }
+  if ((unit.shadowControlArrowTimer ?? 0) <= 0) {
+    unit.shadowControlArrowTimer = data.controlArrowEvery;
+    shootElfArrow(unit, target, data.damage, "elfShadowControl", {
+      yOffset: -28,
+      stun: data.controlArrowStun,
+      color: "#9f7cff",
+      duration: 0.48,
+    });
+    popText(unit.x, unit.y - 116, "控制箭", "#9f7cff");
+  }
+}
+
 function shootElfArrow(unit, target, damage, type, options = {}) {
   state.arrows.push({
     x: unit.x,
-    y: unit.y - 54,
+    y: unit.y - 54 + (options.yOffset ?? 0),
     tx: target.x,
-    ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
+    ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) + (options.yOffset ?? 0) : unit.y - 52 + (options.yOffset ?? 0),
     side: unit.side,
     damage: getAttackDamage(unit, target, damage),
     sourceId: unit.id,
     sourceType: unit.type,
     target,
-    life: 0.42,
+    life: options.duration ?? 0.42 + (options.delay ?? 0),
+    duration: options.duration ?? 0.42 + (options.delay ?? 0),
     type,
+    stun: options.stun,
+    color: options.color,
     poisonDps: options.poisonDps,
     poisonDuration: options.poisonDuration,
   });
@@ -14391,6 +14452,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
     return amount;
   }
 
+  if (tryDodgeIncomingDamage(target, amount, options)) return 0;
   const damage = getModifiedDamage(target, amount, options);
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
@@ -14404,6 +14466,7 @@ function applyDamage(target, amount, attackerSide, options = {}) {
 
 function applyUnitDamage(target, amount, options = {}) {
   if (!target || target.kind === "statue" || target.hp <= 0 || amount <= 0 || isUnitHidden(target)) return 0;
+  if (tryDodgeIncomingDamage(target, amount, options)) return 0;
   const damage = options.modified === false ? amount : getModifiedDamage(target, amount, options);
   if (damage <= 0) return 0;
   const hpDamage = absorbShieldDamage(target, damage);
@@ -14415,6 +14478,15 @@ function applyUnitDamage(target, amount, options = {}) {
   const label = options.label ? `${options.label} -${damage}` : `-${damage}`;
   popText(target.x, target.y + (options.yOffset ?? -68), label, options.color ?? "#f0a36a");
   return damage;
+}
+
+function tryDodgeIncomingDamage(target, amount, options = {}) {
+  if (!target || target.kind === "statue" || amount <= 0 || options.ignoreDodge) return false;
+  const chance = UNIT[target.type]?.dodgeChance ?? 0;
+  if (chance <= 0 || Math.random() >= chance) return false;
+  popText(target.x, target.y - 105, "闪避", "#b8f6ff");
+  state.blasts.push({ x: target.x, y: target.y - 42, radius: 32, life: 0.2, duration: 0.2, color: "#9f7cff" });
+  return true;
 }
 
 function absorbShieldDamage(target, damage) {
@@ -18851,13 +18923,13 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(54, -68, 14, Math.PI * 0.15, Math.PI * 1.45);
     ctx.stroke();
-  } else if (type === "elfScout" || type === "elfRanger") {
-    ctx.strokeStyle = type === "elfRanger" ? "#264b2e" : "#315b36";
+  } else if (type === "elfScout" || type === "elfRanger" || type === "elfShadowHunter") {
+    ctx.strokeStyle = type === "elfShadowHunter" ? "#2d244d" : type === "elfRanger" ? "#264b2e" : "#315b36";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(29, -44, 21, -Math.PI / 2, Math.PI / 2);
     ctx.stroke();
-    ctx.strokeStyle = "#d7f6b8";
+    ctx.strokeStyle = type === "elfShadowHunter" ? "#c6b8ff" : "#d7f6b8";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(29, -65);
@@ -18865,7 +18937,20 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(37, -44);
     ctx.lineTo(57, -45);
     ctx.stroke();
-    if (type === "elfRanger") {
+    if (type === "elfShadowHunter") {
+      ctx.fillStyle = "rgba(159, 124, 255, 0.32)";
+      ctx.beginPath();
+      ctx.ellipse(-15, -54, 18, 11, -0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#9f7cff";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-22, -31);
+      ctx.lineTo(-5, -50);
+      ctx.moveTo(-19, -24);
+      ctx.lineTo(-1, -43);
+      ctx.stroke();
+    } else if (type === "elfRanger") {
       ctx.strokeStyle = "#b8f6a0";
       ctx.lineWidth = 4;
       ctx.beginPath();
@@ -18962,6 +19047,36 @@ function drawWeapon(type, unit = null) {
     ctx.strokeStyle = "#efffe8";
     ctx.lineWidth = 2;
     ctx.stroke();
+  } else if (type === "elfForestBallista") {
+    ctx.strokeStyle = "#4f3c27";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-30, -25);
+    ctx.lineTo(34, -25);
+    ctx.moveTo(-18, -14);
+    ctx.lineTo(-4, -38);
+    ctx.moveTo(18, -14);
+    ctx.lineTo(4, -38);
+    ctx.stroke();
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(2, -48);
+    ctx.lineTo(72, -48);
+    ctx.stroke();
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(28, -72);
+    ctx.quadraticCurveTo(54, -48, 28, -24);
+    ctx.stroke();
+    ctx.fillStyle = "#c6b8ff";
+    ctx.beginPath();
+    ctx.moveTo(70, -48);
+    ctx.lineTo(56, -55);
+    ctx.lineTo(56, -41);
+    ctx.closePath();
+    ctx.fill();
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
@@ -21245,9 +21360,15 @@ function drawArrow(arrow) {
     ctx.fill();
     return;
   }
-  ctx.strokeStyle =
-    arrow.type === "crossbow"
+  ctx.strokeStyle = arrow.color ??
+    (arrow.type === "crossbow"
       ? "#ffce7a"
+      : arrow.type === "elfShadowHunter"
+        ? "#c6b8ff"
+      : arrow.type === "elfShadowControl"
+        ? "#9f7cff"
+      : arrow.type === "elfForestBallista"
+        ? "#d7f6b8"
       : arrow.type === "goldenSpear"
         ? "#f7d66b"
       : arrow.type === "spearThrow"
@@ -21276,8 +21397,8 @@ function drawArrow(arrow) {
             ? "#ff7cb1"
             : arrow.side === "player"
               ? "#d8e8ff"
-              : "#ffd0c9";
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" ? 4 : 3;
+              : "#ffd0c9");
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "elfForestBallista" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" || arrow.type === "elfShadowControl" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
