@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v187-barricade-tuning";
+const CACHE_NAME = "stick-war-pwa-v188-elf-faction-base";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-barricade-tuning",
-  "./game.js?v=20260621-barricade-tuning",
+  "./style.css?v=20260621-elf-faction-base",
+  "./game.js?v=20260621-elf-faction-base",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

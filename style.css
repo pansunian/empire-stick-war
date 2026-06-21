@@ -12,6 +12,7 @@
   --undead-money: #d8d0ff;
   --element-money: #8ee0cf;
   --swarm-money: #cde69b;
+  --elf-money: #9ef0a8;
 }
 
 * {
@@ -658,7 +659,8 @@ body {
 
 .faction-options.three,
 .faction-options.four,
-.faction-options.five {
+.faction-options.five,
+.faction-options.six {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -722,6 +724,12 @@ body {
   background:
     linear-gradient(90deg, rgba(237, 199, 91, 0.13), transparent 44%),
     linear-gradient(145deg, rgba(83, 112, 45, 0.82), rgba(21, 29, 16, 0.95));
+}
+
+.faction-card.elf {
+  background:
+    linear-gradient(90deg, rgba(237, 199, 91, 0.13), transparent 44%),
+    linear-gradient(145deg, rgba(64, 122, 76, 0.82), rgba(16, 33, 21, 0.95));
 }
 
 .faction-card:hover,
@@ -841,6 +849,13 @@ body {
 
 .swarm .crest {
   background-image: url("./assets/factions/swarm-crest.png?v=20260620-alpha");
+}
+
+.elf .crest {
+  background:
+    radial-gradient(circle at 50% 42%, #efffe8 0 9%, #9ef0a8 10% 26%, transparent 27%),
+    radial-gradient(circle at 50% 50%, rgba(158, 240, 168, 0.28) 0 44%, transparent 45%),
+    linear-gradient(135deg, rgba(38, 96, 51, 0.95), rgba(12, 30, 18, 0.95));
 }
 
 button {
@@ -964,6 +979,12 @@ button {
   color: var(--swarm-money);
 }
 
+.player.elf #gold,
+.enemy.elf #enemyGold,
+.money-chip.elf {
+  color: var(--elf-money);
+}
+
 .money-chip {
   display: inline-flex;
   align-items: baseline;
@@ -1026,6 +1047,11 @@ button {
 .player.swarm .banner,
 .enemy.swarm .banner {
   background: linear-gradient(135deg, #d8ef7a, #536f2d);
+}
+
+.player.elf .banner,
+.enemy.elf .banner {
+  background: linear-gradient(135deg, #9ef0a8, #315f3a);
 }
 
 .status-panel {
@@ -2264,7 +2290,8 @@ body.quad-watch .health-bars {
 
   .faction-options.three,
 .faction-options.four,
-.faction-options.five {
+.faction-options.five,
+.faction-options.six {
     grid-template-columns: 1fr;
   }
 
@@ -2918,7 +2945,8 @@ body.quad-watch .health-bars {
   .faction-options,
   .faction-options.three,
 .faction-options.four,
-.faction-options.five {
+.faction-options.five,
+.faction-options.six {
     gap: 8px;
   }
 
@@ -3127,7 +3155,8 @@ body.quad-watch .health-bars {
 
   .faction-options.three,
 .faction-options.four,
-.faction-options.five {
+.faction-options.five,
+.faction-options.six {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
@@ -3410,7 +3439,8 @@ body.quad-watch .health-bars {
 
   .faction-options.three,
 .faction-options.four,
-.faction-options.five {
+.faction-options.five,
+.faction-options.six {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
@@ -3603,7 +3633,8 @@ body.quad-watch .health-bars {
   .faction-options,
   .faction-options.three,
   .faction-options.four,
-  .faction-options.five {
+  .faction-options.five,
+  .faction-options.six {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }

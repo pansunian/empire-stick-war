@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-barricade-tuning";
+const APP_VERSION = "20260621-elf-faction-base";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -252,6 +252,13 @@ const AI_ROLE_PROFILES = {
     raider: ["poisonBug", "blastBug", "locust"],
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
+  elf: {
+    frontline: ["elfMercenary"],
+    ranged: ["elfScout", "elfRanger"],
+    support: ["elfWisp"],
+    raider: ["elfScout", "elfRanger", "elfWisp"],
+    highPriority: ["elfRanger", "elfScout", "elfMercenary"],
+  },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
 const NECROMANCER_CONVERSION_BLOCKED_UNITS = new Set([
@@ -374,6 +381,61 @@ const UNIT = {
     magicPerSwing: 12.5,
     magicBagSize: 50,
     summonOnly: true,
+  },
+  elfWisp: {
+    name: "小精灵",
+    cost: 50,
+    hp: 40,
+    damage: 0,
+    range: 30,
+    speed: 58,
+    train: 2.2,
+    cooldown: 1,
+    goldPerSwing: 25,
+    bagSize: 50,
+    magicPerSwing: 12.5,
+    magicBagSize: 25,
+    selfBlast: true,
+  },
+  elfMercenary: {
+    name: "佣兵",
+    cost: 100,
+    hp: 95,
+    damage: 9,
+    range: 42,
+    speed: 46,
+    train: 3.2,
+    cooldown: 1,
+    aoeLimit: 3,
+    splash: 54,
+  },
+  elfScout: {
+    name: "侦察兵",
+    cost: 120,
+    hp: 60,
+    damage: 6,
+    meleeDamage: 7,
+    meleeRange: 32,
+    range: 180,
+    speed: 64,
+    train: 3.1,
+    cooldown: 0.8,
+    meleeCooldown: 1,
+  },
+  elfRanger: {
+    name: "游侠",
+    cost: 200,
+    hp: 110,
+    damage: 14,
+    meleeDamage: 10,
+    meleeRange: 34,
+    range: 230,
+    speed: 54,
+    train: 4.4,
+    cooldown: 1,
+    meleeCooldown: 1,
+    poisonDps: 2,
+    poisonDuration: Infinity,
   },
   crawler: {
     name: "爬虫",
@@ -2020,6 +2082,12 @@ const FACTIONS = {
     startingUnits: ["crawler", "crawler", "ironAnt"],
     mineColor: "#b6d56d",
   },
+  elf: {
+    name: "精灵帝国",
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger"],
+    startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
+    mineColor: "#8ee8a4",
+  },
 };
 
 const FOUR_WAY_SIDES = ["order", "chaos", "undeadEmpire", "element"];
@@ -2179,6 +2247,10 @@ const UNIT_ICON = {
   corrosiveSpitter: "venom",
   boneStinger: "spear",
   lurker: "spear",
+  elfWisp: "white-orb",
+  elfMercenary: "spear",
+  elfScout: "bow",
+  elfRanger: "bow",
 };
 
 function normalizeUnitType(type) {
@@ -2191,6 +2263,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger"]],
 ];
 
 let state = null;
@@ -2282,7 +2355,7 @@ const BANNER_INSPIRE_LABELS = {
   zombie: "丧尸",
   spirit: "亡灵",
 };
-const ECONOMY_UNITS = new Set(["miner", "summoner", "gnawMiner"]);
+const ECONOMY_UNITS = new Set(["miner", "summoner", "gnawMiner", "elfWisp"]);
 const CAMPAIGN_UNLOCKS = {
   order: ["spearman", "archer", "greatsword", "spartan", "ironCavalry", "monk", "crossbow", "musketeer", "mage", "catapult", "rocketCart", "rocketCart"],
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "ghoul", "poisonZombie", "darkKnight", "undeadMage"],
@@ -2992,12 +3065,14 @@ function getFactionKey(side) {
 function getFactionEconomyUnit(faction) {
   if (faction === "undeadEmpire") return "summoner";
   if (faction === "swarm") return "gnawMiner";
+  if (faction === "elf") return "elfWisp";
   return "miner";
 }
 
 function isFactionUnavailableForMode(faction, mode, controlMode = selectedControlMode) {
   void controlMode;
-  return faction === "swarm" && mode === "quad";
+  if (faction === "elf" && mode === "campaign") return true;
+  return (faction === "swarm" || faction === "elf") && mode === "quad";
 }
 
 function chooseUnusedFaction(excluded = []) {
@@ -3233,6 +3308,10 @@ function formatSpecial(type) {
   const notes = [];
   if (type === "miner") notes.push("每次采 25，满 100 入库");
   if (type === "gnawMiner") notes.push("虫群矿工；挖 4 次带回 100 金");
+  if (type === "elfWisp") notes.push("绿光球；可采集金矿和魔力，满 50 金或 25 魔力入库；攻击会自爆，按当前生命值造成伤害");
+  if (type === "elfMercenary") notes.push(`弯矛范围攻击，最多 ${data.aoeLimit} 人`);
+  if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
+  if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
@@ -4307,7 +4386,7 @@ const SWARM_SHOP_LAYOUT = [
 ];
 
 function shopGroupClass(type) {
-  if (type === "summoner") return "shop-group-economy";
+  if (type === "summoner" || type === "elfWisp") return "shop-group-economy";
   if (SKELETON_UNITS.has(type)) return "shop-group-skeleton";
   if (ZOMBIE_UNITS.has(type)) return "shop-group-zombie";
   if (SPIRIT_UNITS.has(type)) return "shop-group-spirit";
@@ -4537,7 +4616,7 @@ function setMinerCommand(command) {
   state.minerCommand = command;
   if (command !== "retreat") {
     state.units.forEach((unit) => {
-      if (unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner") && unit.inCastle) unit.inCastle = false;
+      if (unit.side === "player" && (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "summoner" || unit.type === "wraithMiner" || unit.type === "elfWisp") && unit.inCastle) unit.inCastle = false;
     });
   }
   minerCommandButtons.forEach((button) => {
@@ -6601,7 +6680,7 @@ function getMiningHomePoint(side) {
 }
 
 function isMiningWorker(unit) {
-  return unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "wraithMiner";
+  return unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "wraithMiner" || unit.type === "elfWisp";
 }
 
 function getMiningBagSize(unit) {
@@ -6619,7 +6698,7 @@ function getCarryResource(unit) {
 }
 
 function getMinerResource(unit) {
-  if (unit.type !== "miner" && unit.type !== "gnawMiner" && unit.type !== "wraithMiner") return "gold";
+  if (unit.type !== "miner" && unit.type !== "gnawMiner" && unit.type !== "wraithMiner" && unit.type !== "elfWisp") return "gold";
   if (unit.miningResource) return unit.miningResource;
   if (unit.side === "player") return state.minerResource ?? "gold";
   return getSideMagic(unit.side) < getFactionMagicDemand(factionForSide(unit.side), unit.side) ? "magic" : "gold";
@@ -7723,7 +7802,7 @@ function updateUnits(dt) {
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
       }
-      if (unit.type === "miner" || unit.type === "gnawMiner") {
+      if (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "elfWisp") {
         updateMiner(unit, dt);
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
         continue;
@@ -7879,7 +7958,7 @@ function updateUnits(dt) {
       continue;
     }
 
-    if (unit.type === "miner" || unit.type === "gnawMiner") {
+    if (unit.type === "miner" || unit.type === "gnawMiner" || unit.type === "elfWisp") {
       updateMiner(unit, dt);
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
@@ -9741,7 +9820,7 @@ function canEnterCastle(unit) {
 }
 
 function isCastleEconomyUnit(unit) {
-  return unit?.type === "miner" || unit?.type === "gnawMiner" || unit?.type === "summoner" || unit?.type === "wraithMiner";
+  return unit?.type === "miner" || unit?.type === "gnawMiner" || unit?.type === "summoner" || unit?.type === "wraithMiner" || unit?.type === "elfWisp";
 }
 
 function isUnitHidden(unit) {
@@ -9991,7 +10070,7 @@ function isInsideTowerCaptureArea(unit) {
 
 function isPlayerForcedGuarding(unit) {
   if (unit.side !== "player" || state.command !== "guard") return false;
-  if (unit.forceCharge || unit.type === "miner" || unit.type === "electricGate") return false;
+  if (unit.forceCharge || isMiningWorker(unit) || unit.type === "electricGate") return false;
   const point = getGuardFormationPoint(unit, "player");
   return distanceTo(unit.x, unit.y, point.x, point.y) > getGuardPointTolerance(unit);
 }
@@ -10327,6 +10406,26 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "elfWisp") {
+    explodeElfWisp(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfMercenary") {
+    attackElfMercenary(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfScout") {
+    attackElfScout(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfRanger") {
+    attackElfRanger(unit, target);
+    return;
+  }
+
   if (unit.type === "caterpillar" || unit.type === "hoodCaterpillar") {
     launchNeuralBombs(unit, target);
     return;
@@ -10565,6 +10664,70 @@ function explodeBlastBug(unit, target) {
   });
   state.blasts.push({ x: target.x, y: unit.y - 24, radius: data.splash, life: 0.34, duration: 0.34, color: "#ffb45e" });
   popText(unit.x, unit.y - 84, "自爆", "#ffb45e");
+}
+
+function explodeElfWisp(unit, target) {
+  const damage = Math.max(1, Math.round(unit.hp));
+  unit.exploded = true;
+  unit.noCorpse = true;
+  unit.hp = 0;
+  const dealt = applyDamage(target, damage, unit.side);
+  handleDamageDealt(unit, target, dealt);
+  state.blasts.push({ x: target.x, y: (target.y ?? unit.y) - 28, radius: 34, life: 0.26, duration: 0.26, color: "#8effb0" });
+  popText(target.x, (target.y ?? unit.y) - 82, `灵爆 ${damage}`, "#8effb0");
+}
+
+function attackElfMercenary(unit, target) {
+  const data = UNIT.elfMercenary;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
+  targets.forEach((enemy) => {
+    const dealt = applyDamage(enemy, getAttackDamage(unit, enemy, data.damage), unit.side);
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.blasts.push({ x: target.x, y: (target.y ?? unit.y) - 36, radius: data.splash, life: 0.18, duration: 0.18, color: "#b8f6a0" });
+}
+
+function attackElfScout(unit, target) {
+  const data = UNIT.elfScout;
+  if (Math.abs(unit.x - target.x) <= data.meleeRange + 8) {
+    unit.cooldown = data.meleeCooldown;
+    const dealt = applyDamage(target, getAttackDamage(unit, target, data.meleeDamage), unit.side);
+    handleDamageDealt(unit, target, dealt);
+    return;
+  }
+  shootElfArrow(unit, target, data.damage, "elfScout");
+}
+
+function attackElfRanger(unit, target) {
+  const data = UNIT.elfRanger;
+  if (Math.abs(unit.x - target.x) <= data.meleeRange + 8) {
+    unit.cooldown = data.meleeCooldown;
+    const dealt = applyDamage(target, getAttackDamage(unit, target, data.meleeDamage), unit.side);
+    handleDamageDealt(unit, target, dealt);
+    return;
+  }
+  shootElfArrow(unit, target, data.damage, "elfRanger", {
+    poisonDps: data.poisonDps,
+    poisonDuration: data.poisonDuration,
+  });
+}
+
+function shootElfArrow(unit, target, damage, type, options = {}) {
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 54,
+    tx: target.x,
+    ty: target.y ? target.y - 38 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
+    side: unit.side,
+    damage: getAttackDamage(unit, target, damage),
+    sourceId: unit.id,
+    sourceType: unit.type,
+    target,
+    life: 0.42,
+    type,
+    poisonDps: options.poisonDps,
+    poisonDuration: options.poisonDuration,
+  });
 }
 
 function explodeOrderMiniBomb(unit, target = unit) {
@@ -12086,6 +12249,12 @@ function updateArrows(dt) {
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
+      } else if (arrow.poisonDps) {
+        const source = getArrowSource(arrow);
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        handleDamageDealt(source, arrow.target, dealt);
+        maybeApplyOrderRangedStun(arrow, arrow.target, source);
+        applyPoison(arrow.target, arrow.poisonDps, arrow.poisonDuration ?? Infinity, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "corrosiveSpitter") {
         const source = getArrowSource(arrow);
         impactCorrosiveSpit(arrow, source);
@@ -15606,6 +15775,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "elfWisp") {
+    drawElfWispUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "miner") {
     drawMinerUnit(unit, color, headColor);
     ctx.restore();
@@ -15647,6 +15821,32 @@ function drawWormBurrow(unit) {
   ctx.quadraticCurveTo(4, 8, 25, -2);
   ctx.stroke();
   ctx.restore();
+}
+
+function drawElfWispUnit(unit) {
+  const pulse = 1 + Math.sin(performance.now() / 180 + unit.id) * 0.08;
+  ctx.save();
+  ctx.shadowColor = "#8effb0";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "rgba(142, 255, 176, 0.22)";
+  ctx.beginPath();
+  ctx.ellipse(0, -42, 26 * pulse, 32 * pulse, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#8effb0";
+  ctx.beginPath();
+  ctx.arc(0, -45, 14 * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#efffe8";
+  ctx.beginPath();
+  ctx.arc(-4, -50, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(239, 255, 232, 0.72)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, -45, 22 * pulse, performance.now() / 500, performance.now() / 500 + Math.PI * 1.35);
+  ctx.stroke();
+  ctx.restore();
+  drawUnitHp(unit);
 }
 
 function drawBasicElementUnit(unit) {
@@ -16519,6 +16719,7 @@ function getUnitColor(unit) {
   if (unit.type === "shotgunner") return "#596c78";
   if (unit.type === "orderMiniBomb") return "#d8a548";
   if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
+  if (factionForSide(unit.side) === "elf") return unit.side === "player" ? "#7fdc8f" : "#a4e8ac";
   if (factionForSide(unit.side) === "order") return unit.side === "player" ? "#75a7ff" : "#8dbbff";
   if (unit.type === "earthElement") return "#9b8051";
   if (unit.type === "waterElement") return "#72c8e8";
@@ -16614,6 +16815,7 @@ function getHeadColor(unit) {
   if (isReaperStealthed(unit)) return "#a0a0a0";
   if (unit.type === "miner" && factionForSide(unit.side) === "element") return "#8a5b32";
   if (unit.type === "miner" && unit.earthMiner) return "#8a5b32";
+  if (factionForSide(unit.side) === "elf") return "#f0ffe5";
   if (unit.type === "earthElement") return "#c0a36d";
   if (unit.type === "waterElement") return "#b8f0ff";
   if (unit.type === "fireElement") return "#ffd08a";
@@ -18019,6 +18221,46 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(45, -68, 17, 0, Math.PI * 1.7);
     ctx.stroke();
+  } else if (type === "elfMercenary") {
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -25);
+    ctx.lineTo(50, -68);
+    ctx.stroke();
+    ctx.strokeStyle = "#8edc8a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(54, -68, 14, Math.PI * 0.15, Math.PI * 1.45);
+    ctx.stroke();
+  } else if (type === "elfScout" || type === "elfRanger") {
+    ctx.strokeStyle = type === "elfRanger" ? "#264b2e" : "#315b36";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(29, -44, 21, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(29, -65);
+    ctx.lineTo(29, -23);
+    ctx.moveTo(37, -44);
+    ctx.lineTo(57, -45);
+    ctx.stroke();
+    if (type === "elfRanger") {
+      ctx.strokeStyle = "#b8f6a0";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(-20, -28, 15, -Math.PI * 0.15, Math.PI * 0.95);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#f0ffe5";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-17, -31);
+      ctx.lineTo(-4, -48);
+      ctx.stroke();
+    }
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
