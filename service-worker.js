@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v197-elf-crest";
+const CACHE_NAME = "stick-war-pwa-v198-elf-transparent";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-elf-crest",
-  "./game.js?v=20260621-elf-crest",
+  "./style.css?v=20260621-elf-transparent",
+  "./game.js?v=20260621-elf-transparent",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
@@ -12,7 +12,7 @@ const APP_SHELL = [
   "./assets/factions/undead-crest.png",
   "./assets/factions/element-crest.png",
   "./assets/factions/swarm-crest.png?v=20260620-alpha",
-  "./assets/factions/elf-crest.png?v=20260621-alpha"
+  "./assets/factions/elf-crest.png?v=20260621-transparent"
 ];
 
 self.addEventListener("install", (event) => {
