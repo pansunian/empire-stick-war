@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-shadow-ballista";
+const APP_VERSION = "20260621-elf-ancient-sage";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -255,9 +255,9 @@ const AI_ROLE_PROFILES = {
   elf: {
     frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista"],
-    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit"],
+    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfHealingSpirit"],
     raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
-    highPriority: ["elfForestBallista", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfForestBallista", "elfAncientSage", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -461,6 +461,37 @@ const UNIT = {
     speed: 24,
     train: 7,
     cooldown: 3,
+  },
+  elfAncientSage: {
+    name: "古树贤者",
+    cost: 300,
+    magicCost: 200,
+    hp: 400,
+    damage: 0,
+    range: 220,
+    speed: 30,
+    train: 7.5,
+    cooldown: 1,
+    jungleArea: 400,
+    jungleSlow: 0.5,
+    jungleMissChance: 0.25,
+    jungleHeal: 18,
+    jungleDuration: 10,
+    jungleCooldown: 15,
+    treantSummonCount: 2,
+    treantSummonDuration: 15,
+    treantSummonCooldown: 25,
+    groveTreeCount: 4,
+    groveTreeDamage: 10,
+    groveTreeCooldown: 2,
+    groveDuration: 16,
+    groveRadius: 150,
+    groveCooldown: 22,
+    sanctuaryRadius: 220,
+    sanctuaryReduction: 0.35,
+    sanctuaryDuration: 8,
+    sanctuaryCooldown: 20,
+    noBasicAttack: true,
   },
   elfTreeGuard: {
     name: "树卫",
@@ -2221,7 +2252,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfForestBallista"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2396,6 +2427,7 @@ const UNIT_ICON = {
   elfSapling: "tree",
   elfVineWarlock: "wizard-hat",
   elfStarPriest: "white-orb",
+  elfAncientSage: "tree",
   elfHealingSpirit: "white-orb",
 };
 
@@ -2409,7 +2441,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfForestBallista"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3467,6 +3499,7 @@ function formatSpecial(type) {
   if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
   if (type === "elfStarPriest") notes.push(`无普攻；每 ${data.spiritEvery} 秒生成 1 个治疗精灵，最多 ${data.spiritMax} 个；技能让所有治疗精灵切换为小精灵并自爆`);
   if (type === "elfHealingSpirit") notes.push(`召唤单位；每 ${data.healEvery} 秒治疗一名友军 ${data.healAmount} 生命`);
+  if (type === "elfAncientSage") notes.push(`无普攻；技能丛林减速敌人并让其攻击 ${Math.round(data.jungleMissChance * 100)}% 打偏，精灵每秒恢复 ${data.jungleHeal}；可限时召唤树人、生成树根树林领域、释放古木庇护`);
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
@@ -3789,6 +3822,8 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     slimeFields: [],
     webFields: [],
     rootFields: [],
+    jungleFields: [],
+    groveFields: [],
     swarmEggs: [],
     corpses: [],
     ghosts: [],
@@ -5507,6 +5542,8 @@ function update(dt) {
   updateSlimeFields(dt);
   updateWebFields(dt);
   updateRootFields(dt);
+  updateJungleFields(dt);
+  updateGroveFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -5546,6 +5583,8 @@ function updateFourWayBattle(dt) {
   updateSlimeFields(dt);
   updateWebFields(dt);
   updateRootFields(dt);
+  updateJungleFields(dt);
+  updateGroveFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -7895,6 +7934,8 @@ function updateUnits(dt) {
     unit.vineRootTimer = Math.max(0, (unit.vineRootTimer ?? 0) - dt);
     unit.vineRootFieldCooldown = Math.max(0, (unit.vineRootFieldCooldown ?? 0) - dt);
     unit.shadowControlArrowTimer = Math.max(0, (unit.shadowControlArrowTimer ?? 0) - dt);
+    unit.ancientSanctuaryTimer = Math.max(0, (unit.ancientSanctuaryTimer ?? 0) - dt);
+    if (unit.ancientSanctuaryTimer <= 0) unit.ancientSanctuaryReduction = 0;
     unit.boneStingerBurrowCooldown = Math.max(0, (unit.boneStingerBurrowCooldown ?? 0) - dt);
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
     unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
@@ -10111,6 +10152,12 @@ function getMoveFactor(unit) {
       factor = Math.min(factor, field.slow);
     }
   }
+  for (const field of state.jungleFields ?? []) {
+    if (!areHostileSides(field.side, unit.side)) continue;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, field.x, field.y) <= field.radius) {
+      factor = Math.min(factor, field.slow);
+    }
+  }
   if ((unit.vineRootTimer ?? 0) > 0) factor = 0;
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
@@ -10588,6 +10635,10 @@ function attack(unit, target) {
   }
   unit.cooldown = data.cooldown ?? 0.9;
   unit.combatTimer = 3;
+  if (shouldMissFromJungle(unit)) {
+    popText(unit.x, unit.y - 104, "丛林干扰", "#8ee8a4");
+    return;
+  }
   markRetaliationTarget(target, unit);
 
   if (unit.type === "spearman" && !unit.spearThrown) {
@@ -11113,6 +11164,96 @@ function castElfRootField(unit, target) {
   });
   unit.vineRootFieldCooldown = data.rootFieldCooldown;
   popText(x, y - 70, "树根区", "#8ee8a4");
+  return true;
+}
+
+function shouldMissFromJungle(unit) {
+  const field = (state.jungleFields ?? []).find((item) => (
+    areHostileSides(item.side, unit.side)
+    && distanceTo(unit.x, unit.y ?? FIELD.ground, item.x, item.y) <= item.radius
+  ));
+  return Boolean(field && Math.random() < (field.missChance ?? 0));
+}
+
+function castAncientJungle(unit, target) {
+  const data = UNIT.elfAncientSage;
+  const radius = Math.max(48, Math.sqrt(data.jungleArea) * 3);
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  state.jungleFields = state.jungleFields ?? [];
+  state.jungleFields.push({
+    x,
+    y,
+    side: unit.side,
+    radius,
+    slow: data.jungleSlow,
+    missChance: data.jungleMissChance,
+    heal: data.jungleHeal,
+    life: data.jungleDuration,
+    duration: data.jungleDuration,
+    tick: 0,
+  });
+  state.blasts.push({ x, y: y - 28, radius: radius + 22, life: 0.35, duration: 0.35, color: "#8ee8a4" });
+  popText(x, y - 84, "古树丛林", "#8ee8a4");
+  return true;
+}
+
+function summonAncientTreants(unit) {
+  const data = UNIT.elfAncientSage;
+  const dir = getUnitFacingDirection(unit);
+  for (let i = 0; i < data.treantSummonCount; i += 1) {
+    const treant = spawnUnit("elfTreeMan", unit.side, clampWorldX(unit.x + dir * (54 + i * 30)));
+    treant.y = unit.y + (i - 0.5) * 28;
+    treant.timedLife = data.treantSummonDuration;
+    treant.summonerId = unit.id;
+    treant.forceCharge = true;
+    treant.noCorpse = true;
+  }
+  popText(unit.x, unit.y - 124, "召唤树人 x2", "#8ee8a4");
+  return true;
+}
+
+function castAncientGrove(unit, target) {
+  const data = UNIT.elfAncientSage;
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  const trees = [];
+  for (let i = 0; i < data.groveTreeCount; i += 1) {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / data.groveTreeCount);
+    trees.push({
+      x: x + Math.cos(angle) * data.groveRadius * 0.48,
+      y: y + Math.sin(angle) * data.groveRadius * 0.28,
+      cooldown: i * 0.25,
+    });
+  }
+  state.groveFields = state.groveFields ?? [];
+  state.groveFields.push({
+    x,
+    y,
+    side: unit.side,
+    radius: data.groveRadius,
+    damage: data.groveTreeDamage,
+    cooldown: data.groveTreeCooldown,
+    life: data.groveDuration,
+    duration: data.groveDuration,
+    trees,
+  });
+  popText(x, y - 90, "树林领域", "#7fdc7f");
+  return true;
+}
+
+function castAncientSanctuary(unit) {
+  const data = UNIT.elfAncientSage;
+  const allies = state.units
+    .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally) && !UNIT[ally.type]?.untargetable)
+    .filter((ally) => distanceTo(unit.x, unit.y, ally.x, ally.y ?? FIELD.ground) <= data.sanctuaryRadius);
+  allies.forEach((ally) => {
+    ally.ancientSanctuaryTimer = data.sanctuaryDuration;
+    ally.ancientSanctuaryReduction = data.sanctuaryReduction;
+    clearPoison(ally, "古木解毒");
+    popText(ally.x, ally.y - 108, "古木庇护", "#d7f6b8");
+  });
+  state.blasts.push({ x: unit.x, y: unit.y - 45, radius: data.sanctuaryRadius, life: 0.32, duration: 0.32, color: "#d7f6b8" });
   return true;
 }
 
@@ -14237,6 +14378,31 @@ function updateRootFields(dt) {
   state.rootFields = (state.rootFields ?? []).filter((field) => field.life > 0);
 }
 
+function updateJungleFields(dt) {
+  for (const field of state.jungleFields ?? []) {
+    field.life -= dt;
+    field.tick -= dt;
+    while (field.tick <= 0 && field.life > 0) {
+      field.tick += 1;
+      healJungleField(field);
+    }
+  }
+  state.jungleFields = (state.jungleFields ?? []).filter((field) => field.life > 0);
+}
+
+function updateGroveFields(dt) {
+  for (const field of state.groveFields ?? []) {
+    field.life -= dt;
+    for (const tree of field.trees ?? []) {
+      tree.cooldown -= dt;
+      if (tree.cooldown > 0 || field.life <= 0) continue;
+      tree.cooldown += field.cooldown;
+      fireGroveTreeRoot(field, tree);
+    }
+  }
+  state.groveFields = (state.groveFields ?? []).filter((field) => field.life > 0);
+}
+
 function updateHealingFields(dt) {
   for (const field of state.healingFields) {
     field.life -= dt;
@@ -14247,6 +14413,40 @@ function updateHealingFields(dt) {
     }
   }
   state.healingFields = state.healingFields.filter((field) => field.life > 0);
+}
+
+function healJungleField(field) {
+  state.units.forEach((unit) => {
+    if (unit.side !== field.side || !isElfEmpireUnit(unit.type)) return;
+    if (unit.hp <= 0 || unit.hp >= unit.maxHp || isUnitHidden(unit)) return;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, field.x, field.y) > field.radius) return;
+    const healed = Math.min(field.heal, unit.maxHp - unit.hp);
+    unit.hp += healed;
+    popText(unit.x, unit.y - 96, `丛林 +${healed}`, "#8ee8a4");
+  });
+}
+
+function fireGroveTreeRoot(field, tree) {
+  const target = state.units
+    .filter((enemy) => areHostileSides(field.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => distanceTo(enemy.x, enemy.y ?? FIELD.ground, tree.x, tree.y) <= field.radius)
+    .sort((a, b) => distanceTo(a.x, a.y ?? FIELD.ground, tree.x, tree.y) - distanceTo(b.x, b.y ?? FIELD.ground, tree.x, tree.y))[0];
+  if (!target) return;
+  const dealt = applyUnitDamage(target, field.damage, {
+    label: "树根",
+    color: "#8ee8a4",
+    yOffset: -90,
+    sourceSide: field.side,
+  });
+  if (dealt <= 0) return;
+  state.spikes.push({
+    x1: tree.x,
+    x2: target.x,
+    y: (target.y ?? FIELD.ground) - 14,
+    side: field.side,
+    life: 0.28,
+    duration: 0.28,
+  });
 }
 
 function damageGroundFire(fire) {
@@ -14561,6 +14761,9 @@ function getModifiedDamage(target, amount, options = {}) {
   }
   if (target.covenantDamageReductionTimer > 0) {
     damage *= 1 - (target.covenantDamageReduction ?? UNIT.covenantGuard.guardReduction);
+  }
+  if ((target.ancientSanctuaryTimer ?? 0) > 0) {
+    damage *= 1 - (target.ancientSanctuaryReduction ?? UNIT.elfAncientSage.sanctuaryReduction);
   }
   return Math.max(1, Math.round(damage * 10) / 10);
 }
@@ -15221,6 +15424,8 @@ function startCampaignSecondPhase() {
   state.groundFires = [];
   state.thornFields = [];
   state.rootFields = [];
+  state.jungleFields = [];
+  state.groveFields = [];
   state.healingFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
@@ -15307,6 +15512,8 @@ function draw() {
   state.groundFires.forEach(drawGroundFire);
   state.thornFields.forEach(drawThornField);
   (state.rootFields ?? []).forEach(drawRootField);
+  (state.jungleFields ?? []).forEach(drawJungleField);
+  (state.groveFields ?? []).forEach(drawGroveField);
   state.healingFields.forEach(drawHealingField);
   (state.slimeFields ?? []).forEach(drawSlimeField);
   (state.webFields ?? []).forEach(drawWebField);
@@ -15707,6 +15914,57 @@ function drawRootField(field) {
     ctx.quadraticCurveTo(x, -18 - Math.sin(performance.now() / 210 + i) * 5, x + 20, 2);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawJungleField(field) {
+  const alpha = Math.max(0.2, Math.min(0.68, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius * (1 + Math.sin(performance.now() / 190 + field.x) * 0.05);
+  const gradient = ctx.createRadialGradient(0, 0, 8, 0, 0, radius + 28);
+  gradient.addColorStop(0, "rgba(142, 255, 176, 0.48)");
+  gradient.addColorStop(0.55, "rgba(45, 112, 55, 0.34)");
+  gradient.addColorStop(1, "rgba(12, 42, 22, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius + 28, (radius + 28) * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(215, 246, 184, 0.72)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i += 1) {
+    const x = (i - 3.5) * radius * 0.18;
+    ctx.beginPath();
+    ctx.moveTo(x, 14);
+    ctx.quadraticCurveTo(x - 16, -8, x + Math.sin(i + performance.now() / 280) * 18, -32);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawGroveField(field) {
+  const alpha = Math.max(0.24, Math.min(0.72, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  ctx.fillStyle = "rgba(28, 76, 36, 0.22)";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, field.radius, field.radius * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  (field.trees ?? []).forEach((tree) => {
+    const x = tree.x - field.x;
+    const y = tree.y - field.y;
+    ctx.fillStyle = "#5d3f24";
+    ctx.fillRect(x - 5, y - 40, 10, 34);
+    ctx.fillStyle = "#6fbf62";
+    ctx.beginPath();
+    ctx.arc(x, y - 46, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(215, 246, 184, 0.65)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
   ctx.restore();
 }
 
@@ -19077,6 +19335,27 @@ function drawWeapon(type, unit = null) {
     ctx.lineTo(56, -41);
     ctx.closePath();
     ctx.fill();
+  } else if (type === "elfAncientSage") {
+    ctx.strokeStyle = "#6b4a2d";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(13, -24);
+    ctx.quadraticCurveTo(30, -56, 36, -90);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(30, -74);
+    ctx.quadraticCurveTo(10, -94, 3, -72);
+    ctx.moveTo(35, -82);
+    ctx.quadraticCurveTo(58, -102, 61, -75);
+    ctx.moveTo(34, -65);
+    ctx.quadraticCurveTo(56, -59, 50, -38);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.45)";
+    ctx.beginPath();
+    ctx.arc(37, -86, 12, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
@@ -19871,6 +20150,13 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("starSpiritShift", "星爆", "direct");
       break;
+    case "elfAncientSage":
+      actions[0].label = "待命";
+      add("ancientJungle", "丛林", "point");
+      add("ancientTreants", "树人", "direct");
+      add("ancientGrove", "树林", "point");
+      add("ancientSanctuary", "庇护", "direct");
+      break;
     case "dreadfire":
       add("fireDragon", "火龙");
       add("meteorRain", "流星");
@@ -20627,6 +20913,10 @@ function getManualActionCooldown(unit, id) {
     mageWall: data.skillCooldown,
     mageStoneGolem: data.skillCooldown,
     elfRootField: data.rootFieldCooldown,
+    ancientJungle: data.jungleCooldown,
+    ancientTreants: data.treantSummonCooldown,
+    ancientGrove: data.groveCooldown,
+    ancientSanctuary: data.sanctuaryCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -20706,6 +20996,14 @@ function castManualSkill(unit, id, target) {
       return true;
     case "elfRootField":
       return castElfRootField(unit, target);
+    case "ancientJungle":
+      return castAncientJungle(unit, target);
+    case "ancientTreants":
+      return summonAncientTreants(unit);
+    case "ancientGrove":
+      return castAncientGrove(unit, target);
+    case "ancientSanctuary":
+      return castAncientSanctuary(unit);
     case "fireDragon":
       castFireDragon(unit, target);
       return true;

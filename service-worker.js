@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v194-elf-shadow-ballista";
+const CACHE_NAME = "stick-war-pwa-v195-elf-ancient-sage";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-elf-shadow-ballista",
-  "./game.js?v=20260621-elf-shadow-ballista",
+  "./style.css?v=20260621-elf-ancient-sage",
+  "./game.js?v=20260621-elf-ancient-sage",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
