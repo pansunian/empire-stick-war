@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-moon-deer";
+const APP_VERSION = "20260621-elf-star-priest";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -255,9 +255,9 @@ const AI_ROLE_PROFILES = {
   elf: {
     frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger"],
-    support: ["elfWisp", "elfVineWarlock"],
+    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit"],
     raider: ["elfScout", "elfRanger", "elfWisp"],
-    highPriority: ["elfTreeMan", "elfMoonDeerRider", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -516,6 +516,38 @@ const UNIT = {
     rootFieldSlow: 0.5,
     rootFieldCooldown: 20,
     noBasicAttack: true,
+  },
+  elfStarPriest: {
+    name: "星辰祭司",
+    cost: 150,
+    magicCost: 150,
+    hp: 200,
+    damage: 0,
+    range: 150,
+    speed: 38,
+    train: 5.4,
+    cooldown: 1,
+    spiritEvery: 4,
+    spiritMax: 8,
+    spiritType: "elfHealingSpirit",
+    noBasicAttack: true,
+  },
+  elfHealingSpirit: {
+    name: "治疗精灵",
+    cost: 0,
+    hp: 40,
+    damage: 0,
+    range: 0,
+    speed: 52,
+    train: 0,
+    cooldown: 1,
+    healAmount: 8,
+    healEvery: 1,
+    healRange: 360,
+    summonOnly: true,
+    noBasicAttack: true,
+    noElfDeathWisp: true,
+    flying: true,
   },
   crawler: {
     name: "爬虫",
@@ -2164,7 +2196,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2336,6 +2368,8 @@ const UNIT_ICON = {
   elfTreeMan: "tree",
   elfSapling: "tree",
   elfVineWarlock: "wizard-hat",
+  elfStarPriest: "white-orb",
+  elfHealingSpirit: "white-orb",
 };
 
 function normalizeUnitType(type) {
@@ -2348,7 +2382,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit"]],
 ];
 
 let state = null;
@@ -3402,6 +3436,8 @@ function formatSpecial(type) {
   if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
   if (type === "elfSapling") notes.push(`召唤单位；不停向前推进，${data.damage} 伤害/${data.cooldown}秒`);
   if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
+  if (type === "elfStarPriest") notes.push(`无普攻；每 ${data.spiritEvery} 秒生成 1 个治疗精灵，最多 ${data.spiritMax} 个；技能让所有治疗精灵切换为小精灵并自爆`);
+  if (type === "elfHealingSpirit") notes.push(`召唤单位；每 ${data.healEvery} 秒治疗一名友军 ${data.healAmount} 生命`);
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
@@ -4851,6 +4887,7 @@ function spawnUnit(type, side, x) {
     vineRootTimer: 0,
     vineEntangleTimer: data.entangleEvery ?? 0,
     vineRootFieldCooldown: 0,
+    starSpiritTimer: data.spiritEvery ?? 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
@@ -4918,6 +4955,7 @@ function spawnUnit(type, side, x) {
     chaosCleanseTimer: 10,
     chaosSurvivalTimer: 0,
     chaosSurvivalStacks: 0,
+    noElfDeathWisp: Boolean(data.noElfDeathWisp),
     exploded: false,
     anim: Math.random() * 10,
   });
@@ -7889,6 +7927,12 @@ function updateUnits(dt) {
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
       if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
+      if (unit.type === "elfStarPriest") updateElfStarPriest(unit, dt);
+      if (unit.type === "elfHealingSpirit") {
+        updateElfHealingSpirit(unit, dt);
+        updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+        continue;
+      }
       if (isManuallyControlled(unit)) {
         updateManualControlledUnit(unit, dt);
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
@@ -7944,6 +7988,14 @@ function updateUnits(dt) {
     }
     if (unit.type === "elfVineWarlock") {
       updateElfVineWarlock(unit, dt);
+    }
+    if (unit.type === "elfStarPriest") {
+      updateElfStarPriest(unit, dt);
+    }
+    if (unit.type === "elfHealingSpirit") {
+      updateElfHealingSpirit(unit, dt);
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -11000,6 +11052,92 @@ function castElfRootField(unit, target) {
   });
   unit.vineRootFieldCooldown = data.rootFieldCooldown;
   popText(x, y - 70, "树根区", "#8ee8a4");
+  return true;
+}
+
+function updateElfStarPriest(unit, dt) {
+  const data = UNIT.elfStarPriest;
+  unit.starSpiritTimer = (unit.starSpiritTimer ?? data.spiritEvery) - dt;
+  if (unit.starSpiritTimer > 0) return;
+  unit.starSpiritTimer += data.spiritEvery;
+  const spirits = getElfHealingSpirits(unit.side, unit.id);
+  if (spirits.length >= data.spiritMax) return;
+  const angle = (spirits.length / Math.max(1, data.spiritMax)) * Math.PI * 2 + unit.id * 0.47;
+  const spirit = spawnUnit(data.spiritType, unit.side, clampWorldX(unit.x + Math.cos(angle) * 38));
+  spirit.y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, unit.y + Math.sin(angle) * 34));
+  spirit.summonerId = unit.id;
+  spirit.noCorpse = true;
+  spirit.noElfDeathWisp = true;
+  spirit.spiritOrbitSeed = angle;
+  popText(unit.x, unit.y - 116, `治疗精灵 ${spirits.length + 1}/${data.spiritMax}`, "#b8f6ff");
+}
+
+function getElfHealingSpirits(side, summonerId = null) {
+  return state.units.filter((unit) => (
+    unit.side === side
+    && unit.type === "elfHealingSpirit"
+    && unit.hp > 0
+    && !isUnitHidden(unit)
+    && (summonerId === null || unit.summonerId === summonerId)
+  ));
+}
+
+function updateElfHealingSpirit(unit, dt) {
+  const data = UNIT.elfHealingSpirit;
+  const owner = state.units.find((candidate) => candidate.id === unit.summonerId && candidate.hp > 0 && !isUnitHidden(candidate));
+  if (owner) {
+    const index = (unit.id % 8) + 1;
+    const angle = (unit.spiritOrbitSeed ?? unit.id) + performance.now() / 950 + index * 0.44;
+    const radius = 58 + (index % 3) * 14;
+    moveUnitTowardPoint(
+      unit,
+      clampWorldX(owner.x + Math.cos(angle) * radius),
+      Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, owner.y + Math.sin(angle) * radius * 0.58)),
+      data.speed,
+      dt,
+      8
+    );
+  }
+
+  unit.healTimer = (unit.healTimer ?? data.healEvery) - dt;
+  if (unit.healTimer > 0) return;
+  unit.healTimer += data.healEvery;
+  const target = findElfHealingSpiritTarget(unit);
+  if (!target) return;
+  const healed = Math.min(data.healAmount, target.maxHp - target.hp);
+  if (healed <= 0) return;
+  target.hp += healed;
+  popText(target.x, target.y - 92, `星疗 +${healed}`, "#b8f6ff");
+  state.blasts.push({ x: target.x, y: target.y - 44, radius: 34, life: 0.25, duration: 0.25, color: "#b8f6ff" });
+}
+
+function findElfHealingSpiritTarget(unit) {
+  const data = UNIT.elfHealingSpirit;
+  return state.units
+    .filter((ally) => ally.side === unit.side && ally !== unit && ally.hp > 0 && ally.hp < ally.maxHp)
+    .filter((ally) => ally.type !== "elfHealingSpirit" && !isUnitHidden(ally) && !UNIT[ally.type]?.untargetable)
+    .filter((ally) => distanceTo(unit.x, unit.y, ally.x, ally.y ?? FIELD.ground) <= data.healRange)
+    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp) || distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))[0] ?? null;
+}
+
+function castStarSpiritShift(unit) {
+  const spirits = getElfHealingSpirits(unit.side);
+  if (!spirits.length) {
+    popText(unit.x, unit.y - 116, "没有治疗精灵", "#d9d0b8");
+    return false;
+  }
+  spirits.forEach((spirit) => {
+    const wisp = spawnUnit("elfWisp", spirit.side, spirit.x);
+    wisp.y = spirit.y;
+    wisp.hp = Math.max(1, Math.min(wisp.maxHp, spirit.hp));
+    wisp.noCorpse = true;
+    wisp.noElfDeathWisp = true;
+    spirit.noCorpse = true;
+    spirit.noElfDeathWisp = true;
+    spirit.hp = 0;
+    explodeElfWispAt(wisp, findElfWispBlastTarget(wisp, 160));
+  });
+  popText(unit.x, unit.y - 122, `星爆 x${spirits.length}`, "#b8f6ff");
   return true;
 }
 
@@ -16226,6 +16364,11 @@ function drawUnit(unit) {
     ctx.restore();
     return;
   }
+  if (unit.type === "elfHealingSpirit") {
+    drawElfHealingSpiritUnit(unit);
+    ctx.restore();
+    return;
+  }
   if (unit.type === "miner") {
     drawMinerUnit(unit, color, headColor);
     ctx.restore();
@@ -16290,6 +16433,35 @@ function drawElfWispUnit(unit) {
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0, -45, 22 * pulse, performance.now() / 500, performance.now() / 500 + Math.PI * 1.35);
+  ctx.stroke();
+  ctx.restore();
+  drawUnitHp(unit);
+}
+
+function drawElfHealingSpiritUnit(unit) {
+  const pulse = 1 + Math.sin(performance.now() / 160 + unit.id) * 0.1;
+  ctx.save();
+  ctx.shadowColor = "#b8f6ff";
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = "rgba(184, 246, 255, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(0, -46, 24 * pulse, 28 * pulse, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#b8f6ff";
+  ctx.beginPath();
+  ctx.arc(0, -48, 11 * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(239, 255, 232, 0.82)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i += 1) {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+    const x = Math.cos(angle) * 20 * pulse;
+    const y = -48 + Math.sin(angle) * 20 * pulse;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
   ctx.stroke();
   ctx.restore();
   drawUnitHp(unit);
@@ -18769,6 +18941,27 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(36, -72);
     ctx.quadraticCurveTo(58, -66, 49, -45);
     ctx.stroke();
+  } else if (type === "elfStarPriest") {
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -24);
+    ctx.lineTo(40, -78);
+    ctx.stroke();
+    ctx.fillStyle = "#b8f6ff";
+    ctx.beginPath();
+    for (let i = 0; i < 5; i += 1) {
+      const angle = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+      const x = 44 + Math.cos(angle) * 13;
+      const y = -82 + Math.sin(angle) * 13;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#efffe8";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
@@ -19559,6 +19752,10 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("elfRootField", "树根区", "point");
       break;
+    case "elfStarPriest":
+      actions[0].label = "待命";
+      add("starSpiritShift", "星爆", "direct");
+      break;
     case "dreadfire":
       add("fireDragon", "火龙");
       add("meteorRain", "流星");
@@ -19691,6 +19888,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return true;
   if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return true;
+  if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return true;
   if (button.id === "moonDeerCharge" && ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0)) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
   if (button.id === "swordsmanRage" && (unit.swordsmanSelfRageTimer > 0 || unit.hp <= UNIT.swordsman.selfRageHpCost)) return true;
@@ -19848,6 +20046,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return `冷却 ${Math.ceil(unit.vineRootFieldCooldown)}秒`;
   if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return `冷却 ${Math.ceil(unit.elfShieldBashCooldown)}秒`;
+  if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return "没有治疗精灵";
   if (button.id === "moonDeerCharge") {
     if ((unit.moonDeerChargeTimer ?? 0) > 0) return "冲刺中";
     if ((unit.moonDeerChargeCooldown ?? 0) > 0) return `冷却 ${Math.ceil(unit.moonDeerChargeCooldown)}秒`;
@@ -19921,6 +20120,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "moonDeerCharge") {
     castMoonDeerCharge(unit);
+    return;
+  }
+  if (action.id === "starSpiritShift") {
+    castStarSpiritShift(unit);
     return;
   }
   if (action.id === "evolveGnawMiner") {
