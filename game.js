@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-clean-unused-code";
+const APP_VERSION = "20260621-linghan-slow";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -1920,11 +1920,9 @@ const UNIT = {
     speed: 36,
     train: 0,
     cooldown: 1,
-    freezeCount: 5,
-    freezeDuration: 8,
-    freezeCooldown: 8,
-    freezeDps: 4,
-    healRadius: 150,
+    slowCount: 5,
+    slowDuration: 3,
+    slowFactor: 0.2,
     deathIceRadius: 200,
     deathIceDuration: 12,
     deathIceSlow: 0.3,
@@ -3302,7 +3300,7 @@ function formatSpecial(type) {
   if (type === "stormLich") notes.push(`拥有合成入口后可直接融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
   if (type === "hurricane") notes.push(`拥有合成入口后可直接融合；每 ${data.cooldown}秒发射龙卷风 ${data.damage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
   if (type === "hill") notes.push(`拥有合成入口后可直接融合；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
-  if (type === "linghan") notes.push(`拥有合成入口后可直接融合；远程冰冻 ${data.freezeCount} 名敌人 ${data.freezeDuration}秒，冻伤 ${data.freezeDps}/秒；死亡生成减速冰地`);
+  if (type === "linghan") notes.push(`拥有合成入口后可直接融合；可持续减速 ${data.slowCount} 名敌人 ${Math.round((1 - data.slowFactor) * 100)}%，持续 ${data.slowDuration}秒，不叠加；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`拥有合成入口后可直接释放；一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
   if (type === "electricGate") notes.push(`拥有合成入口后可直接融合；持续 ${data.duration}秒，每秒闪电 ${data.damage}，消失后重生土元素`);
   if (type === "mage") notes.push(`手动技能：魔爆 / 冰地 / 电墙 / 化石，全部冷却 ${data.skillCooldown}秒；化石可将生命低于 ${data.stoneGolemMaxHp} 的生物敌人暂变我方石头人 ${data.stoneGolemDuration}秒，石头人范围攻击最多3人`);
@@ -4652,7 +4650,7 @@ function spawnUnit(type, side, x) {
     covenantDamageReduction: 0,
     undeadBoneTimer: data.boneSpikeEvery ?? 0,
     hillJumpTimer: data.jumpEvery ?? 0,
-    linghanFreezeTimer: 0,
+    linghanSlowTimer: 0,
     rageTimer: 0,
     rocketAmmo: data.ammoPerReload ?? 0,
     boneAmmo: data.boneAmmo ?? 0,
@@ -8244,58 +8242,34 @@ function updateHurricane(unit, dt) {
 
 function updateLinghan(unit, dt) {
   const data = UNIT.linghan;
-  unit.linghanFreezeTimer = Math.max(0, (unit.linghanFreezeTimer ?? 0) - dt);
-  if (unit.linghanFreezeTimer > 0) return;
+  unit.linghanSlowTimer = Math.max(0, (unit.linghanSlowTimer ?? 0) - dt);
+  if (unit.linghanSlowTimer > 0) return;
 
   const targets = state.units
-    .filter((enemy) => canLinghanFreeze(unit, enemy))
+    .filter((enemy) => canLinghanSlow(unit, enemy))
     .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
-    .slice(0, data.freezeCount);
+    .slice(0, data.slowCount);
   if (!targets.length) return;
 
-  targets.forEach((target) => applyTimedFreeze(unit, target, data.freezeDuration, data.freezeDps));
-  unit.linghanFreezeTimer = data.freezeDuration + data.freezeCooldown;
-  popText(unit.x, unit.y - 116, `凌寒冰封 x${targets.length}`, "#9ee8ff");
+  targets.forEach((target) => applyLinghanSlow(target, data.slowDuration, data.slowFactor));
+  unit.linghanSlowTimer = data.slowDuration;
+  popText(unit.x, unit.y - 116, `凌寒霜缓 x${targets.length}`, "#9ee8ff");
 }
 
-function canLinghanFreeze(unit, target) {
+function canLinghanSlow(unit, target) {
   if (!target || target.kind === "statue" || target.side === unit.side || target.hp <= 0 || isUnitHidden(target)) return false;
   const data = UNIT[target.type];
-  if (!data || target.frozenBy || data.freezeImmune || data.giant || isHeroUnit(target)) return false;
+  if (!data || data.freezeImmune || data.giant || isHeroUnit(target)) return false;
   if (isSiegeUnit(target) || target.type === "electricGate") return false;
   if (!isAheadOf(unit, target)) return false;
   return Math.abs(target.x - unit.x) <= UNIT.linghan.range;
 }
 
-function applyTimedFreeze(source, target, duration, dps) {
-  target.frozenBy = source.id;
-  target.frozenTimer = duration;
-  target.frozenTick = 0;
-  target.freezeDps = dps;
-  popText(target.x, target.y - 92, "远程冰冻", "#9ee8ff");
-}
-
-function healLinghanFromDamage(source, damage) {
-  const data = UNIT.linghan;
-  let remaining = damage;
-  if (source.hp < source.maxHp) {
-    const healed = Math.min(remaining, source.maxHp - source.hp);
-    source.hp += healed;
-    remaining -= healed;
-    if (healed > 0) popText(source.x, source.y - 110, `寒愈 +${healed}`, "#9ee8ff");
-  }
-  if (remaining <= 0) return;
-
-  const allies = state.units
-    .filter((ally) => ally.side === source.side && ally !== source && ally.hp > 0 && ally.hp < ally.maxHp && !isUnitHidden(ally) && Math.abs(ally.x - source.x) <= data.healRadius)
-    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
-  for (const ally of allies) {
-    if (remaining <= 0) break;
-    const healed = Math.min(remaining, ally.maxHp - ally.hp);
-    ally.hp += healed;
-    remaining -= healed;
-    if (healed > 0) popText(ally.x, ally.y - 94, `寒愈 +${healed}`, "#9ee8ff");
-  }
+function applyLinghanSlow(target, duration, factor) {
+  if (isUnitHidden(target) || target.kind === "statue") return;
+  target.stormSlowTimer = Math.max(target.stormSlowTimer ?? 0, duration);
+  target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, factor);
+  popText(target.x, target.y - 92, "霜缓", "#9ee8ff");
 }
 
 function updateRocketCart(unit, target, range, dt) {
@@ -11849,9 +11823,7 @@ function updateFrozenDamage(dt) {
     unit.frozenTick += dt;
     if (unit.frozenTick < 1) return;
     unit.frozenTick = 0;
-    const source = state.units.find((candidate) => candidate.id === unit.frozenBy && candidate.hp > 0);
-    const damage = applyUnitDamage(unit, unit.freezeDps ?? UNIT.waterElement.freezeDps, { label: "冻", color: "#9ee8ff", yOffset: -100 });
-    if (source?.type === "linghan") healLinghanFromDamage(source, damage);
+    applyUnitDamage(unit, unit.freezeDps ?? UNIT.waterElement.freezeDps, { label: "冻", color: "#9ee8ff", yOffset: -100 });
   });
 }
 
@@ -13965,7 +13937,6 @@ function removeDead() {
       healNearbyAllies(unit);
     }
     if (unit.type === "linghan") {
-      releaseFrozenTargetsFor(unit);
       createLinghanDeathIce(unit);
     }
     if (unit.type === "stormLich") {
@@ -14191,12 +14162,6 @@ function releaseFrozenUnit(unit) {
   unit.frozenTick = 0;
   unit.freezeDps = 0;
   popText(unit.x, unit.y - 88, "解冻", "#d8f8ff");
-}
-
-function releaseFrozenTargetsFor(source) {
-  state.units.forEach((unit) => {
-    if (unit.frozenBy === source.id) releaseFrozenUnit(unit);
-  });
 }
 
 function createLinghanDeathIce(unit) {
