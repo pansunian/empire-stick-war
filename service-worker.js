@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v199-home-layout";
+const CACHE_NAME = "stick-war-pwa-v200-cache-refresh";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-home-layout",
-  "./game.js?v=20260621-home-layout",
+  "./style.css?v=20260621-cache-refresh",
+  "./game.js?v=20260621-cache-refresh",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
@@ -42,7 +42,7 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: "reload" })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
@@ -57,7 +57,7 @@ self.addEventListener("fetch", (event) => {
   const isFreshCodeAsset = url.pathname.endsWith("/game.js") || url.pathname.endsWith("/style.css");
   if (isFreshCodeAsset) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: "reload" })
         .then((response) => {
           if (!response || response.status !== 200 || response.type === "opaque") return response;
           const copy = response.clone();
