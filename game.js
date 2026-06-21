@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-linghan-slow";
+const APP_VERSION = "20260621-orc-hp-120";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -1249,7 +1249,7 @@ const UNIT = {
   orc: {
     name: "兽人",
     cost: 90,
-    hp: 110,
+    hp: 120,
     damage: 6,
     range: 34,
     speed: 40,
