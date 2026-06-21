@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-orc-hp-120";
+const APP_VERSION = "20260621-wind-element-slow";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -1725,6 +1725,8 @@ const UNIT = {
     cooldown: 2.6,
     flying: true,
     lightning: true,
+    slowFactor: 0.8,
+    slowDuration: 1,
   },
   treeEnt: {
     name: "树精",
@@ -3294,7 +3296,8 @@ function formatSpecial(type) {
   if (data.stunDuration) notes.push(`眩晕 ${data.stunDuration}秒`);
   if (data.healOnDeath) notes.push(`死亡治疗 ${data.healOnDeath}`);
   if (type === "waterElement") notes.push(`冰冻敌人 ${data.freezeDps}/秒`);
-  if (data.lightning) notes.push("必中闪电");
+  if (type === "windElement") notes.push(`必中落雷，命中后减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒`);
+  else if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`拥有合成入口后可直接融合；火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "redflame") notes.push(`拥有合成入口后可直接融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
   if (type === "stormLich") notes.push(`拥有合成入口后可直接融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
@@ -11717,6 +11720,8 @@ function strikeLightning(unit, target) {
     return;
   }
   applyDamage(target, data.damage, unit.side);
+  target.stormSlowTimer = Math.max(target.stormSlowTimer ?? 0, data.slowDuration);
+  target.stormSlowFactor = Math.min(target.stormSlowFactor ?? 1, data.slowFactor);
   state.lightning.push({ x1: startX, y1: startY, x2: target.x, y2: endY, life: 0.22, duration: 0.22 });
 }
 

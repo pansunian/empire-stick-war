@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v184-orc-hp-120";
+const CACHE_NAME = "stick-war-pwa-v185-wind-element-slow";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-orc-hp-120",
-  "./game.js?v=20260621-orc-hp-120",
+  "./style.css?v=20260621-wind-element-slow",
+  "./game.js?v=20260621-wind-element-slow",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
