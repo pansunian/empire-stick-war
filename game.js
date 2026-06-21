@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-earth-element-hp-125";
+const APP_VERSION = "20260621-barricade-tuning";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -894,15 +894,15 @@ const UNIT = {
     speed: 35,
     train: 5,
     cooldown: 1.4,
-    barricadeCost: 150,
-    barricadeBuildTime: 5,
+    barricadeCost: 200,
+    barricadeBuildTime: 3,
     barricadeCooldown: 8,
     barricadeMax: Infinity,
     barricadeHp: 300,
     barricadeLength: 260,
     barricadeWidth: 60,
     barricadeDuration: Infinity,
-    barricadeTickEvery: 6,
+    barricadeTickEvery: 10,
     barricadeDamage: 6,
     barricadeSlow: 0,
     cavalryStop: 0.6,

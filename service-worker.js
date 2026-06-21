@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v186-earth-element-hp-125";
+const CACHE_NAME = "stick-war-pwa-v187-barricade-tuning";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-earth-element-hp-125",
-  "./game.js?v=20260621-earth-element-hp-125",
+  "./style.css?v=20260621-barricade-tuning",
+  "./game.js?v=20260621-barricade-tuning",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",
