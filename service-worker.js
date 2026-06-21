@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v190-elf-tree-vine-guard";
+const CACHE_NAME = "stick-war-pwa-v191-elf-moon-deer";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-elf-tree-vine-guard",
-  "./game.js?v=20260621-elf-tree-vine-guard",
+  "./style.css?v=20260621-elf-moon-deer",
+  "./game.js?v=20260621-elf-moon-deer",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

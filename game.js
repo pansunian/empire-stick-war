@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-tree-vine-guard";
+const APP_VERSION = "20260621-elf-moon-deer";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -253,11 +253,11 @@ const AI_ROLE_PROFILES = {
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
   elf: {
-    frontline: ["elfMercenary", "elfTreeGuard", "elfTreeMan", "elfSapling"],
+    frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger"],
     support: ["elfWisp", "elfVineWarlock"],
     raider: ["elfScout", "elfRanger", "elfWisp"],
-    highPriority: ["elfTreeMan", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfTreeMan", "elfMoonDeerRider", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -453,6 +453,24 @@ const UNIT = {
     shieldBashLimit: 3,
     shieldBashStun: 3,
     shieldBashCooldown: 16,
+  },
+  elfMoonDeerRider: {
+    name: "月鹿骑手",
+    cost: 350,
+    magicCost: 100,
+    hp: 350,
+    damage: 30,
+    range: 58,
+    speed: 40,
+    train: 6.5,
+    cooldown: 1.8,
+    aoeLimit: 3,
+    splash: 76,
+    chargeSpeed: 70,
+    chargeDamage: 50,
+    chargeDuration: 10,
+    chargeCooldown: 15,
+    chargeHitRadius: 58,
   },
   elfTreeMan: {
     name: "树人",
@@ -2146,7 +2164,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfTreeMan", "elfVineWarlock"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2314,6 +2332,7 @@ const UNIT_ICON = {
   elfScout: "bow",
   elfRanger: "bow",
   elfTreeGuard: "spartan",
+  elfMoonDeerRider: "spear",
   elfTreeMan: "tree",
   elfSapling: "tree",
   elfVineWarlock: "wizard-hat",
@@ -2329,7 +2348,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfTreeMan", "elfSapling", "elfVineWarlock"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock"]],
 ];
 
 let state = null;
@@ -3379,6 +3398,7 @@ function formatSpecial(type) {
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`巨矛范围攻击，最多 ${data.aoeLimit} 人；技能盾顶眩晕最多 ${data.shieldBashLimit} 名敌人 ${data.shieldBashStun} 秒`);
+  if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
   if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
   if (type === "elfSapling") notes.push(`召唤单位；不停向前推进，${data.damage} 伤害/${data.cooldown}秒`);
   if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
@@ -4819,6 +4839,10 @@ function spawnUnit(type, side, x) {
     boneStingerBurrowCooldown: 0,
     heavyAntDodge: false,
     heavyAntDodgeTimer: 0,
+    moonDeerChargeTimer: 0,
+    moonDeerChargeCooldown: 0,
+    moonDeerChargeHit: false,
+    moonDeerPrevForceCharge: false,
     swarmEvolutionTimer: 0,
     swarmEvolutionTarget: null,
     swarmEvolutionOriginalMaxHp: 0,
@@ -7775,6 +7799,7 @@ function updateUnits(dt) {
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
     if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
+    updateMoonDeerChargeState(unit, dt);
     unit.elfShieldBashCooldown = Math.max(0, (unit.elfShieldBashCooldown ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
@@ -10527,6 +10552,11 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "elfMoonDeerRider") {
+    attackElfMoonDeerRider(unit, target);
+    return;
+  }
+
   if (unit.type === "elfTreeMan") {
     castElfTreeRoot(unit, target);
     return;
@@ -10862,6 +10892,23 @@ function attackElfTreeGuard(unit, target) {
   });
 }
 
+function attackElfMoonDeerRider(unit, target) {
+  const data = UNIT.elfMoonDeerRider;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
+  targets.forEach((enemy) => {
+    const dealt = applyDamage(enemy, getAttackDamage(unit, enemy, data.damage), unit.side);
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.spikes.push({
+    x1: unit.x,
+    x2: target.x,
+    y: (target.y ?? unit.y) - 20,
+    side: unit.side,
+    life: 0.24,
+    duration: 0.24,
+  });
+}
+
 function castElfTreeRoot(unit, target) {
   const data = UNIT.elfTreeMan;
   if (target.kind === "statue") {
@@ -10976,6 +11023,62 @@ function castElfShieldBash(unit) {
   unit.elfShieldBashCooldown = data.shieldBashCooldown;
   state.blasts.push({ x: unit.x + dir * 44, y: unit.y - 45, radius: 52, life: 0.24, duration: 0.24, color: "#d7f6b8" });
   popText(unit.x, unit.y - 116, `盾顶 x${targets.length}`, "#d7f6b8");
+  return true;
+}
+
+function updateMoonDeerChargeState(unit, dt) {
+  if (unit.type !== "elfMoonDeerRider") return;
+  const data = UNIT.elfMoonDeerRider;
+  unit.moonDeerChargeCooldown = Math.max(0, (unit.moonDeerChargeCooldown ?? 0) - dt);
+  if ((unit.moonDeerChargeTimer ?? 0) <= 0) {
+    if (unit.speed === data.chargeSpeed) delete unit.speed;
+    return;
+  }
+  unit.moonDeerChargeTimer = Math.max(0, unit.moonDeerChargeTimer - dt);
+  unit.speed = data.chargeSpeed;
+  if (!unit.moonDeerChargeHit) triggerMoonDeerChargeHit(unit);
+  if (unit.moonDeerChargeTimer <= 0) {
+    delete unit.speed;
+    unit.moonDeerChargeHit = false;
+    unit.forceCharge = unit.moonDeerPrevForceCharge;
+    popText(unit.x, unit.y - 112, "冲刺结束", "#d7f6b8");
+  }
+}
+
+function triggerMoonDeerChargeHit(unit) {
+  const data = UNIT.elfMoonDeerRider;
+  const dir = getUnitFacingDirection(unit);
+  const target = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => {
+      const dx = (enemy.x - unit.x) * dir;
+      return dx >= -10 && dx <= data.chargeHitRadius && Math.abs((enemy.y ?? FIELD.ground) - unit.y) <= data.chargeHitRadius;
+    })
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))[0];
+  if (!target) return;
+  const dealt = applyUnitDamage(target, data.chargeDamage, {
+    label: "月鹿冲撞",
+    color: "#d7f6b8",
+    yOffset: -86,
+    sourceSide: unit.side,
+    sourceUnitId: unit.id,
+  });
+  handleDamageDealt(unit, target, dealt);
+  unit.moonDeerChargeHit = true;
+  state.blasts.push({ x: target.x, y: target.y - 34, radius: 48, life: 0.24, duration: 0.24, color: "#d7f6b8" });
+  popText(unit.x, unit.y - 120, "撞击命中", "#d7f6b8");
+}
+
+function castMoonDeerCharge(unit) {
+  const data = UNIT.elfMoonDeerRider;
+  if ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0) return false;
+  unit.moonDeerChargeTimer = data.chargeDuration;
+  unit.moonDeerChargeCooldown = data.chargeCooldown;
+  unit.moonDeerChargeHit = false;
+  unit.moonDeerPrevForceCharge = Boolean(unit.forceCharge);
+  unit.speed = data.chargeSpeed;
+  unit.forceCharge = true;
+  popText(unit.x, unit.y - 116, "月鹿冲刺", "#d7f6b8");
   return true;
 }
 
@@ -18618,6 +18721,25 @@ function drawWeapon(type, unit = null) {
     ctx.ellipse(-18, -43, 18, 28, 0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+  } else if (type === "elfMoonDeerRider") {
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(8, -28);
+    ctx.lineTo(68, -70);
+    ctx.stroke();
+    ctx.strokeStyle = "#6f9f58";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -78);
+    ctx.quadraticCurveTo(-24, -96, -32, -82);
+    ctx.moveTo(-4, -80);
+    ctx.quadraticCurveTo(-10, -101, 4, -90);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.36)";
+    ctx.beginPath();
+    ctx.ellipse(-10, -30, 34, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "elfTreeMan" || type === "elfSapling") {
     ctx.strokeStyle = type === "elfTreeMan" ? "#5d3f24" : "#75532e";
     ctx.lineWidth = type === "elfTreeMan" ? 7 : 5;
@@ -19430,6 +19552,9 @@ function getManualActions(unit) {
     case "elfTreeGuard":
       add("elfShieldBash", "盾顶", "direct");
       break;
+    case "elfMoonDeerRider":
+      add("moonDeerCharge", "冲刺", "direct");
+      break;
     case "elfVineWarlock":
       actions[0].label = "待命";
       add("elfRootField", "树根区", "point");
@@ -19566,6 +19691,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return true;
   if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return true;
+  if (button.id === "moonDeerCharge" && ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0)) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
   if (button.id === "swordsmanRage" && (unit.swordsmanSelfRageTimer > 0 || unit.hp <= UNIT.swordsman.selfRageHpCost)) return true;
   if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
@@ -19722,6 +19848,10 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return `冷却 ${Math.ceil(unit.vineRootFieldCooldown)}秒`;
   if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return `冷却 ${Math.ceil(unit.elfShieldBashCooldown)}秒`;
+  if (button.id === "moonDeerCharge") {
+    if ((unit.moonDeerChargeTimer ?? 0) > 0) return "冲刺中";
+    if ((unit.moonDeerChargeCooldown ?? 0) > 0) return `冷却 ${Math.ceil(unit.moonDeerChargeCooldown)}秒`;
+  }
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
   if (button.id === "swordsmanRage") {
     if (unit.swordsmanSelfRageTimer > 0) return "愤怒中";
@@ -19787,6 +19917,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "elfShieldBash") {
     castElfShieldBash(unit);
+    return;
+  }
+  if (action.id === "moonDeerCharge") {
+    castMoonDeerCharge(unit);
     return;
   }
   if (action.id === "evolveGnawMiner") {
