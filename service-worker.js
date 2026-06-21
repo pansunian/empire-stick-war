@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v188-elf-faction-base";
+const CACHE_NAME = "stick-war-pwa-v190-elf-tree-vine-guard";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-elf-faction-base",
-  "./game.js?v=20260621-elf-faction-base",
+  "./style.css?v=20260621-elf-tree-vine-guard",
+  "./game.js?v=20260621-elf-tree-vine-guard",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

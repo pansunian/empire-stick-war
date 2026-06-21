@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-faction-base";
+const APP_VERSION = "20260621-elf-tree-vine-guard";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -253,11 +253,11 @@ const AI_ROLE_PROFILES = {
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
   elf: {
-    frontline: ["elfMercenary"],
+    frontline: ["elfMercenary", "elfTreeGuard", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger"],
-    support: ["elfWisp"],
+    support: ["elfWisp", "elfVineWarlock"],
     raider: ["elfScout", "elfRanger", "elfWisp"],
-    highPriority: ["elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfTreeMan", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -436,6 +436,68 @@ const UNIT = {
     meleeCooldown: 1,
     poisonDps: 2,
     poisonDuration: Infinity,
+  },
+  elfTreeGuard: {
+    name: "树卫",
+    cost: 200,
+    magicCost: 100,
+    hp: 400,
+    damage: 15,
+    range: 58,
+    speed: 34,
+    train: 5.8,
+    cooldown: 1.6,
+    aoeLimit: 3,
+    splash: 70,
+    shieldBashRadius: 96,
+    shieldBashLimit: 3,
+    shieldBashStun: 3,
+    shieldBashCooldown: 16,
+  },
+  elfTreeMan: {
+    name: "树人",
+    cost: 300,
+    magicCost: 50,
+    hp: 400,
+    damage: 15,
+    range: 150,
+    speed: 28,
+    train: 6.2,
+    cooldown: 5,
+    summonEvery: 15,
+    summonType: "elfSapling",
+  },
+  elfSapling: {
+    name: "小树人",
+    cost: 0,
+    hp: 150,
+    damage: 11,
+    range: 36,
+    speed: 35,
+    train: 0,
+    cooldown: 1.5,
+    summonOnly: true,
+    noElfDeathWisp: false,
+  },
+  elfVineWarlock: {
+    name: "藤蔓术士",
+    cost: 100,
+    magicCost: 200,
+    hp: 100,
+    damage: 0,
+    range: 190,
+    speed: 42,
+    train: 5.5,
+    cooldown: 1,
+    entangleEvery: 10,
+    entangleCount: 5,
+    entangleDuration: 7,
+    entanglePoisonDps: 6,
+    rootFieldRadius: 118,
+    rootFieldDuration: 10,
+    rootFieldSlow: 0.5,
+    rootFieldCooldown: 20,
+    noBasicAttack: true,
   },
   crawler: {
     name: "爬虫",
@@ -2084,7 +2146,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfTreeMan", "elfVineWarlock"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2251,6 +2313,10 @@ const UNIT_ICON = {
   elfMercenary: "spear",
   elfScout: "bow",
   elfRanger: "bow",
+  elfTreeGuard: "spartan",
+  elfTreeMan: "tree",
+  elfSapling: "tree",
+  elfVineWarlock: "wizard-hat",
 };
 
 function normalizeUnitType(type) {
@@ -2263,7 +2329,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfTreeGuard", "elfTreeMan", "elfSapling", "elfVineWarlock"]],
 ];
 
 let state = null;
@@ -3312,6 +3378,10 @@ function formatSpecial(type) {
   if (type === "elfMercenary") notes.push(`弯矛范围攻击，最多 ${data.aoeLimit} 人`);
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
+  if (type === "elfTreeGuard") notes.push(`巨矛范围攻击，最多 ${data.aoeLimit} 人；技能盾顶眩晕最多 ${data.shieldBashLimit} 名敌人 ${data.shieldBashStun} 秒`);
+  if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
+  if (type === "elfSapling") notes.push(`召唤单位；不停向前推进，${data.damage} 伤害/${data.cooldown}秒`);
+  if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
@@ -3633,6 +3703,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     barricades: [],
     slimeFields: [],
     webFields: [],
+    rootFields: [],
     swarmEggs: [],
     corpses: [],
     ghosts: [],
@@ -4753,6 +4824,9 @@ function spawnUnit(type, side, x) {
     swarmEvolutionOriginalMaxHp: 0,
     swarmEvolutionForceCharge: false,
     spiderWebCooldown: 0,
+    vineRootTimer: 0,
+    vineEntangleTimer: data.entangleEvery ?? 0,
+    vineRootFieldCooldown: 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
@@ -5340,6 +5414,7 @@ function update(dt) {
   updateBarricades(dt);
   updateSlimeFields(dt);
   updateWebFields(dt);
+  updateRootFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -5378,6 +5453,7 @@ function updateFourWayBattle(dt) {
   updateBarricades(dt);
   updateSlimeFields(dt);
   updateWebFields(dt);
+  updateRootFields(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -7699,6 +7775,7 @@ function updateUnits(dt) {
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
     if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
+    unit.elfShieldBashCooldown = Math.max(0, (unit.elfShieldBashCooldown ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
@@ -7722,6 +7799,8 @@ function updateUnits(dt) {
     if (unit.stormSlowTimer <= 0) unit.stormSlowFactor = 1;
     unit.vulnerabilityTimer = Math.max(0, (unit.vulnerabilityTimer ?? 0) - dt);
     if (unit.vulnerabilityTimer <= 0) unit.vulnerabilityBonus = 0;
+    unit.vineRootTimer = Math.max(0, (unit.vineRootTimer ?? 0) - dt);
+    unit.vineRootFieldCooldown = Math.max(0, (unit.vineRootFieldCooldown ?? 0) - dt);
     unit.boneStingerBurrowCooldown = Math.max(0, (unit.boneStingerBurrowCooldown ?? 0) - dt);
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
     unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
@@ -7783,6 +7862,8 @@ function updateUnits(dt) {
       if (unit.type === "reaper") updateReaper(unit);
       if (unit.type === "antQueen") updateAntQueen(unit, dt);
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
+      if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
+      if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
       if (isManuallyControlled(unit)) {
         updateManualControlledUnit(unit, dt);
         updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
@@ -7832,6 +7913,12 @@ function updateUnits(dt) {
     }
     if (isSwarmSpawner(unit)) {
       updateSwarmSpawner(unit, dt);
+    }
+    if (unit.type === "elfTreeMan") {
+      updateElfTreeMan(unit, dt);
+    }
+    if (unit.type === "elfVineWarlock") {
+      updateElfVineWarlock(unit, dt);
     }
     if (isManuallyControlled(unit)) {
       updateManualControlledUnit(unit, dt);
@@ -9910,6 +9997,13 @@ function getMoveFactor(unit) {
       factor *= web.spiderBoost;
     }
   }
+  for (const field of state.rootFields ?? []) {
+    if (!areHostileSides(field.side, unit.side)) continue;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, field.x, field.y) <= field.radius) {
+      factor = Math.min(factor, field.slow);
+    }
+  }
+  if ((unit.vineRootTimer ?? 0) > 0) factor = 0;
   if (activeCampaign?.iceRoad) factor *= getIceRoadMoveFactor(unit);
   if (activeCampaign?.snow && !(activeCampaign.snow.ignoreGiant && UNIT[unit.type]?.giant)) {
     factor *= activeCampaign.snow.moveFactor ?? 1;
@@ -10203,6 +10297,7 @@ function getAttackLaneTolerance(unit) {
 function findTarget(unit) {
   if (isUnitHidden(unit)) return null;
   if (isReaperStealthed(unit)) return null;
+  if (UNIT[unit.type]?.noBasicAttack) return null;
   if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") return null;
   const barricadeTarget = findBlockingBarricadeTarget(unit);
   if (barricadeTarget) return barricadeTarget;
@@ -10371,6 +10466,7 @@ function isAheadOf(unit, target) {
 function attack(unit, target) {
   const data = UNIT[unit.type];
   if (isUnitHidden(unit) || isUnitHidden(target)) return;
+  if (data?.noBasicAttack) return;
   if (unit.type === "linghan") return;
   if (unit.type === "spearman" && unit.spearRecoverTimer > 0) return;
   if (unit.cooldown > 0) return;
@@ -10423,6 +10519,16 @@ function attack(unit, target) {
 
   if (unit.type === "elfRanger") {
     attackElfRanger(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfTreeGuard") {
+    attackElfTreeGuard(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfTreeMan") {
+    castElfTreeRoot(unit, target);
     return;
   }
 
@@ -10667,14 +10773,23 @@ function explodeBlastBug(unit, target) {
 }
 
 function explodeElfWisp(unit, target) {
+  explodeElfWispAt(unit, target);
+}
+
+function explodeElfWispAt(unit, target = null) {
   const damage = Math.max(1, Math.round(unit.hp));
   unit.exploded = true;
   unit.noCorpse = true;
+  unit.noElfDeathWisp = true;
   unit.hp = 0;
-  const dealt = applyDamage(target, damage, unit.side);
-  handleDamageDealt(unit, target, dealt);
-  state.blasts.push({ x: target.x, y: (target.y ?? unit.y) - 28, radius: 34, life: 0.26, duration: 0.26, color: "#8effb0" });
-  popText(target.x, (target.y ?? unit.y) - 82, `灵爆 ${damage}`, "#8effb0");
+  const x = target?.x ?? unit.x;
+  const y = target?.y ?? unit.y;
+  if (target) {
+    const dealt = applyDamage(target, damage, unit.side);
+    handleDamageDealt(unit, target, dealt);
+  }
+  state.blasts.push({ x, y: y - 28, radius: 34, life: 0.26, duration: 0.26, color: "#8effb0" });
+  popText(x, y - 82, `灵爆 ${damage}`, "#8effb0");
 }
 
 function attackElfMercenary(unit, target) {
@@ -10728,6 +10843,140 @@ function shootElfArrow(unit, target, damage, type, options = {}) {
     poisonDps: options.poisonDps,
     poisonDuration: options.poisonDuration,
   });
+}
+
+function attackElfTreeGuard(unit, target) {
+  const data = UNIT.elfTreeGuard;
+  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
+  targets.forEach((enemy) => {
+    const dealt = applyDamage(enemy, getAttackDamage(unit, enemy, data.damage), unit.side);
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.spikes.push({
+    x1: unit.x,
+    x2: target.x,
+    y: (target.y ?? unit.y) - 18,
+    side: unit.side,
+    life: 0.2,
+    duration: 0.2,
+  });
+}
+
+function castElfTreeRoot(unit, target) {
+  const data = UNIT.elfTreeMan;
+  if (target.kind === "statue") {
+    applyDamage(target, data.damage, unit.side);
+    return;
+  }
+  const dir = getUnitFacingDirection(unit);
+  const x1 = unit.x;
+  const x2 = unit.x + dir * data.range;
+  const start = Math.min(x1, x2);
+  const end = Math.max(x1, x2);
+  const targets = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy))
+    .filter((enemy) => enemy.x >= start && enemy.x <= end && Math.abs((enemy.y ?? FIELD.ground) - unit.y) <= 72)
+    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))
+    .slice(0, AOE_TARGET_LIMIT);
+  if (!targets.length && target.kind !== "statue") targets.push(target);
+  targets.forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, getAttackDamage(unit, enemy, data.damage), {
+      label: "树根",
+      color: "#8ee8a4",
+      yOffset: -82,
+      sourceSide: unit.side,
+      sourceUnitId: unit.id,
+    });
+    handleDamageDealt(unit, enemy, dealt);
+  });
+  state.spikes.push({
+    x1,
+    x2: targets.length ? targets[targets.length - 1].x : x2,
+    y: unit.y - 16,
+    side: unit.side,
+    life: 0.32,
+    duration: 0.32,
+  });
+}
+
+function updateElfTreeMan(unit, dt) {
+  const data = UNIT.elfTreeMan;
+  unit.summonTimer -= dt;
+  if (unit.summonTimer > 0) return;
+  unit.summonTimer += data.summonEvery;
+  const dir = getUnitFacingDirection(unit);
+  const sapling = spawnUnit(data.summonType, unit.side, clampWorldX(unit.x + dir * 42));
+  sapling.y = unit.y + (Math.random() * 30 - 15);
+  sapling.forceCharge = true;
+  sapling.summonerId = unit.id;
+  popText(unit.x, unit.y - 116, "召唤小树人", "#8ee8a4");
+}
+
+function updateElfVineWarlock(unit, dt) {
+  const data = UNIT.elfVineWarlock;
+  unit.vineEntangleTimer = (unit.vineEntangleTimer ?? data.entangleEvery) - dt;
+  if (unit.vineEntangleTimer > 0) return;
+  unit.vineEntangleTimer += data.entangleEvery;
+  const targets = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => distanceTo(unit.x, unit.y, enemy.x, enemy.y ?? FIELD.ground) <= data.range + 120)
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))
+    .slice(0, data.entangleCount);
+  targets.forEach((enemy) => {
+    enemy.vineRootTimer = Math.max(enemy.vineRootTimer ?? 0, data.entangleDuration);
+    applyPoison(enemy, data.entanglePoisonDps, data.entangleDuration, { sourceSide: unit.side, sourceUnitId: unit.id });
+    state.spikes.push({
+      x1: enemy.x - 24,
+      x2: enemy.x + 24,
+      y: (enemy.y ?? FIELD.ground) - 12,
+      side: unit.side,
+      life: 0.42,
+      duration: 0.42,
+    });
+  });
+  if (targets.length) popText(unit.x, unit.y - 112, `缠绕 x${targets.length}`, "#8ee8a4");
+}
+
+function castElfRootField(unit, target) {
+  const data = UNIT.elfVineWarlock;
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  state.rootFields = state.rootFields ?? [];
+  state.rootFields.push({
+    x,
+    y,
+    side: unit.side,
+    radius: data.rootFieldRadius,
+    slow: data.rootFieldSlow,
+    life: data.rootFieldDuration,
+    duration: data.rootFieldDuration,
+  });
+  unit.vineRootFieldCooldown = data.rootFieldCooldown;
+  popText(x, y - 70, "树根区", "#8ee8a4");
+  return true;
+}
+
+function castElfShieldBash(unit) {
+  const data = UNIT.elfTreeGuard;
+  if ((unit.elfShieldBashCooldown ?? 0) > 0) return false;
+  const dir = getUnitFacingDirection(unit);
+  const targets = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => {
+      const dx = (enemy.x - unit.x) * dir;
+      return dx >= -12 && dx <= data.shieldBashRadius && Math.abs((enemy.y ?? FIELD.ground) - unit.y) <= data.shieldBashRadius;
+    })
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))
+    .slice(0, data.shieldBashLimit);
+  if (!targets.length) {
+    popText(unit.x, unit.y - 112, "盾顶未命中", "#d9d0b8");
+    return false;
+  }
+  targets.forEach((enemy) => applyStun(enemy, data.shieldBashStun));
+  unit.elfShieldBashCooldown = data.shieldBashCooldown;
+  state.blasts.push({ x: unit.x + dir * 44, y: unit.y - 45, radius: 52, life: 0.24, duration: 0.24, color: "#d7f6b8" });
+  popText(unit.x, unit.y - 116, `盾顶 x${targets.length}`, "#d7f6b8");
+  return true;
 }
 
 function explodeOrderMiniBomb(unit, target = unit) {
@@ -13679,6 +13928,13 @@ function updateWebFields(dt) {
   state.webFields = (state.webFields ?? []).filter((field) => field.life > 0);
 }
 
+function updateRootFields(dt) {
+  for (const field of state.rootFields ?? []) {
+    field.life -= dt;
+  }
+  state.rootFields = (state.rootFields ?? []).filter((field) => field.life > 0);
+}
+
 function updateHealingFields(dt) {
   for (const field of state.healingFields) {
     field.life -= dt;
@@ -14040,6 +14296,48 @@ function shouldBecomeWorm(unit) {
   return Boolean(side && areHostileSides(side, unit.side));
 }
 
+function isElfEmpireUnit(type) {
+  return type === "elfSapling" || (FACTIONS.elf?.roster ?? []).includes(type);
+}
+
+function shouldTriggerElfDeathWisp(unit) {
+  if (!unit || unit.type === "elfWisp" || unit.noElfDeathWisp) return false;
+  if (!isElfEmpireUnit(unit.type)) return false;
+  if (UNIT[unit.type]?.untargetable || isHeroUnit(unit)) return false;
+  return Boolean(unit.lastDamageSide || unit.expired);
+}
+
+function findElfRootFieldForDeath(unit) {
+  return (state.rootFields ?? []).find((field) => (
+    areHostileSides(field.side, unit.side)
+    && distanceTo(unit.x, unit.y ?? FIELD.ground, field.x, field.y) <= field.radius
+  )) ?? null;
+}
+
+function findElfWispBlastTarget(wisp, range = 120) {
+  return state.units
+    .filter((enemy) => areHostileSides(wisp.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && canTarget(wisp, enemy))
+    .filter((enemy) => distanceTo(wisp.x, wisp.y ?? FIELD.ground, enemy.x, enemy.y ?? FIELD.ground) <= range)
+    .sort((a, b) => distanceTo(wisp.x, wisp.y, a.x, a.y ?? FIELD.ground) - distanceTo(wisp.x, wisp.y, b.x, b.y ?? FIELD.ground))[0] ?? null;
+}
+
+function queueInstantElfWisp(deathSpawns, { side, x, y, text = "灵爆化形", color = "#8effb0" }) {
+  deathSpawns.push({
+    type: "elfWisp",
+    side,
+    x,
+    y,
+    text,
+    color,
+    setup: (wisp) => {
+      wisp.noCorpse = true;
+      wisp.noElfDeathWisp = true;
+      const target = findElfWispBlastTarget(wisp);
+      explodeElfWispAt(wisp, target);
+    },
+  });
+}
+
 function createWormSlime(unit) {
   const data = UNIT.swarmWorm;
   createSlimeField({
@@ -14204,6 +14502,23 @@ function removeDead() {
         setup: (worm) => {
           worm.forceCharge = true;
         },
+      });
+    }
+    const rootField = findElfRootFieldForDeath(unit);
+    if (rootField && unit.type !== "elfWisp" && !UNIT[unit.type]?.untargetable && !isHeroUnit(unit)) {
+      queueInstantElfWisp(deathSpawns, {
+        side: rootField.side,
+        x: unit.x,
+        y: unit.y,
+        text: "树根化灵",
+        color: "#8ee8a4",
+      });
+    }
+    if (shouldTriggerElfDeathWisp(unit)) {
+      queueInstantElfWisp(deathSpawns, {
+        side: unit.side,
+        x: unit.x,
+        y: unit.y,
       });
     }
     if (unit.frozenBy) {
@@ -14592,6 +14907,7 @@ function startCampaignSecondPhase() {
   state.iceFields = [];
   state.groundFires = [];
   state.thornFields = [];
+  state.rootFields = [];
   state.healingFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
@@ -14677,6 +14993,7 @@ function draw() {
   drawIceRoadGround();
   state.groundFires.forEach(drawGroundFire);
   state.thornFields.forEach(drawThornField);
+  (state.rootFields ?? []).forEach(drawRootField);
   state.healingFields.forEach(drawHealingField);
   (state.slimeFields ?? []).forEach(drawSlimeField);
   (state.webFields ?? []).forEach(drawWebField);
@@ -15049,6 +15366,32 @@ function drawSlimeField(field) {
   for (let i = 0; i < 4; i += 1) {
     ctx.beginPath();
     ctx.arc((i - 1.5) * radius * 0.25, Math.sin(i + field.x) * 7, radius * 0.08, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRootField(field) {
+  const alpha = Math.max(0.18, Math.min(0.58, field.life / field.duration));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+  const radius = field.radius * (1 + Math.sin(performance.now() / 170 + field.x) * 0.04);
+  const gradient = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
+  gradient.addColorStop(0, "rgba(142, 232, 164, 0.5)");
+  gradient.addColorStop(0.58, "rgba(70, 132, 72, 0.32)");
+  gradient.addColorStop(1, "rgba(18, 54, 27, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius, radius * 0.36, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(210, 255, 184, 0.62)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i += 1) {
+    const x = (i - 2.5) * radius * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(x - 18, 4);
+    ctx.quadraticCurveTo(x, -18 - Math.sin(performance.now() / 210 + i) * 5, x + 20, 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -18261,6 +18604,49 @@ function drawWeapon(type, unit = null) {
       ctx.lineTo(-4, -48);
       ctx.stroke();
     }
+  } else if (type === "elfTreeGuard") {
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(12, -25);
+    ctx.lineTo(66, -72);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.72)";
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(-18, -43, 18, 28, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (type === "elfTreeMan" || type === "elfSapling") {
+    ctx.strokeStyle = type === "elfTreeMan" ? "#5d3f24" : "#75532e";
+    ctx.lineWidth = type === "elfTreeMan" ? 7 : 5;
+    ctx.beginPath();
+    ctx.moveTo(14, -28);
+    ctx.lineTo(48, -62);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(36, -54);
+    ctx.quadraticCurveTo(50, -78, 60, -58);
+    ctx.moveTo(31, -48);
+    ctx.quadraticCurveTo(47, -33, 63, -47);
+    ctx.stroke();
+  } else if (type === "elfVineWarlock") {
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(13, -26);
+    ctx.lineTo(36, -72);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(40, -76, 13, 0, Math.PI * 1.8);
+    ctx.moveTo(36, -72);
+    ctx.quadraticCurveTo(58, -66, 49, -45);
+    ctx.stroke();
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
@@ -19041,6 +19427,13 @@ function getManualActions(unit) {
       add("treeRoot", "树根", "target");
       add("toggleRoot", unit.rooted ? "拔根" : "扎根", "direct");
       break;
+    case "elfTreeGuard":
+      add("elfShieldBash", "盾顶", "direct");
+      break;
+    case "elfVineWarlock":
+      actions[0].label = "待命";
+      add("elfRootField", "树根区", "point");
+      break;
     case "dreadfire":
       add("fireDragon", "火龙");
       add("meteorRain", "流星");
@@ -19171,6 +19564,8 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "evolveHoodCaterpillar") return !canEvolveSwarmUnit(unit, "hoodCaterpillar");
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
+  if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return true;
+  if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
   if (button.id === "swordsmanRage" && (unit.swordsmanSelfRageTimer > 0 || unit.hp <= UNIT.swordsman.selfRageHpCost)) return true;
   if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
@@ -19325,6 +19720,8 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "evolveHoodCaterpillar") return getSwarmEvolveDisabledLabel(unit, "hoodCaterpillar");
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
+  if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return `冷却 ${Math.ceil(unit.vineRootFieldCooldown)}秒`;
+  if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return `冷却 ${Math.ceil(unit.elfShieldBashCooldown)}秒`;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
   if (button.id === "swordsmanRage") {
     if (unit.swordsmanSelfRageTimer > 0) return "愤怒中";
@@ -19386,6 +19783,10 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "spiderWeb") {
     castSpiderWeb(unit);
+    return;
+  }
+  if (action.id === "elfShieldBash") {
+    castElfShieldBash(unit);
     return;
   }
   if (action.id === "evolveGnawMiner") {
@@ -19516,6 +19917,10 @@ function executeManualAction(unit, action, point) {
 }
 
 function manualUnitAttack(unit) {
+  if (UNIT[unit.type]?.noBasicAttack) {
+    popText(unit.x, unit.y - 116, `${UNIT[unit.type].name}没有普攻`, "#d9d0b8");
+    return;
+  }
   if (unit.type === "goblin" || unit.type === "goblinExpert" || unit.type === "shaman") {
     popText(unit.x, unit.y - 116, `${UNIT[unit.type].name}没有普攻`, "#d9d0b8");
     return;
@@ -19769,6 +20174,7 @@ function getManualActionCooldown(unit, id) {
     iceField: data.skillCooldown,
     mageWall: data.skillCooldown,
     mageStoneGolem: data.skillCooldown,
+    elfRootField: data.rootFieldCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -19846,6 +20252,8 @@ function castManualSkill(unit, id, target) {
     case "treeRoot":
       castTreeRoot(unit, target);
       return true;
+    case "elfRootField":
+      return castElfRootField(unit, target);
     case "fireDragon":
       castFireDragon(unit, target);
       return true;
