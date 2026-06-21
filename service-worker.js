@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v181-siege-mode";
+const CACHE_NAME = "stick-war-pwa-v182-clean-unused-code";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css?v=20260621-siege-mode",
-  "./game.js?v=20260621-siege-mode",
+  "./game.js?v=20260621-clean-unused-code",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

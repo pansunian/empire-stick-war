@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-siege-mode";
+const APP_VERSION = "20260621-clean-unused-code";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -2324,7 +2324,6 @@ function createSiegeBattleConfig() {
   return {
     title: "高城之战",
     nonCampaignMode: true,
-    siegeMode: true,
     playerRoster: FACTIONS[selectedFaction]?.roster ?? FACTIONS.order.roster,
     enemyRoster: FACTIONS[opponentFaction()]?.roster ?? FACTIONS.chaos.roster,
     playerStart: FACTIONS[selectedFaction]?.startingUnits ?? FACTIONS.order.startingUnits,
@@ -5075,10 +5074,6 @@ function spawnVClone(v, offset) {
   return clone;
 }
 
-function isMergeMaterial(unit, side, type) {
-  return unit.side === side && unit.type === type && unit.hp > 0 && !unit.merging && !unit.spawnExitTimer && !isUnitHidden(unit);
-}
-
 function getVMaterials(side) {
   const required = ["earthElement", "waterElement", "fireElement", "windElement"];
   const picked = [];
@@ -5464,16 +5459,6 @@ function summonFactionSkillUnits(side, types, duration, startIndex = 0) {
     unit.forceCharge = true;
     return unit;
   });
-}
-
-function countNearbyAllies(unit, radius) {
-  return state.units.filter((ally) => (
-    ally.side === unit.side
-    && ally.hp > 0
-    && !isUnitHidden(ally)
-    && !UNIT[ally.type]?.untargetable
-    && distanceTo(unit.x, unit.y, ally.x, ally.y) <= radius
-  )).length;
 }
 
 function chooseFourWayAiUnit(ai, affordableRoster, livingCount) {
@@ -9237,17 +9222,6 @@ function harvestBonesFromCorpse(unit) {
   return true;
 }
 
-function findUndeadBoneTarget(unit) {
-  const data = UNIT.undeadMage;
-  return state.units
-    .filter((enemy) => {
-      if (enemy.side === unit.side || enemy.hp <= 0 || isUnitHidden(enemy) || UNIT[enemy.type]?.untargetable) return false;
-      if (!isAheadOf(unit, enemy)) return false;
-      return distanceTo(unit.x, unit.y, enemy.x, enemy.y) <= data.boneSpikeRange;
-    })
-    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
-}
-
 function updateSuikai(unit, dt) {
   const data = UNIT.suikai;
   unit.suikaiCorpseTimer -= dt;
@@ -9472,29 +9446,6 @@ function updateSummoner(unit, dt) {
   if (unit.summonTimer > 0) return;
   unit.summonTimer += data.summonEvery;
   summonWraithMiners(unit);
-}
-
-function updateSummonerMinePatrol(unit, dt) {
-  const mines = getSideMines(unit.side).filter((mine) => mine.remaining > 0);
-  const mine = mines
-    .map((candidate) => ({ mine: candidate, distance: distanceTo(unit.x, unit.y, candidate.x, candidate.y) }))
-    .sort((a, b) => a.distance - b.distance)[0]?.mine;
-  if (!mine) return;
-  if (!unit.summonerPatrolOffset || Math.abs(unit.x - (mine.x + unit.summonerPatrolOffset)) < 8) {
-    unit.summonerPatrolOffset = (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 22);
-  }
-  moveUnitTowardPoint(unit, mine.x + unit.summonerPatrolOffset, mine.y, unit.speed ?? UNIT.summoner.speed, dt, 6);
-}
-
-function updateRangedEconomyAttack(unit, target, dt) {
-  if (!target) return;
-  const range = getUnitRange(unit);
-  const desiredX = unit.side === "player" ? target.x - range + 8 : target.x + range - 8;
-  if (Math.abs(unit.x - target.x) <= range) {
-    if (unit.cooldown <= 0) attack(unit, target);
-    return;
-  }
-  moveUnitTowardPoint(unit, desiredX, target.y ?? FIELD.ground, unit.speed ?? UNIT[unit.type].speed, dt, 6);
 }
 
 function summonWraithMiners(summoner) {
@@ -10896,13 +10847,6 @@ function isOrderSiegeType(type) {
 
 function getArrowSourceType(arrow, source = getArrowSource(arrow)) {
   return arrow.sourceType ?? source?.type ?? arrow.type;
-}
-
-function isOrderRangedTraitArrow(arrow, source = getArrowSource(arrow)) {
-  if (factionForSide(arrow.side) !== "order") return false;
-  const sourceType = getArrowSourceType(arrow, source);
-  if (isOrderSiegeType(sourceType)) return false;
-  return (UNIT[sourceType]?.range ?? 0) > ORDER_MELEE_VETERAN_TRAIT.meleeRange || arrow.type === "spearThrow" || arrow.type === "goldenSpear";
 }
 
 function isOrderSiegeTraitArrow(arrow, source = getArrowSource(arrow)) {
@@ -12810,21 +12754,6 @@ function canPriestSacrificeAlly(source, target) {
   return target.type !== "miner";
 }
 
-function findPriestSiphonTarget(unit) {
-  const data = UNIT.priest;
-  return state.units
-    .filter((target) =>
-      target.side !== unit.side &&
-      target.hp > 0 &&
-      target.hp <= data.siphonMaxHp &&
-      !isUnitHidden(target) &&
-      !isReaperStealthed(target) &&
-      !UNIT[target.type]?.untargetable &&
-      canTarget(unit, target)
-    )
-    .sort((a, b) => Math.abs(a.x - unit.x) - Math.abs(b.x - unit.x))[0] ?? null;
-}
-
 function healFrontlineAllies(side, total, label) {
   const allies = getFrontlineAllies(side);
   if (!allies.length || total <= 0) return;
@@ -12885,12 +12814,6 @@ function castDarkKnightCharge(unit) {
   return true;
 }
 
-function tryMinotaurLeap(unit) {
-  if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
-  if (!getHornKnightChargeTargets(unit).length) return false;
-  return castMinotaurLeap(unit);
-}
-
 function castMinotaurLeap(unit) {
   const data = UNIT.minotaur;
   if ((unit.minotaurLeapTimer ?? 0) > 0) return false;
@@ -12941,16 +12864,6 @@ function attackHornKnightRider(unit, target) {
   if (target.kind !== "statue") {
     state.blasts.push({ x: target.x, y: target.y - 34, radius: 25, life: 0.16, duration: 0.16, color: "#c89a6d" });
   }
-}
-
-function enrageNearbyMinotaurs(deadUnit) {
-  const data = UNIT.minotaur;
-  state.units.forEach((unit) => {
-    if (unit.id === deadUnit.id || unit.type !== "minotaur" || unit.side !== deadUnit.side || unit.hp <= 0) return;
-    if (Math.abs(unit.x - deadUnit.x) > data.deathRageRange) return;
-    unit.minotaurRage = true;
-    popText(unit.x, unit.y - 120, "牛头狂暴", "#ff8a3d");
-  });
 }
 
 function enrageNearbyRhinoMen(deadUnit) {
@@ -16625,50 +16538,6 @@ function drawRocketCartUnit(unit) {
 
   ctx.restore();
   drawUnitHp(unit);
-}
-
-function drawEnslavedGiantBasket() {
-  ctx.save();
-  ctx.strokeStyle = "#4e3520";
-  ctx.fillStyle = "#7a4f2d";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-29, -60);
-  ctx.lineTo(-7, -55);
-  ctx.lineTo(-10, -18);
-  ctx.lineTo(-33, -24);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.strokeStyle = "#d0a05c";
-  ctx.lineWidth = 2;
-  for (let y = -50; y <= -29; y += 10) {
-    ctx.beginPath();
-    ctx.moveTo(-29, y);
-    ctx.lineTo(-10, y + 4);
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = "#8b6f46";
-  [
-    [-25, -63, 6],
-    [-18, -66, 7],
-    [-11, -61, 5],
-    [-22, -56, 5],
-  ].forEach(([x, y, radius]) => {
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  ctx.strokeStyle = "#5d3a22";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(-8, -51);
-  ctx.quadraticCurveTo(3, -42, 2, -27);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function getUnitColor(unit) {
