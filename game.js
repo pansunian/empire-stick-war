@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-parasite";
+const APP_VERSION = "20260621-elf-sentries";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -303,11 +303,11 @@ const AI_ROLE_PROFILES = {
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
   elf: {
-    frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
-    ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista"],
-    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
+    frontline: ["elfMercenary", "elfBladeDancer", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
+    ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista", "elfSentryTower"],
+    support: ["elfWisp", "elfSentryKeeper", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
     raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
-    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfSentryKeeper", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfBladeDancer", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -501,6 +501,47 @@ const UNIT = {
     dodgeChance: 0.2,
     controlArrowEvery: 10,
     controlArrowStun: 3,
+  },
+  elfBladeDancer: {
+    name: "银叶剑舞者",
+    cost: 180,
+    magicCost: 50,
+    hp: 180,
+    damage: 11,
+    range: 36,
+    speed: 60,
+    train: 4.4,
+    cooldown: 0.8,
+    dodgeChance: 0.2,
+  },
+  elfSentryKeeper: {
+    name: "翡翠哨塔师",
+    cost: 250,
+    magicCost: 50,
+    hp: 160,
+    damage: 0,
+    range: 180,
+    speed: 35,
+    train: 5.4,
+    cooldown: 1,
+    sentryEvery: 12,
+    sentryMax: 2,
+    sentryType: "elfSentryTower",
+    noBasicAttack: true,
+  },
+  elfSentryTower: {
+    name: "翡翠哨塔",
+    cost: 0,
+    hp: 180,
+    damage: 16,
+    range: 230,
+    speed: 0,
+    train: 0,
+    cooldown: 2,
+    splash: 65,
+    aoeLimit: 3,
+    summonOnly: true,
+    immobile: true,
   },
   elfForestBallista: {
     name: "森林弩炮",
@@ -2362,7 +2403,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2531,6 +2572,9 @@ const UNIT_ICON = {
   elfScout: "bow",
   elfRanger: "bow",
   elfShadowHunter: "bow",
+  elfBladeDancer: "machete",
+  elfSentryKeeper: "wizard-hat",
+  elfSentryTower: "white-orb",
   elfForestBallista: "bomb-crossbow",
   elfTreeGuard: "tree",
   elfMoonDeerRider: "spear",
@@ -2554,7 +2598,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "parasite", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfSentryTower", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3604,6 +3648,9 @@ function formatSpecial(type) {
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
+  if (type === "elfBladeDancer") notes.push(`机动护卫；攻速 ${data.cooldown}秒，移速 ${data.speed}，受到攻击时 ${Math.round(data.dodgeChance * 100)}% 概率闪避`);
+  if (type === "elfSentryKeeper") notes.push(`无普攻；每 ${data.sentryEvery} 秒在附近种 1 座翡翠哨塔，单个哨塔师最多维持 ${data.sentryMax} 座`);
+  if (type === "elfSentryTower") notes.push(`召唤哨塔；术士能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人，攻速 ${data.cooldown}秒`);
   if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`一棵树卫，挥舞大棒造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人`);
   if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
@@ -5070,6 +5117,7 @@ function spawnUnit(type, side, x) {
     vineRootTimer: 0,
     vineEntangleTimer: data.entangleEvery ?? 0,
     vineRootFieldCooldown: 0,
+    sentryTimer: data.sentryEvery ?? 0,
     starSpiritTimer: data.spiritEvery ?? 0,
     shadowControlArrowTimer: data.controlArrowEvery ?? 0,
     parasiteTimer: data.parasiteEvery ?? 0,
@@ -8128,6 +8176,7 @@ function updateUnits(dt) {
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
       if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
+      if (unit.type === "elfSentryKeeper") updateElfSentryKeeper(unit, dt);
       if (unit.type === "elfStarPriest") updateElfStarPriest(unit, dt);
       if (unit.type === "elfHealingSpirit") {
         updateElfHealingSpirit(unit, dt);
@@ -8192,6 +8241,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "elfVineWarlock") {
       updateElfVineWarlock(unit, dt);
+    }
+    if (unit.type === "elfSentryKeeper") {
+      updateElfSentryKeeper(unit, dt);
     }
     if (unit.type === "elfStarPriest") {
       updateElfStarPriest(unit, dt);
@@ -8416,7 +8468,7 @@ function updateManualControlState() {
 function updateFourWayUnit(unit, dt) {
   const data = UNIT[unit.type] ?? {};
   if (unit.type === "treeEnt" && unit.rooted) return;
-  if (unit.type === "electricGate" || data.immobile) return;
+  if (unit.type === "electricGate") return;
   if (UNIT[unit.type]?.statueOnly) return;
 
   const target = findFourWayTarget(unit);
@@ -8427,6 +8479,7 @@ function updateFourWayUnit(unit, dt) {
     attack(unit, target);
     return;
   }
+  if (data.immobile) return;
   const point = getFourWayApproachPoint(unit, target, range);
   unit.facingDir = point.x >= unit.x ? 1 : -1;
   moveUnitTowardPoint(unit, point.x, point.y, unit.speed ?? data.speed ?? 0, dt, 6);
@@ -11114,6 +11167,7 @@ function attack(unit, target) {
     unit.type === "undeadVulture" ||
     unit.type === "corrosiveSpitter" ||
     unit.type === "antQueen" ||
+    unit.type === "elfSentryTower" ||
     unit.type === "elfForestBallista"
   ) {
     if (unit.type === "boneThrower") {
@@ -11133,7 +11187,7 @@ function attack(unit, target) {
       sourceId: unit.id,
       sourceType: unit.type,
       target,
-      life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : 0.55,
+      life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : unit.type === "elfSentryTower" ? 0.5 : 0.55,
       type: unit.type,
       splash: data.splash,
       aoeLimit: data.aoeLimit,
@@ -11407,6 +11461,29 @@ function updateElfVineWarlock(unit, dt) {
     });
   });
   if (targets.length) popText(unit.x, unit.y - 112, `缠绕 x${targets.length}`, "#8ee8a4");
+}
+
+function updateElfSentryKeeper(unit, dt) {
+  const data = UNIT.elfSentryKeeper;
+  unit.sentryTimer = (unit.sentryTimer ?? data.sentryEvery) - dt;
+  if (unit.sentryTimer > 0) return;
+  const activeSentries = state.units.filter((candidate) => (
+    candidate.type === data.sentryType &&
+    candidate.summonerId === unit.id &&
+    candidate.hp > 0
+  )).length;
+  if (activeSentries >= data.sentryMax) {
+    unit.sentryTimer = 1;
+    return;
+  }
+  unit.sentryTimer += data.sentryEvery;
+  const dir = getUnitFacingDirection(unit);
+  const sentry = spawnUnit(data.sentryType, unit.side, clampWorldX(unit.x + dir * (48 + activeSentries * 36)));
+  sentry.y = unit.y + (activeSentries % 2 === 0 ? -28 : 28);
+  sentry.summonerId = unit.id;
+  sentry.noCorpse = true;
+  state.blasts.push({ x: sentry.x, y: sentry.y - 42, radius: 42, life: 0.28, duration: 0.28, color: "#8ee8a4" });
+  popText(unit.x, unit.y - 112, "种下哨塔", "#8ee8a4");
 }
 
 function castElfRootField(unit, target) {
@@ -13313,6 +13390,8 @@ function updateArrows(dt) {
       } else if (arrow.type === "neuralBomb") {
         const source = getArrowSource(arrow);
         explodeNeuralBomb(arrow, source);
+      } else if (arrow.type === "elfSentryTower") {
+        explodeElfSentryOrb(arrow);
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
@@ -13409,6 +13488,28 @@ function explodeUndeadVultureOrb(arrow) {
   }
   state.blasts.push({ x: arrow.tx, y: arrow.ty, radius, life: 0.28, duration: 0.28, color: "#7ed8ff" });
   popText(arrow.tx, arrow.ty - 36, "能量爆裂", "#7ed8ff");
+}
+
+function explodeElfSentryOrb(arrow) {
+  const radius = arrow.splash ?? UNIT.elfSentryTower.splash;
+  const limit = arrow.aoeLimit ?? UNIT.elfSentryTower.aoeLimit;
+  const source = getArrowSource(arrow);
+  getUnitsInRadius(arrow.tx, radius, arrow.side, limit, null, arrow.ty).forEach((target) => {
+    const dealt = applyUnitDamage(target, arrow.damage, {
+      label: "哨塔",
+      color: "#8ee8a4",
+      yOffset: -78,
+      ranged: true,
+      sourceSide: arrow.side,
+      sourceUnitId: arrow.sourceId,
+    });
+    handleDamageDealt(source, target, dealt);
+  });
+  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= radius + 28) {
+    applyDamage(arrow.target, arrow.damage, arrow.side);
+  }
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius, life: 0.28, duration: 0.28, color: "#8ee8a4" });
+  popText(arrow.tx, arrow.ty - 36, "翡翠爆裂", "#8ee8a4");
 }
 
 function createGroundFire(x, y, side, dps, duration, radius, options = {}) {
@@ -19720,6 +19821,71 @@ function drawWeapon(type, unit = null) {
       ctx.lineTo(-4, -48);
       ctx.stroke();
     }
+  } else if (type === "elfBladeDancer") {
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(13, -27);
+    ctx.quadraticCurveTo(38 + armSwing * 8, -60 - armLift * 5, 58 + armSwing * 10, -48);
+    ctx.moveTo(9, -28);
+    ctx.quadraticCurveTo(-18 - armSwing * 8, -56 - armLift * 5, -38 - armSwing * 10, -42);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(48 + armSwing * 10, -54);
+    ctx.lineTo(66 + armSwing * 10, -62);
+    ctx.moveTo(-31 - armSwing * 10, -49);
+    ctx.lineTo(-50 - armSwing * 10, -57);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.32)";
+    ctx.beginPath();
+    ctx.ellipse(0, -48, 25, 34, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "elfSentryKeeper") {
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(13, -24);
+    ctx.lineTo(34, -70);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(33, -68);
+    ctx.lineTo(48, -88);
+    ctx.lineTo(61, -66);
+    ctx.moveTo(38, -75);
+    ctx.quadraticCurveTo(58, -54, 48, -36);
+    ctx.stroke();
+    ctx.fillStyle = "#8ee8a4";
+    ctx.beginPath();
+    ctx.arc(51, -79, 7, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "elfSentryTower") {
+    ctx.strokeStyle = "#4f3c27";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-8, -12);
+    ctx.lineTo(-4, -62);
+    ctx.moveTo(12, -14);
+    ctx.lineTo(8, -62);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.55)";
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(2, -84);
+    ctx.lineTo(24, -58);
+    ctx.lineTo(2, -36);
+    ctx.lineTo(-20, -58);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#e8fff0";
+    ctx.beginPath();
+    ctx.arc(2, -58, 6, 0, Math.PI * 2);
+    ctx.fill();
   } else if (type === "elfTreeGuard") {
     ctx.strokeStyle = "#5d3f24";
     ctx.lineWidth = 8;
@@ -22223,6 +22389,8 @@ function drawArrow(arrow) {
         ? "#c6b8ff"
       : arrow.type === "elfShadowControl"
         ? "#9f7cff"
+      : arrow.type === "elfSentryTower"
+        ? "#8ee8a4"
       : arrow.type === "elfForestBallista"
         ? "#d7f6b8"
       : arrow.type === "goldenSpear"
@@ -22254,7 +22422,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9");
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "elfForestBallista" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" || arrow.type === "elfShadowControl" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "elfForestBallista" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" || arrow.type === "elfShadowControl" || arrow.type === "elfSentryTower" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
@@ -22263,6 +22431,12 @@ function drawArrow(arrow) {
     ctx.fillStyle = "rgba(126, 216, 255, 0.75)";
     ctx.beginPath();
     ctx.arc(x + 12, y - 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (arrow.type === "elfSentryTower") {
+    ctx.fillStyle = "rgba(142, 232, 164, 0.82)";
+    ctx.beginPath();
+    ctx.arc(x + 12, y - 3, 7, 0, Math.PI * 2);
     ctx.fill();
   }
   if (arrow.type === "boneThrower") {
