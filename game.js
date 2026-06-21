@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-arc";
+const APP_VERSION = "20260621-emerald-warlock";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -303,11 +303,11 @@ const AI_ROLE_PROFILES = {
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
   elf: {
-    frontline: ["elfMercenary", "elfBladeDancer", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
+    frontline: ["elfMercenary", "elfBladeDancer", "elfEmeraldSentinel", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista", "elfSentryTower"],
-    support: ["elfWisp", "elfSentryKeeper", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
+    support: ["elfWisp", "elfSentryKeeper", "elfEmeraldWarlock", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
     raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
-    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfSentryKeeper", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfBladeDancer", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfEmeraldWarlock", "elfSentryKeeper", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfBladeDancer", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -503,16 +503,20 @@ const UNIT = {
     controlArrowStun: 3,
   },
   elfBladeDancer: {
-    name: "银叶剑舞者",
-    cost: 180,
+    name: "翡翠护卫",
+    cost: 300,
     magicCost: 50,
-    hp: 180,
-    damage: 11,
-    range: 36,
-    speed: 60,
-    train: 4.4,
-    cooldown: 0.8,
-    dodgeChance: 0.2,
+    hp: 250,
+    damage: 20,
+    range: 42,
+    speed: 50,
+    train: 5.2,
+    cooldown: 1.4,
+    emeraldShieldHp: 350,
+    cleaveEvery: 5,
+    cleaveDamage: 15,
+    cleaveSplash: 72,
+    cleaveLimit: 3,
   },
   elfSentryKeeper: {
     name: "翡翠哨塔师",
@@ -542,6 +546,32 @@ const UNIT = {
     aoeLimit: 3,
     summonOnly: true,
     immobile: true,
+  },
+  elfEmeraldWarlock: {
+    name: "翡翠术士",
+    cost: 200,
+    magicCost: 150,
+    hp: 200,
+    damage: 1,
+    range: 320,
+    speed: 34,
+    train: 5.6,
+    cooldown: 0.2,
+    beamDuration: 8,
+    beamRest: 3,
+    beamTick: 1 / 24,
+    convertCooldown: 20,
+  },
+  elfEmeraldSentinel: {
+    name: "翡翠哨兵",
+    cost: 0,
+    hp: 140,
+    damage: 9,
+    range: 48,
+    speed: 43,
+    train: 0,
+    cooldown: 1,
+    summonOnly: true,
   },
   elfForestBallista: {
     name: "森林弩炮",
@@ -596,10 +626,10 @@ const UNIT = {
     cooldown: 1,
     dawnRange: 420,
     dawnRadius: 120,
-    dawnDamage: 2,
+    dawnDamage: 1,
     dawnHeal: 1,
-    dawnTick: 0.2,
-    dawnDuration: 5,
+    dawnTick: 1 / 24,
+    dawnDuration: 10,
     dawnCooldown: 20,
     fawnCount: 3,
     fawnDuration: 14,
@@ -611,13 +641,13 @@ const UNIT = {
     holyShieldDuration: 10,
     holyShieldCooldown: 18,
     heatRange: 400,
-    heatRadius: 95,
+    heatRadius: 56,
     heatDelay: 3,
-    heatDamage: 5,
-    heatTick: 0.2,
+    heatDamage: 3,
+    heatTick: 1 / 24,
     heatDuration: 5,
-    heatMagicCost: 50,
-    heatCooldown: 22,
+    heatMagicCost: 75,
+    heatCooldown: 20,
     healSpiritCount: 5,
     healSpiritDuration: 10,
     healSpiritCooldown: 15,
@@ -2403,7 +2433,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfEmeraldWarlock", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2572,9 +2602,11 @@ const UNIT_ICON = {
   elfScout: "bow",
   elfRanger: "bow",
   elfShadowHunter: "bow",
-  elfBladeDancer: "machete",
+  elfBladeDancer: "shield",
   elfSentryKeeper: "wizard-hat",
   elfSentryTower: "white-orb",
+  elfEmeraldWarlock: "wizard-hat",
+  elfEmeraldSentinel: "spear",
   elfForestBallista: "bomb-crossbow",
   elfTreeGuard: "tree",
   elfMoonDeerRider: "spear",
@@ -2598,7 +2630,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "parasite", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfSentryTower", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfSentryTower", "elfEmeraldWarlock", "elfEmeraldSentinel", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3648,9 +3680,11 @@ function formatSpecial(type) {
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
-  if (type === "elfBladeDancer") notes.push(`机动护卫；攻速 ${data.cooldown}秒，移速 ${data.speed}，受到攻击时 ${Math.round(data.dodgeChance * 100)}% 概率闪避`);
+  if (type === "elfBladeDancer") notes.push(`翡翠巨盾可抵挡 ${data.emeraldShieldHp} 点直射伤害；每第 ${data.cleaveEvery} 次攻击劈砍 ${data.cleaveDamage} 范围伤害，最多 ${data.cleaveLimit} 人`);
   if (type === "elfSentryKeeper") notes.push(`无普攻；每 ${data.sentryEvery} 秒在附近种 1 座翡翠哨塔，单个哨塔师最多维持 ${data.sentryMax} 座`);
   if (type === "elfSentryTower") notes.push(`召唤哨塔；术士高抛能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人，攻速 ${data.cooldown}秒`);
+  if (type === "elfEmeraldWarlock") notes.push(`翡翠射线按 24 帧/秒结算，每帧 ${data.damage} 伤，持续 ${data.beamDuration} 秒后停歇 ${data.beamRest} 秒；技能可将敌人翡翠化，冷却 ${data.convertCooldown} 秒`);
+  if (type === "elfEmeraldSentinel") notes.push(`翡翠术士转化而来的长矛哨兵`);
   if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`一棵树卫，挥舞大棒造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人`);
   if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
@@ -3988,6 +4022,7 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     jungleFields: [],
     ancientLogs: [],
     ancientLasers: [],
+    emeraldBeams: [],
     dawnBeams: [],
     heatBeams: [],
     swarmEggs: [],
@@ -5001,6 +5036,8 @@ function spawnUnit(type, side, x) {
     maxHp: data.hp,
     shieldHp: data.shieldHp ?? 0,
     maxShieldHp: data.shieldHp ?? 0,
+    emeraldShieldHp: data.emeraldShieldHp ?? 0,
+    maxEmeraldShieldHp: data.emeraldShieldHp ?? 0,
     arrowBoardHp: data.arrowBoardHp ?? 0,
     maxArrowBoardHp: data.arrowBoardHp ?? 0,
     cooldown: 0,
@@ -5118,6 +5155,8 @@ function spawnUnit(type, side, x) {
     vineEntangleTimer: data.entangleEvery ?? 0,
     vineRootFieldCooldown: 0,
     sentryTimer: data.sentryEvery ?? 0,
+    emeraldGuardHits: 0,
+    emeraldBeamRestTimer: 0,
     starSpiritTimer: data.spiritEvery ?? 0,
     shadowControlArrowTimer: data.controlArrowEvery ?? 0,
     parasiteTimer: data.parasiteEvery ?? 0,
@@ -5713,6 +5752,7 @@ function update(dt) {
   updateJungleFields(dt);
   updateAncientLogs(dt);
   updateAncientLasers(dt);
+  updateEmeraldBeams(dt);
   updateDawnBeams(dt);
   updateHeatBeams(dt);
   updateGhosts(dt);
@@ -5757,6 +5797,7 @@ function updateFourWayBattle(dt) {
   updateJungleFields(dt);
   updateAncientLogs(dt);
   updateAncientLasers(dt);
+  updateEmeraldBeams(dt);
   updateDawnBeams(dt);
   updateHeatBeams(dt);
   updateGhosts(dt);
@@ -8177,6 +8218,7 @@ function updateUnits(dt) {
       if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
       if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
       if (unit.type === "elfSentryKeeper") updateElfSentryKeeper(unit, dt);
+      if (unit.type === "elfEmeraldWarlock") updateElfEmeraldWarlock(unit, dt);
       if (unit.type === "elfStarPriest") updateElfStarPriest(unit, dt);
       if (unit.type === "elfHealingSpirit") {
         updateElfHealingSpirit(unit, dt);
@@ -8244,6 +8286,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "elfSentryKeeper") {
       updateElfSentryKeeper(unit, dt);
+    }
+    if (unit.type === "elfEmeraldWarlock") {
+      updateElfEmeraldWarlock(unit, dt);
     }
     if (unit.type === "elfStarPriest") {
       updateElfStarPriest(unit, dt);
@@ -11000,6 +11045,21 @@ function attack(unit, target) {
     return;
   }
 
+  if (unit.type === "elfBladeDancer") {
+    attackElfEmeraldGuard(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfEmeraldSentinel") {
+    attackElfEmeraldSentinel(unit, target);
+    return;
+  }
+
+  if (unit.type === "elfEmeraldWarlock") {
+    attackElfEmeraldWarlock(unit, target);
+    return;
+  }
+
   if (unit.type === "elfTreeGuard") {
     attackElfTreeGuard(unit, target);
     return;
@@ -11487,6 +11547,51 @@ function updateElfSentryKeeper(unit, dt) {
   popText(unit.x, unit.y - 112, "种下哨塔", "#8ee8a4");
 }
 
+function updateElfEmeraldWarlock(unit, dt) {
+  unit.emeraldBeamRestTimer = Math.max(0, (unit.emeraldBeamRestTimer ?? 0) - dt);
+}
+
+function attackElfEmeraldGuard(unit, target) {
+  const data = UNIT.elfBladeDancer;
+  const dealt = applyDamage(target, getAttackDamage(unit, target, data.damage), unit.side);
+  handleDamageDealt(unit, target, dealt);
+  unit.emeraldGuardHits = (unit.emeraldGuardHits ?? 0) + 1;
+  if (unit.emeraldGuardHits % data.cleaveEvery !== 0) return;
+  const targets = getUnitsInRadius(target.x, data.cleaveSplash, unit.side, data.cleaveLimit, null, target.y ?? unit.y);
+  targets.forEach((enemy) => {
+    const cleave = applyUnitDamage(enemy, data.cleaveDamage, { label: "劈砍", color: "#8ee8a4", yOffset: -84, sourceSide: unit.side, sourceUnitId: unit.id });
+    handleDamageDealt(unit, enemy, cleave);
+  });
+  state.blasts.push({ x: target.x, y: (target.y ?? unit.y) - 36, radius: data.cleaveSplash, life: 0.22, duration: 0.22, color: "#8ee8a4" });
+}
+
+function attackElfEmeraldSentinel(unit, target) {
+  const data = UNIT.elfEmeraldSentinel;
+  const dealt = applyDamage(target, getAttackDamage(unit, target, data.damage), unit.side);
+  handleDamageDealt(unit, target, dealt);
+}
+
+function attackElfEmeraldWarlock(unit, target) {
+  const data = UNIT.elfEmeraldWarlock;
+  if ((unit.emeraldBeamRestTimer ?? 0) > 0) return;
+  if (!target || target.hp <= 0 || !areHostileSides(unit.side, target.side)) return;
+  state.emeraldBeams = state.emeraldBeams ?? [];
+  state.emeraldBeams.push({
+    casterId: unit.id,
+    targetId: target.id,
+    side: unit.side,
+    range: data.range,
+    damage: data.damage,
+    tickEvery: data.beamTick,
+    tick: 0,
+    life: data.beamDuration,
+    duration: data.beamDuration,
+  });
+  unit.emeraldBeamRestTimer = data.beamDuration + data.beamRest;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, unit.emeraldBeamRestTimer);
+  popText(unit.x, unit.y - 116, "翡翠射线", "#8ee8a4");
+}
+
 function castElfRootField(unit, target) {
   const data = UNIT.elfVineWarlock;
   const x = clampWorldX(target.x);
@@ -11922,10 +12027,10 @@ function fireShotgun(unit, target) {
     });
   }
   hits.forEach((pellets, enemy) => {
-    const dealt = applyDamage(enemy, data.damage * pellets, unit.side, { ranged: true });
+    const dealt = applyDamage(enemy, data.damage * pellets, unit.side, { ranged: true, directRanged: true });
     handleDamageDealt(unit, enemy, dealt);
   });
-  if (statuePellets > 0) applyDamage(target, data.damage * statuePellets, unit.side, { ranged: true });
+  if (statuePellets > 0) applyDamage(target, data.damage * statuePellets, unit.side, { ranged: true, directRanged: true });
   state.blasts.push({ x: unit.x + dir * 54, y: unit.y - 45, radius: 26, life: 0.16, duration: 0.16, color: "#dbe8ff" });
   const totalHits = statuePellets + [...hits.values()].reduce((sum, count) => sum + count, 0);
   popText(unit.x, unit.y - 106, totalHits ? `散弹 ${totalHits}/${pellets}` : "散弹落空", "#dbe8ff");
@@ -12008,7 +12113,7 @@ function impactCorrosiveSpit(arrow, source) {
     ? getUnitsInRadius(arrow.target.x, data.splash, arrow.side, data.aoeLimit, null, arrow.target.y)
     : [arrow.target];
   targets.forEach((target) => {
-    const dealt = applyDamage(target, arrow.damage, arrow.side, { ranged: true });
+    const dealt = applyDamage(target, arrow.damage, arrow.side, { ranged: true, directRanged: true });
     handleDamageDealt(source, target, dealt);
     maybeApplyOrderRangedStun(arrow, target, source);
     applyCorrosion(target, data.corrosionDps, data.corrosionDuration, {
@@ -12549,6 +12654,61 @@ function castMageStoneGolem(unit, target) {
   state.blasts.push({ x: target.x, y: (target.y ?? FIELD.ground) - 32, radius: 68, life: 0.36, duration: 0.36, color: "#9f9278" });
   state.lightning.push({ x1: unit.x, y1: unit.y - 72, x2: target.x, y2: (target.y ?? FIELD.ground) - 68, life: 0.28, duration: 0.28 });
   popText(target.x, target.y - 108, "化为石头人", "#d6c090");
+  return true;
+}
+
+function canEmeraldConvert(unit, target) {
+  if (!unit || unit.type !== "elfEmeraldWarlock") return false;
+  const data = UNIT.elfEmeraldWarlock;
+  if (!areHostileSides(unit.side, target?.side)) return false;
+  if (!isMageStoneGolemBiologicalTarget(target)) return false;
+  if (isHeroUnit(target)) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= data.range + 40;
+}
+
+function findEmeraldConvertTarget(unit, point = null) {
+  const candidates = state.units
+    .filter((target) => canEmeraldConvert(unit, target))
+    .map((target) => ({
+      target,
+      pointDistance: point ? distanceTo(point.x, point.y, target.x, target.y - 48) : 0,
+      unitDistance: distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y),
+    }));
+  if (!candidates.length) return null;
+  const nearby = point ? candidates.filter((item) => item.pointDistance <= 150) : candidates;
+  const pool = nearby.length ? nearby : candidates;
+  return pool
+    .sort((a, b) => (b.target.maxHp - a.target.maxHp) || (a.unitDistance - b.unitDistance))[0]
+    .target;
+}
+
+function castEmeraldConvert(unit, target) {
+  const chosen = canEmeraldConvert(unit, target) ? target : findEmeraldConvertTarget(unit);
+  if (!chosen) {
+    popText(unit.x, unit.y - 116, "无法翡翠化", "#8ee8a4");
+    return false;
+  }
+  const resultType = (chosen.maxHp ?? chosen.hp ?? 0) >= 350 ? "elfBladeDancer" : "elfEmeraldSentinel";
+  const data = UNIT[resultType];
+  chosen.type = resultType;
+  chosen.side = unit.side;
+  chosen.damage = data.damage;
+  chosen.range = data.range;
+  chosen.speed = data.speed;
+  chosen.maxHp = data.hp;
+  chosen.hp = data.hp;
+  chosen.shieldHp = data.shieldHp ?? 0;
+  chosen.maxShieldHp = data.shieldHp ?? 0;
+  chosen.emeraldShieldHp = data.emeraldShieldHp ?? 0;
+  chosen.maxEmeraldShieldHp = data.emeraldShieldHp ?? 0;
+  chosen.cooldown = Math.max(chosen.cooldown ?? 0, 0.5);
+  chosen.controlledBy = null;
+  chosen.controlLockTimer = 0;
+  chosen.stoneGolemOriginal = null;
+  chosen.noCorpse = false;
+  state.blasts.push({ x: chosen.x, y: (chosen.y ?? FIELD.ground) - 36, radius: 70, life: 0.36, duration: 0.36, color: "#8ee8a4" });
+  state.lightning.push({ x1: unit.x, y1: unit.y - 72, x2: chosen.x, y2: (chosen.y ?? FIELD.ground) - 68, life: 0.28, duration: 0.28 });
+  popText(chosen.x, chosen.y - 108, resultType === "elfBladeDancer" ? "化为翡翠护卫" : "化为翡翠哨兵", "#8ee8a4");
   return true;
 }
 
@@ -13359,31 +13519,31 @@ function updateArrows(dt) {
         explodeUndeadVultureOrb(arrow);
       } else if (arrow.type === "poisonZombie") {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyPoison(arrow.target, UNIT.poisonZombie.poisonDps, UNIT.poisonZombie.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.type === "fireElement") {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
       } else if (arrow.type === "archerFire") {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyBurn(arrow.target, arrow.burnDps, arrow.burnDuration);
       } else if (arrow.type === "javelinThrower") {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         if (arrow.poison) applyPoison(arrow.target, UNIT.javelinThrower.poisonDps, UNIT.javelinThrower.poisonDuration, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
       } else if (arrow.poisonDps) {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyPoison(arrow.target, arrow.poisonDps, arrow.poisonDuration ?? Infinity, { sourceSide: arrow.side, sourceUnitId: arrow.sourceId });
@@ -13408,7 +13568,7 @@ function updateArrows(dt) {
         explodeIronCavalryBomb(arrow);
       } else {
         const source = getArrowSource(arrow);
-        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+        const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         if (arrow.stun) applyStun(arrow.target, arrow.stun);
@@ -13423,10 +13583,25 @@ function getArrowSource(arrow) {
   return state.units.find((unit) => unit.id === arrow.sourceId && unit.hp > 0) ?? null;
 }
 
+function isDirectRangedArrow(arrow) {
+  if (!arrow) return false;
+  const blocked = new Set([
+    "boulder",
+    "rocketVolley",
+    "ironCavalryBomb",
+    "neuralBomb",
+    "elfSentryTower",
+    "campaignRain",
+    "campaignMissile",
+    "baseVolley",
+  ]);
+  return !blocked.has(arrow.type);
+}
+
 function attachCrossbowBomb(arrow) {
   const data = UNIT.crossbow;
   const source = getArrowSource(arrow);
-  const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true });
+  const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
   handleDamageDealt(source, arrow.target, dealt);
   maybeApplyOrderRangedStun(arrow, arrow.target, source);
   if (!arrow.target || arrow.target.kind === "statue" || arrow.target.hp <= 0 || isUnitHidden(arrow.target)) return;
@@ -14895,6 +15070,31 @@ function updateAncientLasers(dt) {
   state.ancientLasers = (state.ancientLasers ?? []).filter((laser) => !laser.done);
 }
 
+function updateEmeraldBeams(dt) {
+  for (const beam of state.emeraldBeams ?? []) {
+    beam.life -= dt;
+    const caster = state.units.find((unit) => unit.id === beam.casterId && unit.hp > 0 && !isUnitHidden(unit));
+    const target = state.units.find((unit) => unit.id === beam.targetId && unit.hp > 0 && !isUnitHidden(unit));
+    if (!caster || !target || !areHostileSides(beam.side, target.side) || distanceTo(caster.x, caster.y, target.x, target.y ?? FIELD.ground) > beam.range + 40) {
+      beam.done = true;
+      continue;
+    }
+    beam.x1 = caster.x;
+    beam.y1 = caster.y - 78;
+    beam.x2 = target.x;
+    beam.y2 = (target.y ?? FIELD.ground) - 62;
+    beam.tick -= dt;
+    while (beam.tick <= 0 && beam.life > 0 && !beam.done) {
+      beam.tick += beam.tickEvery;
+      const dealt = applyUnitDamage(target, beam.damage, { label: "翡翠", color: "#8ee8a4", yOffset: -108, sourceSide: beam.side, sourceUnitId: beam.casterId, ignoreDodge: true });
+      const source = state.units.find((unit) => unit.id === beam.casterId) ?? null;
+      handleDamageDealt(source, target, dealt);
+      if (target.hp <= 0) beam.done = true;
+    }
+  }
+  state.emeraldBeams = (state.emeraldBeams ?? []).filter((beam) => !beam.done && beam.life > 0);
+}
+
 function updateDawnBeams(dt) {
   for (const beam of state.dawnBeams ?? []) {
     beam.life -= dt;
@@ -15178,12 +15378,13 @@ function applyDamage(target, amount, attackerSide, options = {}) {
   if (tryDodgeIncomingDamage(target, amount, options)) return 0;
   const damage = getModifiedDamage(target, amount, options);
   if (damage <= 0) return 0;
-  const hpDamage = absorbShieldDamage(target, damage);
+  const afterEmeraldShield = absorbEmeraldShieldDamage(target, damage, options);
+  const hpDamage = absorbShieldDamage(target, afterEmeraldShield);
   target.hp -= hpDamage;
   handleCovenantFatalSave(target);
   if (attackerSide && attackerSide !== "neutral" && hpDamage > 0) target.lastDamageSide = attackerSide;
   target.combatTimer = 3;
-  popText(target.x, target.y - 68, `-${damage}`, target.shieldHp > 0 && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
+  popText(target.x, target.y - 68, `-${damage}`, (target.shieldHp > 0 || target.emeraldShieldHp > 0) && hpDamage < damage ? "#9fc0ff" : "#f0a36a");
   return hpDamage;
 }
 
@@ -15192,7 +15393,8 @@ function applyUnitDamage(target, amount, options = {}) {
   if (tryDodgeIncomingDamage(target, amount, options)) return 0;
   const damage = options.modified === false ? amount : getModifiedDamage(target, amount, options);
   if (damage <= 0) return 0;
-  const hpDamage = absorbShieldDamage(target, damage);
+  const afterEmeraldShield = absorbEmeraldShieldDamage(target, damage, options);
+  const hpDamage = absorbShieldDamage(target, afterEmeraldShield);
   target.hp -= hpDamage;
   handleCovenantFatalSave(target);
   if (options.sourceSide && options.sourceSide !== "neutral" && hpDamage > 0) target.lastDamageSide = options.sourceSide;
@@ -15218,6 +15420,16 @@ function absorbShieldDamage(target, damage) {
   target.shieldHp -= shieldDamage;
   const overflow = Math.max(0, damage - shieldDamage);
   if (shieldDamage > 0) popText(target.x, target.y - 88, `盾 -${shieldDamage}`, "#9fc0ff");
+  return overflow;
+}
+
+function absorbEmeraldShieldDamage(target, damage, options = {}) {
+  if (!options.directRanged || !target.maxEmeraldShieldHp || target.emeraldShieldHp <= 0) return damage;
+  const shieldDamage = Math.min(target.emeraldShieldHp, damage);
+  target.emeraldShieldHp -= shieldDamage;
+  const overflow = Math.max(0, damage - shieldDamage);
+  if (shieldDamage > 0) popText(target.x, target.y - 100, `巨盾 -${shieldDamage}`, "#8ee8a4");
+  if (target.emeraldShieldHp <= 0) popText(target.x, target.y - 122, "巨盾破损", "#d7c090");
   return overflow;
 }
 
@@ -15336,7 +15548,7 @@ function shouldBecomeWorm(unit) {
 }
 
 function isElfEmpireUnit(type) {
-  return type === "elfSapling" || (FACTIONS.elf?.roster ?? []).includes(type);
+  return type === "elfSapling" || type === "elfEmeraldSentinel" || type === "elfSentryTower" || (FACTIONS.elf?.roster ?? []).includes(type);
 }
 
 function shouldTriggerElfDeathWisp(unit) {
@@ -15951,6 +16163,7 @@ function startCampaignSecondPhase() {
   state.jungleFields = [];
   state.ancientLogs = [];
   state.ancientLasers = [];
+  state.emeraldBeams = [];
   state.dawnBeams = [];
   state.heatBeams = [];
   state.healingFields = [];
@@ -16042,6 +16255,7 @@ function draw() {
   (state.jungleFields ?? []).forEach(drawJungleField);
   (state.ancientLogs ?? []).forEach(drawAncientLog);
   (state.ancientLasers ?? []).forEach(drawAncientLaser);
+  (state.emeraldBeams ?? []).forEach(drawEmeraldBeam);
   (state.dawnBeams ?? []).forEach(drawDawnBeam);
   (state.heatBeams ?? []).forEach(drawHeatBeam);
   state.healingFields.forEach(drawHealingField);
@@ -16509,6 +16723,26 @@ function drawAncientLaser(laser) {
   ctx.beginPath();
   ctx.moveTo(laser.x1, laser.y1);
   ctx.lineTo(laser.x2, laser.y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEmeraldBeam(beam) {
+  if (beam.x1 === undefined || beam.x2 === undefined) return;
+  ctx.save();
+  const pulse = 0.75 + Math.sin(performance.now() / 65) * 0.18;
+  ctx.globalAlpha = Math.max(0.35, pulse);
+  ctx.strokeStyle = "#35d982";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(beam.x1, beam.y1);
+  ctx.lineTo(beam.x2, beam.y2);
+  ctx.stroke();
+  ctx.strokeStyle = "#e8fff0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(beam.x1, beam.y1);
+  ctx.lineTo(beam.x2, beam.y2);
   ctx.stroke();
   ctx.restore();
 }
@@ -19826,25 +20060,66 @@ function drawWeapon(type, unit = null) {
       ctx.stroke();
     }
   } else if (type === "elfBladeDancer") {
-    ctx.strokeStyle = "#d7f6b8";
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#2f6b43";
+    ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(13, -27);
-    ctx.quadraticCurveTo(38 + armSwing * 8, -60 - armLift * 5, 58 + armSwing * 10, -48);
+    ctx.quadraticCurveTo(38 + armSwing * 8, -58 - armLift * 5, 60 + armSwing * 10, -42);
+    ctx.stroke();
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(52 + armSwing * 10, -48);
+    ctx.quadraticCurveTo(68 + armSwing * 12, -60, 80 + armSwing * 8, -45);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(47, 107, 67, 0.88)";
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-14, -69);
+    ctx.lineTo(-48, -57);
+    ctx.lineTo(-44, -26);
+    ctx.lineTo(-12, -18);
+    ctx.lineTo(1, -42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(142, 232, 164, 0.28)";
+    ctx.beginPath();
+    ctx.arc(-28, -44, 18, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "elfEmeraldSentinel") {
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
     ctx.moveTo(9, -28);
-    ctx.quadraticCurveTo(-18 - armSwing * 8, -56 - armLift * 5, -38 - armSwing * 10, -42);
+    ctx.lineTo(58, -66);
     ctx.stroke();
     ctx.strokeStyle = "#8ee8a4";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(48 + armSwing * 10, -54);
-    ctx.lineTo(66 + armSwing * 10, -62);
-    ctx.moveTo(-31 - armSwing * 10, -49);
-    ctx.lineTo(-50 - armSwing * 10, -57);
+    ctx.moveTo(48, -69);
+    ctx.lineTo(66, -72);
+    ctx.lineTo(56, -58);
     ctx.stroke();
-    ctx.fillStyle = "rgba(142, 232, 164, 0.32)";
+  } else if (type === "elfEmeraldWarlock") {
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.ellipse(0, -48, 25, 34, 0, 0, Math.PI * 2);
+    ctx.moveTo(12, -24);
+    ctx.lineTo(38, -78);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(31, -70);
+    ctx.quadraticCurveTo(55, -88, 63, -58);
+    ctx.moveTo(37, -78);
+    ctx.lineTo(52, -94);
+    ctx.stroke();
+    ctx.fillStyle = "#8ee8a4";
+    ctx.beginPath();
+    ctx.arc(54, -88, 8, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "elfSentryKeeper") {
     ctx.strokeStyle = "#315b36";
@@ -20263,6 +20538,10 @@ function drawUnitHp(unit) {
   if (unit.maxShieldHp > 0 && unit.shieldHp > 0) {
     ctx.fillStyle = "#9fc0ff";
     ctx.fillRect(-19, -93, 38 * (unit.shieldHp / unit.maxShieldHp), 4);
+  }
+  if (unit.maxEmeraldShieldHp > 0 && unit.emeraldShieldHp > 0) {
+    ctx.fillStyle = "#8ee8a4";
+    ctx.fillRect(-19, -99, 38 * (unit.emeraldShieldHp / unit.maxEmeraldShieldHp), 4);
   }
   if ((unit.armorReduction ?? 0) > 0 || unit.heavyArmorTimer > 0) {
     const reduction = Math.max(unit.armorReduction ?? 0, unit.heavyArmorTimer > 0 ? unit.heavyArmorReduction ?? 0 : 0);
@@ -20855,6 +21134,9 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("elfRootField", "树根区", "point");
       break;
+    case "elfEmeraldWarlock":
+      add("emeraldConvert", "翡翠化", "target");
+      break;
     case "elfStarPriest":
       actions[0].label = "待命";
       add("starSpiritShift", "星爆", "direct");
@@ -21029,6 +21311,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return true;
   if (button.id === "boneHarvest") return !canBoneHarvest(unit);
   if (button.id === "mageStoneGolem") return !findMageStoneGolemTarget(unit);
+  if (button.id === "emeraldConvert") return !findEmeraldConvertTarget(unit);
   if (button.id === "queenHeat" && getSideMagic(unit.side) < (UNIT.elfQueen.heatMagicCost ?? 50)) return true;
   if ((unit.manualSkillCooldowns?.[button.id] ?? 0) > 0) return true;
   return button.id !== "attack" && unit.cooldown > 0;
@@ -21154,6 +21437,7 @@ function getManualDisabledLabel(unit, button) {
     if (!findBoneHarvestCorpse(unit)) return "附近没有敌方尸体";
   }
   if (button.id === "mageStoneGolem" && !findMageStoneGolemTarget(unit)) return "没有可转化目标";
+  if (button.id === "emeraldConvert" && !findEmeraldConvertTarget(unit)) return "没有可翡翠化目标";
   if (button.id === "queenHeat" && getSideMagic(unit.side) < (UNIT.elfQueen.heatMagicCost ?? 50)) return `需要 ${UNIT.elfQueen.heatMagicCost ?? 50} 魔力`;
   if (button.id === "evolveGnawMiner") return getSwarmEvolveDisabledLabel(unit, "gnawMiner");
   if (button.id === "evolveBroodMother") return getSwarmEvolveDisabledLabel(unit, "broodMother");
@@ -21625,6 +21909,7 @@ function getManualActionCooldown(unit, id) {
     iceField: data.skillCooldown,
     mageWall: data.skillCooldown,
     mageStoneGolem: data.skillCooldown,
+    emeraldConvert: data.convertCooldown,
     elfRootField: data.rootFieldCooldown,
     ancientJungle: data.jungleCooldown,
     ancientTreants: data.treantSummonCooldown,
@@ -21662,6 +21947,8 @@ function castManualSkill(unit, id, target) {
       return true;
     case "mageStoneGolem":
       return castMageStoneGolem(unit, target);
+    case "emeraldConvert":
+      return castEmeraldConvert(unit, target);
     case "medusaSlay":
       if (!canMedusaSlay(unit, target)) {
         popText(unit.x, unit.y - 116, "无法石化", "#93d96b");
