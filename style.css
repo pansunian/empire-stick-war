@@ -852,10 +852,7 @@ body {
 }
 
 .elf .crest {
-  background:
-    radial-gradient(circle at 50% 42%, #efffe8 0 9%, #9ef0a8 10% 26%, transparent 27%),
-    radial-gradient(circle at 50% 50%, rgba(158, 240, 168, 0.28) 0 44%, transparent 45%),
-    linear-gradient(135deg, rgba(38, 96, 51, 0.95), rgba(12, 30, 18, 0.95));
+  background-image: url("./assets/factions/elf-crest.png?v=20260621-alpha");
 }
 
 button {
