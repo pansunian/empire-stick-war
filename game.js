@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-elf-ancient-sage";
+const APP_VERSION = "20260621-elf-queen";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -255,9 +255,9 @@ const AI_ROLE_PROFILES = {
   elf: {
     frontline: ["elfMercenary", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
     ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista"],
-    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfHealingSpirit"],
+    support: ["elfWisp", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
     raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
-    highPriority: ["elfForestBallista", "elfAncientSage", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
+    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -481,34 +481,80 @@ const UNIT = {
     treantSummonCount: 2,
     treantSummonDuration: 15,
     treantSummonCooldown: 25,
-    groveTreeCount: 4,
-    groveTreeDamage: 10,
-    groveTreeCooldown: 2,
-    groveDuration: 16,
-    groveRadius: 150,
-    groveCooldown: 22,
-    sanctuaryRadius: 220,
-    sanctuaryReduction: 0.35,
-    sanctuaryDuration: 8,
-    sanctuaryCooldown: 20,
+    logDistance: 400,
+    logDamage: 30,
+    logStun: 4,
+    logSpeed: 420,
+    logRadius: 64,
+    logCooldown: 15,
+    laserRange: 350,
+    laserDamage: 3,
+    laserTick: 0.2,
+    laserCooldown: 15,
     noBasicAttack: true,
+  },
+  elfQueen: {
+    name: "精灵女王",
+    cost: 400,
+    magicCost: 250,
+    hp: 350,
+    damage: 0,
+    range: 260,
+    speed: 34,
+    train: 8,
+    cooldown: 1,
+    dawnRange: 420,
+    dawnRadius: 120,
+    dawnDamage: 2,
+    dawnHeal: 1,
+    dawnTick: 0.2,
+    dawnDuration: 5,
+    dawnCooldown: 20,
+    fawnCount: 3,
+    fawnDuration: 14,
+    fawnCooldown: 20,
+    holyShieldCount: 5,
+    holyShieldRange: 460,
+    holyShieldReduction: 0.5,
+    holyShieldRangeBonus: 0.25,
+    holyShieldDuration: 10,
+    holyShieldCooldown: 18,
+    heatRange: 400,
+    heatRadius: 95,
+    heatDelay: 3,
+    heatDamage: 5,
+    heatTick: 0.2,
+    heatDuration: 5,
+    heatMagicCost: 50,
+    heatCooldown: 22,
+    healSpiritCount: 5,
+    healSpiritDuration: 10,
+    healSpiritCooldown: 15,
+    noBasicAttack: true,
+  },
+  elfFawnling: {
+    name: "小鹿人",
+    cost: 0,
+    hp: 90,
+    damage: 8,
+    range: 36,
+    speed: 68,
+    train: 0,
+    cooldown: 1,
+    summonOnly: true,
   },
   elfTreeGuard: {
     name: "树卫",
     cost: 200,
     magicCost: 100,
-    hp: 400,
+    hp: 500,
     damage: 15,
     range: 58,
-    speed: 34,
+    speed: 30,
     train: 5.8,
     cooldown: 1.6,
     aoeLimit: 3,
     splash: 70,
-    shieldBashRadius: 96,
-    shieldBashLimit: 3,
-    shieldBashStun: 3,
-    shieldBashCooldown: 16,
   },
   elfMoonDeerRider: {
     name: "月鹿骑手",
@@ -2252,7 +2298,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfForestBallista"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2421,13 +2467,15 @@ const UNIT_ICON = {
   elfRanger: "bow",
   elfShadowHunter: "bow",
   elfForestBallista: "bomb-crossbow",
-  elfTreeGuard: "spartan",
+  elfTreeGuard: "tree",
   elfMoonDeerRider: "spear",
   elfTreeMan: "tree",
   elfSapling: "tree",
   elfVineWarlock: "wizard-hat",
   elfStarPriest: "white-orb",
   elfAncientSage: "tree",
+  elfQueen: "white-orb",
+  elfFawnling: "spear",
   elfHealingSpirit: "white-orb",
 };
 
@@ -2441,7 +2489,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfForestBallista"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3492,14 +3540,16 @@ function formatSpecial(type) {
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
   if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
-  if (type === "elfTreeGuard") notes.push(`巨矛范围攻击，最多 ${data.aoeLimit} 人；技能盾顶眩晕最多 ${data.shieldBashLimit} 名敌人 ${data.shieldBashStun} 秒`);
+  if (type === "elfTreeGuard") notes.push(`一棵树卫，挥舞大棒造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人`);
   if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
   if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
   if (type === "elfSapling") notes.push(`召唤单位；不停向前推进，${data.damage} 伤害/${data.cooldown}秒`);
   if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
   if (type === "elfStarPriest") notes.push(`无普攻；每 ${data.spiritEvery} 秒生成 1 个治疗精灵，最多 ${data.spiritMax} 个；技能让所有治疗精灵切换为小精灵并自爆`);
   if (type === "elfHealingSpirit") notes.push(`召唤单位；每 ${data.healEvery} 秒治疗一名友军 ${data.healAmount} 生命`);
-  if (type === "elfAncientSage") notes.push(`无普攻；技能丛林减速敌人并让其攻击 ${Math.round(data.jungleMissChance * 100)}% 打偏，精灵每秒恢复 ${data.jungleHeal}；可限时召唤树人、生成树根树林领域、释放古木庇护`);
+  if (type === "elfAncientSage") notes.push(`无普攻；技能丛林减速敌人并让其攻击 ${Math.round(data.jungleMissChance * 100)}% 打偏，精灵每秒恢复 ${data.jungleHeal}；可限时召唤树人、滚木眩晕路径敌人、持续激光锁定高血量敌人`);
+  if (type === "elfQueen") notes.push(`无普攻；晨光持续伤害并治疗；召唤小鹿人；圣光为 5 名友军套盾并加射程；热线消耗 ${data.heatMagicCost} 魔力延迟落下热光柱；可生成回血精灵`);
+  if (type === "elfFawnling") notes.push("召唤单位；向前突击的小鹿人");
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
@@ -3823,7 +3873,10 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     webFields: [],
     rootFields: [],
     jungleFields: [],
-    groveFields: [],
+    ancientLogs: [],
+    ancientLasers: [],
+    dawnBeams: [],
+    heatBeams: [],
     swarmEggs: [],
     corpses: [],
     ghosts: [],
@@ -5543,7 +5596,10 @@ function update(dt) {
   updateWebFields(dt);
   updateRootFields(dt);
   updateJungleFields(dt);
-  updateGroveFields(dt);
+  updateAncientLogs(dt);
+  updateAncientLasers(dt);
+  updateDawnBeams(dt);
+  updateHeatBeams(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -5584,7 +5640,10 @@ function updateFourWayBattle(dt) {
   updateWebFields(dt);
   updateRootFields(dt);
   updateJungleFields(dt);
-  updateGroveFields(dt);
+  updateAncientLogs(dt);
+  updateAncientLasers(dt);
+  updateDawnBeams(dt);
+  updateHeatBeams(dt);
   updateGhosts(dt);
   updateDelayedSpells(dt);
   updateMeteors(dt);
@@ -7907,7 +7966,6 @@ function updateUnits(dt) {
     unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
     if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
     updateMoonDeerChargeState(unit, dt);
-    unit.elfShieldBashCooldown = Math.max(0, (unit.elfShieldBashCooldown ?? 0) - dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
@@ -7934,8 +7992,11 @@ function updateUnits(dt) {
     unit.vineRootTimer = Math.max(0, (unit.vineRootTimer ?? 0) - dt);
     unit.vineRootFieldCooldown = Math.max(0, (unit.vineRootFieldCooldown ?? 0) - dt);
     unit.shadowControlArrowTimer = Math.max(0, (unit.shadowControlArrowTimer ?? 0) - dt);
-    unit.ancientSanctuaryTimer = Math.max(0, (unit.ancientSanctuaryTimer ?? 0) - dt);
-    if (unit.ancientSanctuaryTimer <= 0) unit.ancientSanctuaryReduction = 0;
+    unit.queenHolyTimer = Math.max(0, (unit.queenHolyTimer ?? 0) - dt);
+    if (unit.queenHolyTimer <= 0) {
+      unit.queenHolyReduction = 0;
+      unit.queenHolyRangeBonus = 0;
+    }
     unit.boneStingerBurrowCooldown = Math.max(0, (unit.boneStingerBurrowCooldown ?? 0) - dt);
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
     unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
@@ -10402,8 +10463,8 @@ function getTowerRallyPoint(unit, side) {
 }
 
 function getUnitRange(unit) {
-  if (unit.type === "spearman" && !unit.spearThrown) return UNIT.spearman.throwRange;
-  return UNIT[unit.type]?.range ?? 0;
+  const baseRange = unit.type === "spearman" && !unit.spearThrown ? UNIT.spearman.throwRange : UNIT[unit.type]?.range ?? 0;
+  return (unit.queenHolyTimer ?? 0) > 0 ? baseRange * (1 + (unit.queenHolyRangeBonus ?? 0)) : baseRange;
 }
 
 function isInsideBlindSpot(unit, target) {
@@ -11213,48 +11274,167 @@ function summonAncientTreants(unit) {
   return true;
 }
 
-function castAncientGrove(unit, target) {
+function castAncientLog(unit) {
   const data = UNIT.elfAncientSage;
-  const x = clampWorldX(target.x);
-  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
-  const trees = [];
-  for (let i = 0; i < data.groveTreeCount; i += 1) {
-    const angle = -Math.PI / 2 + i * (Math.PI * 2 / data.groveTreeCount);
-    trees.push({
-      x: x + Math.cos(angle) * data.groveRadius * 0.48,
-      y: y + Math.sin(angle) * data.groveRadius * 0.28,
-      cooldown: i * 0.25,
-    });
-  }
-  state.groveFields = state.groveFields ?? [];
-  state.groveFields.push({
-    x,
-    y,
+  const dir = getUnitFacingDirection(unit);
+  state.ancientLogs = state.ancientLogs ?? [];
+  state.ancientLogs.push({
+    x: unit.x + dir * 42,
+    y: unit.y - 24,
+    startX: unit.x + dir * 42,
+    dir,
     side: unit.side,
-    radius: data.groveRadius,
-    damage: data.groveTreeDamage,
-    cooldown: data.groveTreeCooldown,
-    life: data.groveDuration,
-    duration: data.groveDuration,
-    trees,
+    distance: data.logDistance,
+    speed: data.logSpeed,
+    radius: data.logRadius,
+    damage: data.logDamage,
+    stun: data.logStun,
+    hitIds: new Set(),
   });
-  popText(x, y - 90, "树林领域", "#7fdc7f");
+  popText(unit.x, unit.y - 122, "滚木", "#8ee8a4");
   return true;
 }
 
-function castAncientSanctuary(unit) {
+function castAncientLaser(unit) {
   const data = UNIT.elfAncientSage;
+  const target = state.units
+    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => distanceTo(unit.x, unit.y, enemy.x, enemy.y ?? FIELD.ground) <= data.laserRange)
+    .sort((a, b) => b.hp - a.hp || distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))[0] ?? null;
+  if (!target) {
+    popText(unit.x, unit.y - 116, "没有激光目标", "#d9d0b8");
+    return false;
+  }
+  state.ancientLasers = state.ancientLasers ?? [];
+  state.ancientLasers.push({
+    casterId: unit.id,
+    targetId: target.id,
+    side: unit.side,
+    range: data.laserRange,
+    damage: data.laserDamage,
+    tickEvery: data.laserTick,
+    tick: 0,
+  });
+  popText(unit.x, unit.y - 122, "古木激光", "#d7f6b8");
+  return true;
+}
+
+function castQueenDawn(unit, target) {
+  const data = UNIT.elfQueen;
+  if (!isPointInSkillRange(unit, target, data.dawnRange)) {
+    popText(unit.x, unit.y - 116, "晨光距离太远", "#d9d0b8");
+    return false;
+  }
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  state.dawnBeams = state.dawnBeams ?? [];
+  state.dawnBeams.push({
+    x,
+    y,
+    side: unit.side,
+    radius: data.dawnRadius,
+    damage: data.dawnDamage,
+    heal: data.dawnHeal,
+    tickEvery: data.dawnTick,
+    tick: 0,
+    life: data.dawnDuration,
+    duration: data.dawnDuration,
+  });
+  popText(x, y - 112, "晨光", "#fff2a8");
+  return true;
+}
+
+function summonQueenFawnlings(unit) {
+  const data = UNIT.elfQueen;
+  const dir = getUnitFacingDirection(unit);
+  for (let i = 0; i < data.fawnCount; i += 1) {
+    const fawn = spawnUnit("elfFawnling", unit.side, clampWorldX(unit.x + dir * (42 + i * 24)));
+    fawn.y = unit.y + (i - 1) * 24;
+    fawn.timedLife = data.fawnDuration;
+    fawn.forceCharge = true;
+    fawn.summonerId = unit.id;
+    fawn.noCorpse = true;
+  }
+  popText(unit.x, unit.y - 122, "小鹿人 x3", "#d7f6b8");
+  return true;
+}
+
+function castQueenHolyShield(unit) {
+  const data = UNIT.elfQueen;
   const allies = state.units
     .filter((ally) => ally.side === unit.side && ally.hp > 0 && !isUnitHidden(ally) && !UNIT[ally.type]?.untargetable)
-    .filter((ally) => distanceTo(unit.x, unit.y, ally.x, ally.y ?? FIELD.ground) <= data.sanctuaryRadius);
+    .filter((ally) => distanceTo(unit.x, unit.y, ally.x, ally.y ?? FIELD.ground) <= data.holyShieldRange)
+    .sort((a, b) => getQueenHolyShieldScore(b) - getQueenHolyShieldScore(a))
+    .slice(0, data.holyShieldCount);
+  if (!allies.length) {
+    popText(unit.x, unit.y - 116, "没有可加护目标", "#d9d0b8");
+    return false;
+  }
   allies.forEach((ally) => {
-    ally.ancientSanctuaryTimer = data.sanctuaryDuration;
-    ally.ancientSanctuaryReduction = data.sanctuaryReduction;
-    clearPoison(ally, "古木解毒");
-    popText(ally.x, ally.y - 108, "古木庇护", "#d7f6b8");
+    ally.queenHolyTimer = data.holyShieldDuration;
+    ally.queenHolyReduction = data.holyShieldReduction;
+    ally.queenHolyRangeBonus = data.holyShieldRangeBonus;
+    popText(ally.x, ally.y - 110, "圣光", "#fff2a8");
   });
-  state.blasts.push({ x: unit.x, y: unit.y - 45, radius: data.sanctuaryRadius, life: 0.32, duration: 0.32, color: "#d7f6b8" });
+  state.blasts.push({ x: unit.x, y: unit.y - 48, radius: data.holyShieldRange * 0.55, life: 0.3, duration: 0.3, color: "#fff2a8" });
   return true;
+}
+
+function getQueenHolyShieldScore(unit) {
+  const data = UNIT[unit.type] ?? {};
+  return (data.range ?? 0) * 0.5 + (unit.maxHp - unit.hp) * 0.6 + (data.damage ?? 0) * 3 + (unit.type === "elfQueen" ? -80 : 0);
+}
+
+function castQueenHeatRay(unit, target) {
+  const data = UNIT.elfQueen;
+  if (getSideMagic(unit.side) < data.heatMagicCost) {
+    popText(unit.x, unit.y - 116, `需要 ${data.heatMagicCost} 魔力`, "#f3c963");
+    return false;
+  }
+  if (!isPointInSkillRange(unit, target, data.heatRange)) {
+    popText(unit.x, unit.y - 116, "热线距离太远", "#d9d0b8");
+    return false;
+  }
+  addSideMagic(unit.side, -data.heatMagicCost);
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  state.heatBeams = state.heatBeams ?? [];
+  state.heatBeams.push({
+    x,
+    y,
+    side: unit.side,
+    radius: data.heatRadius,
+    delay: data.heatDelay,
+    damage: data.heatDamage,
+    tickEvery: data.heatTick,
+    tick: data.heatDelay,
+    life: data.heatDelay + data.heatDuration,
+    duration: data.heatDuration,
+  });
+  popText(x, y - 118, "热线标记", "#ffce7a");
+  updateHud();
+  return true;
+}
+
+function summonQueenHealingSpirits(unit) {
+  const data = UNIT.elfQueen;
+  for (let i = 0; i < data.healSpiritCount; i += 1) {
+    const angle = (i / data.healSpiritCount) * Math.PI * 2;
+    const spirit = spawnUnit("elfHealingSpirit", unit.side, clampWorldX(unit.x + Math.cos(angle) * 54));
+    spirit.y = unit.y + Math.sin(angle) * 32;
+    spirit.timedLife = data.healSpiritDuration;
+    spirit.summonerId = unit.id;
+    spirit.noCorpse = true;
+    spirit.noElfDeathWisp = true;
+    spirit.spiritOrbitSeed = angle;
+  }
+  popText(unit.x, unit.y - 122, "回血精灵 x5", "#b8f6ff");
+  return true;
+}
+
+function isPointInSkillRange(unit, target, range) {
+  if (!target) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= range;
 }
 
 function updateElfStarPriest(unit, dt) {
@@ -11340,29 +11520,6 @@ function castStarSpiritShift(unit) {
     explodeElfWispAt(wisp, findElfWispBlastTarget(wisp, 160));
   });
   popText(unit.x, unit.y - 122, `星爆 x${spirits.length}`, "#b8f6ff");
-  return true;
-}
-
-function castElfShieldBash(unit) {
-  const data = UNIT.elfTreeGuard;
-  if ((unit.elfShieldBashCooldown ?? 0) > 0) return false;
-  const dir = getUnitFacingDirection(unit);
-  const targets = state.units
-    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
-    .filter((enemy) => {
-      const dx = (enemy.x - unit.x) * dir;
-      return dx >= -12 && dx <= data.shieldBashRadius && Math.abs((enemy.y ?? FIELD.ground) - unit.y) <= data.shieldBashRadius;
-    })
-    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))
-    .slice(0, data.shieldBashLimit);
-  if (!targets.length) {
-    popText(unit.x, unit.y - 112, "盾顶未命中", "#d9d0b8");
-    return false;
-  }
-  targets.forEach((enemy) => applyStun(enemy, data.shieldBashStun));
-  unit.elfShieldBashCooldown = data.shieldBashCooldown;
-  state.blasts.push({ x: unit.x + dir * 44, y: unit.y - 45, radius: 52, life: 0.24, duration: 0.24, color: "#d7f6b8" });
-  popText(unit.x, unit.y - 116, `盾顶 x${targets.length}`, "#d7f6b8");
   return true;
 }
 
@@ -14390,17 +14547,74 @@ function updateJungleFields(dt) {
   state.jungleFields = (state.jungleFields ?? []).filter((field) => field.life > 0);
 }
 
-function updateGroveFields(dt) {
-  for (const field of state.groveFields ?? []) {
-    field.life -= dt;
-    for (const tree of field.trees ?? []) {
-      tree.cooldown -= dt;
-      if (tree.cooldown > 0 || field.life <= 0) continue;
-      tree.cooldown += field.cooldown;
-      fireGroveTreeRoot(field, tree);
+function updateAncientLogs(dt) {
+  for (const log of state.ancientLogs ?? []) {
+    log.x += log.dir * log.speed * dt;
+    const traveled = Math.abs(log.x - log.startX);
+    const targets = state.units
+      .filter((enemy) => areHostileSides(log.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+      .filter((enemy) => !log.hitIds.has(enemy.id))
+      .filter((enemy) => Math.abs(enemy.x - log.x) <= log.radius && Math.abs((enemy.y ?? FIELD.ground) - log.y) <= log.radius);
+    targets.forEach((enemy) => {
+      log.hitIds.add(enemy.id);
+      const dealt = applyUnitDamage(enemy, log.damage, { label: "滚木", color: "#8ee8a4", yOffset: -98, sourceSide: log.side });
+      if (dealt > 0) applyStun(enemy, log.stun);
+    });
+    log.life = Math.max(0, log.distance - traveled);
+  }
+  state.ancientLogs = (state.ancientLogs ?? []).filter((log) => log.life > 0 && log.x >= -120 && log.x <= FIELD.width + 120);
+}
+
+function updateAncientLasers(dt) {
+  for (const laser of state.ancientLasers ?? []) {
+    const caster = state.units.find((unit) => unit.id === laser.casterId && unit.hp > 0 && !isUnitHidden(unit));
+    const target = state.units.find((unit) => unit.id === laser.targetId && unit.hp > 0 && !isUnitHidden(unit));
+    if (!caster || !target || !areHostileSides(laser.side, target.side) || distanceTo(caster.x, caster.y, target.x, target.y ?? FIELD.ground) > laser.range) {
+      laser.done = true;
+      continue;
+    }
+    laser.x1 = caster.x;
+    laser.y1 = caster.y - 82;
+    laser.x2 = target.x;
+    laser.y2 = (target.y ?? FIELD.ground) - 62;
+    laser.tick -= dt;
+    while (laser.tick <= 0 && !laser.done) {
+      laser.tick += laser.tickEvery;
+      applyUnitDamage(target, laser.damage, { label: "激光", color: "#d7f6b8", yOffset: -108, sourceSide: laser.side });
+      if (target.hp <= 0) laser.done = true;
     }
   }
-  state.groveFields = (state.groveFields ?? []).filter((field) => field.life > 0);
+  state.ancientLasers = (state.ancientLasers ?? []).filter((laser) => !laser.done);
+}
+
+function updateDawnBeams(dt) {
+  for (const beam of state.dawnBeams ?? []) {
+    beam.life -= dt;
+    beam.tick -= dt;
+    while (beam.tick <= 0 && beam.life > 0) {
+      beam.tick += beam.tickEvery;
+      pulseDawnBeam(beam);
+    }
+  }
+  state.dawnBeams = (state.dawnBeams ?? []).filter((beam) => beam.life > 0);
+}
+
+function updateHeatBeams(dt) {
+  for (const beam of state.heatBeams ?? []) {
+    beam.life -= dt;
+    if (beam.delay > 0) {
+      beam.delay = Math.max(0, beam.delay - dt);
+      if (beam.delay > 0) continue;
+      beam.tick = 0;
+      popText(beam.x, beam.y - 116, "热光柱", "#ff9b45");
+    }
+    beam.tick -= dt;
+    while (beam.tick <= 0 && beam.life > 0) {
+      beam.tick += beam.tickEvery;
+      pulseHeatBeam(beam);
+    }
+  }
+  state.heatBeams = (state.heatBeams ?? []).filter((beam) => beam.life > 0);
 }
 
 function updateHealingFields(dt) {
@@ -14415,6 +14629,30 @@ function updateHealingFields(dt) {
   state.healingFields = state.healingFields.filter((field) => field.life > 0);
 }
 
+function pulseDawnBeam(beam) {
+  state.units.forEach((unit) => {
+    if (unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, beam.x, beam.y) > beam.radius) return;
+    if (areHostileSides(beam.side, unit.side)) {
+      applyUnitDamage(unit, beam.damage, { label: "晨光", color: "#fff2a8", yOffset: -100, sourceSide: beam.side });
+      return;
+    }
+    if (unit.side === beam.side && unit.hp < unit.maxHp) {
+      const healed = Math.min(beam.heal, unit.maxHp - unit.hp);
+      unit.hp += healed;
+      if (Math.random() < 0.25) popText(unit.x, unit.y - 95, `晨光 +${healed}`, "#fff2a8");
+    }
+  });
+}
+
+function pulseHeatBeam(beam) {
+  state.units.forEach((unit) => {
+    if (!areHostileSides(beam.side, unit.side) || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, beam.x, beam.y) > beam.radius) return;
+    applyUnitDamage(unit, beam.damage, { label: "热线", color: "#ff9b45", yOffset: -104, sourceSide: beam.side });
+  });
+}
+
 function healJungleField(field) {
   state.units.forEach((unit) => {
     if (unit.side !== field.side || !isElfEmpireUnit(unit.type)) return;
@@ -14423,29 +14661,6 @@ function healJungleField(field) {
     const healed = Math.min(field.heal, unit.maxHp - unit.hp);
     unit.hp += healed;
     popText(unit.x, unit.y - 96, `丛林 +${healed}`, "#8ee8a4");
-  });
-}
-
-function fireGroveTreeRoot(field, tree) {
-  const target = state.units
-    .filter((enemy) => areHostileSides(field.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
-    .filter((enemy) => distanceTo(enemy.x, enemy.y ?? FIELD.ground, tree.x, tree.y) <= field.radius)
-    .sort((a, b) => distanceTo(a.x, a.y ?? FIELD.ground, tree.x, tree.y) - distanceTo(b.x, b.y ?? FIELD.ground, tree.x, tree.y))[0];
-  if (!target) return;
-  const dealt = applyUnitDamage(target, field.damage, {
-    label: "树根",
-    color: "#8ee8a4",
-    yOffset: -90,
-    sourceSide: field.side,
-  });
-  if (dealt <= 0) return;
-  state.spikes.push({
-    x1: tree.x,
-    x2: target.x,
-    y: (target.y ?? FIELD.ground) - 14,
-    side: field.side,
-    life: 0.28,
-    duration: 0.28,
   });
 }
 
@@ -14762,8 +14977,8 @@ function getModifiedDamage(target, amount, options = {}) {
   if (target.covenantDamageReductionTimer > 0) {
     damage *= 1 - (target.covenantDamageReduction ?? UNIT.covenantGuard.guardReduction);
   }
-  if ((target.ancientSanctuaryTimer ?? 0) > 0) {
-    damage *= 1 - (target.ancientSanctuaryReduction ?? UNIT.elfAncientSage.sanctuaryReduction);
+  if ((target.queenHolyTimer ?? 0) > 0) {
+    damage *= 1 - (target.queenHolyReduction ?? UNIT.elfQueen.holyShieldReduction);
   }
   return Math.max(1, Math.round(damage * 10) / 10);
 }
@@ -15425,7 +15640,10 @@ function startCampaignSecondPhase() {
   state.thornFields = [];
   state.rootFields = [];
   state.jungleFields = [];
-  state.groveFields = [];
+  state.ancientLogs = [];
+  state.ancientLasers = [];
+  state.dawnBeams = [];
+  state.heatBeams = [];
   state.healingFields = [];
   state.spikes = [];
   phase.enemyStart.forEach((type, index) => {
@@ -15513,7 +15731,10 @@ function draw() {
   state.thornFields.forEach(drawThornField);
   (state.rootFields ?? []).forEach(drawRootField);
   (state.jungleFields ?? []).forEach(drawJungleField);
-  (state.groveFields ?? []).forEach(drawGroveField);
+  (state.ancientLogs ?? []).forEach(drawAncientLog);
+  (state.ancientLasers ?? []).forEach(drawAncientLaser);
+  (state.dawnBeams ?? []).forEach(drawDawnBeam);
+  (state.heatBeams ?? []).forEach(drawHeatBeam);
   state.healingFields.forEach(drawHealingField);
   (state.slimeFields ?? []).forEach(drawSlimeField);
   (state.webFields ?? []).forEach(drawWebField);
@@ -15943,28 +16164,101 @@ function drawJungleField(field) {
   ctx.restore();
 }
 
-function drawGroveField(field) {
-  const alpha = Math.max(0.24, Math.min(0.72, field.life / field.duration));
+function drawAncientLog(log) {
+  ctx.save();
+  ctx.translate(log.x, log.y);
+  ctx.rotate((performance.now() / 140) * log.dir);
+  ctx.fillStyle = "#6b4a2d";
+  ctx.strokeStyle = "#2f2118";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(-46, -18, 92, 36, 18);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(215, 246, 184, 0.62)";
+  ctx.lineWidth = 3;
+  for (let x = -28; x <= 28; x += 28) {
+    ctx.beginPath();
+    ctx.arc(x, 0, 13, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAncientLaser(laser) {
+  if (laser.x1 === undefined || laser.x2 === undefined) return;
+  ctx.save();
+  ctx.globalAlpha = 0.82 + Math.sin(performance.now() / 90) * 0.12;
+  ctx.strokeStyle = "#d7f6b8";
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(laser.x1, laser.y1);
+  ctx.lineTo(laser.x2, laser.y2);
+  ctx.stroke();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(laser.x1, laser.y1);
+  ctx.lineTo(laser.x2, laser.y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDawnBeam(beam) {
+  const alpha = Math.max(0.22, Math.min(0.78, beam.life / beam.duration));
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(field.x, field.y);
-  ctx.fillStyle = "rgba(28, 76, 36, 0.22)";
+  const gradient = ctx.createRadialGradient(beam.x, beam.y, 4, beam.x, beam.y, beam.radius);
+  gradient.addColorStop(0, "rgba(255, 245, 170, 0.68)");
+  gradient.addColorStop(0.58, "rgba(255, 225, 116, 0.28)");
+  gradient.addColorStop(1, "rgba(255, 245, 170, 0)");
+  ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.ellipse(0, 0, field.radius, field.radius * 0.38, 0, 0, Math.PI * 2);
+  ctx.ellipse(beam.x, beam.y, beam.radius, beam.radius * 0.38, 0, 0, Math.PI * 2);
   ctx.fill();
-  (field.trees ?? []).forEach((tree) => {
-    const x = tree.x - field.x;
-    const y = tree.y - field.y;
-    ctx.fillStyle = "#5d3f24";
-    ctx.fillRect(x - 5, y - 40, 10, 34);
-    ctx.fillStyle = "#6fbf62";
+  ctx.strokeStyle = "rgba(255, 250, 210, 0.8)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(beam.x - 18, FIELD.minY ?? 70);
+  ctx.lineTo(beam.x, beam.y - 28);
+  ctx.lineTo(beam.x + 18, FIELD.minY ?? 70);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawHeatBeam(beam) {
+  ctx.save();
+  if (beam.delay > 0) {
+    const pulse = 1 + Math.sin(performance.now() / 120) * 0.08;
+    ctx.globalAlpha = 0.72;
+    ctx.strokeStyle = "#ffce7a";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 7]);
     ctx.beginPath();
-    ctx.arc(x, y - 46, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(215, 246, 184, 0.65)";
-    ctx.lineWidth = 2;
+    ctx.ellipse(beam.x, beam.y, beam.radius * pulse, beam.radius * 0.36 * pulse, 0, 0, Math.PI * 2);
     ctx.stroke();
-  });
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
+  const activeLife = Math.max(0.2, Math.min(1, beam.life / beam.duration));
+  ctx.globalAlpha = 0.82 * activeLife;
+  const gradient = ctx.createLinearGradient(beam.x, FIELD.minY ?? 70, beam.x, beam.y + 48);
+  gradient.addColorStop(0, "rgba(255, 245, 190, 0)");
+  gradient.addColorStop(0.42, "rgba(255, 206, 122, 0.68)");
+  gradient.addColorStop(1, "rgba(255, 95, 42, 0.28)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(beam.x - 34, FIELD.minY ?? 70);
+  ctx.lineTo(beam.x + 34, FIELD.minY ?? 70);
+  ctx.lineTo(beam.x + beam.radius * 0.42, beam.y + 60);
+  ctx.lineTo(beam.x - beam.radius * 0.42, beam.y + 60);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(255, 124, 58, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(beam.x, beam.y, beam.radius, beam.radius * 0.36, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -19223,18 +19517,24 @@ function drawWeapon(type, unit = null) {
       ctx.stroke();
     }
   } else if (type === "elfTreeGuard") {
-    ctx.strokeStyle = "#315b36";
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#5d3f24";
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(12, -25);
-    ctx.lineTo(66, -72);
+    ctx.moveTo(-6, -18);
+    ctx.lineTo(-4, -72);
     ctx.stroke();
-    ctx.fillStyle = "rgba(142, 232, 164, 0.72)";
-    ctx.strokeStyle = "#d7f6b8";
-    ctx.lineWidth = 3;
+    ctx.fillStyle = "rgba(96, 166, 82, 0.78)";
     ctx.beginPath();
-    ctx.ellipse(-18, -43, 18, 28, 0.2, 0, Math.PI * 2);
+    ctx.arc(-4, -78, 28, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.strokeStyle = "#6b4a2d";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(12, -34);
+    ctx.lineTo(68, -62);
     ctx.stroke();
   } else if (type === "elfMoonDeerRider") {
     ctx.strokeStyle = "#d7f6b8";
@@ -19356,6 +19656,44 @@ function drawWeapon(type, unit = null) {
     ctx.beginPath();
     ctx.arc(37, -86, 12, 0, Math.PI * 2);
     ctx.fill();
+  } else if (type === "elfQueen") {
+    ctx.strokeStyle = "#f2ffe6";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(13, -24);
+    ctx.lineTo(38, -84);
+    ctx.stroke();
+    ctx.fillStyle = "#fff2a8";
+    ctx.shadowColor = "#fff2a8";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(42, -90, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-14, -88);
+    ctx.lineTo(-5, -101);
+    ctx.lineTo(4, -88);
+    ctx.lineTo(14, -101);
+    ctx.lineTo(23, -88);
+    ctx.stroke();
+  } else if (type === "elfFawnling") {
+    ctx.strokeStyle = "#d7f6b8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, -28);
+    ctx.lineTo(48, -58);
+    ctx.stroke();
+    ctx.strokeStyle = "#6f9f58";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -76);
+    ctx.quadraticCurveTo(-24, -92, -30, -78);
+    ctx.moveTo(-2, -78);
+    ctx.quadraticCurveTo(-7, -96, 7, -86);
+    ctx.stroke();
   } else if (type === "earthElement") {
     drawStoneWeapon(1);
   } else if (type === "waterElement") {
@@ -20136,9 +20474,6 @@ function getManualActions(unit) {
       add("treeRoot", "树根", "target");
       add("toggleRoot", unit.rooted ? "拔根" : "扎根", "direct");
       break;
-    case "elfTreeGuard":
-      add("elfShieldBash", "盾顶", "direct");
-      break;
     case "elfMoonDeerRider":
       add("moonDeerCharge", "冲刺", "direct");
       break;
@@ -20154,8 +20489,16 @@ function getManualActions(unit) {
       actions[0].label = "待命";
       add("ancientJungle", "丛林", "point");
       add("ancientTreants", "树人", "direct");
-      add("ancientGrove", "树林", "point");
-      add("ancientSanctuary", "庇护", "direct");
+      add("ancientLog", "滚木", "direct");
+      add("ancientLaser", "激光", "direct");
+      break;
+    case "elfQueen":
+      actions[0].label = "待命";
+      add("queenDawn", "晨光", "point");
+      add("queenFawns", "小鹿", "direct");
+      add("queenHoly", "圣光", "direct");
+      add("queenHeat", "热线", "point");
+      add("queenSpirits", "回血灵", "direct");
       break;
     case "dreadfire":
       add("fireDragon", "火龙");
@@ -20288,7 +20631,6 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return true;
-  if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return true;
   if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return true;
   if (button.id === "moonDeerCharge" && ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0)) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
@@ -20313,6 +20655,7 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return true;
   if (button.id === "boneHarvest") return !canBoneHarvest(unit);
   if (button.id === "mageStoneGolem") return !findMageStoneGolemTarget(unit);
+  if (button.id === "queenHeat" && getSideMagic(unit.side) < (UNIT.elfQueen.heatMagicCost ?? 50)) return true;
   if ((unit.manualSkillCooldowns?.[button.id] ?? 0) > 0) return true;
   return button.id !== "attack" && unit.cooldown > 0;
 }
@@ -20437,6 +20780,7 @@ function getManualDisabledLabel(unit, button) {
     if (!findBoneHarvestCorpse(unit)) return "附近没有敌方尸体";
   }
   if (button.id === "mageStoneGolem" && !findMageStoneGolemTarget(unit)) return "没有可转化目标";
+  if (button.id === "queenHeat" && getSideMagic(unit.side) < (UNIT.elfQueen.heatMagicCost ?? 50)) return `需要 ${UNIT.elfQueen.heatMagicCost ?? 50} 魔力`;
   if (button.id === "evolveGnawMiner") return getSwarmEvolveDisabledLabel(unit, "gnawMiner");
   if (button.id === "evolveBroodMother") return getSwarmEvolveDisabledLabel(unit, "broodMother");
   if (button.id === "evolveAshWorm") return getSwarmEvolveDisabledLabel(unit, "ashWorm");
@@ -20446,7 +20790,6 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return `冷却 ${Math.ceil(unit.vineRootFieldCooldown)}秒`;
-  if (button.id === "elfShieldBash" && unit.elfShieldBashCooldown > 0) return `冷却 ${Math.ceil(unit.elfShieldBashCooldown)}秒`;
   if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return "没有治疗精灵";
   if (button.id === "moonDeerCharge") {
     if ((unit.moonDeerChargeTimer ?? 0) > 0) return "冲刺中";
@@ -20513,10 +20856,6 @@ function executeManualAction(unit, action, point) {
   }
   if (action.id === "spiderWeb") {
     castSpiderWeb(unit);
-    return;
-  }
-  if (action.id === "elfShieldBash") {
-    castElfShieldBash(unit);
     return;
   }
   if (action.id === "moonDeerCharge") {
@@ -20915,8 +21254,13 @@ function getManualActionCooldown(unit, id) {
     elfRootField: data.rootFieldCooldown,
     ancientJungle: data.jungleCooldown,
     ancientTreants: data.treantSummonCooldown,
-    ancientGrove: data.groveCooldown,
-    ancientSanctuary: data.sanctuaryCooldown,
+    ancientLog: data.logCooldown,
+    ancientLaser: data.laserCooldown,
+    queenDawn: data.dawnCooldown,
+    queenFawns: data.fawnCooldown,
+    queenHoly: data.holyShieldCooldown,
+    queenHeat: data.heatCooldown,
+    queenSpirits: data.healSpiritCooldown,
   };
   return table[id] ?? data.cooldown ?? 1;
 }
@@ -21000,10 +21344,20 @@ function castManualSkill(unit, id, target) {
       return castAncientJungle(unit, target);
     case "ancientTreants":
       return summonAncientTreants(unit);
-    case "ancientGrove":
-      return castAncientGrove(unit, target);
-    case "ancientSanctuary":
-      return castAncientSanctuary(unit);
+    case "ancientLog":
+      return castAncientLog(unit);
+    case "ancientLaser":
+      return castAncientLaser(unit);
+    case "queenDawn":
+      return castQueenDawn(unit, target);
+    case "queenFawns":
+      return summonQueenFawnlings(unit);
+    case "queenHoly":
+      return castQueenHolyShield(unit);
+    case "queenHeat":
+      return castQueenHeatRay(unit, target);
+    case "queenSpirits":
+      return summonQueenHealingSpirits(unit);
     case "fireDragon":
       castFireDragon(unit, target);
       return true;
