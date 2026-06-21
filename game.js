@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-cache-refresh";
+const APP_VERSION = "20260621-parasite";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -175,9 +175,59 @@ const ELEMENT_AI_CASTER_CORE = ["vUnit", "treeEnt", "dreadfire", "redflame"];
 const ELEMENT_AI_MERGE_PRIORITY = ["vUnit", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "rog", "hill", "linghan", "electricGate", "scaldStrike"];
 const ELEMENT_AI_HARASSERS = new Set(["earthElement", "waterElement", "fireElement", "windElement", "treeEnt", "dreadfire", "redflame", "stormLich", "hurricane", "vUnit"]);
 const SWARM_AI_SUMMONERS = ["antQueen", "broodMother", "ashWorm", "giantSpider"];
-const SWARM_AI_FIRE_SUPPORT = ["hoodCaterpillar", "caterpillar", "corrosiveSpitter", "boneStinger", "lurker"];
+const SWARM_AI_FIRE_SUPPORT = ["hoodCaterpillar", "caterpillar", "corrosiveSpitter", "boneStinger", "lurker", "parasite"];
 const SWARM_AI_MEATSHIELDS = ["heavyAnt", "ironAnt", "swarmWorm"];
 const SWARM_AI_EVOLUTION_PRIORITY = ["gnawMiner", "antQueen", "broodMother", "ashWorm", "giantSpider", "hoodCaterpillar", "heavyAnt", "lurker"];
+const PARASITE_BLOCKED_UNITS = new Set(["deathGod", "deathGodClone", "vUnit", "vClone", "godVUnit", "elfQueen", "elfAncientSage"]);
+const PARASITE_NON_BIOLOGICAL_UNITS = new Set([
+  "heavyCannon",
+  "catapult",
+  "rocketCart",
+  "undeadCatapult",
+  "arrowShieldCart",
+  "electricGate",
+  "scaldStrike",
+  "stoneGolem",
+  "orderMiniBomb",
+  "wraithMiner",
+  "elfWisp",
+  "elfHealingSpirit",
+]);
+const PARASITE_CASTER_ATTACKERS = new Set([
+  "mage",
+  "archmage",
+  "monk",
+  "summoner",
+  "necromancer",
+  "undeadMage",
+  "graveDigger",
+  "bannerBearer",
+  "candlelight",
+  "deathGod",
+  "deathGodClone",
+  "earthElement",
+  "waterElement",
+  "fireElement",
+  "windElement",
+  "treeEnt",
+  "dreadfire",
+  "redflame",
+  "stormLich",
+  "hurricane",
+  "vUnit",
+  "vClone",
+  "prometheus",
+  "zeus",
+  "shaman",
+  "priest",
+  "corrosiveSpitter",
+  "boneStinger",
+  "lurker",
+  "elfVineWarlock",
+  "elfStarPriest",
+  "elfAncientSage",
+  "elfQueen",
+]);
 const FREE_MERGE_UNITS = new Set(["scaldStrike", "electricGate"]);
 const WIND_MERGED_UNITS = new Set(["dreadfire", "stormLich", "hurricane", "electricGate"]);
 const AOE_TARGET_LIMIT = 5;
@@ -678,6 +728,20 @@ const UNIT = {
     corrosionDpsGrowth: 1,
     corrosionDuration: 5,
     corrosionSlow: 0.75,
+  },
+  parasite: {
+    name: "寄生虫",
+    cost: 0,
+    magicCost: 100,
+    hp: 60,
+    damage: 0,
+    range: 0,
+    speed: 46,
+    train: 4.2,
+    cooldown: 1,
+    parasiteEvery: 5,
+    parasiteRange: 230,
+    noBasicAttack: true,
   },
   swarmWorm: {
     name: "沙虫",
@@ -2292,7 +2356,7 @@ const FACTIONS = {
   },
   swarm: {
     name: "虫群帝国",
-    roster: ["crawler", "ironAnt", "poisonBug", "swarmWorm", "spider", "corrosiveSpitter", "boneStinger", "caterpillar"],
+    roster: ["crawler", "ironAnt", "poisonBug", "parasite", "swarmWorm", "spider", "corrosiveSpitter", "boneStinger", "caterpillar"],
     startingUnits: ["crawler", "crawler", "ironAnt"],
     mineColor: "#b6d56d",
   },
@@ -2446,6 +2510,7 @@ const UNIT_ICON = {
   gnawMiner: "claws",
   crawler: "claws",
   poisonBug: "venom",
+  parasite: "venom",
   swarmWorm: "claws",
   broodMother: "venom",
   locust: "wing",
@@ -2488,7 +2553,7 @@ const STAT_GROUPS = [
   ["混沌帝国", ["miner", "creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "summonedApeMan", "orc", "berserkOrc", "minotaur", "hornKnightRider", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "medusa", "darkKnightBrother", "suikai"]],
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
-  ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
+  ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "parasite", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
   ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
 ];
 
@@ -2587,7 +2652,7 @@ const CAMPAIGN_UNLOCKS = {
   chaos: ["creeper", "goblin", "goblinExpert", "arrowShieldCart", "shaman", "priest", "apeMan", "orc", "berserkOrc", "minotaur", "rhinoMan", "bomber", "javelinThrower", "goblinVulture", "griffinBomber", "machete", "undead", "ghoul", "poisonZombie", "darkKnight", "undeadMage"],
   undeadEmpire: ["summoner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"],
   element: ["hill", "linghan", "redflame", "stormLich", "hurricane", "vUnit", "electricGate", "dreadfire", "treeEnt", "rog", "scaldStrike", "windElement"],
-  swarm: ["crawler", "poisonBug", "ironAnt", "swarmWorm", "antQueen", "heavyAnt", "gnawMiner", "corrosiveSpitter"],
+  swarm: ["crawler", "poisonBug", "parasite", "ironAnt", "swarmWorm", "antQueen", "heavyAnt", "gnawMiner", "corrosiveSpitter"],
 };
 const campaignProgressByFaction = {
   order: 1,
@@ -3552,6 +3617,7 @@ function formatSpecial(type) {
   if (type === "elfFawnling") notes.push("召唤单位；向前突击的小鹿人");
   if (type === "crawler") notes.push("可免费原地进化成咀矿者");
   if (type === "poisonBug") notes.push("攻击自爆，最多 5 人受到伤害并被腐蚀：减速25%，每秒伤害递增，持续5秒");
+  if (type === "parasite") notes.push(`无普攻；每 ${data.parasiteEvery} 秒优先寄生敌方生物尸体并转为我方单位，找不到尸体时可寄生活体生物；宿主死亡后寄生虫重新出现，施法单位攻击宿主会同时伤害虫体`);
   if (type === "swarmWorm") notes.push("沙虫：移动时潜地隐形，停下钻出；击杀敌人会转化为沙虫；可进化为虫母或灰烬");
   if (type === "broodMother") notes.push("每12.5秒召唤7个飞行蝗虫");
   if (type === "locust") notes.push("飞行召唤单位，会俯冲攻击敌人");
@@ -5006,6 +5072,7 @@ function spawnUnit(type, side, x) {
     vineRootFieldCooldown: 0,
     starSpiritTimer: data.spiritEvery ?? 0,
     shadowControlArrowTimer: data.controlArrowEvery ?? 0,
+    parasiteTimer: data.parasiteEvery ?? 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
     goblinExpertArmorTimer: data.armorEvery ?? 0,
@@ -8057,6 +8124,7 @@ function updateUnits(dt) {
       if (unit.type === "candlelight") updateCandlelight(unit);
       if (unit.type === "reaper") updateReaper(unit);
       if (unit.type === "antQueen") updateAntQueen(unit, dt);
+      if (unit.type === "parasite") updateParasite(unit, dt);
       if (isSwarmSpawner(unit)) updateSwarmSpawner(unit, dt);
       if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
       if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
@@ -8112,6 +8180,9 @@ function updateUnits(dt) {
     }
     if (unit.type === "antQueen") {
       updateAntQueen(unit, dt);
+    }
+    if (unit.type === "parasite") {
+      updateParasite(unit, dt);
     }
     if (isSwarmSpawner(unit)) {
       updateSwarmSpawner(unit, dt);
@@ -9259,6 +9330,135 @@ function finishGhoulDevour(unit) {
 
 function isUndeadEmpireUnit(type) {
   return UNDEAD_BASE_UNITS.has(type) || SKELETON_UNITS.has(type) || ZOMBIE_UNITS.has(type) || SPIRIT_UNITS.has(type);
+}
+
+function isParasiteBiologicalType(type) {
+  const data = UNIT[type];
+  if (!data) return false;
+  if (data.hero || data.untargetable || data.statueOnly) return false;
+  if (PARASITE_BLOCKED_UNITS.has(type) || PARASITE_NON_BIOLOGICAL_UNITS.has(type)) return false;
+  if (MERGE_UNITS.has(type) || BASIC_ELEMENT_UNITS.has(type)) return false;
+  if (type === "wraithMiner" || type === "deathGodClone") return false;
+  return true;
+}
+
+function canParasiteCorpse(corpse, unit) {
+  if (!corpse || !unit || corpse.side === unit.side) return false;
+  if (!isParasiteBiologicalType(corpse.type)) return false;
+  return distanceTo(unit.x, unit.y, corpse.x, corpse.y) <= (UNIT.parasite.parasiteRange ?? 230);
+}
+
+function canParasiteLivingTarget(target, unit) {
+  if (!target || !unit || target.kind === "statue") return false;
+  if (!areHostileSides(unit.side, target.side)) return false;
+  if (target.hp <= 0 || isUnitHidden(target) || target.parasitePayload) return false;
+  if (!isParasiteBiologicalType(target.type)) return false;
+  if (!canTarget(unit, target)) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= (UNIT.parasite.parasiteRange ?? 230);
+}
+
+function updateParasite(unit, dt) {
+  const data = UNIT.parasite;
+  unit.parasiteTimer = Math.max(0, (unit.parasiteTimer ?? data.parasiteEvery) - dt);
+  if (unit.parasiteTimer > 0) return;
+  const corpse = state.corpses
+    .filter((item) => canParasiteCorpse(item, unit))
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0];
+  if (corpse && parasiteCorpse(unit, corpse)) {
+    unit.parasiteTimer = data.parasiteEvery;
+    return;
+  }
+  const living = state.units
+    .filter((target) => canParasiteLivingTarget(target, unit))
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0];
+  if (living && parasiteLivingUnit(unit, living)) {
+    unit.parasiteTimer = data.parasiteEvery;
+    return;
+  }
+  unit.parasiteTimer = Math.min(0.6, data.parasiteEvery);
+}
+
+function attachParasiteToHost(parasite, host, originalSide) {
+  host.parasitePayload = {
+    hp: Math.max(1, Math.round(parasite.hp)),
+    maxHp: parasite.maxHp ?? UNIT.parasite.hp,
+  };
+  host.parasiteOriginalSide = originalSide;
+  host.parasiteControllerSide = parasite.side;
+  host.forceCharge = true;
+  host.inCastle = false;
+  host.mineSlotId = null;
+  host.mineWorkSlot = null;
+  parasite.noCorpse = true;
+  parasite.noElfDeathWisp = true;
+  parasite.hp = 0;
+}
+
+function parasiteCorpse(parasite, corpse) {
+  const type = corpse.type;
+  if (!UNIT[type]) return false;
+  const host = spawnUnit(type, parasite.side, corpse.x);
+  host.y = corpse.y;
+  host.maxHp = corpse.maxHp ?? UNIT[type].hp;
+  host.hp = Math.max(1, host.maxHp);
+  host.corpseRevives = corpse.revives ?? 0;
+  attachParasiteToHost(parasite, host, corpse.side);
+  state.corpses = state.corpses.filter((item) => item !== corpse);
+  state.blasts.push({ x: host.x, y: host.y - 34, radius: 46, life: 0.32, duration: 0.32, color: "#b7e06b" });
+  popText(host.x, host.y - 108, "寄生尸体", "#b7e06b");
+  return true;
+}
+
+function parasiteLivingUnit(parasite, target) {
+  const originalSide = target.side;
+  target.side = parasite.side;
+  target.lastDamageSide = null;
+  target.lastDamageUnitId = null;
+  attachParasiteToHost(parasite, target, originalSide);
+  state.blasts.push({ x: target.x, y: target.y - 38, radius: 42, life: 0.28, duration: 0.28, color: "#b7e06b" });
+  popText(target.x, target.y - 108, "活体寄生", "#b7e06b");
+  return true;
+}
+
+function isParasiteCasterAttacker(attacker) {
+  return Boolean(attacker && PARASITE_CASTER_ATTACKERS.has(attacker.type));
+}
+
+function damageParasitePayload(host, damage) {
+  if (!host?.parasitePayload || damage <= 0) return;
+  host.parasitePayload.hp -= damage;
+  popText(host.x, host.y - 118, `虫体 -${Math.round(damage)}`, "#b7e06b");
+  if (host.parasitePayload.hp > 0) return;
+  releaseParasiteHost(host);
+}
+
+function releaseParasiteHost(host) {
+  const originalSide = host.parasiteOriginalSide;
+  delete host.parasitePayload;
+  delete host.parasiteOriginalSide;
+  delete host.parasiteControllerSide;
+  if (originalSide && host.hp > 0) {
+    host.side = originalSide;
+    host.forceCharge = true;
+    popText(host.x, host.y - 112, "寄生解除", "#d9d0b8");
+  }
+}
+
+function maybeReleaseParasiteFromHost(unit, deathSpawns) {
+  if (!unit?.parasitePayload || unit.parasitePayload.hp <= 0) return;
+  deathSpawns.push({
+    type: "parasite",
+    side: unit.parasiteControllerSide ?? unit.side,
+    x: unit.x,
+    y: unit.y,
+    text: "寄生虫脱出",
+    color: "#b7e06b",
+    setup: (parasite) => {
+      parasite.hp = Math.max(1, Math.min(parasite.maxHp, Math.round(unit.parasitePayload.hp)));
+      parasite.forceCharge = true;
+      parasite.parasiteTimer = UNIT.parasite.parasiteEvery;
+    },
+  });
 }
 
 function updateIronCavalry(unit, dt) {
@@ -11906,6 +12106,9 @@ function handleDamageDealt(attacker, target, damage) {
   if (attacker.inspiredZombieTimer > 0 && attacker.inspiredZombieHits > 0 && ZOMBIE_UNITS.has(attacker.type) && target.kind !== "statue") {
     attacker.inspiredZombieHits -= 1;
     applyStun(target, 2);
+  }
+  if (target.kind !== "statue" && target.parasitePayload && isParasiteCasterAttacker(attacker)) {
+    damageParasitePayload(target, damage);
   }
 }
 
@@ -15256,6 +15459,7 @@ function removeDead() {
       const water = state.units.find((candidate) => candidate.id === unit.frozenBy);
       if (water) water.boundTargetId = null;
     }
+    maybeReleaseParasiteFromHost(unit, deathSpawns);
     if (activeCampaign?.failOnDeath === unit.type && unit.side === "player") {
       state.over = true;
       state.winner = "enemy";
