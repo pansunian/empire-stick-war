@@ -1373,6 +1373,13 @@ body.quad-watch .health-bars {
   display: none;
 }
 
+.music-btn.active {
+  border-color: rgba(229, 196, 112, 0.9);
+  color: #ffe7a0;
+  background: rgba(99, 70, 30, 0.72);
+  box-shadow: 0 0 0 1px rgba(255, 215, 128, 0.16), 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
 .health-bars {
   display: none;
 }

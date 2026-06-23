@@ -1,9 +1,9 @@
-const CACHE_NAME = "stick-war-pwa-v204-emerald-warlock";
+const CACHE_NAME = "stick-war-pwa-v209-fire-element-buff";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=20260621-cache-refresh",
-  "./game.js?v=20260621-emerald-warlock",
+  "./style.css?v=20260622-fire-element-buff",
+  "./game.js?v=20260622-fire-element-buff",
   "./manifest.webmanifest?v=20260620-swarm-crest-alpha",
   "./assets/icon.svg",
   "./assets/title/medieval-stick-title.png",

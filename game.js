@@ -1,7 +1,7 @@
 const canvas = document.querySelector("#battlefield");
 const ctx = canvas.getContext("2d");
 const battlefieldWrap = document.querySelector(".battlefield-wrap");
-const APP_VERSION = "20260621-emerald-warlock";
+const APP_VERSION = "20260622-fire-element-buff";
 
 const factionSelect = document.querySelector("#factionSelect");
 const factionButtons = [...document.querySelectorAll(".faction-card")];
@@ -43,6 +43,7 @@ const zoomOutBtn = document.querySelector("#zoomOutBtn");
 const zoomFitBtn = document.querySelector("#zoomFitBtn");
 const zoomInBtn = document.querySelector("#zoomInBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
+const musicBtn = document.querySelector("#musicBtn");
 const statsBtn = document.querySelector("#statsBtn");
 const homeBtn = document.querySelector("#homeBtn");
 const closeStatsBtn = document.querySelector("#closeStatsBtn");
@@ -69,9 +70,410 @@ const manualJoystick = {
   knob: null,
   vector: { x: 0, y: 0 },
 };
+const MUSIC_STORAGE_KEY = "medievalEmpire.musicEnabled";
+const DEFAULT_MUSIC_BPM = 78;
+const BARREN_MUSIC_PROFILES = {
+  order: {
+    root: 146.83,
+    drone: 73.42,
+    bell: 587.33,
+    bpm: 76,
+    accent: "horn",
+    drumPattern: [0, 4, 8, 12],
+    offDrumPattern: [2, 6, 10, 14],
+    chimePattern: [7, 15],
+    melodyPattern: [1, 5, 9, 13],
+    windPattern: [0],
+    droneType: "triangle",
+    drumPitch: 92,
+    drumGain: 0.095,
+    melodyGain: 0.03,
+    chimeGain: 0.015,
+    masterGain: 0.135,
+  },
+  chaos: {
+    root: 130.81,
+    drone: 65.41,
+    bell: 523.25,
+    bpm: 84,
+    accent: "ember",
+    drumPattern: [0, 3, 8, 11],
+    offDrumPattern: [5, 14],
+    chimePattern: [6, 15],
+    melodyPattern: [1, 4, 9, 12],
+    windPattern: [0, 8],
+    droneType: "sawtooth",
+    drumPitch: 104,
+    drumGain: 0.115,
+    melodyGain: 0.026,
+    chimeGain: 0.012,
+    masterGain: 0.13,
+  },
+  undeadEmpire: {
+    root: 123.47,
+    drone: 61.74,
+    bell: 493.88,
+    bpm: 68,
+    accent: "grave",
+    drumPattern: [0, 8],
+    offDrumPattern: [6, 14],
+    chimePattern: [5, 11, 15],
+    melodyPattern: [3, 9, 13],
+    windPattern: [0, 4, 12],
+    droneType: "sawtooth",
+    drumPitch: 76,
+    drumGain: 0.082,
+    melodyGain: 0.022,
+    chimeGain: 0.017,
+    masterGain: 0.13,
+  },
+  element: {
+    root: 164.81,
+    drone: 82.41,
+    bell: 659.25,
+    bpm: 80,
+    accent: "arcane",
+    drumPattern: [0, 8],
+    offDrumPattern: [3, 10, 14],
+    chimePattern: [4, 12, 15],
+    melodyPattern: [1, 3, 6, 9, 13],
+    windPattern: [0, 8],
+    droneType: "triangle",
+    drumPitch: 88,
+    drumGain: 0.075,
+    melodyGain: 0.034,
+    chimeGain: 0.02,
+    masterGain: 0.14,
+  },
+  swarm: {
+    root: 138.59,
+    drone: 69.3,
+    bell: 554.37,
+    bpm: 92,
+    accent: "chitter",
+    drumPattern: [0, 5, 8, 13],
+    offDrumPattern: [2, 7, 10, 15],
+    chimePattern: [6, 14],
+    melodyPattern: [1, 2, 6, 10, 11, 15],
+    windPattern: [0],
+    droneType: "sawtooth",
+    drumPitch: 118,
+    drumGain: 0.08,
+    melodyGain: 0.024,
+    chimeGain: 0.01,
+    masterGain: 0.12,
+  },
+  elf: {
+    root: 174.61,
+    drone: 87.31,
+    bell: 698.46,
+    bpm: 72,
+    accent: "forest",
+    drumPattern: [0, 8],
+    offDrumPattern: [4, 12],
+    chimePattern: [3, 7, 11, 15],
+    melodyPattern: [1, 5, 6, 9, 13],
+    windPattern: [0, 8],
+    droneType: "triangle",
+    drumPitch: 84,
+    drumGain: 0.058,
+    melodyGain: 0.038,
+    chimeGain: 0.021,
+    masterGain: 0.125,
+  },
+};
+const BARREN_SCALE = [1, 6 / 5, 4 / 3, 3 / 2, 9 / 5, 2];
+let musicEnabled = readStoredMusicEnabled();
+const battleMusic = {
+  ctx: null,
+  master: null,
+  timer: null,
+  running: false,
+  starting: false,
+  sessionId: 0,
+  step: 0,
+  nextAt: 0,
+};
 
 if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
   document.documentElement.classList.add("ios-device");
+}
+
+function readStoredMusicEnabled() {
+  try {
+    return localStorage.getItem(MUSIC_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function storeMusicEnabled() {
+  try {
+    localStorage.setItem(MUSIC_STORAGE_KEY, musicEnabled ? "true" : "false");
+  } catch {
+    // Ignore private-mode storage failures; music can still work for this session.
+  }
+}
+
+function getAudioContextCtor() {
+  return window.AudioContext || window.webkitAudioContext;
+}
+
+function ensureBattleMusicContext() {
+  if (battleMusic.ctx) return battleMusic.ctx;
+  const AudioContextCtor = getAudioContextCtor();
+  if (!AudioContextCtor) return null;
+  const ctx = new AudioContextCtor();
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+  battleMusic.ctx = ctx;
+  battleMusic.master = master;
+  return ctx;
+}
+
+function syncMusicButton() {
+  if (!musicBtn) return;
+  musicBtn.classList.toggle("active", musicEnabled);
+  musicBtn.textContent = musicEnabled ? "音乐开" : "音乐关";
+  musicBtn.title = musicEnabled ? "关闭荒原战曲" : "开启荒原战曲";
+}
+
+function getBattleMusicProfile() {
+  return BARREN_MUSIC_PROFILES[selectedFaction] ?? BARREN_MUSIC_PROFILES.order;
+}
+
+function getMusicBeatSeconds(profile = getBattleMusicProfile()) {
+  return 60 / (profile.bpm ?? DEFAULT_MUSIC_BPM);
+}
+
+function scheduleTone(freq, at, duration, type, gainValue) {
+  const ctx = battleMusic.ctx;
+  if (!ctx || !battleMusic.master) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, at);
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, gainValue), at + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+  osc.connect(gain);
+  gain.connect(battleMusic.master);
+  osc.start(at);
+  osc.stop(at + duration + 0.05);
+}
+
+function scheduleFilteredTone(freq, at, duration, type, gainValue, filterType, cutoff) {
+  const ctx = battleMusic.ctx;
+  if (!ctx || !battleMusic.master) return;
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, at);
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(cutoff, at);
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, gainValue), at + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(battleMusic.master);
+  osc.start(at);
+  osc.stop(at + duration + 0.04);
+}
+
+function scheduleDustDrum(at, strong = false, profile = getBattleMusicProfile()) {
+  const ctx = battleMusic.ctx;
+  if (!ctx || !battleMusic.master) return;
+  const duration = strong ? 0.42 : 0.28;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  osc.type = "sine";
+  const pitch = profile.drumPitch ?? 92;
+  osc.frequency.setValueAtTime(strong ? pitch : pitch * 1.25, at);
+  osc.frequency.exponentialRampToValueAtTime(42, at + duration);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(strong ? 190 : 240, at);
+  const drumGain = profile.drumGain ?? 0.09;
+  gain.gain.setValueAtTime(strong ? drumGain : drumGain * 0.55, at);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(battleMusic.master);
+  osc.start(at);
+  osc.stop(at + duration + 0.03);
+}
+
+function scheduleWindNoise(at, duration, profile = getBattleMusicProfile()) {
+  const ctx = battleMusic.ctx;
+  if (!ctx || !battleMusic.master) return;
+  const sampleCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, sampleCount, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < sampleCount; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * 0.35;
+  }
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = buffer;
+  filter.type = "bandpass";
+  const windCenter = profile.accent === "grave" ? 280 : profile.accent === "forest" ? 620 : 420;
+  filter.frequency.setValueAtTime(windCenter, at);
+  filter.Q.setValueAtTime(0.35, at);
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.linearRampToValueAtTime(profile.accent === "grave" ? 0.014 : 0.011, at + 0.18);
+  gain.gain.linearRampToValueAtTime(0.0001, at + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(battleMusic.master);
+  source.start(at);
+  source.stop(at + duration);
+}
+
+function scheduleMysticChime(freq, at, profile = getBattleMusicProfile()) {
+  const gain = profile.chimeGain ?? 0.016;
+  scheduleTone(freq, at, 1.9, "sine", gain);
+  scheduleTone(freq * 1.5, at + 0.08, 1.35, "triangle", gain * 0.45);
+  scheduleTone(freq * 2, at + 0.18, 0.92, "sine", gain * 0.28);
+}
+
+function scheduleFactionMusicAccent(profile, at, patternStep, step, beat) {
+  const root = profile.root;
+  if (profile.accent === "horn" && (patternStep === 0 || patternStep === 8)) {
+    scheduleFilteredTone(root * 2, at + beat * 0.18, beat * 1.25, "triangle", 0.022, "lowpass", 620);
+    scheduleFilteredTone(root * 3, at + beat * 0.2, beat * 1.1, "triangle", 0.011, "lowpass", 760);
+    return;
+  }
+  if (profile.accent === "ember" && [3, 7, 11, 15].includes(patternStep)) {
+    scheduleFilteredTone(root * 0.75, at + beat * 0.1, beat * 0.55, "sawtooth", 0.022, "lowpass", 420);
+    scheduleFilteredTone(root * 1.01, at + beat * 0.18, beat * 0.38, "square", 0.01, "lowpass", 360);
+    return;
+  }
+  if (profile.accent === "grave" && (patternStep === 5 || patternStep === 13)) {
+    scheduleMysticChime(profile.bell * 0.5, at + beat * 0.1, profile);
+    scheduleWindNoise(at + beat * 0.35, beat * 2.8, profile);
+    return;
+  }
+  if (profile.accent === "arcane" && [2, 6, 10, 14].includes(patternStep)) {
+    [1, 4 / 3, 3 / 2].forEach((ratio, index) => {
+      scheduleTone(root * 2 * ratio, at + beat * (0.12 + index * 0.15), beat * 1.1, "sine", 0.012);
+    });
+    return;
+  }
+  if (profile.accent === "chitter" && [1, 4, 6, 9, 12, 15].includes(patternStep)) {
+    const freq = root * (3 + (step % 3) * 0.32);
+    scheduleFilteredTone(freq, at + beat * 0.08, beat * 0.18, "triangle", 0.014, "bandpass", 1800);
+    scheduleFilteredTone(freq * 1.4, at + beat * 0.22, beat * 0.12, "square", 0.006, "bandpass", 2200);
+    return;
+  }
+  if (profile.accent === "forest" && [1, 5, 9, 13].includes(patternStep)) {
+    const ratio = BARREN_SCALE[(step + patternStep) % BARREN_SCALE.length];
+    scheduleFilteredTone(root * 2 * ratio, at + beat * 0.08, beat * 1.65, "triangle", 0.02, "lowpass", 1600);
+    scheduleTone(root * 4 * ratio, at + beat * 0.2, beat * 1.1, "sine", 0.006);
+  }
+}
+
+function scheduleBattleMusicBeat(at, step) {
+  const profile = getBattleMusicProfile();
+  const beat = getMusicBeatSeconds(profile);
+  const patternStep = step % 16;
+  if (patternStep === 0 || patternStep === 8) {
+    scheduleFilteredTone(profile.drone, at, beat * 7.4, profile.droneType ?? "sawtooth", 0.018, "lowpass", profile.accent === "element" ? 360 : 240);
+    scheduleFilteredTone(profile.drone * 1.5, at + 0.08, beat * 6.2, "triangle", 0.009, "lowpass", profile.accent === "elf" ? 520 : 330);
+  }
+  if ((profile.windPattern ?? []).includes(patternStep)) scheduleWindNoise(at + 0.25, beat * 3.2, profile);
+  if ((profile.drumPattern ?? []).includes(patternStep)) scheduleDustDrum(at, patternStep === 0 || patternStep === 8, profile);
+  if ((profile.offDrumPattern ?? []).includes(patternStep)) scheduleDustDrum(at + beat * 0.45, false, profile);
+  if ((profile.melodyPattern ?? []).includes(patternStep)) {
+    const noteIndex = (step * 2 + patternStep) % BARREN_SCALE.length;
+    const freq = profile.root * BARREN_SCALE[noteIndex];
+    scheduleFilteredTone(freq, at + 0.05, beat * 1.05, "triangle", profile.melodyGain ?? 0.03, "lowpass", 1250);
+  }
+  if ((profile.chimePattern ?? []).includes(patternStep)) {
+    scheduleMysticChime(profile.bell, at + 0.12, profile);
+  }
+  scheduleFactionMusicAccent(profile, at, patternStep, step, beat);
+}
+
+function scheduleBattleMusicLoop(sessionId) {
+  if (!battleMusic.running || !battleMusic.ctx || sessionId !== battleMusic.sessionId) return;
+  const ctx = battleMusic.ctx;
+  const profile = getBattleMusicProfile();
+  const beat = getMusicBeatSeconds(profile);
+  const at = Math.max(ctx.currentTime + 0.06, battleMusic.nextAt || ctx.currentTime + 0.06);
+  scheduleBattleMusicBeat(at, battleMusic.step);
+  battleMusic.step += 1;
+  battleMusic.nextAt = at + beat;
+  battleMusic.timer = window.setTimeout(() => scheduleBattleMusicLoop(sessionId), beat * 520);
+}
+
+async function startBattleMusic() {
+  if (!musicEnabled || !state || state.paused || state.over) return;
+  if (battleMusic.running || battleMusic.starting) return;
+  battleMusic.starting = true;
+  const sessionId = ++battleMusic.sessionId;
+  const ctx = ensureBattleMusicContext();
+  if (!ctx || !battleMusic.master) {
+    battleMusic.starting = false;
+    return;
+  }
+  try {
+    if (ctx.state === "suspended") await ctx.resume();
+  } catch {
+    battleMusic.starting = false;
+    return;
+  }
+  if (sessionId !== battleMusic.sessionId || !musicEnabled || !state || state.paused || state.over) {
+    battleMusic.starting = false;
+    return;
+  }
+  battleMusic.running = true;
+  battleMusic.starting = false;
+  battleMusic.step = 0;
+  battleMusic.nextAt = ctx.currentTime + 0.06;
+  battleMusic.master.gain.cancelScheduledValues(ctx.currentTime);
+  battleMusic.master.gain.setTargetAtTime(getBattleMusicProfile().masterGain ?? 0.13, ctx.currentTime, 0.9);
+  scheduleBattleMusicLoop(sessionId);
+}
+
+function stopBattleMusic() {
+  battleMusic.sessionId += 1;
+  battleMusic.starting = false;
+  if (battleMusic.timer) {
+    window.clearTimeout(battleMusic.timer);
+    battleMusic.timer = null;
+  }
+  battleMusic.running = false;
+  const ctx = battleMusic.ctx;
+  if (ctx && battleMusic.master) {
+    battleMusic.master.gain.cancelScheduledValues(ctx.currentTime);
+    battleMusic.master.gain.setValueAtTime(0.0001, ctx.currentTime);
+  }
+}
+
+function syncBattleMusic() {
+  syncMusicButton();
+  if (musicEnabled && state && !state.paused && !state.over) {
+    startBattleMusic();
+    return;
+  }
+  stopBattleMusic();
+}
+
+function toggleBattleMusic() {
+  musicEnabled = !musicEnabled;
+  storeMusicEnabled();
+  syncBattleMusic();
+}
+
+function silenceBattleMusicNow() {
+  stopBattleMusic();
+  if (battleMusic.ctx?.state === "running") {
+    battleMusic.ctx.suspend().catch(() => {});
+  }
 }
 
 const FIELD = {
@@ -257,7 +659,12 @@ const CHAOS_FOUR_WAY_KILL_GOLD = 3;
 const CHAOS_KILL_HEAL_RATIO = 0.1;
 const CHAOS_SURVIVAL_HP_TRAIT = { interval: 10, factor: 1.2 };
 const CHAOS_ORC_PACK_TRAIT = { count: 5, radius: 260, damageFactor: 1.2 };
-const CHAOS_ORC_PACK_UNITS = new Set(["orc", "berserkOrc"]);
+const CHAOS_PACK_EXCLUDED_UNITS = new Set(["arrowShieldCart", "goblinVulture", "griffinBomber"]);
+const SWARM_MELEE_KILL_COPY_CHANCE = 0.4;
+const SWARM_COPY_SELF_DESTRUCT_UNITS = new Set(["poisonBug", "blastBug"]);
+const SWARM_SUMMON_DEVOUR_RANGE = 130;
+const SWARM_SUMMON_DEVOUR_HEAL_RATIO = 0.5;
+const ELF_DEATH_WISP_CHANCE = 0.5;
 const CHAOS_AI_FRONTLINE_UNITS = new Set(["creeper", "orc", "berserkOrc", "apeMan", "minotaur", "rhinoMan", "arrowShieldCart"]);
 const CHAOS_AI_SUPPORT_UNITS = new Set(["goblinExpert", "shaman", "priest", "goblin"]);
 const CHAOS_AI_RAIDER_UNITS = new Set(["bomber", "javelinThrower", "goblinVulture", "griffinBomber", "minotaur", "rhinoMan"]);
@@ -303,11 +710,11 @@ const AI_ROLE_PROFILES = {
     highPriority: ["hoodCaterpillar", "broodMother", "ashWorm", "antQueen", "heavyAnt", "lurker", "giantSpider", "caterpillar"],
   },
   elf: {
-    frontline: ["elfMercenary", "elfBladeDancer", "elfEmeraldSentinel", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling"],
-    ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfForestBallista", "elfSentryTower"],
+    frontline: ["elfMercenary", "elfEmeraldSentinel", "elfTreeGuard", "elfTreeMan", "elfSapling"],
+    ranged: ["elfScout", "elfRanger", "elfShadowHunter", "elfSwiftWind", "elfForestBallista", "elfSentryTower"],
     support: ["elfWisp", "elfSentryKeeper", "elfEmeraldWarlock", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfHealingSpirit"],
-    raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfWisp"],
-    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfEmeraldWarlock", "elfSentryKeeper", "elfTreeMan", "elfMoonDeerRider", "elfStarPriest", "elfShadowHunter", "elfTreeGuard", "elfVineWarlock", "elfBladeDancer", "elfRanger", "elfScout", "elfMercenary"],
+    raider: ["elfScout", "elfRanger", "elfShadowHunter", "elfSwiftWind", "elfWisp"],
+    highPriority: ["elfQueen", "elfForestBallista", "elfAncientSage", "elfEmeraldWarlock", "elfSentryKeeper", "elfTreeMan", "elfStarPriest", "elfShadowHunter", "elfSwiftWind", "elfTreeGuard", "elfVineWarlock", "elfRanger", "elfScout", "elfMercenary"],
   },
 };
 const NECROMANCER_DARK_KNIGHT_HP_THRESHOLD = 300;
@@ -502,21 +909,25 @@ const UNIT = {
     controlArrowEvery: 10,
     controlArrowStun: 3,
   },
-  elfBladeDancer: {
-    name: "翡翠护卫",
-    cost: 300,
-    magicCost: 50,
-    hp: 250,
-    damage: 20,
-    range: 42,
-    speed: 50,
-    train: 5.2,
-    cooldown: 1.4,
-    emeraldShieldHp: 350,
-    cleaveEvery: 5,
-    cleaveDamage: 15,
-    cleaveSplash: 72,
-    cleaveLimit: 3,
+  elfSwiftWind: {
+    name: "迅风",
+    cost: 200,
+    magicCost: 100,
+    hp: 100,
+    damage: 30,
+    range: 240,
+    speed: 58,
+    train: 4.6,
+    cooldown: 1.5,
+    windup: 0.5,
+    splash: 72,
+    aoeLimit: 3,
+    tornadoSpeed: 380,
+    tornadoDuration: 6,
+    tornadoRadius: 56,
+    tornadoDamage: 20,
+    tornadoCarryLimit: 5,
+    tornadoCooldown: 15,
   },
   elfSentryKeeper: {
     name: "翡翠哨塔师",
@@ -537,20 +948,21 @@ const UNIT = {
     name: "翡翠哨塔",
     cost: 0,
     hp: 180,
-    damage: 16,
+    damage: 0.5,
     range: 230,
     speed: 0,
     train: 0,
     cooldown: 2,
-    splash: 65,
-    aoeLimit: 3,
+    beamDuration: 8,
+    beamRest: 3,
+    beamTick: 1 / 24,
     summonOnly: true,
     immobile: true,
   },
   elfEmeraldWarlock: {
     name: "翡翠术士",
     cost: 200,
-    magicCost: 150,
+    magicCost: 200,
     hp: 200,
     damage: 1,
     range: 320,
@@ -560,7 +972,9 @@ const UNIT = {
     beamDuration: 8,
     beamRest: 3,
     beamTick: 1 / 24,
-    convertCooldown: 20,
+    convertCooldown: 18,
+    convertRange: 150,
+    convertDuration: 15,
   },
   elfEmeraldSentinel: {
     name: "翡翠哨兵",
@@ -585,18 +999,18 @@ const UNIT = {
   },
   elfAncientSage: {
     name: "古树贤者",
-    cost: 300,
-    magicCost: 200,
-    hp: 400,
+    cost: 400,
+    magicCost: 300,
+    hp: 420,
     damage: 0,
     range: 220,
     speed: 30,
     train: 7.5,
     cooldown: 1,
-    jungleArea: 400,
+    jungleArea: 300,
     jungleSlow: 0.5,
-    jungleMissChance: 0.25,
-    jungleHeal: 18,
+    jungleMissChance: 0.15,
+    jungleHeal: 10,
     jungleDuration: 10,
     jungleCooldown: 15,
     treantSummonCount: 2,
@@ -604,20 +1018,20 @@ const UNIT = {
     treantSummonCooldown: 25,
     logDistance: 400,
     logDamage: 30,
-    logStun: 4,
+    logStun: 2.5,
     logSpeed: 420,
     logRadius: 64,
     logCooldown: 15,
     laserRange: 350,
-    laserDamage: 3,
+    laserDamage: 2,
     laserTick: 0.2,
     laserCooldown: 15,
     noBasicAttack: true,
   },
   elfQueen: {
     name: "精灵女王",
-    cost: 400,
-    magicCost: 250,
+    cost: 350,
+    magicCost: 350,
     hp: 350,
     damage: 0,
     range: 260,
@@ -629,16 +1043,16 @@ const UNIT = {
     dawnDamage: 1,
     dawnHeal: 1,
     dawnTick: 1 / 24,
-    dawnDuration: 10,
+    dawnDuration: 7,
     dawnCooldown: 20,
-    fawnCount: 3,
+    fawnCount: 2,
     fawnDuration: 14,
     fawnCooldown: 20,
-    holyShieldCount: 5,
+    holyShieldCount: 3,
     holyShieldRange: 460,
-    holyShieldReduction: 0.5,
+    holyShieldReduction: 0.35,
     holyShieldRangeBonus: 0.25,
-    holyShieldDuration: 10,
+    holyShieldDuration: 8,
     holyShieldCooldown: 18,
     heatRange: 400,
     heatRadius: 56,
@@ -649,19 +1063,19 @@ const UNIT = {
     heatMagicCost: 75,
     heatCooldown: 20,
     healSpiritCount: 5,
-    healSpiritDuration: 10,
+    healSpiritDuration: 8,
     healSpiritCooldown: 15,
     noBasicAttack: true,
   },
   elfFawnling: {
     name: "小鹿人",
     cost: 0,
-    hp: 90,
-    damage: 8,
+    hp: 170,
+    damage: 13,
     range: 36,
     speed: 68,
     train: 0,
-    cooldown: 1,
+    cooldown: 2,
     summonOnly: true,
   },
   elfTreeGuard: {
@@ -676,24 +1090,6 @@ const UNIT = {
     cooldown: 1.6,
     aoeLimit: 3,
     splash: 70,
-  },
-  elfMoonDeerRider: {
-    name: "月鹿骑手",
-    cost: 350,
-    magicCost: 100,
-    hp: 350,
-    damage: 30,
-    range: 58,
-    speed: 40,
-    train: 6.5,
-    cooldown: 1.8,
-    aoeLimit: 3,
-    splash: 76,
-    chargeSpeed: 70,
-    chargeDamage: 50,
-    chargeDuration: 10,
-    chargeCooldown: 15,
-    chargeHitRadius: 58,
   },
   elfTreeMan: {
     name: "树人",
@@ -722,7 +1118,7 @@ const UNIT = {
   },
   elfVineWarlock: {
     name: "藤蔓术士",
-    cost: 100,
+    cost: 150,
     magicCost: 200,
     hp: 100,
     damage: 0,
@@ -742,7 +1138,7 @@ const UNIT = {
   },
   elfStarPriest: {
     name: "星辰祭司",
-    cost: 150,
+    cost: 200,
     magicCost: 150,
     hp: 200,
     damage: 0,
@@ -1210,7 +1606,7 @@ const UNIT = {
     name: "火枪手",
     cost: 350,
     hp: 100,
-    damage: 45,
+    damage: 40,
     range: 350,
     speed: 34,
     train: 5.2,
@@ -1220,13 +1616,15 @@ const UNIT = {
     name: "散弹枪手",
     cost: 260,
     hp: 145,
-    damage: 4,
+    damage: 6,
     range: 230,
     speed: 36,
     train: 5.6,
     cooldown: 3,
     pellets: 30,
     spread: 76,
+    knockback: 28,
+    pelletStun: 1,
     bombSkillCooldown: 16,
     bombCount: 3,
   },
@@ -1379,7 +1777,7 @@ const UNIT = {
   },
   catapult: {
     name: "火炮",
-    cost: 850,
+    cost: 750,
     hp: 560,
     damage: 65,
     range: 500,
@@ -1422,7 +1820,7 @@ const UNIT = {
   },
   rocketCart: {
     name: "火箭车",
-    cost: 1000,
+    cost: 900,
     hp: 470,
     damage: 6,
     range: 350,
@@ -1528,7 +1926,7 @@ const UNIT = {
   deathGod: {
     name: "死神",
     cost: 500,
-    magicCost: 150,
+    magicCost: 200,
     hp: 420,
     damage: 50,
     range: 46,
@@ -2112,6 +2510,10 @@ const UNIT = {
     cooldown: 1.2,
     burnDps: 3,
     burnDuration: 5,
+    bombChance: 0.25,
+    bombDamage: 15,
+    bombRadius: 58,
+    bombLimit: 3,
   },
   fireImp: {
     name: "小火人",
@@ -2296,13 +2698,15 @@ const UNIT = {
     name: "飓风",
     cost: 0,
     hp: 250,
-    damage: 60,
+    damage: 45,
     range: 230,
     speed: 70,
     train: 5.8,
-    cooldown: 5,
-    stunDuration: 1.5,
-    tornadoLife: 0.85,
+    cooldown: 2,
+    stunDuration: 3,
+    tornadoSpeed: 50,
+    tornadoRadius: 34,
+    tornadoLife: 20,
     shieldEvery: 15,
     shieldDuration: 10,
     shieldReduction: 0.8,
@@ -2371,7 +2775,7 @@ const UNIT = {
   vUnit: {
     name: "V",
     cost: 0,
-    hp: 300,
+    hp: 400,
     damage: 35,
     range: 38,
     speed: 40,
@@ -2384,6 +2788,24 @@ const UNIT = {
     blinkThreatHp: 600,
     blinkCooldown: 12,
     blinkDistance: 500,
+    blackHoleRadius: 100,
+    blackHoleAttractRange: 500,
+    blackHoleAttractSpeed: 30,
+    blackHoleDuration: 10,
+    blackHoleCooldown: 20,
+    blackHoleBlastDamage: 20,
+    blackHoleDevourDamage: 35,
+    chronoMagicCost: 75,
+    chronoMarkDelay: 5,
+    chronoMarkDamage: 30,
+    chronoInitialSplashDamage: 15,
+    chronoFinalDamage: 20,
+    chronoStun: 3,
+    chronoRadius: 100,
+    chronoFinalRadius: 50,
+    chronoVortexDuration: 6,
+    chronoAttractSpeed: 30,
+    chronoCooldown: 25,
     cloneReleaseDelay: 3,
     cloneRespawnDelay: 10,
     cloneLimit: 3,
@@ -2433,7 +2855,7 @@ const FACTIONS = {
   },
   elf: {
     name: "精灵帝国",
-    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfEmeraldWarlock", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
+    roster: ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfSwiftWind", "elfSentryKeeper", "elfEmeraldWarlock", "elfTreeGuard", "elfTreeMan", "elfVineWarlock", "elfStarPriest", "elfAncientSage", "elfQueen", "elfForestBallista"],
     startingUnits: ["elfWisp", "elfWisp", "elfMercenary", "elfScout"],
     mineColor: "#8ee8a4",
   },
@@ -2602,14 +3024,13 @@ const UNIT_ICON = {
   elfScout: "bow",
   elfRanger: "bow",
   elfShadowHunter: "bow",
-  elfBladeDancer: "shield",
+  elfSwiftWind: "tornado",
   elfSentryKeeper: "wizard-hat",
   elfSentryTower: "white-orb",
   elfEmeraldWarlock: "wizard-hat",
   elfEmeraldSentinel: "spear",
   elfForestBallista: "bomb-crossbow",
   elfTreeGuard: "tree",
-  elfMoonDeerRider: "spear",
   elfTreeMan: "tree",
   elfSapling: "tree",
   elfVineWarlock: "wizard-hat",
@@ -2630,7 +3051,7 @@ const STAT_GROUPS = [
   ["亡灵帝国", ["summoner", "wraithMiner", "machete", "boneThrower", "undead", "ghoul", "candlelight", "reaper", "undeadVulture", "necromancer", "deathGod", "deathGodClone", "graveDigger", "boneGiant", "bannerBearer", "poisonZombie", "darkKnight", "undeadMage"]],
   ["元素帝国", ["earthElement", "waterElement", "fireElement", "windElement", "dreadfire", "redflame", "stormLich", "hurricane", "hill", "linghan", "scaldStrike", "electricGate", "treeEnt", "waterScorpion", "rog", "vUnit", "vClone", "prometheus", "zeus", "fireImp"]],
   ["虫群帝国", ["crawler", "gnawMiner", "ironAnt", "heavyAnt", "antQueen", "poisonBug", "parasite", "swarmWorm", "broodMother", "locust", "ashWorm", "blastBug", "spider", "giantSpider", "corrosiveSpitter", "boneStinger", "lurker", "caterpillar", "hoodCaterpillar"]],
-  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfBladeDancer", "elfSentryKeeper", "elfSentryTower", "elfEmeraldWarlock", "elfEmeraldSentinel", "elfTreeGuard", "elfMoonDeerRider", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
+  ["精灵帝国", ["elfWisp", "elfMercenary", "elfScout", "elfRanger", "elfShadowHunter", "elfSwiftWind", "elfSentryKeeper", "elfSentryTower", "elfEmeraldWarlock", "elfEmeraldSentinel", "elfTreeGuard", "elfTreeMan", "elfSapling", "elfVineWarlock", "elfStarPriest", "elfHealingSpirit", "elfAncientSage", "elfQueen", "elfFawnling", "elfForestBallista"]],
 ];
 
 let state = null;
@@ -3680,17 +4101,16 @@ function formatSpecial(type) {
   if (type === "elfScout") notes.push(`远程射击 ${data.damage} 伤害/${data.cooldown}秒；近身用匕首 ${data.meleeDamage} 伤害/${data.meleeCooldown}秒`);
   if (type === "elfRanger") notes.push(`远程 ${data.damage} 伤害并中毒 ${data.poisonDps}/秒；近身用弯刀 ${data.meleeDamage} 伤害`);
   if (type === "elfShadowHunter") notes.push(`每 ${data.cooldown} 秒射出 ${data.arrowsPerVolley} 根箭，单发 ${data.damage} 伤害；${Math.round(data.dodgeChance * 100)}% 概率闪避伤害；每 ${data.controlArrowEvery} 秒追加控制箭眩晕敌人 ${data.controlArrowStun} 秒`);
-  if (type === "elfBladeDancer") notes.push(`翡翠巨盾可抵挡 ${data.emeraldShieldHp} 点直射伤害；每第 ${data.cleaveEvery} 次攻击劈砍 ${data.cleaveDamage} 范围伤害，最多 ${data.cleaveLimit} 人`);
+  if (type === "elfSwiftWind") notes.push(`攻击蓄力 ${data.windup} 秒后发射能量球，造成 ${data.damage} 单体伤害；技能龙卷最多卷起 ${data.tornadoCarryLimit} 名沿途生物敌人 ${data.tornadoDuration} 秒，期间无法受伤，结束造成 ${data.tornadoDamage} 伤害；不影响非生物和大型单位，冷却 ${data.tornadoCooldown} 秒`);
   if (type === "elfSentryKeeper") notes.push(`无普攻；每 ${data.sentryEvery} 秒在附近种 1 座翡翠哨塔，单个哨塔师最多维持 ${data.sentryMax} 座`);
-  if (type === "elfSentryTower") notes.push(`召唤哨塔；术士高抛能量球造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人，攻速 ${data.cooldown}秒`);
-  if (type === "elfEmeraldWarlock") notes.push(`翡翠射线按 24 帧/秒结算，每帧 ${data.damage} 伤，持续 ${data.beamDuration} 秒后停歇 ${data.beamRest} 秒；技能可将敌人翡翠化，冷却 ${data.convertCooldown} 秒`);
+  if (type === "elfSentryTower") notes.push(`召唤哨塔；塔上翡翠术士以翡翠射线普攻，每帧 ${data.damage} 伤，持续 ${data.beamDuration} 秒后停歇 ${data.beamRest} 秒`);
+  if (type === "elfEmeraldWarlock") notes.push(`翡翠射线按 24 帧/秒结算，每帧 ${data.damage} 伤，持续 ${data.beamDuration} 秒后停歇 ${data.beamRest} 秒；技能可在 ${data.convertRange} 距离内将敌人翡翠化为翡翠哨兵 ${data.convertDuration} 秒，冷却 ${data.convertCooldown} 秒`);
   if (type === "elfEmeraldSentinel") notes.push(`翡翠术士转化而来的长矛哨兵`);
   if (type === "elfForestBallista") notes.push(`森林重弩，射程 ${data.range}，每 ${data.cooldown} 秒造成 ${data.damage} 伤害`);
   if (type === "elfTreeGuard") notes.push(`一棵树卫，挥舞大棒造成 ${data.damage} 范围伤害，最多 ${data.aoeLimit} 人`);
-  if (type === "elfMoonDeerRider") notes.push(`范围攻击最多 ${data.aoeLimit} 人；技能冲刺 ${data.chargeDuration} 秒，移速 ${data.chargeSpeed}，撞到第 1 名敌人造成 ${data.chargeDamage} 伤害，冷却 ${data.chargeCooldown} 秒`);
   if (type === "elfTreeMan") notes.push(`树精式树根攻击 ${data.damage} 伤害；每 ${data.summonEvery} 秒召唤 1 个小树人`);
   if (type === "elfSapling") notes.push(`召唤单位；不停向前推进，${data.damage} 伤害/${data.cooldown}秒`);
-  if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒；技能生成树根减速区`);
+  if (type === "elfVineWarlock") notes.push(`无普攻；每 ${data.entangleEvery} 秒缠绕最多 ${data.entangleCount} 名生物敌人 ${data.entangleDuration} 秒并中毒 ${data.entanglePoisonDps}/秒，无法控制非生物和大型单位；技能生成树根减速区`);
   if (type === "elfStarPriest") notes.push(`无普攻；每 ${data.spiritEvery} 秒生成 1 个治疗精灵，最多 ${data.spiritMax} 个；技能让所有治疗精灵切换为小精灵并自爆`);
   if (type === "elfHealingSpirit") notes.push(`召唤单位；每 ${data.healEvery} 秒治疗一名友军 ${data.healAmount} 生命`);
   if (type === "elfAncientSage") notes.push(`无普攻；技能丛林减速敌人并让其攻击 ${Math.round(data.jungleMissChance * 100)}% 打偏，精灵每秒恢复 ${data.jungleHeal}；可限时召唤树人、滚木眩晕路径敌人、持续激光锁定高血量敌人`);
@@ -3728,7 +4148,7 @@ function formatSpecial(type) {
   if (type === "swordsman") notes.push(`手动技能愤怒：消耗 ${data.selfRageHpCost} 生命，自身移速/攻速 x1.5，持续 ${data.selfRageDuration}秒，冷却 ${data.selfRageEvery}秒`);
   if (type === "spartan") notes.push(`举盾时无法移动或攻击，受伤降低 ${Math.round(data.shieldStanceReduction * 100)}%，并为后方 ${data.shieldProtectBehind} 距离内友军抵挡直射攻击`);
   if (type === "spearman") notes.push(`首次接敌投矛 ${data.throwDamage} 伤害，${data.throwRecover}秒后换副矛近战`);
-  if (type === "shotgunner") notes.push(`每 ${data.cooldown}秒散射 ${data.pellets} 发散弹，单颗 ${data.damage} 伤害；技能召唤 ${data.bombCount} 个小炸弹，冷却 ${data.bombSkillCooldown}秒`);
+  if (type === "shotgunner") notes.push(`每 ${data.cooldown}秒散射 ${data.pellets} 发散弹，单颗 ${data.damage} 伤害；命中击退并眩晕 ${data.pelletStun}秒，眩晕不可叠加；技能召唤 ${data.bombCount} 个小炸弹，冷却 ${data.bombSkillCooldown}秒`);
   if (type === "heavyCannon") notes.push(`高抛重炮，落点范围伤害最多 ${data.aoeLimit} 人`);
   if (type === "monk") notes.push(`每 ${data.healEvery}秒为一名友军恢复 ${data.healAmount}；技能释放面积 ${data.fieldArea} 的回血区，每秒治疗友军 ${data.fieldHeal}，持续 ${data.fieldDuration}秒，冷却 ${data.fieldCooldown}秒`);
   if (type === "ironCavalry") notes.push(`每 ${data.chargeCooldown}秒冲刺 ${data.chargeDuration}秒，冲刺移速 ${data.chargeSpeed}；仅冲刺中使用 ${data.musketRange} 射程火枪 ${data.musketDamage} 伤害/${data.musketCooldown}秒，并在 ${data.bombRange} 距离内投炸弹 ${data.bombDamage} 范围伤害，冷却 ${data.bombCooldown}秒；平时移速 ${data.speed}，近身长枪 ${data.spearDamage} 伤害/${data.spearCooldown}秒`);
@@ -3760,12 +4180,13 @@ function formatSpecial(type) {
   if (data.stunDuration) notes.push(`眩晕 ${data.stunDuration}秒`);
   if (data.healOnDeath) notes.push(`死亡治疗 ${data.healOnDeath}`);
   if (type === "waterElement") notes.push(`冰冻敌人 ${data.freezeDps}/秒`);
+  if (type === "fireElement") notes.push(`命中灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒；${Math.round(data.bombChance * 100)}% 概率爆弹，造成 ${data.bombDamage} 范围伤害，最多 ${data.bombLimit} 人并灼烧`);
   if (type === "windElement") notes.push(`必中落雷，命中后减速 ${Math.round((1 - data.slowFactor) * 100)}% ${data.slowDuration}秒`);
   else if (data.lightning) notes.push("必中闪电");
   if (type === "dreadfire") notes.push(`拥有合成入口后可直接融合；火龙标记/爆发；流星雨 ${data.meteorCount} 颗`);
   if (type === "redflame") notes.push(`拥有合成入口后可直接融合；大火球 ${data.fireballDamage} 并灼烧；五段熔岩柱 ${data.pillarDamage} 并眩晕 ${data.pillarStun}秒`);
   if (type === "stormLich") notes.push(`拥有合成入口后可直接融合；乌云 ${data.cloudDuration}秒内落 ${data.boltCount} 道闪电，每道 ${data.boltDamage} 并减速25%；死亡后 ${data.deathRainDrops} 滴治疗雨`);
-  if (type === "hurricane") notes.push(`拥有合成入口后可直接融合；每 ${data.cooldown}秒发射龙卷风 ${data.damage} 伤害，眩晕 ${data.stunDuration}秒；每 ${data.shieldEvery}秒给友军护盾`);
+  if (type === "hurricane") notes.push(`拥有合成入口后可直接融合；每 ${data.cooldown}秒发射直线龙卷风，速度 ${data.tornadoSpeed}，经过敌人造成 ${data.damage} 伤害；大型和非生物不吃 ${data.stunDuration}秒眩晕；每 ${data.shieldEvery}秒给友军护盾`);
   if (type === "hill") notes.push(`拥有合成入口后可直接融合；周围 ${data.jumpRadius} 有敌人时每 ${data.jumpEvery}秒大跳，造成 ${data.jumpDamage} 伤害并眩晕 ${data.jumpStun}秒`);
   if (type === "linghan") notes.push(`拥有合成入口后可直接融合；可持续减速 ${data.slowCount} 名敌人 ${Math.round((1 - data.slowFactor) * 100)}%，持续 ${data.slowDuration}秒，不叠加；死亡生成减速冰地`);
   if (type === "scaldStrike") notes.push(`拥有合成入口后可直接释放；一次性爆炸 ${data.damage}；眩晕 ${data.stunDuration}秒；灼烧 ${data.burnDps}/秒 ${data.burnDuration}秒`);
@@ -3794,7 +4215,7 @@ function formatSpecial(type) {
   if (type === "suikai") notes.push(`英雄单位；骨刺后召唤 ${data.summonCount} 只毒亡灵；每 ${data.corpseEvery}秒召唤死尸；每 ${data.hookEvery}秒钩走高威胁目标`);
   if (type === "zeus") notes.push(`英雄单位；头顶雷云自动攻击；每 ${data.cloudEvery}秒召唤移动乌云；每 ${data.columnEvery}秒召唤电墙；每 ${data.gateEvery}秒召唤电门`);
   if (type === "medusa") notes.push(`英雄单位；每 ${data.poisonEvery}秒喷毒并释放 ${data.corpseReleaseCount} 只死尸；双击后点敌人可秒杀非巨人/V/攻城器械单位，冷却 ${data.slayCooldown}秒`);
-  if (type === "vUnit") notes.push(`出场 3 秒后召唤分身；双击后手动选择控制目标；控制期间无法行动；手动闪现后撤，冷却 ${data.blinkCooldown}秒`);
+  if (type === "vUnit") notes.push(`出场 3 秒后召唤分身；双击后手动选择控制目标；闪现冷却 ${data.blinkCooldown}秒；黑洞吸引 ${data.blackHoleAttractRange} 距离内敌人 ${data.blackHoleDuration} 秒；超时空爆炸消耗 ${data.chronoMagicCost} 魔力，标记 ${data.chronoMarkDelay} 秒后爆炸并生成 ${data.chronoVortexDuration} 秒漩涡，冷却 ${data.chronoCooldown}秒`);
   if (type === "vClone") notes.push("由 V 召唤，近战攻击");
   return notes.join("；") || "无";
 }
@@ -3903,6 +4324,7 @@ function newGame() {
   if (selectedControlMode === "ai" && selectedMode === "siege") statusEl.textContent = `高城之战 AI 对战：${FACTIONS[selectedFaction].name} 进攻 ${FACTIONS[opponentFaction()].name}守城`;
   if (isDuoBattle() && !activeCampaign) statusEl.textContent = `${getModeLabel(selectedMode)} 2 打 2：AI 队友会自动出兵`;
   updateHud();
+  syncBattleMusic();
 }
 
 function createTeamAiState(side, faction, gold) {
@@ -4010,6 +4432,9 @@ function createBaseState(startGold, enemyStartGold, sideMines = createSideMines(
     meteors: [],
     stormClouds: [],
     tornadoes: [],
+    blackHoles: [],
+    vChronoBombs: [],
+    vChronoVortices: [],
     electricColumns: [],
     groundFires: [],
     thornFields: [],
@@ -4134,6 +4559,7 @@ function newFourWayGame() {
       ? `四国 2 打 2：你负责${FACTIONS[selectedFaction].name}出兵与指挥，队友自动作战`
       : `四国对战：你负责${FACTIONS[selectedFaction].name}出兵与指挥，三方由 AI 控制`;
   updateHud();
+  syncBattleMusic();
   requestAnimationFrame(centerFourWayView);
 }
 
@@ -5142,10 +5568,6 @@ function spawnUnit(type, side, x) {
     boneStingerBurrowCooldown: 0,
     heavyAntDodge: false,
     heavyAntDodgeTimer: 0,
-    moonDeerChargeTimer: 0,
-    moonDeerChargeCooldown: 0,
-    moonDeerChargeHit: false,
-    moonDeerPrevForceCharge: false,
     swarmEvolutionTimer: 0,
     swarmEvolutionTarget: null,
     swarmEvolutionOriginalMaxHp: 0,
@@ -5159,6 +5581,8 @@ function spawnUnit(type, side, x) {
     emeraldBeamRestTimer: 0,
     starSpiritTimer: data.spiritEvery ?? 0,
     shadowControlArrowTimer: data.controlArrowEvery ?? 0,
+    swiftWindupTimer: 0,
+    swiftWindupTargetId: null,
     parasiteTimer: data.parasiteEvery ?? 0,
     ironAntShieldCharges: data.lowDamageShieldCharges ?? 0,
     heavyAntRangedShieldCharges: data.rangedShieldCharges ?? 0,
@@ -5760,6 +6184,9 @@ function update(dt) {
   updateMeteors(dt);
   updateStormClouds(dt);
   updateTornadoes(dt);
+  updateBlackHoles(dt);
+  updateVChronoBombs(dt);
+  updateVChronoVortices(dt);
   updateElectricWalls(dt);
   updateGroundFires(dt);
   updateThornFields(dt);
@@ -5805,6 +6232,9 @@ function updateFourWayBattle(dt) {
   updateMeteors(dt);
   updateStormClouds(dt);
   updateTornadoes(dt);
+  updateBlackHoles(dt);
+  updateVChronoBombs(dt);
+  updateVChronoVortices(dt);
   updateElectricWalls(dt);
   updateGroundFires(dt);
   updateThornFields(dt);
@@ -7163,6 +7593,15 @@ function distanceTo(x1, y1, x2, y2) {
   return Math.hypot(x2 - x1, y2 - y1);
 }
 
+function distanceToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 0.0001) return distanceTo(px, py, x1, y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
+  return distanceTo(px, py, x1 + dx * t, y1 + dy * t);
+}
+
 function moveUnitTowardPoint(unit, targetX, targetY, speed, dt, tolerance = 5) {
   const beforeX = unit.x;
   const beforeY = unit.y;
@@ -8059,6 +8498,10 @@ function updateUnits(dt) {
       updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
       continue;
     }
+    if (unit.tornadoCarryId) {
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
     if (unit.inCastle && canEnterCastle(unit) && state.minerCommand !== "retreat") {
       unit.inCastle = false;
     }
@@ -8121,7 +8564,6 @@ function updateUnits(dt) {
     unit.reaperStealthTimer = Math.max(0, (unit.reaperStealthTimer ?? 0) - dt);
     unit.heavyAntDodgeTimer = Math.max(0, (unit.heavyAntDodgeTimer ?? 0) - dt);
     if (unit.heavyAntDodgeTimer <= 0) unit.heavyAntDodge = false;
-    updateMoonDeerChargeState(unit, dt);
     unit.scimitarRoarTimer = Math.max(0, (unit.scimitarRoarTimer ?? 0) - dt);
     unit.goblinMineTimer = Math.max(0, (unit.goblinMineTimer ?? 0) - dt);
     unit.goblinExpertArmorTimer = Math.max(0, (unit.goblinExpertArmorTimer ?? 0) - dt);
@@ -8157,6 +8599,10 @@ function updateUnits(dt) {
     unit.boneStingerBurrowTimer = Math.max(0, (unit.boneStingerBurrowTimer ?? 0) - dt);
     unit.spiderWebCooldown = Math.max(0, (unit.spiderWebCooldown ?? 0) - dt);
     unit.anim += dt * 8;
+    if (updateSwiftWindup(unit, dt)) {
+      updateIceRoadMoveTimer(unit, beforeX, beforeY, dt);
+      continue;
+    }
 
     if (unit.inspiringTimer > 0) {
       unit.inspiringTimer = Math.max(0, unit.inspiringTimer - dt);
@@ -8218,7 +8664,7 @@ function updateUnits(dt) {
       if (unit.type === "elfTreeMan") updateElfTreeMan(unit, dt);
       if (unit.type === "elfVineWarlock") updateElfVineWarlock(unit, dt);
       if (unit.type === "elfSentryKeeper") updateElfSentryKeeper(unit, dt);
-      if (unit.type === "elfEmeraldWarlock") updateElfEmeraldWarlock(unit, dt);
+      if (unit.type === "elfEmeraldWarlock" || unit.type === "elfSentryTower") updateElfEmeraldWarlock(unit, dt);
       if (unit.type === "elfStarPriest") updateElfStarPriest(unit, dt);
       if (unit.type === "elfHealingSpirit") {
         updateElfHealingSpirit(unit, dt);
@@ -8287,7 +8733,7 @@ function updateUnits(dt) {
     if (unit.type === "elfSentryKeeper") {
       updateElfSentryKeeper(unit, dt);
     }
-    if (unit.type === "elfEmeraldWarlock") {
+    if (unit.type === "elfEmeraldWarlock" || unit.type === "elfSentryTower") {
       updateElfEmeraldWarlock(unit, dt);
     }
     if (unit.type === "elfStarPriest") {
@@ -10268,6 +10714,47 @@ function isSwarmSpawner(unit) {
   return unit?.type === "broodMother" || unit?.type === "ashWorm" || unit?.type === "giantSpider";
 }
 
+function isSwarmSummonDevourUnit(unit) {
+  if (!unit || factionForSide(unit.side) !== "swarm" || unit.type === "parasite") return false;
+  const data = UNIT[unit.type] ?? {};
+  return Boolean(data.summonOnly && !data.untargetable && !data.noBasicAttack);
+}
+
+function canSwarmSummonDevourCorpse(corpse, unit) {
+  if (!corpse || !unit || corpse.side !== unit.side) return false;
+  if (unit.hp >= unit.maxHp) return false;
+  if (!UNIT[corpse.type]?.summonOnly) return false;
+  return distanceTo(unit.x, unit.y ?? FIELD.ground, corpse.x, corpse.y) <= SWARM_SUMMON_DEVOUR_RANGE;
+}
+
+function findSwarmSummonDevourCorpse(unit) {
+  return state.corpses
+    .filter((corpse) => canSwarmSummonDevourCorpse(corpse, unit))
+    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y) - distanceTo(unit.x, unit.y, b.x, b.y))[0] ?? null;
+}
+
+function castSwarmSummonDevour(unit) {
+  if (!isSwarmSummonDevourUnit(unit)) return false;
+  const corpse = findSwarmSummonDevourCorpse(unit);
+  if (!corpse) {
+    popText(unit.x, unit.y - 112, "附近没有召唤尸体", "#cde69b");
+    return false;
+  }
+  const healed = Math.min(
+    Math.round((corpse.maxHp ?? UNIT[corpse.type]?.hp ?? 0) * SWARM_SUMMON_DEVOUR_HEAL_RATIO),
+    unit.maxHp - unit.hp,
+  );
+  if (healed > 0) {
+    unit.hp += healed;
+    popText(unit.x, unit.y - 104, `吞噬 +${healed}`, "#cde69b");
+  } else {
+    popText(unit.x, unit.y - 104, "吞噬尸体", "#cde69b");
+  }
+  state.corpses = state.corpses.filter((item) => item !== corpse);
+  state.blasts.push({ x: corpse.x, y: corpse.y - 28, radius: 38, life: 0.28, duration: 0.28, color: "#cde69b" });
+  return true;
+}
+
 function getSwarmEvolutionSummonCount(unit) {
   const data = UNIT[unit?.type] ?? {};
   const baseCount = data.summonCount ?? 0;
@@ -10419,6 +10906,8 @@ function isCastleEconomyUnit(unit) {
 }
 
 function isUnitHidden(unit) {
+  if (unit.tornadoCarryId) return true;
+  if (unit.blackHoleId) return true;
   if (unit.type === "swarmWorm" && unit.wormBurrowed) return true;
   return unit.inCastle && canEnterCastle(unit) && state.minerCommand === "retreat";
 }
@@ -11045,8 +11534,8 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "elfBladeDancer") {
-    attackElfEmeraldGuard(unit, target);
+  if (unit.type === "elfSwiftWind") {
+    beginSwiftWindAttack(unit, target);
     return;
   }
 
@@ -11060,13 +11549,13 @@ function attack(unit, target) {
     return;
   }
 
-  if (unit.type === "elfTreeGuard") {
-    attackElfTreeGuard(unit, target);
+  if (unit.type === "elfSentryTower") {
+    attackElfEmeraldWarlock(unit, target);
     return;
   }
 
-  if (unit.type === "elfMoonDeerRider") {
-    attackElfMoonDeerRider(unit, target);
+  if (unit.type === "elfTreeGuard") {
+    attackElfTreeGuard(unit, target);
     return;
   }
 
@@ -11227,7 +11716,6 @@ function attack(unit, target) {
     unit.type === "undeadVulture" ||
     unit.type === "corrosiveSpitter" ||
     unit.type === "antQueen" ||
-    unit.type === "elfSentryTower" ||
     unit.type === "elfForestBallista"
   ) {
     if (unit.type === "boneThrower") {
@@ -11247,12 +11735,12 @@ function attack(unit, target) {
       sourceId: unit.id,
       sourceType: unit.type,
       target,
-      life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : unit.type === "elfSentryTower" ? 0.5 : 0.55,
-      arcHeight: unit.type === "elfSentryTower" ? 92 : undefined,
+      life: unit.type === "crossbow" ? 0.42 : unit.type === "elfForestBallista" ? 0.62 : 0.55,
       type: unit.type,
       splash: data.splash,
       aoeLimit: data.aoeLimit,
       poison: unit.type === "javelinThrower" && Math.random() < data.poisonChance,
+      fireBomb: unit.type === "fireElement" && Math.random() < (data.bombChance ?? 0),
     });
     return;
   }
@@ -11415,6 +11903,53 @@ function shootElfArrow(unit, target, damage, type, options = {}) {
   });
 }
 
+function beginSwiftWindAttack(unit, target) {
+  const data = UNIT.elfSwiftWind;
+  if (!target || target.hp <= 0) return;
+  unit.swiftWindupTimer = data.windup;
+  unit.swiftWindupTargetId = target.id ?? null;
+  unit.cooldown = Math.max(unit.cooldown ?? 0, data.windup);
+  unit.facingDir = target.x >= unit.x ? 1 : -1;
+  popText(unit.x, unit.y - 112, "蓄风", "#d7f6ee");
+}
+
+function updateSwiftWindup(unit, dt) {
+  if (unit.type !== "elfSwiftWind" || (unit.swiftWindupTimer ?? 0) <= 0) return false;
+  unit.swiftWindupTimer = Math.max(0, unit.swiftWindupTimer - dt);
+  if (unit.swiftWindupTimer > 0) return true;
+  const data = UNIT.elfSwiftWind;
+  const target = state.units.find((candidate) => candidate.id === unit.swiftWindupTargetId && candidate.hp > 0 && !isUnitHidden(candidate));
+  unit.swiftWindupTargetId = null;
+  if (!target || !areHostileSides(unit.side, target.side) || !canTarget(unit, target)) {
+    unit.cooldown = Math.max(unit.cooldown ?? 0, data.cooldown);
+    return true;
+  }
+  launchSwiftWindOrb(unit, target);
+  unit.cooldown = Math.max(unit.cooldown ?? 0, data.cooldown);
+  return true;
+}
+
+function launchSwiftWindOrb(unit, target) {
+  const data = UNIT.elfSwiftWind;
+  state.arrows.push({
+    x: unit.x,
+    y: unit.y - 58,
+    tx: target.x,
+    ty: target.y ? target.y - 44 + (UNIT[target.type]?.flying ? -42 : 0) : unit.y - 52,
+    side: unit.side,
+    damage: getAttackDamage(unit, target, data.damage),
+    sourceId: unit.id,
+    sourceType: unit.type,
+    target,
+    life: 0.5,
+    duration: 0.5,
+    type: "elfSwiftWind",
+    splash: data.splash,
+    aoeLimit: data.aoeLimit,
+    color: "#d7f6ee",
+  });
+}
+
 function attackElfTreeGuard(unit, target) {
   const data = UNIT.elfTreeGuard;
   const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
@@ -11429,23 +11964,6 @@ function attackElfTreeGuard(unit, target) {
     side: unit.side,
     life: 0.2,
     duration: 0.2,
-  });
-}
-
-function attackElfMoonDeerRider(unit, target) {
-  const data = UNIT.elfMoonDeerRider;
-  const targets = getUnitsInRadius(target.x, data.splash, unit.side, data.aoeLimit, null, target.y);
-  targets.forEach((enemy) => {
-    const dealt = applyDamage(enemy, getAttackDamage(unit, enemy, data.damage), unit.side);
-    handleDamageDealt(unit, enemy, dealt);
-  });
-  state.spikes.push({
-    x1: unit.x,
-    x2: target.x,
-    y: (target.y ?? unit.y) - 20,
-    side: unit.side,
-    life: 0.24,
-    duration: 0.24,
   });
 }
 
@@ -11505,7 +12023,7 @@ function updateElfVineWarlock(unit, dt) {
   if (unit.vineEntangleTimer > 0) return;
   unit.vineEntangleTimer += data.entangleEvery;
   const targets = state.units
-    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
+    .filter((enemy) => canElfVineEntangle(unit, enemy))
     .filter((enemy) => distanceTo(unit.x, unit.y, enemy.x, enemy.y ?? FIELD.ground) <= data.range + 120)
     .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))
     .slice(0, data.entangleCount);
@@ -11522,6 +12040,13 @@ function updateElfVineWarlock(unit, dt) {
     });
   });
   if (targets.length) popText(unit.x, unit.y - 112, `缠绕 x${targets.length}`, "#8ee8a4");
+}
+
+function canElfVineEntangle(unit, target) {
+  if (!areHostileSides(unit?.side, target?.side)) return false;
+  if (!isMageStoneGolemBiologicalTarget(target)) return false;
+  if (UNIT[target.type]?.giant) return false;
+  return true;
 }
 
 function updateElfSentryKeeper(unit, dt) {
@@ -11551,20 +12076,6 @@ function updateElfEmeraldWarlock(unit, dt) {
   unit.emeraldBeamRestTimer = Math.max(0, (unit.emeraldBeamRestTimer ?? 0) - dt);
 }
 
-function attackElfEmeraldGuard(unit, target) {
-  const data = UNIT.elfBladeDancer;
-  const dealt = applyDamage(target, getAttackDamage(unit, target, data.damage), unit.side);
-  handleDamageDealt(unit, target, dealt);
-  unit.emeraldGuardHits = (unit.emeraldGuardHits ?? 0) + 1;
-  if (unit.emeraldGuardHits % data.cleaveEvery !== 0) return;
-  const targets = getUnitsInRadius(target.x, data.cleaveSplash, unit.side, data.cleaveLimit, null, target.y ?? unit.y);
-  targets.forEach((enemy) => {
-    const cleave = applyUnitDamage(enemy, data.cleaveDamage, { label: "劈砍", color: "#8ee8a4", yOffset: -84, sourceSide: unit.side, sourceUnitId: unit.id });
-    handleDamageDealt(unit, enemy, cleave);
-  });
-  state.blasts.push({ x: target.x, y: (target.y ?? unit.y) - 36, radius: data.cleaveSplash, life: 0.22, duration: 0.22, color: "#8ee8a4" });
-}
-
 function attackElfEmeraldSentinel(unit, target) {
   const data = UNIT.elfEmeraldSentinel;
   const dealt = applyDamage(target, getAttackDamage(unit, target, data.damage), unit.side);
@@ -11572,7 +12083,7 @@ function attackElfEmeraldSentinel(unit, target) {
 }
 
 function attackElfEmeraldWarlock(unit, target) {
-  const data = UNIT.elfEmeraldWarlock;
+  const data = UNIT[unit.type];
   if ((unit.emeraldBeamRestTimer ?? 0) > 0) return;
   if (!target || target.hp <= 0 || !areHostileSides(unit.side, target.side)) return;
   state.emeraldBeams = state.emeraldBeams ?? [];
@@ -11589,7 +12100,7 @@ function attackElfEmeraldWarlock(unit, target) {
   });
   unit.emeraldBeamRestTimer = data.beamDuration + data.beamRest;
   unit.cooldown = Math.max(unit.cooldown ?? 0, unit.emeraldBeamRestTimer);
-  popText(unit.x, unit.y - 116, "翡翠射线", "#8ee8a4");
+  popText(unit.x, unit.y - 116, unit.type === "elfSentryTower" ? "塔上术士" : "翡翠射线", "#8ee8a4");
 }
 
 function castElfRootField(unit, target) {
@@ -11906,59 +12417,30 @@ function castStarSpiritShift(unit) {
   return true;
 }
 
-function updateMoonDeerChargeState(unit, dt) {
-  if (unit.type !== "elfMoonDeerRider") return;
-  const data = UNIT.elfMoonDeerRider;
-  unit.moonDeerChargeCooldown = Math.max(0, (unit.moonDeerChargeCooldown ?? 0) - dt);
-  if ((unit.moonDeerChargeTimer ?? 0) <= 0) {
-    if (unit.speed === data.chargeSpeed) delete unit.speed;
-    return;
-  }
-  unit.moonDeerChargeTimer = Math.max(0, unit.moonDeerChargeTimer - dt);
-  unit.speed = data.chargeSpeed;
-  if (!unit.moonDeerChargeHit) triggerMoonDeerChargeHit(unit);
-  if (unit.moonDeerChargeTimer <= 0) {
-    delete unit.speed;
-    unit.moonDeerChargeHit = false;
-    unit.forceCharge = unit.moonDeerPrevForceCharge;
-    popText(unit.x, unit.y - 112, "冲刺结束", "#d7f6b8");
-  }
-}
-
-function triggerMoonDeerChargeHit(unit) {
-  const data = UNIT.elfMoonDeerRider;
+function castSwiftWindTornado(unit) {
+  if (unit.type !== "elfSwiftWind") return false;
+  const data = UNIT.elfSwiftWind;
   const dir = getUnitFacingDirection(unit);
-  const target = state.units
-    .filter((enemy) => areHostileSides(unit.side, enemy.side) && enemy.hp > 0 && !isUnitHidden(enemy) && !UNIT[enemy.type]?.untargetable)
-    .filter((enemy) => {
-      const dx = (enemy.x - unit.x) * dir;
-      return dx >= -10 && dx <= data.chargeHitRadius && Math.abs((enemy.y ?? FIELD.ground) - unit.y) <= data.chargeHitRadius;
-    })
-    .sort((a, b) => distanceTo(unit.x, unit.y, a.x, a.y ?? FIELD.ground) - distanceTo(unit.x, unit.y, b.x, b.y ?? FIELD.ground))[0];
-  if (!target) return;
-  const dealt = applyUnitDamage(target, data.chargeDamage, {
-    label: "月鹿冲撞",
-    color: "#d7f6b8",
-    yOffset: -86,
-    sourceSide: unit.side,
-    sourceUnitId: unit.id,
+  const travel = data.tornadoSpeed * data.tornadoDuration;
+  const targetX = clampWorldX(unit.x + dir * travel);
+  const targetY = unit.y - 38;
+  state.tornadoes.push({
+    id: state.nextId++,
+    type: "swiftWind",
+    sourceId: unit.id,
+    x: unit.x + dir * 32,
+    y: unit.y - 38,
+    tx: targetX,
+    ty: targetY,
+    side: unit.side,
+    radius: data.tornadoRadius,
+    damage: data.tornadoDamage,
+    carryLimit: data.tornadoCarryLimit,
+    life: data.tornadoDuration,
+    duration: data.tornadoDuration,
   });
-  handleDamageDealt(unit, target, dealt);
-  unit.moonDeerChargeHit = true;
-  state.blasts.push({ x: target.x, y: target.y - 34, radius: 48, life: 0.24, duration: 0.24, color: "#d7f6b8" });
-  popText(unit.x, unit.y - 120, "撞击命中", "#d7f6b8");
-}
-
-function castMoonDeerCharge(unit) {
-  const data = UNIT.elfMoonDeerRider;
-  if ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0) return false;
-  unit.moonDeerChargeTimer = data.chargeDuration;
-  unit.moonDeerChargeCooldown = data.chargeCooldown;
-  unit.moonDeerChargeHit = false;
-  unit.moonDeerPrevForceCharge = Boolean(unit.forceCharge);
-  unit.speed = data.chargeSpeed;
-  unit.forceCharge = true;
-  popText(unit.x, unit.y - 116, "月鹿冲刺", "#d7f6b8");
+  state.blasts.push({ x: unit.x + dir * 44, y: unit.y - 38, radius: 44, life: 0.26, duration: 0.26, color: "#d7f6ee" });
+  popText(unit.x, unit.y - 116, "迅风龙卷", "#d7f6ee");
   return true;
 }
 
@@ -12029,6 +12511,11 @@ function fireShotgun(unit, target) {
   hits.forEach((pellets, enemy) => {
     const dealt = applyDamage(enemy, data.damage * pellets, unit.side, { ranged: true, directRanged: true });
     handleDamageDealt(unit, enemy, dealt);
+    if (dealt > 0 && enemy.hp > 0) {
+      const knockback = (data.knockback ?? 0) * Math.min(1.4, 0.85 + pellets * 0.08);
+      knockbackTargetFromSource(enemy, unit, unit.side, knockback);
+      enemy.stunTimer = Math.max(enemy.stunTimer ?? 0, data.pelletStun ?? 0);
+    }
   });
   if (statuePellets > 0) applyDamage(target, data.damage * statuePellets, unit.side, { ranged: true, directRanged: true });
   state.blasts.push({ x: unit.x + dir * 54, y: unit.y - 45, radius: 26, life: 0.16, duration: 0.16, color: "#dbe8ff" });
@@ -12314,15 +12801,21 @@ function getAttackDamage(attacker, target, baseDamage) {
 }
 
 function hasChaosOrcPackBonus(unit) {
-  if (!unit || !CHAOS_ORC_PACK_UNITS.has(unit.type) || factionForSide(unit.side) !== "chaos") return false;
+  if (!isChaosPackBonusUnit(unit)) return false;
   const nearbyOrcs = state.units.filter((candidate) => (
     candidate.side === unit.side &&
-    CHAOS_ORC_PACK_UNITS.has(candidate.type) &&
+    isChaosPackBonusUnit(candidate) &&
     candidate.hp > 0 &&
     !isUnitHidden(candidate) &&
     distanceTo(candidate.x, candidate.y, unit.x, unit.y) <= CHAOS_ORC_PACK_TRAIT.radius
   ));
   return nearbyOrcs.length >= CHAOS_ORC_PACK_TRAIT.count;
+}
+
+function isChaosPackBonusUnit(unit) {
+  if (!unit || factionForSide(unit.side) !== "chaos") return false;
+  if (CHAOS_PACK_EXCLUDED_UNITS.has(unit.type)) return false;
+  return true;
 }
 
 function hasOrderCommanderAura(unit) {
@@ -12600,6 +13093,12 @@ function isMageStoneGolemBiologicalTarget(target) {
   return true;
 }
 
+function canSwiftWindTornadoCarry(target) {
+  if (!isMageStoneGolemBiologicalTarget(target)) return false;
+  if (UNIT[target.type]?.giant) return false;
+  return true;
+}
+
 function canMageStoneGolem(unit, target) {
   if (!unit || unit.type !== "mage") return false;
   const data = UNIT.mage;
@@ -12663,10 +13162,12 @@ function canEmeraldConvert(unit, target) {
   if (!areHostileSides(unit.side, target?.side)) return false;
   if (!isMageStoneGolemBiologicalTarget(target)) return false;
   if (isHeroUnit(target)) return false;
-  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= data.range + 40;
+  if (target.stoneGolemOriginal) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= data.convertRange;
 }
 
 function findEmeraldConvertTarget(unit, point = null) {
+  const data = UNIT.elfEmeraldWarlock;
   const candidates = state.units
     .filter((target) => canEmeraldConvert(unit, target))
     .map((target) => ({
@@ -12675,7 +13176,7 @@ function findEmeraldConvertTarget(unit, point = null) {
       unitDistance: distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y),
     }));
   if (!candidates.length) return null;
-  const nearby = point ? candidates.filter((item) => item.pointDistance <= 150) : candidates;
+  const nearby = point ? candidates.filter((item) => item.pointDistance <= data.convertRange) : candidates;
   const pool = nearby.length ? nearby : candidates;
   return pool
     .sort((a, b) => (b.target.maxHp - a.target.maxHp) || (a.unitDistance - b.unitDistance))[0]
@@ -12688,8 +13189,17 @@ function castEmeraldConvert(unit, target) {
     popText(unit.x, unit.y - 116, "无法翡翠化", "#8ee8a4");
     return false;
   }
-  const resultType = (chosen.maxHp ?? chosen.hp ?? 0) >= 350 ? "elfBladeDancer" : "elfEmeraldSentinel";
+  const warlockData = UNIT.elfEmeraldWarlock;
+  const resultType = "elfEmeraldSentinel";
   const data = UNIT[resultType];
+  chosen.stoneGolemOriginal = {
+    type: chosen.type,
+    side: chosen.side,
+    damage: chosen.damage,
+    range: chosen.range,
+    speed: chosen.speed,
+    maxHp: chosen.maxHp,
+  };
   chosen.type = resultType;
   chosen.side = unit.side;
   chosen.damage = data.damage;
@@ -12704,11 +13214,11 @@ function castEmeraldConvert(unit, target) {
   chosen.cooldown = Math.max(chosen.cooldown ?? 0, 0.5);
   chosen.controlledBy = null;
   chosen.controlLockTimer = 0;
-  chosen.stoneGolemOriginal = null;
+  chosen.stoneGolemTimer = warlockData.convertDuration;
   chosen.noCorpse = false;
   state.blasts.push({ x: chosen.x, y: (chosen.y ?? FIELD.ground) - 36, radius: 70, life: 0.36, duration: 0.36, color: "#8ee8a4" });
   state.lightning.push({ x1: unit.x, y1: unit.y - 72, x2: chosen.x, y2: (chosen.y ?? FIELD.ground) - 68, life: 0.28, duration: 0.28 });
-  popText(chosen.x, chosen.y - 108, resultType === "elfBladeDancer" ? "化为翡翠护卫" : "化为翡翠哨兵", "#8ee8a4");
+  popText(chosen.x, chosen.y - 108, "化为翡翠哨兵", "#8ee8a4");
   return true;
 }
 
@@ -13036,16 +13546,29 @@ function summonStormCloud(unit, target) {
 
 function launchTornado(unit, target) {
   const data = UNIT.hurricane;
+  const startX = unit.x;
+  const startY = unit.y - 45;
+  const targetX = target?.x ?? (unit.x + getUnitFacingDirection(unit) * data.range);
+  const targetY = target?.y ? target.y - 35 : startY;
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+  const len = Math.max(1, Math.hypot(dx, dy));
   state.tornadoes.push({
-    x: unit.x,
-    y: unit.y - 45,
-    tx: target.x,
-    ty: target.y ? target.y - 35 : FIELD.ground - 90,
+    id: state.nextId++,
+    type: "hurricane",
+    sourceId: unit.id,
+    x: startX,
+    y: startY,
+    vx: dx / len,
+    vy: dy / len,
+    speed: data.tornadoSpeed,
+    radius: data.tornadoRadius,
     side: unit.side,
     damage: data.damage,
     stun: data.stunDuration,
     life: data.tornadoLife,
     duration: data.tornadoLife,
+    hitIds: new Set(),
   });
   popText(unit.x, unit.y - 100, "龙卷风", "#d7f6ee");
 }
@@ -13529,6 +14052,7 @@ function updateArrows(dt) {
         handleDamageDealt(source, arrow.target, dealt);
         maybeApplyOrderRangedStun(arrow, arrow.target, source);
         applyBurn(arrow.target, UNIT.fireElement.burnDps, UNIT.fireElement.burnDuration);
+        if (arrow.fireBomb) explodeFireElementBomb(arrow, source);
       } else if (arrow.type === "archerFire") {
         const source = getArrowSource(arrow);
         const dealt = applyDamage(arrow.target, arrow.damage, arrow.side, { ranged: true, directRanged: isDirectRangedArrow(arrow) });
@@ -13553,8 +14077,8 @@ function updateArrows(dt) {
       } else if (arrow.type === "neuralBomb") {
         const source = getArrowSource(arrow);
         explodeNeuralBomb(arrow, source);
-      } else if (arrow.type === "elfSentryTower") {
-        explodeElfSentryOrb(arrow);
+      } else if (arrow.type === "elfSwiftWind") {
+        explodeSwiftWindOrb(arrow);
       } else if (arrow.type === "campaignRain") {
         const [target] = getUnitsInRadius(arrow.tx, arrow.radius, arrow.side, 1);
         if (target) applyDamage(target, arrow.damage, arrow.side, { ranged: true });
@@ -13590,7 +14114,6 @@ function isDirectRangedArrow(arrow) {
     "rocketVolley",
     "ironCavalryBomb",
     "neuralBomb",
-    "elfSentryTower",
     "campaignRain",
     "campaignMissile",
     "baseVolley",
@@ -13668,26 +14191,24 @@ function explodeUndeadVultureOrb(arrow) {
   popText(arrow.tx, arrow.ty - 36, "能量爆裂", "#7ed8ff");
 }
 
-function explodeElfSentryOrb(arrow) {
-  const radius = arrow.splash ?? UNIT.elfSentryTower.splash;
-  const limit = arrow.aoeLimit ?? UNIT.elfSentryTower.aoeLimit;
+function explodeSwiftWindOrb(arrow) {
   const source = getArrowSource(arrow);
-  getUnitsInRadius(arrow.tx, radius, arrow.side, limit, null, arrow.ty).forEach((target) => {
+  const target = arrow.target;
+  if (target?.kind === "statue") {
+    applyDamage(target, arrow.damage, arrow.side);
+  } else if (target && target.hp > 0 && !isUnitHidden(target)) {
     const dealt = applyUnitDamage(target, arrow.damage, {
-      label: "哨塔",
-      color: "#8ee8a4",
-      yOffset: -78,
+      label: "迅风",
+      color: "#d7f6ee",
+      yOffset: -82,
       ranged: true,
       sourceSide: arrow.side,
       sourceUnitId: arrow.sourceId,
     });
     handleDamageDealt(source, target, dealt);
-  });
-  if (arrow.target?.kind === "statue" && Math.abs(arrow.target.x - arrow.tx) <= radius + 28) {
-    applyDamage(arrow.target, arrow.damage, arrow.side);
   }
-  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius, life: 0.28, duration: 0.28, color: "#8ee8a4" });
-  popText(arrow.tx, arrow.ty - 36, "翡翠爆裂", "#8ee8a4");
+  state.blasts.push({ x: arrow.tx, y: arrow.ty, radius: 28, life: 0.22, duration: 0.22, color: "#d7f6ee" });
+  popText(arrow.tx, arrow.ty - 36, "迅风", "#d7f6ee");
 }
 
 function createGroundFire(x, y, side, dps, duration, radius, options = {}) {
@@ -13776,6 +14297,29 @@ function explodeAt(x, y, attackerSide, damage, radius, label, options = {}) {
   }
 
   state.blasts.push({ x, y, radius, life: 0.38, duration: 0.38 });
+}
+
+function explodeFireElementBomb(arrow, source) {
+  const data = UNIT.fireElement;
+  const x = arrow.target?.x ?? arrow.tx;
+  const y = arrow.target?.y ?? arrow.ty ?? FIELD.ground;
+  getUnitsInRadius(x, data.bombRadius, arrow.side, data.bombLimit, null, y).forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.bombDamage, {
+      label: "爆弹",
+      color: "#ff9b45",
+      yOffset: -82,
+      sourceSide: arrow.side,
+      sourceUnitId: arrow.sourceId,
+    });
+    handleDamageDealt(source, enemy, dealt);
+    applyBurn(enemy, data.burnDps, data.burnDuration);
+  });
+  if (arrow.target?.kind === "statue") {
+    const dealt = applyDamage(arrow.target, data.bombDamage, arrow.side, { ranged: true });
+    handleDamageDealt(source, arrow.target, dealt);
+  }
+  state.blasts.push({ x, y: y - 28, radius: data.bombRadius, life: 0.32, duration: 0.32, color: "#ff9b45" });
+  popText(x, y - 82, "爆弹", "#ffb45e");
 }
 
 function applyPoison(target, dps, duration, options = {}) {
@@ -15271,13 +15815,375 @@ function healRainDrop(cloud) {
 
 function updateTornadoes(dt) {
   for (const tornado of state.tornadoes) {
-    tornado.life -= dt;
-    if (tornado.life > 0) continue;
-    damageUnitsInRadius(tornado.tx, 34, tornado.side, tornado.damage, "龙卷");
-    stunUnitsInRadius(tornado.tx, 34, tornado.side, tornado.stun);
-    state.blasts.push({ x: tornado.tx, y: tornado.ty + 24, radius: 54, life: 0.3, duration: 0.3, color: "#d7f6ee" });
+    if (tornado.type === "swiftWind") {
+      updateSwiftWindTornado(tornado, dt);
+      continue;
+    }
+    updateHurricaneTornado(tornado, dt);
   }
-  state.tornadoes = state.tornadoes.filter((tornado) => tornado.life > 0);
+  state.tornadoes = state.tornadoes.filter((tornado) => tornado.life > 0 && !tornado.done);
+}
+
+function updateHurricaneTornado(tornado, dt) {
+  const previous = { x: tornado.x, y: tornado.y };
+  tornado.life -= dt;
+  tornado.x += (tornado.vx ?? 0) * (tornado.speed ?? UNIT.hurricane.tornadoSpeed) * dt;
+  tornado.y += (tornado.vy ?? 0) * (tornado.speed ?? UNIT.hurricane.tornadoSpeed) * dt;
+  const current = { x: tornado.x, y: tornado.y };
+  const source = state.units.find((unit) => unit.id === tornado.sourceId) ?? null;
+  state.units.forEach((unit) => {
+    if (!areHostileSides(tornado.side, unit.side) || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (tornado.hitIds?.has(unit.id)) return;
+    const y = unit.y ?? FIELD.ground;
+    if (distanceToSegment(unit.x, y, previous.x, previous.y, current.x, current.y) > (tornado.radius ?? UNIT.hurricane.tornadoRadius)) return;
+    tornado.hitIds = tornado.hitIds ?? new Set();
+    tornado.hitIds.add(unit.id);
+    const dealt = applyUnitDamage(unit, tornado.damage, {
+      label: "龙卷",
+      color: "#d7f6ee",
+      yOffset: -92,
+      sourceSide: tornado.side,
+      sourceUnitId: tornado.sourceId,
+    });
+    handleDamageDealt(source, unit, dealt);
+    if (canHurricaneTornadoStun(unit)) applyStun(unit, tornado.stun);
+  });
+  if (isTornadoBeyondMap(tornado)) tornado.done = true;
+}
+
+function canHurricaneTornadoStun(target) {
+  if (!isMageStoneGolemBiologicalTarget(target)) return false;
+  if (UNIT[target.type]?.giant) return false;
+  return true;
+}
+
+function isTornadoBeyondMap(tornado) {
+  const minY = FIELD.minY ?? 0;
+  const maxY = FIELD.maxY ?? FIELD.height;
+  return tornado.x < -90 || tornado.x > FIELD.width + 90 || tornado.y < minY - 120 || tornado.y > maxY + 120;
+}
+
+function getBlackHoleRadius(data = UNIT.vUnit) {
+  return data.blackHoleRadius ?? 100;
+}
+
+function castVBlackHole(unit, target) {
+  if (unit.type !== "vUnit") return false;
+  const data = UNIT.vUnit;
+  const radius = getBlackHoleRadius(data);
+  const x = clampWorldX(target.x);
+  const y = Math.max(FIELD.minY ?? FIELD.ground - 150, Math.min(FIELD.maxY ?? FIELD.ground + 140, target.y ?? unit.y));
+  state.blackHoles = state.blackHoles ?? [];
+  state.blackHoles.push({
+    id: state.nextId++,
+    sourceId: unit.id,
+    side: unit.side,
+    x,
+    y,
+    radius,
+    attractRange: data.blackHoleAttractRange,
+    attractSpeed: data.blackHoleAttractSpeed,
+    blastDamage: data.blackHoleBlastDamage,
+    devourDamage: data.blackHoleDevourDamage,
+    swallowedIds: new Set(),
+    life: data.blackHoleDuration,
+    duration: data.blackHoleDuration,
+  });
+  state.blasts.push({ x, y, radius: radius + 18, life: 0.3, duration: 0.3, color: "#24143f" });
+  popText(x, y - 72, "黑洞", "#d7ceff");
+  return true;
+}
+
+function updateBlackHoles(dt) {
+  for (const hole of state.blackHoles ?? []) {
+    hole.life -= dt;
+    const swallowed = state.units.filter((unit) => unit.blackHoleId === hole.id && unit.hp > 0);
+    swallowed.forEach((unit, index) => {
+      unit.x = hole.x + Math.sin(hole.life * 7 + index) * 10;
+      unit.y = hole.y + Math.cos(hole.life * 9 + index) * 8;
+    });
+
+    state.units.forEach((unit) => {
+      if (!canVBlackHoleAttract(hole, unit)) return;
+      const dist = distanceTo(unit.x, unit.y ?? FIELD.ground, hole.x, hole.y);
+      if (dist > hole.attractRange) return;
+      if (dist <= hole.radius && canVBlackHoleDevour(unit)) {
+        devourUnitIntoBlackHole(hole, unit);
+        return;
+      }
+      moveUnitTowardBlackHole(unit, hole, dt, dist);
+    });
+
+    if (hole.life <= 0) releaseBlackHole(hole);
+  }
+  state.blackHoles = (state.blackHoles ?? []).filter((hole) => hole.life > 0);
+}
+
+function canVBlackHoleAttract(hole, unit) {
+  if (!hole || !unit || unit.hp <= 0 || unit.blackHoleId || isUnitHidden(unit)) return false;
+  if (!areHostileSides(hole.side, unit.side)) return false;
+  const data = UNIT[unit.type] ?? {};
+  if (data.untargetable || data.statueOnly || data.immobile || unit.rooted) return false;
+  return true;
+}
+
+function canVBlackHoleDevour(unit) {
+  if (!isMageStoneGolemBiologicalTarget(unit)) return false;
+  if (UNIT[unit.type]?.giant) return false;
+  return true;
+}
+
+function devourUnitIntoBlackHole(hole, unit) {
+  unit.blackHoleId = hole.id;
+  unit.blackHoleOriginalY = unit.y ?? FIELD.ground;
+  unit.x = hole.x;
+  unit.y = hole.y;
+  hole.swallowedIds ??= new Set();
+  hole.swallowedIds.add(unit.id);
+  popText(hole.x, hole.y - 78, "吞噬", "#d7ceff");
+}
+
+function moveUnitTowardBlackHole(unit, hole, dt, dist) {
+  if (dist <= 0) return;
+  const step = Math.min(dist, hole.attractSpeed * dt);
+  unit.x = clampWorldX(unit.x + ((hole.x - unit.x) / dist) * step);
+  unit.y = (unit.y ?? FIELD.ground) + ((hole.y - (unit.y ?? FIELD.ground)) / dist) * step;
+  clampUnitPosition(unit);
+}
+
+function releaseBlackHole(hole) {
+  const swallowedIds = hole.swallowedIds ?? new Set();
+  const swallowed = state.units.filter((unit) => swallowedIds.has(unit.id) && unit.hp > 0);
+  swallowed.forEach((unit, index) => {
+    unit.blackHoleId = null;
+    unit.x = clampWorldX(hole.x + (index - (swallowed.length - 1) / 2) * 18);
+    unit.y = Math.max(FIELD.ground - 140, Math.min(FIELD.ground + 140, unit.blackHoleOriginalY ?? hole.y));
+    unit.blackHoleOriginalY = null;
+    const dealt = applyUnitDamage(unit, hole.devourDamage, {
+      label: "黑洞",
+      color: "#d7ceff",
+      yOffset: -92,
+      sourceSide: hole.side,
+      sourceUnitId: hole.sourceId,
+    });
+    handleDamageDealt(state.units.find((source) => source.id === hole.sourceId) ?? null, unit, dealt);
+  });
+
+  state.units.forEach((unit) => {
+    if (!areHostileSides(hole.side, unit.side) || unit.hp <= 0 || isUnitHidden(unit) || UNIT[unit.type]?.untargetable) return;
+    if (swallowedIds.has(unit.id)) return;
+    if (distanceTo(unit.x, unit.y ?? FIELD.ground, hole.x, hole.y) > hole.radius) return;
+    applyUnitDamage(unit, hole.blastDamage, {
+      label: "爆裂",
+      color: "#b88cff",
+      yOffset: -90,
+      sourceSide: hole.side,
+      sourceUnitId: hole.sourceId,
+    });
+  });
+
+  state.blasts.push({ x: hole.x, y: hole.y, radius: hole.radius + 36, life: 0.38, duration: 0.38, color: "#b88cff" });
+  popText(hole.x, hole.y - 82, "黑洞爆裂", "#d7ceff");
+  hole.life = 0;
+}
+
+function castVChronoBomb(unit, target) {
+  if (unit.type !== "vUnit") return false;
+  const data = UNIT.vUnit;
+  if (getSideMagic(unit.side) < data.chronoMagicCost) {
+    popText(unit.x, unit.y - 116, `需要 ${data.chronoMagicCost} 魔力`, "#f3c963");
+    return false;
+  }
+  if (!canVChronoTarget(unit, target)) {
+    popText(unit.x, unit.y - 116, "无法标记", "#d7ceff");
+    return false;
+  }
+  addSideMagic(unit.side, -data.chronoMagicCost);
+  state.vChronoBombs = state.vChronoBombs ?? [];
+  state.vChronoBombs.push({
+    id: state.nextId++,
+    sourceId: unit.id,
+    targetId: target.id,
+    side: unit.side,
+    x: target.x,
+    y: target.y ?? FIELD.ground,
+    life: data.chronoMarkDelay,
+    duration: data.chronoMarkDelay,
+    radius: data.chronoRadius,
+  });
+  state.lightning.push({ x1: unit.x, y1: unit.y - 76, x2: target.x, y2: (target.y ?? FIELD.ground) - 66, life: 0.28, duration: 0.28 });
+  popText(target.x, (target.y ?? FIELD.ground) - 106, "时空标记", "#d7ceff");
+  updateHud();
+  return true;
+}
+
+function canVChronoTarget(unit, target) {
+  if (!unit || !target || target.kind === "statue" || target.hp <= 0 || isUnitHidden(target)) return false;
+  if (!areHostileSides(unit.side, target.side)) return false;
+  if (UNIT[target.type]?.untargetable || UNIT[target.type]?.statueOnly) return false;
+  return distanceTo(unit.x, unit.y, target.x, target.y ?? unit.y) <= (UNIT.vUnit.controlRange ?? 700);
+}
+
+function updateVChronoBombs(dt) {
+  for (const mark of state.vChronoBombs ?? []) {
+    mark.life -= dt;
+    const target = state.units.find((unit) => unit.id === mark.targetId && unit.hp > 0 && !isUnitHidden(unit));
+    if (target) {
+      mark.x = target.x;
+      mark.y = target.y ?? FIELD.ground;
+    }
+    if (mark.life > 0) continue;
+    if (!target || !areHostileSides(mark.side, target.side)) {
+      mark.done = true;
+      continue;
+    }
+    triggerVChronoExplosion(mark, target);
+    mark.done = true;
+  }
+  state.vChronoBombs = (state.vChronoBombs ?? []).filter((mark) => !mark.done);
+}
+
+function triggerVChronoExplosion(mark, target) {
+  const data = UNIT.vUnit;
+  const source = state.units.find((unit) => unit.id === mark.sourceId) ?? null;
+  const targetDamage = applyUnitDamage(target, data.chronoMarkDamage, {
+    label: "时爆",
+    color: "#d7ceff",
+    yOffset: -110,
+    sourceSide: mark.side,
+    sourceUnitId: mark.sourceId,
+  });
+  handleDamageDealt(source, target, targetDamage);
+  applyStun(target, data.chronoStun);
+  getUnitsInRadius(mark.x, data.chronoRadius, mark.side, Number.POSITIVE_INFINITY, null, mark.y).forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, data.chronoInitialSplashDamage, {
+      label: "时空",
+      color: "#d7ceff",
+      yOffset: -96,
+      sourceSide: mark.side,
+      sourceUnitId: mark.sourceId,
+    });
+    handleDamageDealt(source, enemy, dealt);
+    applyStun(enemy, data.chronoStun);
+  });
+  state.blasts.push({ x: mark.x, y: mark.y - 28, radius: data.chronoRadius, life: 0.34, duration: 0.34, color: "#d7ceff" });
+  spawnVChronoVortex(mark.x, mark.y, mark.side, mark.sourceId);
+}
+
+function spawnVChronoVortex(x, y, side, sourceId) {
+  const data = UNIT.vUnit;
+  state.vChronoVortices = state.vChronoVortices ?? [];
+  state.vChronoVortices.push({
+    id: state.nextId++,
+    sourceId,
+    side,
+    x,
+    y,
+    radius: data.chronoRadius,
+    finalRadius: data.chronoFinalRadius,
+    attractSpeed: data.chronoAttractSpeed,
+    finalDamage: data.chronoFinalDamage,
+    life: data.chronoVortexDuration,
+    duration: data.chronoVortexDuration,
+  });
+  popText(x, y - 78, "时空漩涡", "#d7ceff");
+}
+
+function updateVChronoVortices(dt) {
+  for (const vortex of state.vChronoVortices ?? []) {
+    vortex.life -= dt;
+    state.units.forEach((unit) => {
+      if (!canVChronoVortexAttract(vortex, unit)) return;
+      const dist = distanceTo(unit.x, unit.y ?? FIELD.ground, vortex.x, vortex.y);
+      if (dist > vortex.radius || dist <= 0) return;
+      const step = Math.min(dist, vortex.attractSpeed * dt);
+      unit.x = clampWorldX(unit.x + ((vortex.x - unit.x) / dist) * step);
+      unit.y = (unit.y ?? FIELD.ground) + ((vortex.y - (unit.y ?? FIELD.ground)) / dist) * step;
+      clampUnitPosition(unit);
+    });
+    if (vortex.life <= 0) {
+      releaseVChronoVortex(vortex);
+      vortex.done = true;
+    }
+  }
+  state.vChronoVortices = (state.vChronoVortices ?? []).filter((vortex) => !vortex.done);
+}
+
+function canVChronoVortexAttract(vortex, unit) {
+  if (!vortex || !unit || unit.hp <= 0 || isUnitHidden(unit)) return false;
+  if (!areHostileSides(vortex.side, unit.side)) return false;
+  const data = UNIT[unit.type] ?? {};
+  if (data.untargetable || data.statueOnly || data.immobile || unit.rooted) return false;
+  return true;
+}
+
+function releaseVChronoVortex(vortex) {
+  const source = state.units.find((unit) => unit.id === vortex.sourceId) ?? null;
+  getUnitsInRadius(vortex.x, vortex.finalRadius, vortex.side, Number.POSITIVE_INFINITY, null, vortex.y).forEach((enemy) => {
+    const dealt = applyUnitDamage(enemy, vortex.finalDamage, {
+      label: "漩涡",
+      color: "#d7ceff",
+      yOffset: -96,
+      sourceSide: vortex.side,
+      sourceUnitId: vortex.sourceId,
+    });
+    handleDamageDealt(source, enemy, dealt);
+  });
+  state.blasts.push({ x: vortex.x, y: vortex.y - 20, radius: vortex.finalRadius + 28, life: 0.32, duration: 0.32, color: "#d7ceff" });
+  popText(vortex.x, vortex.y - 78, "漩涡爆裂", "#d7ceff");
+}
+
+function getMovingTornadoPosition(tornado) {
+  const progress = 1 - tornado.life / tornado.duration;
+  return {
+    x: tornado.x + (tornado.tx - tornado.x) * progress,
+    y: tornado.y + (tornado.ty - tornado.y) * progress,
+  };
+}
+
+function updateSwiftWindTornado(tornado, dt) {
+  const previous = getMovingTornadoPosition(tornado);
+  tornado.life -= dt;
+  const current = getMovingTornadoPosition(tornado);
+  const carried = state.units.filter((unit) => unit.tornadoCarryId === tornado.id && unit.hp > 0);
+  const targets = state.units.filter((unit) => (
+    areHostileSides(tornado.side, unit.side) &&
+    unit.hp > 0 &&
+    !unit.tornadoCarryId &&
+    canSwiftWindTornadoCarry(unit) &&
+    distanceToSegment(unit.x, unit.y ?? FIELD.ground, previous.x, previous.y, current.x, current.y) <= tornado.radius
+  )).slice(0, Math.max(0, (tornado.carryLimit ?? 5) - carried.length));
+  targets.forEach((unit) => {
+    unit.tornadoCarryId = tornado.id;
+    unit.tornadoOriginalY = unit.y ?? FIELD.ground;
+    carried.push(unit);
+    popText(unit.x, unit.y - 96, "卷起", "#d7f6ee");
+  });
+  carried.forEach((unit, index) => {
+    unit.x = clampWorldX(current.x + Math.sin(tornado.life * 8 + index) * 22);
+    unit.y = Math.max(FIELD.ground - 150, Math.min(FIELD.ground + 110, current.y + Math.cos(tornado.life * 7 + index) * 18));
+  });
+  if (tornado.life > 0) return;
+  releaseSwiftWindTornado(tornado, current, carried);
+}
+
+function releaseSwiftWindTornado(tornado, point, carried) {
+  carried.forEach((unit, index) => {
+    unit.tornadoCarryId = null;
+    unit.x = clampWorldX(point.x + (index - (carried.length - 1) / 2) * 18);
+    unit.y = Math.max(FIELD.ground - 140, Math.min(FIELD.ground + 140, unit.tornadoOriginalY ?? point.y));
+    unit.tornadoOriginalY = null;
+    const dealt = applyUnitDamage(unit, tornado.damage, {
+      label: "龙卷",
+      color: "#d7f6ee",
+      yOffset: -92,
+      sourceSide: tornado.side,
+      sourceUnitId: tornado.sourceId,
+    });
+    handleDamageDealt(state.units.find((source) => source.id === tornado.sourceId) ?? null, unit, dealt);
+  });
+  state.blasts.push({ x: point.x, y: point.y, radius: tornado.radius + 24, life: 0.3, duration: 0.3, color: "#d7f6ee" });
+  if (carried.length) popText(point.x, point.y - 74, `落下 x${carried.length}`, "#d7f6ee");
 }
 
 function updateIceFieldEffects(dt) {
@@ -15536,15 +16442,26 @@ function getOrderHeavyTraitReduction(unit) {
   return maxHp > ORDER_ARMOR_TRAIT.heavy.hpAbove ? ORDER_ARMOR_TRAIT.heavy.reduction : 0;
 }
 
-function getWormKillerSide(unit) {
-  const killer = state.units.find((candidate) => candidate.id === unit.lastDamageUnitId && candidate.type === "swarmWorm" && candidate.hp > 0);
-  return killer?.side ?? null;
+function getSwarmMeleeKiller(unit) {
+  const killer = state.units.find((candidate) => candidate.id === unit.lastDamageUnitId && candidate.hp > 0);
+  if (!isSwarmMeleeCopyKiller(killer)) return null;
+  if (!areHostileSides(killer.side, unit?.side)) return null;
+  return killer;
 }
 
-function shouldBecomeWorm(unit) {
-  if (!unit || unit.kind === "statue" || unit.type === "swarmWorm" || isHeroUnit(unit) || UNIT[unit.type]?.untargetable) return false;
-  const side = getWormKillerSide(unit);
-  return Boolean(side && areHostileSides(side, unit.side));
+function isSwarmMeleeCopyKiller(unit) {
+  if (!unit || unit.type === "parasite" || factionForSide(unit.side) !== "swarm") return false;
+  if (SWARM_EVOLUTION_SOURCE_BY_TYPE[unit.type]) return false;
+  if (SWARM_COPY_SELF_DESTRUCT_UNITS.has(unit.type)) return false;
+  const data = UNIT[unit.type] ?? {};
+  if (data.untargetable || data.noBasicAttack || data.statueOnly) return false;
+  if ((data.damage ?? unit.damage ?? 0) <= 0) return false;
+  return (data.range ?? 0) <= 80;
+}
+
+function shouldSwarmMeleeCopyVictim(unit) {
+  if (!unit || unit.kind === "statue" || isHeroUnit(unit) || UNIT[unit.type]?.untargetable) return false;
+  return Boolean(getSwarmMeleeKiller(unit) && Math.random() < SWARM_MELEE_KILL_COPY_CHANCE);
 }
 
 function isElfEmpireUnit(type) {
@@ -15555,7 +16472,7 @@ function shouldTriggerElfDeathWisp(unit) {
   if (!unit || unit.type === "elfWisp" || unit.noElfDeathWisp) return false;
   if (!isElfEmpireUnit(unit.type)) return false;
   if (UNIT[unit.type]?.untargetable || isHeroUnit(unit)) return false;
-  return Boolean(unit.lastDamageSide || unit.expired);
+  return Boolean(unit.lastDamageSide || unit.expired) && Math.random() < ELF_DEATH_WISP_CHANCE;
 }
 
 function findElfRootFieldForDeath(unit) {
@@ -15742,16 +16659,18 @@ function removeDead() {
     if (unit.necroPlague) {
       triggerNecroPlagueDeath(unit);
     }
-    if (shouldBecomeWorm(unit)) {
+    if (shouldSwarmMeleeCopyVictim(unit)) {
+      const killer = getSwarmMeleeKiller(unit);
       deathSpawns.push({
-        type: "swarmWorm",
-        side: getWormKillerSide(unit),
+        type: killer.type,
+        side: killer.side,
         x: unit.x,
         y: unit.y,
-        text: "转化沙虫",
+        text: "虫群复制",
         color: "#cde69b",
-        setup: (worm) => {
-          worm.forceCharge = true;
+        setup: (copy) => {
+          copy.forceCharge = true;
+          copy.summonerId = killer.id;
         },
       });
     }
@@ -16156,6 +17075,9 @@ function startCampaignSecondPhase() {
   state.arrows = [];
   state.delayedSpells = [];
   state.tornadoes = [];
+  state.blackHoles = [];
+  state.vChronoBombs = [];
+  state.vChronoVortices = [];
   state.iceFields = [];
   state.groundFires = [];
   state.thornFields = [];
@@ -16258,6 +17180,9 @@ function draw() {
   (state.emeraldBeams ?? []).forEach(drawEmeraldBeam);
   (state.dawnBeams ?? []).forEach(drawDawnBeam);
   (state.heatBeams ?? []).forEach(drawHeatBeam);
+  (state.blackHoles ?? []).forEach(drawBlackHole);
+  (state.vChronoVortices ?? []).forEach(drawVChronoVortex);
+  (state.vChronoBombs ?? []).forEach(drawVChronoMark);
   state.healingFields.forEach(drawHealingField);
   (state.slimeFields ?? []).forEach(drawSlimeField);
   (state.webFields ?? []).forEach(drawWebField);
@@ -16294,6 +17219,8 @@ function draw() {
   state.meteors.forEach(drawMeteor);
   state.stormClouds.forEach(drawStormCloud);
   state.tornadoes.forEach(drawTornado);
+  (state.blackHoles ?? []).forEach(drawBlackHoleCore);
+  (state.vChronoVortices ?? []).forEach(drawVChronoVortexCore);
   state.electricColumns.forEach(drawElectricWall);
   state.iceFields.forEach(drawIceField);
   state.spikes.forEach(drawSpike);
@@ -20059,35 +20986,6 @@ function drawWeapon(type, unit = null) {
       ctx.lineTo(-4, -48);
       ctx.stroke();
     }
-  } else if (type === "elfBladeDancer") {
-    ctx.strokeStyle = "#2f6b43";
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(13, -27);
-    ctx.quadraticCurveTo(38 + armSwing * 8, -58 - armLift * 5, 60 + armSwing * 10, -42);
-    ctx.stroke();
-    ctx.strokeStyle = "#d7f6b8";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(52 + armSwing * 10, -48);
-    ctx.quadraticCurveTo(68 + armSwing * 12, -60, 80 + armSwing * 8, -45);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(47, 107, 67, 0.88)";
-    ctx.strokeStyle = "#8ee8a4";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-14, -69);
-    ctx.lineTo(-48, -57);
-    ctx.lineTo(-44, -26);
-    ctx.lineTo(-12, -18);
-    ctx.lineTo(1, -42);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(142, 232, 164, 0.28)";
-    ctx.beginPath();
-    ctx.arc(-28, -44, 18, 0, Math.PI * 2);
-    ctx.fill();
   } else if (type === "elfEmeraldSentinel") {
     ctx.strokeStyle = "#315b36";
     ctx.lineWidth = 5;
@@ -20150,20 +21048,40 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(12, -14);
     ctx.lineTo(8, -62);
     ctx.stroke();
-    ctx.fillStyle = "rgba(142, 232, 164, 0.55)";
-    ctx.strokeStyle = "#d7f6b8";
+
+    ctx.fillStyle = "rgba(49, 91, 54, 0.88)";
+    ctx.strokeStyle = "#8ee8a4";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(2, -84);
-    ctx.lineTo(24, -58);
-    ctx.lineTo(2, -36);
-    ctx.lineTo(-20, -58);
+    ctx.moveTo(-17, -62);
+    ctx.quadraticCurveTo(1, -91, 20, -62);
+    ctx.lineTo(13, -33);
+    ctx.lineTo(-10, -33);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
     ctx.fillStyle = "#e8fff0";
     ctx.beginPath();
-    ctx.arc(2, -58, 6, 0, Math.PI * 2);
+    ctx.arc(2, -71, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#315b36";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(15, -48);
+    ctx.lineTo(38, -86);
+    ctx.stroke();
+    ctx.strokeStyle = "#8ee8a4";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(34, -82);
+    ctx.quadraticCurveTo(53, -97, 60, -73);
+    ctx.moveTo(40, -88);
+    ctx.lineTo(52, -102);
+    ctx.stroke();
+    ctx.fillStyle = "#8ee8a4";
+    ctx.beginPath();
+    ctx.arc(54, -96, 6, 0, Math.PI * 2);
     ctx.fill();
   } else if (type === "elfTreeGuard") {
     ctx.strokeStyle = "#5d3f24";
@@ -20185,25 +21103,6 @@ function drawWeapon(type, unit = null) {
     ctx.moveTo(12, -34);
     ctx.lineTo(68, -62);
     ctx.stroke();
-  } else if (type === "elfMoonDeerRider") {
-    ctx.strokeStyle = "#d7f6b8";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(8, -28);
-    ctx.lineTo(68, -70);
-    ctx.stroke();
-    ctx.strokeStyle = "#6f9f58";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-10, -78);
-    ctx.quadraticCurveTo(-24, -96, -32, -82);
-    ctx.moveTo(-4, -80);
-    ctx.quadraticCurveTo(-10, -101, 4, -90);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(142, 232, 164, 0.36)";
-    ctx.beginPath();
-    ctx.ellipse(-10, -30, 34, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
   } else if (type === "elfTreeMan" || type === "elfSapling") {
     ctx.strokeStyle = type === "elfTreeMan" ? "#5d3f24" : "#75532e";
     ctx.lineWidth = type === "elfTreeMan" ? 7 : 5;
@@ -21111,6 +22010,8 @@ function getManualActions(unit) {
       break;
     case "vUnit":
       add("vBlink", "闪现", "direct");
+      add("vBlackHole", "黑洞", "point");
+      add("vChronoBomb", "时爆", "target");
       add(unit.controlledTargetId ? "releaseV" : "vControl", unit.controlledTargetId ? "解除" : "控制", unit.controlledTargetId ? "direct" : "target");
       break;
     case "undeadMage":
@@ -21127,15 +22028,15 @@ function getManualActions(unit) {
       add("treeRoot", "树根", "target");
       add("toggleRoot", unit.rooted ? "拔根" : "扎根", "direct");
       break;
-    case "elfMoonDeerRider":
-      add("moonDeerCharge", "冲刺", "direct");
-      break;
     case "elfVineWarlock":
       actions[0].label = "待命";
       add("elfRootField", "树根区", "point");
       break;
     case "elfEmeraldWarlock":
       add("emeraldConvert", "翡翠化", "target");
+      break;
+    case "elfSwiftWind":
+      add("swiftWindTornado", "龙卷", "direct");
       break;
     case "elfStarPriest":
       actions[0].label = "待命";
@@ -21270,6 +22171,7 @@ function getManualActions(unit) {
     default:
       break;
   }
+  if (isSwarmSummonDevourUnit(unit)) add("swarmSummonDevour", "吞噬", "direct");
   return actions;
 }
 
@@ -21287,8 +22189,8 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "evolveLurker") return !canEvolveSwarmUnit(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return true;
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return true;
+  if (button.id === "swiftWindTornado" && (unit.manualSkillCooldowns?.swiftWindTornado ?? 0) > 0) return true;
   if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return true;
-  if (button.id === "moonDeerCharge" && ((unit.moonDeerChargeCooldown ?? 0) > 0 || (unit.moonDeerChargeTimer ?? 0) > 0)) return true;
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return true;
   if (button.id === "swordsmanRage" && (unit.swordsmanSelfRageTimer > 0 || unit.hp <= UNIT.swordsman.selfRageHpCost)) return true;
   if (button.id === "spartanShield") return unit.spartanShieldTimer <= 0 && unit.spartanShieldCooldown > 0;
@@ -21304,10 +22206,12 @@ function isManualButtonDisabled(unit, button) {
   if (button.id === "orderMark" && (unit.manualSkillCooldowns?.orderMark ?? 0) > 0) return true;
   if (button.id === "covenantGuard" && (unit.manualSkillCooldowns?.covenantGuard ?? 0) > 0) return true;
   if (button.id === "shotgunBombs" && (unit.manualSkillCooldowns?.shotgunBombs ?? 0) > 0) return true;
+  if (button.id === "swarmSummonDevour" && !findSwarmSummonDevourCorpse(unit)) return true;
   if (button.id === "ghoulDevour" && unit.devourTimer > 0) return true;
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return true;
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return true;
   if (button.id === "vControl" && (unit.controlTimer > 0 || unit.controlledTargetId)) return true;
+  if (button.id === "vChronoBomb" && getSideMagic(unit.side) < (UNIT.vUnit.chronoMagicCost ?? 75)) return true;
   if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return true;
   if (button.id === "boneHarvest") return !canBoneHarvest(unit);
   if (button.id === "mageStoneGolem") return !findMageStoneGolemTarget(unit);
@@ -21431,6 +22335,7 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "goldenSpear" && unit.goldenSpearThrown) return "已使用";
   if (button.id === "medusaSlay" && unit.medusaSlayTimer > 0) return `冷却 ${Math.ceil(unit.medusaSlayTimer)}秒`;
   if (button.id === "vControl" && unit.controlTimer > 0) return `冷却 ${Math.ceil(unit.controlTimer)}秒`;
+  if (button.id === "vChronoBomb" && getSideMagic(unit.side) < (UNIT.vUnit.chronoMagicCost ?? 75)) return `需要 ${UNIT.vUnit.chronoMagicCost ?? 75} 魔力`;
   if (button.id === "deathGodClone" && hasActiveDeathGodClone(unit)) return "分身存在";
   if (button.id === "boneHarvest") {
     if ((unit.boneAmmo ?? 0) >= UNIT.boneThrower.maxBoneAmmo) return "骨头已满";
@@ -21447,12 +22352,10 @@ function getManualDisabledLabel(unit, button) {
   if (button.id === "evolveHoodCaterpillar") return getSwarmEvolveDisabledLabel(unit, "hoodCaterpillar");
   if (button.id === "evolveLurker") return getSwarmEvolveDisabledLabel(unit, "lurker");
   if (button.id === "spiderWeb" && unit.spiderWebCooldown > 0) return `冷却 ${Math.ceil(unit.spiderWebCooldown)}秒`;
+  if (button.id === "swarmSummonDevour" && !findSwarmSummonDevourCorpse(unit)) return "附近没有召唤尸体";
   if (button.id === "elfRootField" && unit.vineRootFieldCooldown > 0) return `冷却 ${Math.ceil(unit.vineRootFieldCooldown)}秒`;
+  if (button.id === "swiftWindTornado" && (unit.manualSkillCooldowns?.swiftWindTornado ?? 0) > 0) return `冷却 ${Math.ceil(unit.manualSkillCooldowns.swiftWindTornado)}秒`;
   if (button.id === "starSpiritShift" && !getElfHealingSpirits(unit.side).length) return "没有治疗精灵";
-  if (button.id === "moonDeerCharge") {
-    if ((unit.moonDeerChargeTimer ?? 0) > 0) return "冲刺中";
-    if ((unit.moonDeerChargeCooldown ?? 0) > 0) return `冷却 ${Math.ceil(unit.moonDeerChargeCooldown)}秒`;
-  }
   if (button.id === "boneStingerBurrow" && unit.boneStingerBurrowCooldown > 0) return `冷却 ${Math.ceil(unit.boneStingerBurrowCooldown)}秒`;
   if (button.id === "swordsmanRage") {
     if (unit.swordsmanSelfRageTimer > 0) return "愤怒中";
@@ -21516,12 +22419,19 @@ function executeManualAction(unit, action, point) {
     castSpiderWeb(unit);
     return;
   }
-  if (action.id === "moonDeerCharge") {
-    castMoonDeerCharge(unit);
+  if (action.id === "swarmSummonDevour") {
+    castSwarmSummonDevour(unit);
     return;
   }
   if (action.id === "starSpiritShift") {
     castStarSpiritShift(unit);
+    return;
+  }
+  if (action.id === "swiftWindTornado") {
+    if (castSwiftWindTornado(unit)) {
+      unit.manualSkillCooldowns = unit.manualSkillCooldowns ?? {};
+      unit.manualSkillCooldowns.swiftWindTornado = getManualActionCooldown(unit, action.id);
+    }
     return;
   }
   if (action.id === "evolveGnawMiner") {
@@ -21879,6 +22789,8 @@ function getManualActionCooldown(unit, id) {
     undeadLure: data.lureCooldown,
     undeadSkeletons: data.skeletonSummonCooldown,
     vBlink: data.blinkCooldown,
+    vBlackHole: data.blackHoleCooldown,
+    vChronoBomb: data.chronoCooldown,
     deathGodSpikes: data.spikeCooldown,
     deathGodClone: data.cloneCooldown,
     darkKnightCharge: data.chargeCooldown,
@@ -21911,6 +22823,7 @@ function getManualActionCooldown(unit, id) {
     mageStoneGolem: data.skillCooldown,
     emeraldConvert: data.convertCooldown,
     elfRootField: data.rootFieldCooldown,
+    swiftWindTornado: data.tornadoCooldown,
     ancientJungle: data.jungleCooldown,
     ancientTreants: data.treantSummonCooldown,
     ancientLog: data.logCooldown,
@@ -21976,6 +22889,10 @@ function castManualSkill(unit, id, target) {
       }
       controlTargetWithV(unit, target);
       return true;
+    case "vBlackHole":
+      return castVBlackHole(unit, target);
+    case "vChronoBomb":
+      return castVChronoBomb(unit, target);
     case "undeadSpike":
       castUndeadPierce(unit, target);
       return true;
@@ -22680,8 +23597,6 @@ function drawArrow(arrow) {
         ? "#c6b8ff"
       : arrow.type === "elfShadowControl"
         ? "#9f7cff"
-      : arrow.type === "elfSentryTower"
-        ? "#8ee8a4"
       : arrow.type === "elfForestBallista"
         ? "#d7f6b8"
       : arrow.type === "goldenSpear"
@@ -22713,7 +23628,7 @@ function drawArrow(arrow) {
             : arrow.side === "player"
               ? "#d8e8ff"
               : "#ffd0c9");
-  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "elfForestBallista" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" || arrow.type === "elfShadowControl" || arrow.type === "elfSentryTower" ? 4 : 3;
+  ctx.lineWidth = arrow.type === "crossbow" || arrow.type === "elfForestBallista" || arrow.type === "goblinVulture" || arrow.type === "undeadVulture" || arrow.type === "summoner" || arrow.type === "boneThrower" || arrow.type === "musketeer" || arrow.type === "ironCavalryMusket" ? 5 : arrow.type === "spearThrow" || arrow.type === "goldenSpear" || arrow.type === "javelinThrower" || arrow.type === "archerFire" || arrow.type === "elfShadowControl" ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(x - 10, y + 3);
   ctx.lineTo(x + 12, y - 3);
@@ -22722,12 +23637,6 @@ function drawArrow(arrow) {
     ctx.fillStyle = "rgba(126, 216, 255, 0.75)";
     ctx.beginPath();
     ctx.arc(x + 12, y - 3, 6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (arrow.type === "elfSentryTower") {
-    ctx.fillStyle = "rgba(142, 232, 164, 0.82)";
-    ctx.beginPath();
-    ctx.arc(x + 12, y - 3, 7, 0, Math.PI * 2);
     ctx.fill();
   }
   if (arrow.type === "boneThrower") {
@@ -22866,18 +23775,121 @@ function drawDelayedSpell(spell) {
 }
 
 function drawTornado(tornado) {
-  const progress = 1 - tornado.life / tornado.duration;
-  const x = tornado.x + (tornado.tx - tornado.x) * progress;
-  const y = tornado.y + (tornado.ty - tornado.y) * progress;
+  const { x, y } = getMovingTornadoPosition(tornado);
+  const scale = tornado.type === "swiftWind" ? 1.25 : 1;
   ctx.globalAlpha = 0.82;
   ctx.strokeStyle = "#d7f6ee";
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.ellipse(x, y - 18, 22, 9, 0, 0, Math.PI * 2);
-  ctx.ellipse(x, y, 16, 7, 0, 0, Math.PI * 2);
-  ctx.ellipse(x, y + 15, 9, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y - 18, 22 * scale, 9 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y, 16 * scale, 7 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + 15, 9 * scale, 5 * scale, 0, 0, Math.PI * 2);
   ctx.stroke();
+  const carried = state.units.filter((unit) => unit.tornadoCarryId === tornado.id && unit.hp > 0).length;
+  if (carried > 0) {
+    ctx.fillStyle = "#e8fff0";
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillText(`x${carried}`, x + 18, y - 28);
+  }
   ctx.globalAlpha = 1;
+}
+
+function drawBlackHole(hole) {
+  const pulse = 0.5 + Math.sin((hole.life ?? 0) * 8) * 0.12;
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = "#8d6cff";
+  ctx.beginPath();
+  ctx.arc(hole.x, hole.y, hole.attractRange, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.28;
+  ctx.strokeStyle = "#d7ceff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(hole.x, hole.y, hole.attractRange, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.35 + pulse * 0.2;
+  ctx.fillStyle = "#2b1040";
+  ctx.beginPath();
+  ctx.arc(hole.x, hole.y, hole.radius * (1.15 + pulse * 0.1), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBlackHoleCore(hole) {
+  const swallowed = state.units.filter((unit) => unit.blackHoleId === hole.id && unit.hp > 0).length;
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  const gradient = ctx.createRadialGradient(hole.x, hole.y, 4, hole.x, hole.y, hole.radius);
+  gradient.addColorStop(0, "#05020a");
+  gradient.addColorStop(0.58, "#1c0830");
+  gradient.addColorStop(1, "#d7ceff");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#f0e8ff";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(hole.x, hole.y, hole.radius * 0.72, 0, Math.PI * 2);
+  ctx.stroke();
+  if (swallowed > 0) {
+    ctx.fillStyle = "#f0e8ff";
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillText(`x${swallowed}`, hole.x + hole.radius * 0.55, hole.y - hole.radius * 0.55);
+  }
+  ctx.restore();
+}
+
+function drawVChronoMark(mark) {
+  const target = state.units.find((unit) => unit.id === mark.targetId && unit.hp > 0 && !isUnitHidden(unit));
+  const x = target?.x ?? mark.x;
+  const y = (target?.y ?? mark.y) - 66;
+  const progress = Math.max(0, Math.min(1, mark.life / mark.duration));
+  ctx.save();
+  ctx.globalAlpha = 0.55 + Math.sin(performance.now() / 85) * 0.18;
+  ctx.strokeStyle = "#d7ceff";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, 24 + (1 - progress) * 18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#f0e8ff";
+  ctx.font = "bold 14px sans-serif";
+  ctx.fillText(`${Math.ceil(mark.life)}`, x - 5, y + 5);
+  ctx.restore();
+}
+
+function drawVChronoVortex(vortex) {
+  const pulse = 0.5 + Math.sin((vortex.life ?? 0) * 7) * 0.14;
+  ctx.save();
+  ctx.globalAlpha = 0.13;
+  ctx.fillStyle = "#8d6cff";
+  ctx.beginPath();
+  ctx.arc(vortex.x, vortex.y, vortex.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.34;
+  ctx.strokeStyle = "#d7ceff";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.beginPath();
+    ctx.ellipse(vortex.x, vortex.y, vortex.radius * (0.35 + i * 0.2 + pulse * 0.06), vortex.radius * (0.12 + i * 0.05), performance.now() / 420 + i, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawVChronoVortexCore(vortex) {
+  ctx.save();
+  ctx.globalAlpha = 0.78;
+  const gradient = ctx.createRadialGradient(vortex.x, vortex.y, 2, vortex.x, vortex.y, vortex.finalRadius);
+  gradient.addColorStop(0, "#f0e8ff");
+  gradient.addColorStop(0.45, "#7a54d8");
+  gradient.addColorStop(1, "rgba(122, 84, 216, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(vortex.x, vortex.y, vortex.finalRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawIceField(field) {
@@ -23051,6 +24063,7 @@ function returnToMainMenu() {
   controlDeck?.classList.remove("hidden");
   homeBtn.classList.add("hidden");
   statusEl.textContent = "选择模式与阵营，开始下一场战斗";
+  silenceBattleMusicNow();
 }
 
 async function startSelectedBattle(faction = selectedFaction) {
@@ -23192,6 +24205,7 @@ function registerServiceWorker() {
 }
 
 function updateHud() {
+  if (state?.over && (battleMusic.running || battleMusic.starting)) silenceBattleMusicNow();
   if (state.fourWay) {
     const alive = state.fourWaySides.filter((ai) => ai.alive);
     goldEl.innerHTML = alive
@@ -23864,6 +24878,7 @@ installGuide?.addEventListener("click", (event) => {
 restartBtn.addEventListener("click", newGame);
 topHomeBtn.addEventListener("click", returnToMainMenu);
 homeBtn.addEventListener("click", returnToMainMenu);
+musicBtn?.addEventListener("click", toggleBattleMusic);
 
 pauseBtn.addEventListener("click", () => {
   if (state.over) return;
@@ -23871,6 +24886,7 @@ pauseBtn.addEventListener("click", () => {
   pauseBtn.classList.toggle("active", state.paused);
   pauseBtn.textContent = state.paused ? "继续" : "暂停";
   statusEl.textContent = state.paused ? "战斗已暂停" : "战斗继续";
+  syncBattleMusic();
 });
 
 fullscreenBtn.addEventListener("click", toggleFullscreen);
@@ -23986,4 +25002,5 @@ aiMatchupPicker?.addEventListener("click", (event) => {
 
 loadCampaignSave();
 registerServiceWorker();
+syncMusicButton();
 requestAnimationFrame(loop);
